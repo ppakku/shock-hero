@@ -392,8 +392,13 @@ export class DragonBoss extends BossBase {
   // 땅을 달리는 불길, 착지 충격파, 뜨거운 바닥, 화난 몸의 불씨
   drawFire(dt) {
     const gy = this.groundY;
-    this.flames.list.forEach((w, i) => this.fire.wall(w.x, gy, 64 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `fl${i}`));
-    if (this.breathSheet) this.drawBreathSprites();
+    if (this.breathSheet) {
+      // 불길 그림이 잘 보이게 알갱이는 불씨만 조금
+      this.drawBreathSprites();
+      this.flames.list.forEach((w, i) => this.fire.ember.emitParticleAt(w.x, gy - 24, this.fire.n(`flE${i}`, 24, dt, 2)));
+    } else {
+      this.flames.list.forEach((w, i) => this.fire.wall(w.x, gy, 64 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `fl${i}`));
+    }
     this.waves.list.forEach((w, i) => this.fire.wall(w.x, gy, 44 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `wv${i}`));
     this.puddles.list.forEach((p, i) => this.fire.lick(p.x, gy, p.w, dt, `pd${i}`));
     if (this.raging) this.fire.aura(this.x, gy - this.air, 220, 200, dt);

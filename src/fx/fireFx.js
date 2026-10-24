@@ -284,7 +284,7 @@ export class FireFx {
     spr.on('animationupdate', (_anim, frame) => {
       if (frame.index >= 6 && !spr.fading) {
         spr.fading = true;
-        this.scene.tweens.add({ targets: spr, alpha: 0, duration: 260 });
+        this.scene.tweens.add({ targets: spr, alpha: 0, duration: 110 });
       }
     });
     return spr;
