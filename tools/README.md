@@ -16,3 +16,4 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `bot_bossb.js`, `run_bossb.py`: 주먹 발사, 빨아들이기, 얼음, 킹 보스까지 대응하는 봇과 실행 도우미 (`exec(open("tools/run_bossb.py").read())`, `start_stage(n)`, `skip_to_boss()`, `run()`)
 - `bot_bossa.js`: 포레스트 와처, 아스트라노바X 보스 봇 (scene.readInput 을 바꿔 끼움)
 - `remove_checker_bg.py`: AI 그림에 체크무늬가 그려진 스프라이트 시트에서 체크무늬, 칸 글자, 점선을 지워 진짜 투명 PNG로 만드는 도구 (4x2 칸, 절반 크기로 저장)
+- `make_ground_tile.py`: AI 바닥 그림을 반복 바닥 타일로 (체크무늬 지우기, 위아래 자르기, 좌우 이음새 섞기)

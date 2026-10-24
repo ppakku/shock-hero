@@ -260,6 +260,14 @@ export class GameScene extends Phaser.Scene {
     const ground = this.add.tileSprite(st.width / 2, st.groundY + 30, st.width, 60, 'ground').setDepth(0).setTint(st.theme.ground);
     this.physics.add.existing(ground, true);
     this.solids.push(ground);
+    // 바닥 그림(theme.groundImage)이 있으면 보이는 바닥만 그 그림으로 바꾼다 (밟는 높이는 그대로).
+    // surface: 그림 위에서부터 걸어 다니는 윗면까지의 높이
+    const gi = st.theme.groundImage;
+    if (gi && this.textures.exists(gi.key)) {
+      const src = this.textures.get(gi.key).getSourceImage();
+      ground.setVisible(false);
+      this.add.tileSprite(st.width / 2, st.groundY - gi.surface + src.height / 2, st.width, src.height, gi.key).setDepth(0.5);
+    }
 
     // 길가 잔해
     const rubble = this.add.graphics().setDepth(-1);

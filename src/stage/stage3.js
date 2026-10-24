@@ -15,6 +15,7 @@ export const stage3 = {
     bgImage: { key: 'lava_bg', file: 'lava_bg.jpg' }, // 걸어가는 동안 배경 (아들 그림)
     arenaImage: { key: 'lava_arena', file: 'lava_arena.jpg' }, // 보스전 배경 (아들 그림)
     platform: 0x9a6a5a, // 발판 색 (그을린 바위 느낌)
+    groundImage: { key: 'lava_ground', file: 'lava_ground.png', surface: 30 }, // 바닥 그림 (아들 그림, 좌우로 이어짐)
     sky: [0x2a0a08, 0xd8401c],
     sun: 0xff8a3d,
     far: 0x4a1a12,
