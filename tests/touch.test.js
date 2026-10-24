@@ -81,6 +81,7 @@ describe('태블릿 터치 버튼', () => {
     expect(keyText('궁극기 준비! {ult} 키를 눌러!', 'touch')).toBe('궁극기 준비! 궁극기 버튼을 눌러!');
     expect(keyText('궁극기 준비! {ult} 키', 'touch')).toBe('궁극기 준비! 궁극기 버튼');
     expect(keyText('{up} 누른 채 {punch}', 'touch')).toBe('▲ 버튼 누른 채 펀치 버튼');
+    expect(keyText('{punch} 또는 마우스 왼쪽\n펀치!', 'touch')).toBe('펀치 버튼\n펀치!');
     // 키보드 조작은 그대로
     expect(keyText('{punch} 를 꾹 눌러!', 'classic')).toBe('J 를 꾹 눌러!');
   });

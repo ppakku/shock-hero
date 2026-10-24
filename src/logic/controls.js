@@ -53,6 +53,7 @@ export function keyText(str, scheme) {
   const out = String(str).replace(/\{(\w+)\}/g, (m, k) => names[k] ?? m);
   if (!touch) return out;
   return out
+    .replace(/ 또는 마우스 왼쪽/g, '') // 태블릿에는 마우스가 없다
     .replace(/버튼 키를/g, '버튼을')
     .replace(/버튼 키/g, '버튼')
     .replace(/버튼 를/g, '버튼을')
