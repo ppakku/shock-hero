@@ -107,6 +107,20 @@ class Sfx {
         this.hiss(0.15, { vol: 0.3, freq: 900, freqTo: 2500 });
         this.tone(260, 0.12, { type: 'triangle', vol: 0.15, slideTo: 520 });
         break;
+      case 'bombDrop': // 폭탄벌레가 폭탄을 떨어뜨림 (휘이익)
+        this.tone(900, 0.35, { type: 'sine', vol: 0.12, slideTo: 250 });
+        break;
+      case 'bomb': // 폭탄 폭발
+        this.hiss(0.35, { vol: 0.5, freq: 1500, freqTo: 120 });
+        this.tone(110, 0.3, { type: 'sawtooth', vol: 0.25, slideTo: 40 });
+        break;
+      case 'spitCharge': // 침뱉기가 볼을 부풀림
+        this.tone(200, 0.5, { type: 'triangle', vol: 0.12, slideTo: 420 });
+        break;
+      case 'shieldBreak': // 방패가 깨짐
+        this.hiss(0.25, { vol: 0.4, freq: 4000, freqTo: 800 });
+        this.tone(900, 0.15, { type: 'square', vol: 0.12, slideTo: 300 });
+        break;
       case 'gate':
         this.tone(220, 0.5, { type: 'sawtooth', vol: 0.15, slideTo: 880 });
         [659, 880].forEach((f, i) => this.tone(f, 0.18, { vol: 0.1, delay: 0.3 + i * 0.1 }));

@@ -40,12 +40,14 @@ export const stage4 = {
     900,
     { x: 1300, type: 'jumper' },
     { x: 1500, type: 'fast' },
+    { x: 1650, type: 'bomber' },
     { x: 1850, type: 'tank' },
     { x: 2100, type: 'jumper' },
-    2400,
+    { x: 2400, type: 'shield' }, // 방패병
     { x: 2700, type: 'fast' },
     { x: 2900, type: 'jumper' },
-    { x: 3300, type: 'tank' },
+    { x: 3100, type: 'spitter' },
+    { x: 3300, type: 'shield' },
     { x: 3600, type: 'fast' },
     { x: 3850, type: 'jumper' },
   ],
@@ -58,11 +60,13 @@ export const stage4 = {
 
   signs: [
     { x: 300, text: '스테이지 4: 얼음 산\n보라 몬스터는 점프해서 덮쳐!' },
+    { x: 2180, text: '방패병 주의!\n충전 펀치로 방패 깨기, 아니면 뒤에서!' },
     { x: 4300, text: '보스 구역!\n충격파가 두 번 와' },
   ],
 
   talks: [
     { x: 0, lines: ['으슬으슬 추워... 내 회로가 얼겠어.', '보라 녀석은 점프해서 덮쳐. 대시로 밑으로 빠져나가!'] },
+    { x: 2200, lines: ['방패를 든 녀석이야! 앞에서 그냥 치면 막혀.', '충전 펀치로 방패를 깨! 아니면 뒤로 돌아가서 때려.'] },
     { x: 2950, lines: ['산꼭대기에 뭔가 있을 거야. 올라가 보자!'] },
     { x: 4140, lines: ['체크포인트!', '얼음 돌연변이는 빨라. 침착하게!'] },
   ],

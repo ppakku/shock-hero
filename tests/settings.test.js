@@ -92,3 +92,13 @@ describe('설정 저장과 레벨 초기화', () => {
     expect(r.settings).toEqual(save.settings);
   });
 });
+
+describe('안내 글 키 이름', async () => {
+  const { keyText } = await import('../src/logic/controls.js');
+  it('조작 방식에 맞게 바뀐다', () => {
+    expect(keyText('{punch} 를 꾹!', 'classic')).toBe('J 를 꾹!');
+    expect(keyText('{punch} 를 꾹!', 'arrows')).toBe('A 를 꾹!');
+    expect(keyText('{ult} 키', 'arrows')).toBe('D 키');
+    expect(keyText('{모름} 그대로', 'classic')).toBe('{모름} 그대로');
+  });
+});

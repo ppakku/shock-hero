@@ -60,7 +60,7 @@ export class HeroSkills {
     ring(this.scene, p.x, p.y, 0x3fd0ff, 70, 400, 4);
     if (!this.ultTipShown) {
       this.ultTipShown = true;
-      this.scene.robot.say('궁극기 준비! L 키를 눌러!', true);
+      this.scene.robot.say('궁극기 준비! {ult} 키를 눌러!', true);
     }
   }
 

@@ -40,17 +40,18 @@ export const stage5 = {
   monsters: [
     900,
     { x: 1100, type: 'fast' },
+    { x: 1300, type: 'bomber' },
     { x: 1500, type: 'jumper' },
     { x: 2000, type: 'tank' },
     { x: 2200, type: 'fast' },
     { x: 2500, y: 380, type: 'jumper' },
-    2800,
+    { x: 2800, type: 'shield' },
     { x: 3000, type: 'tank' },
     { x: 3300, type: 'jumper' },
-    { x: 3500, type: 'fast' },
-    3700,
+    { x: 3480, type: 'bomber' },
+    { x: 3700, type: 'spitter' },
     { x: 4000, type: 'tank' },
-    { x: 4250, type: 'fast' },
+    { x: 4250, type: 'shield' },
   ],
 
   treasures: [
@@ -67,6 +68,7 @@ export const stage5 = {
   talks: [
     { x: 0, lines: ['여기가 괴물들의 성이야.', '모든 몬스터가 다 나와. 지금까지 배운 걸 다 써!'] },
     { x: 1150, lines: ['탑 꼭대기까지 올라가면 큰 보물이 있대!'] },
+    { x: 2650, lines: ['방패병, 폭탄벌레, 침뱉기까지 다 모였어.', '빨간 원은 피하고, 침은 넘고, 방패는 충전 펀치로!'] },
     { x: 4540, lines: ['마지막 체크포인트!', '킹 돌연변이는 모든 공격을 다 써.', '우린 할 수 있어. 가자, 히어로!'] },
   ],
 

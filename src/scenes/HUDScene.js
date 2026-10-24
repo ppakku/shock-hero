@@ -197,7 +197,7 @@ export class HUDScene extends Phaser.Scene {
       const pulse = ready && Math.floor(this.time.now / 200) % 2 === 0;
       g.fillStyle(0x000000, 0.6).fillRect(20, 84, 236, 10);
       g.fillStyle(ready ? (pulse ? 0xffffff : 0x3fd0ff) : 0x2a7fa8, 1).fillRect(22, 86, 232 * u, 6);
-      this.ultText.setText(ready ? '궁극기 준비! L 키' : '궁극기').setVisible(true);
+      this.ultText.setText(ready ? gs.keyText('궁극기 준비! {ult} 키') : '궁극기').setVisible(true);
     } else {
       this.ultText.setVisible(false);
     }

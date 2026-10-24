@@ -11,7 +11,7 @@ import { saveStore } from '../save.js';
 import { clearStagePatch } from '../logic/save.js';
 import { parseMonsterSpot } from '../logic/monsters.js';
 import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
-import { CONTROL_KEYS } from '../logic/controls.js';
+import { CONTROL_KEYS, keyText } from '../logic/controls.js';
 import { addXp, maxHealthFor, damageMultiplierFor } from '../logic/progression.js';
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
@@ -202,7 +202,7 @@ export class GameScene extends Phaser.Scene {
 
     for (const s of st.signs) {
       const t = this.add
-        .text(s.x, st.groundY - 120, s.text, {
+        .text(s.x, st.groundY - 120, this.keyText(s.text), {
           fontFamily: FONT, fontSize: '16px', color: '#1b1b1b', align: 'center',
           backgroundColor: '#f2e6c9', padding: { x: 10, y: 8 },
         })
@@ -479,6 +479,11 @@ export class GameScene extends Phaser.Scene {
       this.skills.onDealtDamage(attack.damage);
       if (attack.kind === 'charged') this.shake(0.004 + 0.008 * attack.ratio, 120);
     }
+  }
+
+  // 안내 글의 {punch} 같은 표시를 지금 조작 방식의 키 이름으로
+  keyText(str) {
+    return keyText(str, this.save.settings.controls);
   }
 
   // 공격 사각형에 닿은 몬스터와 보스에게 피해를 준다. 하나라도 맞았으면 true.

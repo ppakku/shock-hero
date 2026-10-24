@@ -57,7 +57,8 @@ export class Robot {
   }
 
   next() {
-    const line = this.queue.shift();
+    const raw = this.queue.shift();
+    const line = raw && this.scene.keyText ? this.scene.keyText(raw) : raw;
     if (!line) {
       this.bubble.setVisible(false);
       return;

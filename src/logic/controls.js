@@ -28,6 +28,18 @@ export const CONTROL_KEYS = {
   arrows: { left: ['LEFT'], right: ['RIGHT'], jump: ['SPACE', 'UP'], up: ['UP'], attack: ['A'], dash: ['S', 'SHIFT'], ult: ['D'] },
 };
 
+// 안내 글 속 {punch} 같은 표시를 고른 조작 방식의 키 이름으로 바꾼다.
+// 스테이지 안내판과 로봇 대사에 쓴다. 예: '{punch} 를 꾹 눌러!' → 'J 를 꾹 눌러!'
+export const KEY_NAMES = {
+  classic: { move: 'A / D 또는 ← →', jump: 'Space', punch: 'J', dash: 'K 또는 Shift', ult: 'L', up: 'W 나 ↑' },
+  arrows: { move: '← →', jump: 'Space 또는 ↑', punch: 'A', dash: 'S 또는 Shift', ult: 'D', up: '↑' },
+};
+
+export function keyText(str, scheme) {
+  const names = KEY_NAMES[normalizeControls(scheme)];
+  return String(str).replace(/\{(\w+)\}/g, (m, k) => names[k] ?? m);
+}
+
 export function normalizeControls(scheme) {
   return CONTROL_SCHEMES.includes(scheme) ? scheme : 'classic';
 }
