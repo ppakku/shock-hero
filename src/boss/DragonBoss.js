@@ -12,6 +12,8 @@ const lerp = Phaser.Math.Linear;
 const W = 320; // 서 있는 용 그림 크기
 const H = 260;
 const TH = 200; // 날개를 늘어뜨리고 쉬는 그림 높이
+const SHEET_H = 340; // 스프라이트 시트(아들 그림)를 쓸 때 화면 높이
+const SHEET_W = Math.round((SHEET_H * 344) / 384); // 한 칸 비율 그대로
 const HALF = 110;
 const TAIL_LEN = 310; // 몸 가운데에서 꼬리 끝까지
 const TAIL_H = 50; // 꼬리 휘두르기 높이 (점프로 넘을 수 있음)
@@ -65,7 +67,10 @@ export class DragonBoss extends BossBase {
     this.shadowG = scene.add.graphics().setDepth(1.5);
     this.tailG = scene.add.graphics().setDepth(3.5);
     this.windG = scene.add.graphics().setDepth(9);
-    this.sprite = scene.add.image(this.x, this.groundY, `dragon_${skin}`).setOrigin(0.5, 1).setDepth(4).setDisplaySize(W, H);
+    this.sprite = scene.add.sprite(this.x, this.groundY, `dragon_${skin}`).setOrigin(0.5, 1).setDepth(4).setDisplaySize(W, H);
+    // art.js 에 스프라이트 시트(아들 그림)가 있으면 그 애니메이션을 쓴다. 시트에는 꼬리까지 그려져 있다.
+    this.sheet = scene.anims.exists(`dragon_${skin}_anim`);
+    if (this.sheet) this.sprite.play(`dragon_${skin}_anim`);
     this.sideBall = scene.add.image(0, 0, 'fireball').setDepth(8).setDisplaySize(36, 36).setVisible(false);
 
     const hp = this.hpScale;
@@ -329,8 +334,14 @@ export class DragonBoss extends BossBase {
   draw() {
     const s = this.sprite;
     const tired = this.tired;
-    s.setTexture(tired ? `dragon_tired_${this.skinKey}` : `dragon_${this.skinKey}`);
-    s.setDisplaySize(W, tired ? TH : H);
+    if (this.sheet) {
+      // 시트 한 칸 비율(344x384)을 지켜서 그린다. 지치면 날갯짓이 느려지고 살짝 웅크린다.
+      s.setDisplaySize(SHEET_W, tired ? SHEET_H * 0.85 : SHEET_H);
+      s.anims.timeScale = tired ? 0.4 : this.raging ? 1.5 : 1;
+    } else {
+      s.setTexture(tired ? `dragon_tired_${this.skinKey}` : `dragon_${this.skinKey}`);
+      s.setDisplaySize(W, tired ? TH : H);
+    }
     s.setPosition(this.x, this.groundY - this.air - this.lift);
     s.setFlipX(this.facing > 0);
     this.bodyX = this.x;
@@ -342,7 +353,9 @@ export class DragonBoss extends BossBase {
     // 꼬리
     const g = this.tailG.clear();
     const { base, mid, tip } = this.tailPoints();
-    {
+    // 시트 그림에는 꼬리가 있으니, 꼬리 휘두르기 공격 중에만 휘두르는 꼬리를 따로 그린다
+    const drawTail = !this.sheet || this.action?.type === 'tail';
+    if (drawTail) {
       const col = this.flashTail > 0 ? 0xffffff : this.colors.main;
       g.lineStyle(30, this.colors.dark, 1).lineBetween(base.x, base.y, mid.x, mid.y);
       g.lineStyle(20, this.colors.dark, 1).lineBetween(mid.x, mid.y, tip.x, tip.y);
@@ -849,7 +862,8 @@ export class DragonBoss extends BossBase {
   }
 
   collapse() {
-    this.sprite.setTexture(`dragon_tired_${this.skinKey}`).setDisplaySize(W, TH);
+    if (this.sheet) this.sprite.anims.stop();
+    else this.sprite.setTexture(`dragon_tired_${this.skinKey}`).setDisplaySize(W, TH);
     this.scene.tweens.add({ targets: [this.sprite, this.tailG], alpha: 0, y: '+=60', duration: 1000 });
   }
 }
