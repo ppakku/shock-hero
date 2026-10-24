@@ -167,3 +167,11 @@ describe('난이도', () => {
     expect(['rocks', 'wave']).toContain(comboKind('slam', () => 0.2));
   });
 });
+
+describe('높은 주먹 발사', () => {
+  it('가만히 서 있는 주인공 몸통(키 56) 위로 지나간다', async () => {
+    const { rocketBand } = await import('../src/logic/boss.js');
+    const groundY = 480;
+    expect(rocketBand('high', groundY).bottom).toBeLessThan(groundY - 56);
+  });
+});

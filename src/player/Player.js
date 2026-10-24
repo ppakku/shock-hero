@@ -93,6 +93,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.charging && this.chargeHeld >= this.cfg.charge.minTime;
   }
 
+  // 적 공격에 맞았는지는 그림 틀(머리 위 빈 공간 포함, 키 78) 말고 실제 몸통(30 x 56)으로 본다.
+  // 그림 틀로 보면 "높다! 가만히!" 주먹이 가만히 서 있어도 머리 위 빈 곳에 닿았다.
+  getBounds(output) {
+    const b = this.body;
+    if (!b) return super.getBounds(output);
+    const r = output || new Phaser.Geom.Rectangle();
+    return r.setTo(b.x, b.y, b.width, b.height);
+  }
+
   update(dt, input) {
     this.step(dt, input);
     this.updateAnim();
