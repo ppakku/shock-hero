@@ -21,6 +21,9 @@ export const stage2 = {
     platform: 0x8a7050, // 발판 색 (나무 느낌)
     smoke: 0x4f7a3a,
     weather: { kind: 'bubbles', color: 0x9cff6a },
+    arenaImage: { key: 'forest_arena', file: 'forest_arena.jpg' }, // 보스전 배경 (Gemini 그림, 독 늪 공터)
+    groundImage: { key: 'forest_ground', file: 'forest_ground.png', surface: 29 }, // 바닥 그림 (Gemini 그림, 이끼 흙과 나무뿌리, 좌우로 이어짐)
+    platformImage: { key: 'forest_platform', file: 'forest_platform.png', left: 100, right: 100, surface: 9, scale: 0.45 }, // 이끼 낀 통나무 발판 (Gemini 그림, 양 끝 나이테는 그대로, 가운데만 늘림)
   },
 
   platforms: [

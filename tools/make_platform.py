@@ -10,11 +10,15 @@ height = int(sys.argv[3]) if len(sys.argv) > 3 else 100
 im = Image.open(src).convert('RGBA')
 W, H = im.size
 px = im.load()
+# 분홍 배경으로 그렸는지 (눈, 얼음처럼 흰 발판)
+c = px[0, 0]
+pink = c[0] > 170 and c[2] > 170 and c[1] < 110
 
 
 def bg(p):
     r, g, b, a = p
-    return max(r, g, b) - min(r, g, b) < 24 and max(r, g, b) > 150
+    magenta = r > 170 and b > 170 and g < 110  # 얼음처럼 흰 그림은 분홍(#FF00FF) 배경으로 그린다
+    return magenta or (max(r, g, b) - min(r, g, b) < 24 and max(r, g, b) > 150)
 
 
 seen = bytearray(W * H)
@@ -36,15 +40,26 @@ while q:
         if 0 <= nx < W and 0 <= ny < H and not seen[ny * W + nx]:
             q.append((nx, ny))
 
-# 철골 틈처럼 막힌 곳에 갇힌 흰 배경: 발판 그림에는 흰색이 없으니 밝은 무채색은 모두 지운다
+
+
+def pinkish(p):
+    r, g, b, a = p
+    return a and r > 150 and b > 150 and g < min(r, b) - 50  # 분홍 배경과 그 위의 반투명 별
+
+
 for y in range(H):
     for x in range(W):
         r, g, b, a = px[x, y]
-        if a and max(r, g, b) > 175 and max(r, g, b) - min(r, g, b) < 20:
+        if pink:
+            # 막힌 틈의 분홍과 분홍 위 별 자국은 모두 지운다 (흰 눈은 남김)
+            if pinkish(px[x, y]):
+                px[x, y] = (0, 0, 0, 0)
+        elif a and max(r, g, b) > 175 and max(r, g, b) - min(r, g, b) < 20:
+            # 철골 틈처럼 막힌 곳에 갇힌 흰 배경: 흰 배경 발판 그림에는 흰색이 없으니 밝은 무채색은 모두 지운다
             px[x, y] = (0, 0, 0, 0)
 
 # 오른쪽 아래 구석의 반투명 별 자국(회색): 녹슨 철은 갈색이라 무채색 회색만 지운다
-for y in range(H * 2 // 3, H):
+for y in range(H * 2 // 3, H) if not pink else ():
     for x in range(W * 4 // 5, W):
         r, g, b, a = px[x, y]
         if a and max(r, g, b) > 90 and max(r, g, b) - min(r, g, b) < 30:
@@ -52,7 +67,7 @@ for y in range(H * 2 // 3, H):
 
 # 외곽선 바깥에 남은 밝은 테두리 한 겹 걷기
 edge = [(x, y) for y in range(1, H - 1) for x in range(1, W - 1)
-        if px[x, y][3] and max(px[x, y][:3]) > 170 and max(px[x, y][:3]) - min(px[x, y][:3]) < 30
+        if px[x, y][3] and not pink and max(px[x, y][:3]) > 170 and max(px[x, y][:3]) - min(px[x, y][:3]) < 30
         and any(px[x + dx, y + dy][3] == 0 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
 for x, y in edge:
     px[x, y] = (0, 0, 0, 0)

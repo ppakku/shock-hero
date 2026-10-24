@@ -20,6 +20,9 @@ export const stage4 = {
     ground: 0xc8e0f8,
     smoke: 0xe0f0ff,
     weather: { kind: 'snow', color: 0xffffff },
+    arenaImage: { key: 'ice_arena', file: 'ice_arena.jpg' }, // 보스전 배경 (Gemini 그림, 오로라 아래 얼음 평원)
+    groundImage: { key: 'ice_ground', file: 'ice_ground.png', surface: 4 }, // 바닥 그림 (Gemini 그림, 눈과 얼음층, 좌우로 이어짐)
+    platformImage: { key: 'ice_platform', file: 'ice_platform.png', left: 70, right: 70, surface: 7, scale: 0.45 }, // 눈 덮인 얼음 바위 발판 (Gemini 그림, 양 끝은 그대로, 가운데만 늘림)
   },
 
   platforms: [
