@@ -21,3 +21,4 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `clean_gemini_bg.py`: Gemini 배경 그림의 오른쪽 아래 별 표시를 양옆 색으로 메워 지우고 높이 720 JPG 로 저장
 - `make_platform.py`: 흰 배경에 그린 발판 그림의 배경(철골 틈 포함)과 별 자국을 지우고 높이를 맞춤
 - `make_ground_strip.py`: 흰 배경 위 바닥 띠 그림을 좌우로 이어지는 바닥 타일로 (윗면 위 작은 돌은 남김, surface 값 출력)
+- `make_sheet.py`: 흰 배경 4x2 동작 그림(8장)을 칸마다 배경 지우고, 칸 크기와 발 위치를 맞춘 스프라이트 시트로 (몬스터 걷기)

@@ -14,6 +14,7 @@ export const TEXTURE = {
   shield: 'monster_shield',
 };
 
+const SHEET_SIZE = 1.15; // 스프라이트 시트 그림은 칸에 꽉 차게 잘라서 코드 그림보다 조금 크게
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
@@ -23,10 +24,16 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const m = monsterStats(cfg, spot.type);
     const x = spot.x;
     const y = spot.y - 30 * m.size;
-    super(scene, x, y, TEXTURE[m.type]);
+    const tex = TEXTURE[m.type];
+    super(scene, x, y, tex);
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDisplaySize(52 * m.size, 48 * m.size);
+    // art.js 에 걷기 스프라이트 시트(8장, 오른쪽을 봄)가 있으면 칸 비율대로 크기를 맞추고 걷기를 반복 재생한다
+    if (scene.anims.exists(`${tex}_anim`)) {
+      const h = 48 * m.size * SHEET_SIZE;
+      this.setDisplaySize((h * this.width) / this.height, h).play({ key: `${tex}_anim`, startFrame: Phaser.Math.Between(0, 7) });
+    }
     this.body.setSize(this.width * 0.8, this.height * 0.85, true);
     this.setCollideWorldBounds(true);
     this.setDragX(900);

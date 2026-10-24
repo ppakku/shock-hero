@@ -8,10 +8,10 @@
 
 export const customArt = {
   // player: 'player.png', // 주인공 (오른쪽을 보는 모습으로 그려 주세요)
-  // monster: 'monster.png', // 초록 몬스터 (오른쪽을 보는 모습)
-  // monster_fast: 'monster_fast.png', // 빨강 날쌘돌이
-  // monster_tank: 'monster_tank.png', // 파랑 뚱보
-  // monster_jumper: 'monster_jumper.png', // 보라 뜀뛰기
+  monster: { file: 'monster_green.png', cols: 4, rows: 2, frameRate: 8 }, // 초록 몬스터 (Gemini 그림, 8장 걷기, 오른쪽을 봄)
+  monster_fast: { file: 'monster_red.png', cols: 4, rows: 2, frameRate: 14 }, // 빨강 날쌘돌이 (Gemini 그림, 8장 달리기, 오른쪽을 봄)
+  monster_tank: { file: 'monster_blue.png', cols: 4, rows: 2, frameRate: 7 }, // 파랑 뚱보 (Gemini 그림, 8장 쿵쿵 걷기, 오른쪽을 봄)
+  monster_jumper: { file: 'monster_purple.png', cols: 4, rows: 2, frameRate: 10 }, // 보라 뜀뛰기 (Gemini 그림, 8장 깡총 뛰기, 오른쪽을 봄)
   // monster_fros: 'monster_fros.png', // 프로스 말벌 (오른쪽을 보는 모습, 날개 위로)
   // monster_fros_flap: 'monster_fros_flap.png', // 프로스 날개 아래로 (monster_fros 와 같은 크기로 그리면 날갯짓이 돼요)
   // monster_fros_aim: 'monster_fros_aim.png', // 프로스가 배를 앞으로 구부려 독을 쏘기 직전 (같은 크기로)
