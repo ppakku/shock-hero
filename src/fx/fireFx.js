@@ -277,7 +277,17 @@ export class FireFx {
   pillarSprite(x, groundY, h, timeScale = 1) {
     if (!this.hasPillar) return null;
     const frameH = this.scene.textures.getFrame('fx_pillar', 0)?.height || 538;
-    return this.playOnce('fx_pillar', x, groundY + 4, h / frameH, 1, timeScale);
+    const spr = this.playOnce('fx_pillar', x, groundY + 4, h / frameH, 1, timeScale);
+    // 더하기 합성: 그림 칸의 어두운 바탕이 네모로 비치지 않게.
+    // 6장부터(사그라듦, 연기)는 칸 위쪽이 반듯하게 잘린 그림이라 빨리 흐리게 지운다.
+    spr.setBlendMode(ADD);
+    spr.on('animationupdate', (_anim, frame) => {
+      if (frame.index >= 6 && !spr.fading) {
+        spr.fading = true;
+        this.scene.tweens.add({ targets: spr, alpha: 0, duration: 260 });
+      }
+    });
+    return spr;
   }
 
   // 모두 멈추고 지우기
