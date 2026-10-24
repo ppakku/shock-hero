@@ -218,6 +218,23 @@ class Sfx {
         [330, 415, 494, 622].forEach((f, i) => this.tone(f, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.07 }));
         this.hiss(0.6, { vol: 0.15, freq: 900, freqTo: 3000 });
         break;
+      case 'powerup': // 보물 상자의 특별한 힘을 얻음 (반짝반짝 올라감)
+        [659, 784, 988, 1319, 1568].forEach((f, i) => this.tone(f, 0.12, { type: 'square', vol: 0.1, delay: i * 0.06 }));
+        this.tone(2093, 0.3, { type: 'sine', vol: 0.08, delay: 0.3 });
+        break;
+      case 'powerEnd': // 특별한 힘이 끝남 (뿅 내려감)
+        this.tone(660, 0.18, { type: 'triangle', vol: 0.1, slideTo: 330 });
+        break;
+      case 'zap': // 로봇 볼트 레이저 (찌릿)
+        this.tone(1800, 0.08, { type: 'sawtooth', vol: 0.06, slideTo: 600 });
+        this.hiss(0.06, { vol: 0.08, freq: 4000 });
+        break;
+      case 'cardMove': // 레벨 업 카드 옮겨 고르기
+        this.tone(740, 0.05, { type: 'square', vol: 0.06 });
+        break;
+      case 'pick': // 레벨 업 카드 결정
+        [784, 1175, 1568].forEach((f, i) => this.tone(f, 0.12, { type: 'square', vol: 0.1, delay: i * 0.05 }));
+        break;
       default:
         break;
     }

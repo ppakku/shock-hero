@@ -1,5 +1,6 @@
 import { normalizeDifficulty } from './difficulty.js';
 import { normalizeControls } from './controls.js';
+import { emptyUpgrades, normalizeUpgrades, UPGRADE_TRACKS } from './growth.js';
 
 const KEY = 'shock-hero-save-v1';
 export const STAGE_COUNT = 5;
@@ -9,6 +10,8 @@ export function defaultSave() {
     level: 1,
     xp: 0,
     treasures: [], // 찾은 보물 id
+    upgrades: emptyUpgrades(), // 레벨 업 카드로 올린 칸 { attack, defense, speed, robot }
+    picksPending: 0, // 아직 고르지 않은 레벨 업 카드 수 (다음에 게임을 할 때 고른다)
     unlocked: 1, // 갈 수 있는 가장 높은 스테이지
     checkpoint: null, // null 이면 처음부터, 숫자면 그 스테이지의 보스 앞 체크포인트
     bestTimes: {}, // 스테이지별 가장 빨리 깬 시간(초). 예: { 1: 95.2 }
@@ -25,6 +28,11 @@ function normalize(data) {
   if (typeof data.xp === 'number' && data.xp >= 0) d.xp = data.xp;
   if (Array.isArray(data.treasures)) d.treasures = [...new Set(data.treasures.filter((t) => typeof t === 'string'))];
   if (validStage(data.unlocked)) d.unlocked = data.unlocked;
+  d.upgrades = normalizeUpgrades(data.upgrades, 99);
+  if (Number.isInteger(data.picksPending) && data.picksPending > 0) d.picksPending = data.picksPending;
+  // 레벨 업 카드가 생기기 전 저장: 지금까지 오른 레벨만큼 카드를 공짜로 고르게 한다
+  else if (data.upgrades === undefined && d.level > 1) d.picksPending = d.level - 1;
+  d.picksPending = Math.min(d.picksPending, UPGRADE_TRACKS.length * 99);
   // 예전 저장(스테이지 1만 있던 때)은 'boss' 와 bestTime 으로 저장돼 있었다
   if (data.checkpoint === 'boss') d.checkpoint = 1;
   else if (validStage(data.checkpoint)) d.checkpoint = data.checkpoint;
@@ -92,7 +100,7 @@ export function clearStagePatch(save, stageNum, time) {
   };
 }
 
-// 레벨 초기화: 레벨, 경험치, 보물, 스테이지 기록을 지우고 설정만 남긴다
+// 레벨 초기화: 레벨, 경험치, 보물, 레벨 업 카드, 스테이지 기록을 지우고 설정만 남긴다
 export function resetProgress(save) {
   return { ...defaultSave(), settings: { ...save.settings } };
 }

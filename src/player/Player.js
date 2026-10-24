@@ -7,7 +7,7 @@ import { HERO_FRAME, HERO_ORIGIN_Y } from '../fx/heroTextures.js';
 // 주인공: 이동, 점프, 대시, 충전 펀치, 위쪽 공격, 궁극기, 피격.
 // 공격 판정과 효과는 scene.onPlayerAttack 이, 에너지탄과 궁극기는 scene.skills 가 맡는다.
 export class Player extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, cfg, { maxHealth, damageMultiplier }) {
+  constructor(scene, x, y, cfg, { maxHealth, damageMultiplier = 1, powers = null }) {
     // customArt 로 player 그림을 넣었으면 그 한 장을 모든 동작에 쓴다
     const customArt = Boolean(scene.registry.get('heroCustomArt'));
     super(scene, x, y, customArt ? 'player' : 'hero_idle0');
@@ -31,7 +31,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.cfg = cfg;
     this.health = new Health(maxHealth);
-    this.damageMultiplier = damageMultiplier;
+    // 레벨 업 카드로 정해지는 값들 (GameScene.applyUpgrades 가 바꾼다)
+    this.baseDamageMultiplier = damageMultiplier;
+    this.damageTakenMultiplier = 1; // 방어력
+    this.speedMultiplier = 1; // 속도
+    this.dashCooldownMultiplier = 1;
+    this.powers = powers; // 보물 상자의 특별한 힘 (PowerSet)
     this.facing = 1;
     this.dashCd = new Cooldown(cfg.dash.cooldown);
     this.attackCd = new Cooldown(cfg.punch.cooldown);
@@ -55,6 +60,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.lastMoving = false;
   }
 
+  // 공격 피해 배수: 레벨 업 카드(공격력) x 파워 장갑
+  get damageMultiplier() {
+    const glove = this.powers?.has('power') ? this.cfg.powers.power.damageMultiplier : 1;
+    return this.baseDamageMultiplier * glove;
+  }
+
+  set damageMultiplier(v) {
+    this.baseDamageMultiplier = v;
+  }
+
+  get moveSpeed() {
+    const boots = this.powers?.has('speed') ? this.cfg.powers.speed.moveMultiplier : 1;
+    return this.cfg.player.moveSpeed * this.speedMultiplier * boots;
+  }
+
+  get invincible() {
+    return Boolean(this.powers?.has('star'));
+  }
+
   get dashing() {
     return this.dashTime > 0;
   }
@@ -75,6 +99,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   step(dt, input) {
     this.poseTime = Math.max(0, this.poseTime - dt);
+    const boots = this.powers?.has('speed') ? this.cfg.powers.speed.dashCooldownMultiplier : 1;
+    this.dashCd.duration = this.cfg.dash.cooldown * this.dashCooldownMultiplier * boots;
+    this.dashCd.remaining = Math.min(this.dashCd.remaining, this.dashCd.duration);
     this.dashCd.update(dt);
     this.attackCd.update(dt);
     this.dashInvuln = Math.max(0, this.dashInvuln - dt);
@@ -129,7 +156,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.hurtLock > 0) return;
 
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    let speed = this.cfg.player.moveSpeed;
+    let speed = this.moveSpeed;
     if (this.isCharging) speed *= this.cfg.charge.moveSpeedMultiplier;
     this.setVelocityX(dir * speed);
     if (dir !== 0) this.facing = dir;
@@ -184,14 +211,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (wasCharging) this.scene.onChargeCancelled(this);
   }
 
-  // 결과: 'hit' 맞음, 'dodged' 대시로 피함, 'ignored' 무적 중이라 무시
+  // 결과: 'hit' 맞음(방패가 다 막아도 'hit'), 'dodged' 대시로 피함, 'ignored' 무적 중이라 무시
   hurt(damage, fromX, knockback = this.cfg.player.hurtKnockback) {
     if (this.dead || this.ultActive) return 'ignored';
+    if (this.invincible) return 'ignored'; // 무적 별
     if (this.dashInvuln > 0) {
       this.scene.onDodge(this);
       return 'dodged';
     }
     if (this.hurtInvuln > 0) return 'ignored';
+
+    // 볼트 방패가 있으면 한 번 막아 준다
+    if (this.scene.robot?.tryGuard?.(this)) return this.blockedHit(fromX);
+
+    // 방어력 카드만큼 덜 아프고, 강철 몸 방패가 먼저 받는다
+    let left = Math.max(1, Math.round(damage * this.damageTakenMultiplier));
+    if (this.powers) {
+      const r = this.powers.absorb(left);
+      if (r.absorbed > 0) this.scene.onShieldAbsorb?.(this, r.absorbed, r.broke);
+      left = r.left;
+    }
+    if (left <= 0) return this.blockedHit(fromX);
+    damage = left;
 
     this.health.damage(damage);
     this.cancelCharge();
@@ -202,6 +243,27 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(dir * knockback, -220);
     this.scene.onPlayerHurt(this, damage);
     if (this.health.isDead) this.die();
+    return 'hit';
+  }
+
+  // 지속 피해(독구름 같은 것): 밀려나지 않고 체력만 깎인다. 실제로 깎인 체력을 돌려준다.
+  // 무적 별이면 0, 방어력 카드만큼 덜 아프고, 강철 몸 방패가 먼저 받는다. (볼트 방패는 아끼느라 안 씀)
+  tickDamage(damage) {
+    if (this.dead || this.invincible || !(damage > 0)) return 0;
+    let left = Math.max(1, Math.round(damage * this.damageTakenMultiplier));
+    if (this.powers) {
+      const r = this.powers.absorb(left);
+      if (r.absorbed > 0) this.scene.onShieldAbsorb?.(this, r.absorbed, r.broke);
+      left = r.left;
+    }
+    return left > 0 ? this.health.damage(left) : 0;
+  }
+
+  // 방패가 공격을 다 막았을 때: 체력은 그대로, 살짝 밀리고 잠깐 무적
+  blockedHit(fromX) {
+    this.hurtInvuln = this.cfg.player.hurtInvincibleTime;
+    const dir = this.x < fromX ? -1 : 1;
+    this.setVelocity(dir * 160, -140);
     return 'hit';
   }
 

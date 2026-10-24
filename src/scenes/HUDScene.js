@@ -4,6 +4,7 @@ import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { xpToNext } from '../logic/progression.js';
 import { DIFFICULTY_INFO } from '../logic/difficulty.js';
+import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/growth.js';
 import { makeText, formatTime } from '../ui/text.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
@@ -25,6 +26,13 @@ export class HUDScene extends Phaser.Scene {
     this.bossTitle = makeText(this, 600, 14, '', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
     this.bossLabels = [0, 1, 2, 3].map(() => makeText(this, 0, 0, '', 12).setOrigin(0.5).setVisible(false));
     this.beepTimer = 0;
+    // 레벨 업 카드 레벨 (공격, 방어, 속도, 볼트)
+    this.upgradeText = makeText(this, 24, 126, '', 12, '#ffd23f').setOrigin(0, 0.5);
+    // 켜진 특별한 힘: 아이콘 + 남은 초
+    this.powerIcons = POWER_IDS.map(() => ({
+      img: this.add.image(0, 0, 'pw_speed').setVisible(false).setScale(0.8),
+      text: makeText(this, 0, 0, '', 12).setOrigin(0.5).setVisible(false),
+    }));
 
     this.overlay = this.add.container(0, 0).setVisible(false).setDepth(100);
     this.overlayBg = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.6);
@@ -165,7 +173,15 @@ export class HUDScene extends Phaser.Scene {
     const blink = low && Math.floor(this.time.now / 250) % 2 === 0;
     g.fillStyle(0x000000, 0.6).fillRoundedRect(20, 20, 236, 18, 6);
     g.fillStyle(blink ? 0xff2020 : ratio < 0.3 ? 0xff6a3d : 0x3ff07a, 1).fillRoundedRect(23, 23, 230 * ratio, 12, 4);
-    this.hpText.setText(`체력 ${Math.ceil(p.health.current)} / ${p.health.max}${low ? '  위험!' : ''}`);
+    // 강철 몸 방패: 체력바 위에 은빛 줄
+    const pw = gs.powers;
+    const shield = pw && pw.shield > 0 ? pw.shield : 0;
+    if (shield > 0) {
+      const sr = Math.min(1, shield / p.health.max);
+      g.fillStyle(0xdff0ff, 1).fillRoundedRect(23, 21, 230 * sr, 6, 3);
+      g.lineStyle(2, 0x7ab8ff, 1).strokeRoundedRect(20, 18, 236, 22, 7);
+    }
+    this.hpText.setText(`체력 ${Math.ceil(p.health.current)} / ${p.health.max}${shield > 0 ? `  방패 +${Math.ceil(shield)}` : ''}${low ? '  위험!' : ''}`);
     if (low && this.mode === 'play') {
       this.beepTimer -= deltaMs / 1000;
       if (this.beepTimer <= 0) {
@@ -203,6 +219,31 @@ export class HUDScene extends Phaser.Scene {
     }
 
     this.treasureText.setText(`보물 ${found}/${st.treasures.length}`);
+
+    // 레벨 업 카드 레벨
+    const u = save.upgrades || {};
+    const short = { attack: '공격', defense: '방어', speed: '속도', robot: '볼트' };
+    this.upgradeText.setText(UPGRADE_TRACKS.map((t) => `${short[t] ?? UPGRADE_INFO[t].name} ${u[t] || 0}`).join('   '));
+
+    // 켜진 특별한 힘: 아이콘 둘레가 줄어들고 아래에 남은 초. 3초 아래면 깜빡
+    const list = pw ? pw.list() : [];
+    this.powerIcons.forEach((slot, i) => {
+      const a = list[i];
+      if (!a) {
+        slot.img.setVisible(false);
+        slot.text.setVisible(false);
+        return;
+      }
+      const x = 42 + i * 46;
+      const y = 158;
+      const blinkOff = a.left < 3 && Math.floor(this.time.now / 150) % 2 === 0;
+      slot.img.setTexture(POWER_INFO[a.id].icon).setPosition(x, y).setVisible(true).setAlpha(blinkOff ? 0.35 : 1);
+      slot.text.setText(`${Math.ceil(a.left)}초`).setPosition(x, y + 24).setVisible(true).setColor(a.left < 3 ? '#ff8a8a' : '#ffffff');
+      g.lineStyle(4, POWER_INFO[a.id].tint, 1);
+      g.beginPath();
+      g.arc(x, y, 19, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, a.ratio), false);
+      g.strokePath();
+    });
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
     this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}  (${DIFFICULTY_INFO[gs.difficulty]?.name ?? '보통'})`);
     this.monsterText.setText(gs.gateOpen || gs.bossStarted ? '' : `남은 몬스터 ${gs.monsters.length}`);

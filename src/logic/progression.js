@@ -20,6 +20,4 @@ export function maxHealthFor(level, baseHealth, levelCfg) {
   return baseHealth + (level - 1) * levelCfg.healthPerLevel;
 }
 
-export function damageMultiplierFor(level, levelCfg) {
-  return 1 + (level - 1) * levelCfg.damageBonusPerLevel;
-}
+// 공격력은 이제 레벨이 아니라 레벨 업 카드(공격력)로 오른다. growth.js 의 attackMultiplier 참고.

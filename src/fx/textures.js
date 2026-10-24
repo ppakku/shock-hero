@@ -83,4 +83,98 @@ export function makeTextures(scene) {
 
   make(scene, 'spark', 10, 10, (g) => g.fillStyle(0xffffff).fillCircle(5, 5, 5));
   make(scene, 'puff', 20, 20, (g) => g.fillStyle(0xffffff).fillCircle(10, 10, 10));
+  makePowerIcons(scene);
+}
+
+// 보물 상자의 특별한 힘(pw_)과 레벨 업 카드(up_) 아이콘. 모두 40 x 40
+function makePowerIcons(scene) {
+  const S = 40;
+  const badge = (g, color) => {
+    g.fillStyle(0x000000, 0.55).fillCircle(20, 20, 19);
+    g.lineStyle(3, color, 1).strokeCircle(20, 20, 17);
+  };
+  const bolt = (g, color, ox = 0, oy = 0, k = 1) => {
+    g.fillStyle(color, 1);
+    g.fillPoints([
+      { x: ox + 22 * k, y: oy + 4 * k }, { x: ox + 10 * k, y: oy + 22 * k }, { x: ox + 19 * k, y: oy + 22 * k },
+      { x: ox + 15 * k, y: oy + 36 * k }, { x: ox + 30 * k, y: oy + 16 * k }, { x: ox + 21 * k, y: oy + 16 * k },
+    ], true);
+  };
+  const shield = (g, fill, line) => {
+    g.fillStyle(fill, 1).fillPoints([{ x: 20, y: 6 }, { x: 32, y: 11 }, { x: 30, y: 25 }, { x: 20, y: 34 }, { x: 10, y: 25 }, { x: 8, y: 11 }], true);
+    g.lineStyle(2, line, 1).strokePoints([{ x: 20, y: 6 }, { x: 32, y: 11 }, { x: 30, y: 25 }, { x: 20, y: 34 }, { x: 10, y: 25 }, { x: 8, y: 11 }], true);
+  };
+  const fist = (g, color) => {
+    g.fillStyle(color, 1).fillRoundedRect(10, 12, 20, 16, 5);
+    g.fillStyle(color, 1).fillRoundedRect(13, 26, 14, 8, 2);
+    g.lineStyle(2, 0x000000, 0.5).lineBetween(15, 13, 15, 20).lineBetween(20, 13, 20, 20).lineBetween(25, 13, 25, 20);
+    g.fillStyle(0xffffff, 0.5).fillRoundedRect(12, 14, 6, 4, 2);
+  };
+  const star = (g, color, cx = 20, cy = 21, r1 = 15, r2 = 6.5) => {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 === 0 ? r1 : r2;
+      pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+    }
+    g.fillStyle(color, 1).fillPoints(pts, true);
+  };
+
+  // 번개 신발: 노란 번개 + 신발
+  make(scene, 'pw_speed', S, S, (g) => {
+    badge(g, 0xffe066);
+    g.fillStyle(0xff6a3d, 1).fillRoundedRect(8, 24, 22, 9, 4);
+    g.fillStyle(0xffffff, 1).fillRect(8, 31, 24, 3);
+    bolt(g, 0xffe066, 6, -2, 0.75);
+  });
+  // 강철 몸: 은빛 방패
+  make(scene, 'pw_shield', S, S, (g) => {
+    badge(g, 0xbfe0ff);
+    shield(g, 0x9fb4c8, 0xffffff);
+    g.fillStyle(0xffffff, 0.6).fillRect(14, 12, 4, 12);
+  });
+  // 파워 장갑: 빨간 주먹
+  make(scene, 'pw_power', S, S, (g) => {
+    badge(g, 0xff7a5c);
+    fist(g, 0xff5a3a);
+  });
+  // 무적 별
+  make(scene, 'pw_star', S, S, (g) => {
+    badge(g, 0xffd23f);
+    star(g, 0xffd23f);
+    g.fillStyle(0xffffff, 0.8).fillCircle(16, 17, 2.5);
+  });
+  // 에너지 연사: 파란 공 세 개
+  make(scene, 'pw_rapid', S, S, (g) => {
+    badge(g, 0x6fc0ff);
+    for (const [x, y, r] of [[13, 24, 5], [21, 18, 6], [29, 12, 4]]) {
+      g.fillStyle(0x3f8cff, 1).fillCircle(x, y, r);
+      g.fillStyle(0xe8f7ff, 1).fillCircle(x, y, r * 0.45);
+    }
+  });
+
+  // 레벨 업 카드
+  make(scene, 'up_attack', S, S, (g) => {
+    badge(g, 0xff7a5c);
+    fist(g, 0xffcf9a);
+  });
+  make(scene, 'up_defense', S, S, (g) => {
+    badge(g, 0x7ab8ff);
+    shield(g, 0x3f7ad8, 0xbfe0ff);
+    g.fillStyle(0xbfe0ff, 1).fillRect(18, 12, 4, 16).fillRect(13, 17, 14, 4);
+  });
+  make(scene, 'up_speed', S, S, (g) => {
+    badge(g, 0xffe066);
+    g.lineStyle(3, 0xffe066, 1).lineBetween(7, 15, 17, 15).lineBetween(5, 21, 15, 21).lineBetween(7, 27, 17, 27);
+    g.fillStyle(0x3ff0ff, 1).fillPoints([{ x: 18, y: 10 }, { x: 34, y: 21 }, { x: 18, y: 32 }, { x: 22, y: 21 }], true);
+  });
+  make(scene, 'up_robot', S, S, (g) => {
+    badge(g, 0x3ff0ff);
+    g.lineStyle(3, 0xbfc7d5).lineBetween(20, 6, 20, 11);
+    g.fillStyle(0xff4d4d).fillCircle(20, 6, 3);
+    g.fillStyle(0xf2f5fa).fillCircle(20, 22, 11);
+    g.fillStyle(0x223047).fillRoundedRect(12, 18, 16, 8, 3);
+    g.fillStyle(0x3ff0ff).fillCircle(16, 22, 2).fillCircle(24, 22, 2);
+    bolt(g, 0x9ff6ff, 22, 18, 0.45);
+  });
 }

@@ -105,7 +105,9 @@ export class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: this.startText, alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
     this.subText = makeText(this, width / 2, 446, '', 15, '#ffffff').setOrigin(0.5);
 
-    const info = [`레벨 ${save.level}`, `보물 ${save.treasures.length}/${totalTreasures}`];
+    const u = save.upgrades;
+    const info = [`레벨 ${save.level}`, `보물 ${save.treasures.length}/${totalTreasures}`, `공격 ${u.attack}  방어 ${u.defense}  속도 ${u.speed}  볼트 ${u.robot}`];
+    if (save.picksPending > 0) info.push(`고를 카드 ${save.picksPending}장`);
     if (save.bestTimes[stages.length]) info.push('모든 스테이지 클리어!');
     makeText(this, width / 2, 510, info.join('   '), 16, '#dddddd').setOrigin(0.5);
 
