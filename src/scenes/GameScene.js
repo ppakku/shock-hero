@@ -122,6 +122,18 @@ export class GameScene extends Phaser.Scene {
         const w = rng.between(60, 130);
         const h = rng.between(minH, maxH);
         const top = st.groundY - h;
+        if (th.scenery === 'forest') {
+          // 숲: 굽은 나무줄기와 둥근 잎 덩어리, 잎 사이 반딧불
+          const cx = x + w / 2;
+          g.fillStyle(color, 1).fillRect(cx - w * 0.1, top + 30, w * 0.2, h + 30);
+          g.fillTriangle(cx - w * 0.1, top + 80, cx - w * 0.45, top + 40, cx - w * 0.05, top + 60);
+          for (let i = 0; i < 4; i++) g.fillCircle(cx + rng.between(-w * 0.4, w * 0.4), top + rng.between(0, 50), rng.between(w * 0.3, w * 0.5));
+          if (windows) {
+            for (let i = 0; i < 3; i++) if (rng.frac() < 0.6) g.fillStyle(th.window, 0.8).fillCircle(cx + rng.between(-w * 0.5, w * 0.5), top + rng.between(10, h), 2.5);
+          }
+          x += w + rng.between(6, 30);
+          continue;
+        }
         g.fillStyle(color, 1).fillRect(x, top, w, h + 60);
         // 부서진 꼭대기
         g.fillStyle(color, 1).fillTriangle(x, top, x + w * 0.4, top - rng.between(10, 40), x + w * 0.7, top);
@@ -179,7 +191,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const p of st.platforms) {
-      const plat = this.add.tileSprite(p.x, p.y + 10, p.w, 20, 'platform').setDepth(0);
+      const plat = this.add.tileSprite(p.x, p.y + 10, p.w, 20, 'platform').setDepth(0).setTint(st.theme.platform ?? 0xffffff);
       this.physics.add.existing(plat, true);
       // 아래와 옆에서는 통과하고 위에만 설 수 있다
       plat.body.checkCollision.down = false;

@@ -1,9 +1,9 @@
 // =============================================================
-//  스테이지 2: 독 공장
+//  스테이지 2: 독 숲 (보스: 포레스트 와처, 아들이 디자인)
 // =============================================================
 
 export const stage2 = {
-  name: '독 공장',
+  name: '독 숲',
   width: 4800,
   groundY: 480,
   playerStartX: 120,
@@ -11,13 +11,15 @@ export const stage2 = {
   checkpointX: 3540,
 
   theme: {
-    sky: [0x10261c, 0x5d8a3a],
-    sun: 0xc8ff7a,
-    far: 0x1f3a2a,
-    near: 0x122219,
-    window: 0xa6ff5c,
-    ground: 0xb0d8a0,
-    smoke: 0x5f8f4a,
+    scenery: 'forest', // 배경을 건물 대신 나무로
+    sky: [0x0c1a10, 0x3f5a2a],
+    sun: 0xe8ffb0, // 흐린 달
+    far: 0x1c2e1a,
+    near: 0x0f1a0e,
+    window: 0xd4ff3a, // 반딧불 색
+    ground: 0x9a8a6a,
+    platform: 0x8a7050, // 발판 색 (나무 느낌)
+    smoke: 0x4f7a3a,
     weather: { kind: 'bubbles', color: 0x9cff6a },
   },
 
@@ -52,12 +54,12 @@ export const stage2 = {
   ],
 
   signs: [
-    { x: 300, text: '스테이지 2: 독 공장\n빨간 몬스터는 아주 빨라!' },
+    { x: 300, text: '스테이지 2: 독 숲\n빨간 몬스터는 아주 빨라!' },
     { x: 3700, text: '보스 구역!\n독침을 조심해' },
   ],
 
   talks: [
-    { x: 0, lines: ['여긴 독 공장이야. 냄새 진짜 고약하다...', '빨간 녀석은 빠르니까 공격 신호를 잘 봐!'] },
+    { x: 0, lines: ['여긴 독 숲이야. 나무에서 초록 독이 뚝뚝 떨어져...', '빨간 녀석은 빠르니까 공격 신호를 잘 봐!'] },
     { x: 1850, lines: ['몬스터를 다 잡아야 보스 문이 열려. 하나도 놓치지 마!'] },
     { x: 2150, lines: ['위로 계속 올라가면 뭔가 있을 것 같은데?'] },
     { x: 3540, lines: ['체크포인트!', '이번 보스는 독침을 뱉어. 멈추지 말고 계속 움직여!'] },
