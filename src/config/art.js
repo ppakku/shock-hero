@@ -40,6 +40,7 @@ export const customArt = {
   // slime_glob: 'slime_glob.png', // 와처가 뱉는 독 점액
   // 스프라이트 시트는 이렇게 적어요: { file: 파일 이름, cols: 가로 칸 수, rows: 세로 칸 수, frameRate: 1초에 몇 장 }
   // 그림이 오른쪽을 보고 있으면 faces: 'right' 를 더 적어요.
+  fx_fireball: { file: 'fx_fireball.png', cols: 4, rows: 1, frameRate: 12 }, // 불덩이 (아들 그림, 4장 반복, 왼쪽으로 날아가는 모양, 밝을수록 진함: 더하기 합성 추천)
   boss_body_1: { file: 'shredder.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 스테이지 1 보스 파쇄자 (아들 그림, 8장, 오른쪽을 봄)
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
   // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
