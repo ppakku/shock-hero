@@ -2,7 +2,11 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- 태블릿에서 "홈 화면에 추가" 하면 주소창 없이 꽉 찬 화면으로 열린다 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="쇼크 히어로" />
     <!-- 타이틀 화면 붓글씨 글꼴. 못 받아도 기본 글꼴로 돈다 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -10,6 +14,8 @@
     <title>쇼크 히어로: 몬스터 브레이커</title>
     <style>
       html, body { margin: 0; height: 100%; background: #140b1f; overflow: hidden; }
+      /* 태블릿: 버튼을 누르다가 화면이 확대되거나 글자가 선택되거나 길게 누름 메뉴가 뜨지 않게 */
+      html, body, #game { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
       #game { width: 100%; height: 100%; }
     </style>
   </head>

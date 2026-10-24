@@ -22,6 +22,16 @@ export const CONTROL_INFO = {
   },
 };
 
+// 태블릿 (키보드 없음): 화면 버튼으로 한다. 타이틀 조작판에 이 글을 쓴다.
+export const TOUCH_INFO = {
+  name: '터치 버튼',
+  lines: [
+    '이동 ◀ ▶ 버튼    점프 버튼 (물속에선 꾹 눌러 헤엄)    대시 버튼',
+    '펀치 버튼 (꾹 눌렀다 떼면 충전 펀치)    일시정지 오른쪽 위 II',
+    '어퍼컷 ▲ 누른 채 펀치    궁극기 버튼 (파란 게이지가 꽉 차면)',
+  ],
+};
+
 // 조작 방식별 키 이름 (Phaser KeyCodes 이름)
 export const CONTROL_KEYS = {
   classic: { left: ['A', 'LEFT'], right: ['D', 'RIGHT'], jump: ['SPACE', 'W', 'UP'], up: ['W', 'UP'], attack: ['J'], dash: ['K', 'SHIFT'], ult: ['L'] },
@@ -33,11 +43,20 @@ export const CONTROL_KEYS = {
 export const KEY_NAMES = {
   classic: { move: 'A / D 또는 ← →', jump: 'Space', punch: 'J', dash: 'K 또는 Shift', ult: 'L', up: 'W 나 ↑' },
   arrows: { move: '← →', jump: 'Space 또는 ↑', punch: 'A', dash: 'S 또는 Shift', ult: 'D', up: '↑' },
+  touch: { move: '◀ ▶ 버튼', jump: '점프 버튼', punch: '펀치 버튼', dash: '대시 버튼', ult: '궁극기 버튼', up: '▲ 버튼' },
 };
 
+// scheme 이 'touch' 면 버튼 이름으로 바꾸고, 뒤에 붙은 말을 버튼에 맞게 고친다 ('J 를' → '펀치 버튼을').
 export function keyText(str, scheme) {
-  const names = KEY_NAMES[normalizeControls(scheme)];
-  return String(str).replace(/\{(\w+)\}/g, (m, k) => names[k] ?? m);
+  const touch = scheme === 'touch';
+  const names = KEY_NAMES[touch ? 'touch' : normalizeControls(scheme)];
+  const out = String(str).replace(/\{(\w+)\}/g, (m, k) => names[k] ?? m);
+  if (!touch) return out;
+  return out
+    .replace(/버튼 키를/g, '버튼을')
+    .replace(/버튼 키/g, '버튼')
+    .replace(/버튼 를/g, '버튼을')
+    .replace(/버튼 로/g, '버튼으로');
 }
 
 export function normalizeControls(scheme) {

@@ -17,6 +17,7 @@ const game = new Phaser.Game({
   backgroundColor: '#140b1f',
   fps: { target: 60, forceSetTimeOut: useTimer },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  input: { activePointers: 4 }, // 태블릿: 손가락 여러 개 (이동하면서 펀치)
   physics: {
     default: 'arcade',
     arcade: { gravity: { y: cfg.world.gravity }, debug: DEBUG },

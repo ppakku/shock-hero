@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { cfg } from '../config/index.js';
 import { sfx } from '../audio/sfx.js';
 import { UPGRADE_TRACKS, upgradeCard, normalizeUpgrades } from '../logic/growth.js';
+import { isTouchDevice } from '../ui/touch.js';
 import { makeText } from '../ui/text.js';
 
 // 레벨 업 카드 고르기. 게임 장면을 멈추고 그 위에 카드 4장을 보여 준다.
@@ -26,7 +27,8 @@ export class LevelUpScene extends Phaser.Scene {
     this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
     this.title = makeText(this, 480, 70, '', 44, '#ffd23f', { strokeThickness: 8 }).setOrigin(0.5);
     this.sub = makeText(this, 480, 118, '', 18, '#ffffff').setOrigin(0.5);
-    this.help = makeText(this, 480, 500, '← → 로 고르고 Enter    숫자 1 2 3 4    마우스로 클릭', 16, '#dddddd').setOrigin(0.5);
+    const helpLine = isTouchDevice() ? '카드를 손가락으로 눌러서 골라요' : '← → 로 고르고 Enter    숫자 1 2 3 4    마우스로 클릭';
+    this.help = makeText(this, 480, 500, helpLine, 16, '#dddddd').setOrigin(0.5);
 
     const x0 = 480 - (UPGRADE_TRACKS.length * CARD_W + (UPGRADE_TRACKS.length - 1) * GAP) / 2 + CARD_W / 2;
     this.cards = UPGRADE_TRACKS.map((track, i) => this.makeCard(track, i, x0 + i * (CARD_W + GAP), 300));

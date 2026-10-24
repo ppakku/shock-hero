@@ -19,6 +19,7 @@ import {
 } from '../logic/growth.js';
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
+import { isTouchDevice, touchPad, touchPoints } from '../ui/touch.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
@@ -33,6 +34,7 @@ export class GameScene extends Phaser.Scene {
 
   create(data = {}) {
     this.save = saveStore.load();
+    this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)
     this.difficulty = this.save.settings.difficulty;
     this.cfg = withDifficulty(cfg, this.difficulty);
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
@@ -115,6 +117,7 @@ export class GameScene extends Phaser.Scene {
       this.keys[action] = names.map((n) => this.input.keyboard.addKey(KEY[n]));
     }
     this.input.mouse?.disableContextMenu();
+    touchPad.reset();
 
     const hud = this.scene.get('HUD');
     if (hud?.onGameStart) hud.onGameStart();
@@ -391,17 +394,20 @@ export class GameScene extends Phaser.Scene {
     const k = this.keys;
     const down = (action) => k[action].some((key) => key.isDown);
     const justDown = (action) => k[action].map((key) => Phaser.Input.Keyboard.JustDown(key)).some(Boolean);
-    const p = this.input.activePointer;
+    // 마우스 왼쪽 = 펀치. 손가락 터치는 화면 버튼으로만 읽는다 (아무 데나 눌러도 펀치가 나가지 않게).
+    const m = this.input.mousePointer;
+    const mouseDown = !!m && m.isDown && m.leftButtonDown() && !m.wasTouch;
+    const t = this.touch ? touchPad.poll(touchPoints(this)) : { down: {}, pressed: {} };
     if (this.ended) return { left: false, right: false, jumpDown: false, jumpPressed: false, attackDown: false, dashPressed: false, upDown: false, ultPressed: false };
     return {
-      upDown: down('up'), // 위쪽 공격용 (W 나 ↑)
-      ultPressed: justDown('ult'), // 궁극기
-      left: down('left'),
-      right: down('right'),
-      jumpDown: down('jump'),
-      jumpPressed: justDown('jump'),
-      attackDown: down('attack') || (p.isDown && p.leftButtonDown()),
-      dashPressed: justDown('dash'),
+      upDown: down('up') || !!t.down.up, // 위쪽 공격용 (W 나 ↑)
+      ultPressed: justDown('ult') || !!t.pressed.ult, // 궁극기
+      left: down('left') || !!t.down.left,
+      right: down('right') || !!t.down.right,
+      jumpDown: down('jump') || !!t.down.jump,
+      jumpPressed: justDown('jump') || !!t.pressed.jump,
+      attackDown: down('attack') || mouseDown || !!t.down.attack,
+      dashPressed: justDown('dash') || !!t.pressed.dash,
     };
   }
 
@@ -787,7 +793,7 @@ export class GameScene extends Phaser.Scene {
 
   // 안내 글의 {punch} 같은 표시를 지금 조작 방식의 키 이름으로
   keyText(str) {
-    return keyText(str, this.save.settings.controls);
+    return keyText(str, this.touch ? 'touch' : this.save.settings.controls);
   }
 
   // 공격 사각형에 닿은 몬스터와 보스에게 피해를 준다. 하나라도 맞았으면 true.

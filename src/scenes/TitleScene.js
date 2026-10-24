@@ -5,7 +5,8 @@ import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
-import { CONTROL_SCHEMES, CONTROL_INFO } from '../logic/controls.js';
+import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO } from '../logic/controls.js';
+import { isTouchDevice } from '../ui/touch.js';
 import { makeTitleTextures, photoTexture, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { cardLayout, tokenizeControlLine, photoKind, cardTilt, CARD_W, CARD_H } from '../ui/titleLayout.js';
 
@@ -20,9 +21,9 @@ let fontWait = null;
 const NUM_KEYS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
 
 function fontSample() {
-  const names = [...Object.values(DIFFICULTY_INFO), ...Object.values(CONTROL_INFO)].map((d) => d.name);
+  const names = [...Object.values(DIFFICULTY_INFO), ...Object.values(CONTROL_INFO), TOUCH_INFO].map((d) => d.name);
   return [
-    '쇼크 히어로 몬스터 브레이커 스테이지 0123456789 보물 / : 잠김 Enter 시작 체크포인트부터 이어하기 ↑ 키 고르기로 돌아가기',
+    '쇼크 히어로 몬스터 브레이커 스테이지 0123456789 보물 / : 잠김 Enter 시작 체크포인트부터 이어하기 ↑ 키 고르기로 돌아가기 ▶',
     '난이도 조작 레벨 초기화 ( ) + ABCDEFGHIJKLMNOPQRSTUVWXYZ',
     ...names,
   ].join(' ');
@@ -83,6 +84,7 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     this.showAll = new URLSearchParams(window.location.search).has('all');
+    this.touch = isTouchDevice(); // 태블릿: 카드와 버튼을 손가락으로 누른다
     this.started = false;
     this.confirming = false;
     this.ready = false;
@@ -131,7 +133,7 @@ export class TitleScene extends Phaser.Scene {
     this.add.image(330, 122, 'tt-sub').setDepth(11).setAngle(-2);
 
     // 조작법 철판
-    const scheme = CONTROL_INFO[save.settings.controls] || CONTROL_INFO.classic;
+    const scheme = this.touch ? TOUCH_INFO : CONTROL_INFO[save.settings.controls] || CONTROL_INFO.classic;
     this.drawControls(scheme.lines);
 
     // 스테이지 카드
@@ -143,7 +145,7 @@ export class TitleScene extends Phaser.Scene {
     const c = CONTROL_INFO[save.settings.controls];
     const specs = [
       { text: `난이도: ${d.name}`, tex: 'tt-btn-paint', color: '#ffffff', angle: -2 },
-      { text: `조작: ${c.name}`, tex: 'tt-btn-tape', color: '#ffffff', angle: 1 },
+      { text: `조작: ${this.touch ? TOUCH_INFO.name : c.name}`, tex: 'tt-btn-tape', color: '#ffffff', angle: 1 },
       { text: '레벨 초기화', tex: 'tt-btn-steel', color: '#ffb0a4', angle: -1 },
     ];
     const xs = [width / 2 - 285, width / 2, width / 2 + 285];
@@ -173,16 +175,23 @@ export class TitleScene extends Phaser.Scene {
     this.startFlames.forEach((f, k) => this.flicker(f, 0.42, k));
     this.tweens.add({ targets: this.startText, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.subText = makeText(this, width / 2, 425, '', 14, '#ffffff').setOrigin(0.5).setDepth(20);
+    if (this.touch) {
+      // 시작 글자를 눌러도 시작, 아래 작은 글자를 누르면 처음부터
+      this.startText.setInteractive().on('pointerdown', () => {
+        if (this.confirming || !this.ready) return;
+        this.row = 0;
+        this.begin(this.canContinue);
+      });
+      this.subText.setInteractive().on('pointerdown', () => {
+        if (!this.confirming && this.ready && this.canContinue) this.begin(false);
+      });
+    }
 
     const u = save.upgrades;
     const info = [`레벨 ${save.level}`, `보물 ${save.treasures.length}/${totalTreasures}`, `공격 ${u.attack}  방어 ${u.defense}  속도 ${u.speed}  볼트 ${u.robot}`];
     if (save.picksPending > 0) info.push(`고를 카드 ${save.picksPending}장`);
     if (save.bestTimes[stages.length]) info.push('모든 스테이지 클리어!');
     makeText(this, width / 2, 521, info.join('   '), 16, '#dddddd').setOrigin(0.5).setDepth(20);
-
-    if (this.sys.game.device.input.touch && !this.sys.game.device.os.desktop) {
-      makeText(this, width / 2, 6, '지금은 키보드가 있는 컴퓨터에서 할 수 있어요', 15, '#ff9a1f').setOrigin(0.5, 0).setDepth(30);
-    }
 
     // 레벨 초기화 확인 창 (철판)
     this.confirmBox = this.add.container(0, 0).setDepth(50).setVisible(this.confirming);
@@ -429,6 +438,7 @@ export class TitleScene extends Phaser.Scene {
       this.confirmBox.setVisible(true);
       return;
     }
+    if (i === 1 && this.touch) return; // 태블릿은 터치 버튼 하나뿐
     if (i === 0) {
       const next = DIFFICULTIES[(DIFFICULTIES.indexOf(s.difficulty) + 1) % DIFFICULTIES.length];
       saveStore.update({ settings: { ...s, difficulty: next } });
@@ -485,6 +495,14 @@ export class TitleScene extends Phaser.Scene {
       '키보드 조작 방식을 바꿔요. 위의 조작법 설명도 바로 바뀌어요.',
       '레벨과 보물을 모두 지우고 처음부터 다시 쌓아요.',
     ];
+    if (this.touch) {
+      helps[1] = '태블릿에서는 화면 버튼으로 해요. 위의 조작법을 보세요.';
+      this.optionHelp.setText(this.row === 1 ? helps[this.option] : '카드를 한 번 누르면 고르고, 한 번 더 누르면 시작해요');
+      this.startText.setText(this.canContinue ? `▶ 스테이지 ${n} 이어하기` : `▶ 스테이지 ${n} 시작`);
+      this.paintStartText();
+      this.subText.setText(this.canContinue ? '여기를 누르면 처음부터' : '');
+      return;
+    }
     this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 레벨 초기화를 고를 수 있어요');
     this.startText.setText(this.canContinue ? `Enter: 스테이지 ${n} 체크포인트부터 이어하기` : `Enter: 스테이지 ${n} 시작`);
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');

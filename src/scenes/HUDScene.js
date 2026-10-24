@@ -6,6 +6,7 @@ import { xpToNext } from '../logic/progression.js';
 import { DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/growth.js';
 import { makeText, formatTime } from '../ui/text.js';
+import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON } from '../ui/touch.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -39,17 +40,16 @@ export class HUDScene extends Phaser.Scene {
     this.overlayTitle = makeText(this, 480, 170, '', 48, '#ffffff', { strokeThickness: 8 }).setOrigin(0.5);
     this.overlayBody = makeText(this, 480, 230, '', 20, '#ffffff', { lineSpacing: 10 }).setOrigin(0.5, 0);
     this.overlay.add([this.overlayBg, this.overlayTitle, this.overlayBody]);
+    this.overlayButtons = [];
     this.mode = 'play';
+    this.touch = isTouchDevice();
+    if (this.touch) this.buildTouchPad();
 
     this.input.keyboard.on('keydown-ESC', () => this.togglePause());
     this.input.keyboard.on('keydown-P', () => this.togglePause());
     this.input.keyboard.on('keydown-M', () => this.toggleSetting('muted'));
     this.input.keyboard.on('keydown-T', () => {
-      if (this.mode !== 'paused') return;
-      this.mode = 'play';
-      this.overlay.setVisible(false);
-      this.scene.stop('Game');
-      this.scene.start('Title');
+      if (this.mode === 'paused') this.pauseToTitle();
     });
     this.input.keyboard.on('keydown-H', () => {
       if (this.mode === 'paused') this.toggleSetting('shake');
@@ -57,7 +57,70 @@ export class HUDScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-R', () => this.restartFromOverlay('retry'));
     this.input.keyboard.on('keydown-ENTER', () => this.restartFromOverlay('next'));
     this.input.keyboard.on('keydown-T', () => this.restartFromOverlay('title'));
-    this.input.on('pointerdown', () => this.restartFromOverlay('next'));
+    // 빈 곳을 누르면 다음으로 (화면 버튼을 누른 거면 그 버튼이 처리한다)
+    this.input.on('pointerdown', (_p, over) => {
+      if (!over.length) this.restartFromOverlay('next');
+    });
+  }
+
+  pauseToTitle() {
+    this.mode = 'play';
+    this.overlay.setVisible(false);
+    this.scene.stop('Game');
+    this.scene.start('Title');
+  }
+
+  // ---------- 태블릿 화면 버튼 ----------
+  buildTouchPad() {
+    this.padG = this.add.graphics().setDepth(90);
+    this.padLabels = TOUCH_BUTTONS.map((b) =>
+      makeText(this, b.x, b.y, b.label, b.label.length > 1 ? Math.round(b.r * 0.42) : Math.round(b.r * 0.6), '#ffffff')
+        .setOrigin(0.5)
+        .setDepth(91),
+    );
+    const pb = PAUSE_BUTTON;
+    this.pauseBtn = this.add.container(pb.x, pb.y).setDepth(92);
+    const pg = this.add.graphics();
+    pg.fillStyle(0x000000, 0.45).fillCircle(0, 0, pb.r).lineStyle(3, 0xffffff, 0.7).strokeCircle(0, 0, pb.r);
+    pg.fillStyle(0xffffff, 0.9).fillRect(-9, -10, 6, 20).fillRect(3, -10, 6, 20);
+    this.pauseBtn.add(pg);
+    this.pauseBtn.setSize(pb.r * 2.4, pb.r * 2.4).setInteractive().on('pointerdown', () => this.togglePause());
+  }
+
+  drawTouchPad(gs, p) {
+    const show = this.mode === 'play' && gs.scene.isActive() && !gs.ended && !p.dead;
+    this.padG.clear().setVisible(show);
+    this.padLabels.forEach((t) => t.setVisible(show));
+    this.pauseBtn.setVisible(this.mode === 'play' || this.mode === 'paused');
+    if (!show) return;
+    const ultReady = typeof p.ultGauge === 'number' && p.ultGauge >= 1;
+    TOUCH_BUTTONS.forEach((b, i) => {
+      const down = !!touchPad.down[b.id];
+      const glow = b.id === 'ult' && ultReady;
+      this.padG.fillStyle(down ? 0xffffff : glow ? 0x3fd0ff : 0x000000, down ? 0.45 : glow ? 0.4 : 0.28).fillCircle(b.x, b.y, b.r);
+      this.padG.lineStyle(3, glow ? 0x9fe8ff : 0xffffff, down ? 0.9 : 0.55).strokeCircle(b.x, b.y, b.r);
+      this.padLabels[i].setAlpha(down ? 1 : 0.8);
+    });
+  }
+
+  // 결과 화면과 일시정지 화면에서 손가락으로 누르는 버튼 (태블릿에서만)
+  setOverlayButtons(specs) {
+    this.overlayButtons.forEach((b) => b.destroy());
+    this.overlayButtons = [];
+    if (!this.touch) return;
+    const w = 210;
+    const gap = 24;
+    const x0 = 480 - ((specs.length - 1) * (w + gap)) / 2;
+    specs.forEach((sp, i) => {
+      const c = this.add.container(x0 + i * (w + gap), 450);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x1d2a44, 0.95).fillRoundedRect(-w / 2, -30, w, 60, 12).lineStyle(3, 0xffd23f, 1).strokeRoundedRect(-w / 2, -30, w, 60, 12);
+      c.add([bg, makeText(this, 0, 0, sp.text, 22, '#ffffff').setOrigin(0.5)]);
+      // 누른 버튼을 그 자리에서 지우지 않게 한 박자 뒤에 실행
+      c.setSize(w, 60).setInteractive().on('pointerdown', () => this.time.delayedCall(0, sp.fn));
+      this.overlay.add(c);
+      this.overlayButtons.push(c);
+    });
   }
 
   get game_() {
@@ -87,13 +150,22 @@ export class HUDScene extends Phaser.Scene {
     const s = saveStore.load().settings;
     this.overlayTitle.setText('일시정지').setColor('#ffffff');
     this.overlayBody.setText(
-      [
-        'Esc: 계속하기',
-        'T: 타이틀로 (지금 진행은 체크포인트까지만 남아요)',
-        `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
-        `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
-      ].join('\n'),
+      (this.touch
+        ? ['타이틀로 가면 지금 진행은 체크포인트까지만 남아요']
+        : [
+            'Esc: 계속하기',
+            'T: 타이틀로 (지금 진행은 체크포인트까지만 남아요)',
+            `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
+            `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
+          ]
+      ).join('\n'),
     );
+    this.setOverlayButtons([
+      { text: '계속하기', fn: () => this.togglePause() },
+      { text: '타이틀로', fn: () => this.pauseToTitle() },
+      { text: `소리 ${s.muted ? '꺼짐' : '켜짐'}`, fn: () => this.toggleSetting('muted') },
+      { text: `흔들림 ${s.shake ? '켜짐' : '꺼짐'}`, fn: () => this.toggleSetting('shake') },
+    ]);
     this.overlay.setVisible(true);
   }
 
@@ -109,12 +181,19 @@ export class HUDScene extends Phaser.Scene {
     this.mode = 'gameover';
     this.overlayTitle.setText('쓰러졌다!').setColor('#ff5555');
     this.overlayBody.setText(
-      [
-        hasCheckpoint ? 'R 또는 클릭: 체크포인트에서 다시' : 'R 또는 클릭: 처음부터 다시',
-        'T: 타이틀로',
-        '레벨과 경험치, 보물은 그대로 남아 있어요',
-      ].join('\n'),
+      (this.touch
+        ? ['레벨과 경험치, 보물은 그대로 남아 있어요']
+        : [
+            hasCheckpoint ? 'R 또는 클릭: 체크포인트에서 다시' : 'R 또는 클릭: 처음부터 다시',
+            'T: 타이틀로',
+            '레벨과 경험치, 보물은 그대로 남아 있어요',
+          ]
+      ).join('\n'),
     );
+    this.setOverlayButtons([
+      { text: hasCheckpoint ? '체크포인트에서 다시' : '처음부터 다시', fn: () => this.restartFromOverlay('retry') },
+      { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+    ]);
     this.overlay.setVisible(true);
   }
 
@@ -128,9 +207,21 @@ export class HUDScene extends Phaser.Scene {
         `걸린 시간 ${formatTime(time)}${isRecord ? '  (최고 기록!)' : ''}`,
         `최고 기록 ${formatTime(best)}    레벨 ${level}    보물 ${treasures}`,
         '',
-        last ? '심해의 왕까지 쓰러뜨리고 도시와 바다를 구했어요! 축하해요!' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
-        last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
+        last ? '심해의 왕까지 쓰러뜨리고 도시와 바다를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
+        this.touch ? '' : last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
       ].join('\n'),
+    );
+    this.setOverlayButtons(
+      last
+        ? [
+            { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+            { text: '이 스테이지 다시', fn: () => this.restartFromOverlay('retry') },
+          ]
+        : [
+            { text: `스테이지 ${stage + 1}로!`, fn: () => this.restartFromOverlay('next') },
+            { text: '이 스테이지 다시', fn: () => this.restartFromOverlay('retry') },
+            { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+          ],
     );
     this.overlay.setVisible(true);
   }
@@ -165,6 +256,7 @@ export class HUDScene extends Phaser.Scene {
     const p = gs?.player;
     this.g.clear();
     if (!p || !p.health) return;
+    if (this.touch) this.drawTouchPad(gs, p);
     const g = this.g;
 
     // 체력바 (30% 아래면 빨갛게 깜빡이고 경고음)
