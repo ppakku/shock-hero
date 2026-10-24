@@ -9,6 +9,7 @@ import { createSaveStore, defaultSave, clearStagePatch, STAGE_COUNT } from '../s
 import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets, BOSS_PATTERNS } from '../src/logic/boss.js';
 import { monsterStats, parseMonsterSpot, MONSTER_TYPES } from '../src/logic/monsters.js';
 import { stages } from '../src/stage/index.js';
+import { placeTreasures } from '../src/logic/treasures.js';
 
 const cfg = sanitizeNumbers(balance, () => {});
 
@@ -146,7 +147,7 @@ describe('저장', () => {
     expect(slower.isRecord).toBe(false);
     expect(slower.best).toBe(100);
     expect(slower.patch.unlocked).toBe(3);
-    expect(clearStagePatch({ ...save, unlocked: 6 }, 6, 300).patch.unlocked).toBe(6);
+    expect(clearStagePatch({ ...save, unlocked: 10 }, 10, 300).patch.unlocked).toBe(10);
   });
 
   it('저장소가 없거나 고장 나도 기본값으로 시작한다', () => {
@@ -232,9 +233,21 @@ describe('몬스터 종류', () => {
 
 // 아이들이 스테이지 파일을 고쳤을 때 실수를 잡아 주는 검사
 describe('스테이지 파일 검사', () => {
-  it('스테이지는 6개 (저장의 STAGE_COUNT 와 같다)', () => {
-    expect(stages).toHaveLength(6);
+  it('스테이지는 10개 (저장의 STAGE_COUNT 와 같다)', () => {
+    expect(stages).toHaveLength(10);
     expect(STAGE_COUNT).toBe(stages.length);
+  });
+
+  it('마지막 스테이지에 엔딩 대사가 있다', () => {
+    expect(stages[stages.length - 1].endingLines.length).toBeGreaterThan(0);
+  });
+
+  it('뒤 스테이지일수록 몬스터와 보물이 줄지 않는다', () => {
+    for (let i = 1; i < stages.length; i++) {
+      expect(stages[i].monsters.length, `스테이지 ${i + 1} 몬스터`).toBeGreaterThanOrEqual(stages[i - 1].monsters.length);
+      expect(stages[i].treasures.length, `스테이지 ${i + 1} 보물`).toBeGreaterThanOrEqual(stages[i - 1].treasures.length);
+    }
+    expect(stages[stages.length - 1].treasures.length).toBeGreaterThan(stages[0].treasures.length);
   });
 
   it('보물 id 는 모든 스테이지에서 겹치지 않는다', () => {
@@ -261,13 +274,19 @@ describe('스테이지 파일 검사', () => {
         }
       });
 
-      it('보물은 3개 이상이고, 보물 문 앞쪽 발판이나 땅 위에 있다', () => {
+      it('보물은 3개 이상이고, 무작위 자리는 언제나 보스 문 앞 발판이나 땅 위다', () => {
         expect(st.treasures.length).toBeGreaterThanOrEqual(3);
-        for (const t of st.treasures) {
-          expect(t.x).toBeLessThan(st.gateX);
-          const onGround = t.y === st.groundY;
-          const onPlatform = st.platforms.some((p) => p.y === t.y && Math.abs(p.x - t.x) <= p.w / 2);
-          expect(onGround || onPlatform, `${t.id} 아래에 발판이 없어요`).toBe(true);
+        let seed = i + 1;
+        const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        for (let run = 0; run < 200; run++) {
+          const placed = placeTreasures(st, i + 1, rand);
+          expect(placed.map((t) => t.id)).toEqual(st.treasures.map((t) => t.id));
+          for (const t of placed) {
+            expect(t.x).toBeLessThan(st.gateX);
+            const onGround = t.y === st.groundY;
+            const onPlatform = st.platforms.some((p) => p.y === t.y && Math.abs(p.x - t.x) <= p.w / 2);
+            expect(onGround || onPlatform, `${t.id} 아래에 발판이 없어요`).toBe(true);
+          }
         }
       });
 

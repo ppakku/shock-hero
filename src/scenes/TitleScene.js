@@ -18,7 +18,7 @@ import { cardLayout, tokenizeControlLine, photoKind, cardTilt, CARD_W, CARD_H } 
 // 2.5초 안에 못 받으면 기본 글꼴로 그린다.
 let fontReady = null; // true / false (다 기다렸을 때)
 let fontWait = null;
-const NUM_KEYS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+const NUM_KEYS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'ZERO']; // 10번째는 0 키
 
 function fontSample() {
   const names = [...Object.values(DIFFICULTY_INFO), ...Object.values(CONTROL_INFO), TOUCH_INFO].map((d) => d.name);

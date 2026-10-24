@@ -11,6 +11,7 @@ import { saveStore } from '../save.js';
 import { clearStagePatch } from '../logic/save.js';
 import { parseMonsterSpot } from '../logic/monsters.js';
 import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
+import { placeTreasures } from '../logic/treasures.js';
 import { CONTROL_KEYS, keyText } from '../logic/controls.js';
 import { addXp, maxHealthFor } from '../logic/progression.js';
 import {
@@ -40,8 +41,8 @@ export class GameScene extends Phaser.Scene {
     this.save = saveStore.load();
     this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)
     this.difficulty = this.save.settings.difficulty;
-    this.cfg = withDifficulty(cfg, this.difficulty);
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
+    this.cfg = withDifficulty(cfg, this.difficulty, this.stageNum); // 뒤 스테이지일수록 조금씩 어려워짐
     this.stage = getStage(this.stageNum);
     this.isLastStage = this.stageNum === stages.length;
     this.ended = false;
@@ -88,7 +89,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.buildGate();
 
-    this.boss = createBoss(this, this.cfg, st, this.stageNum);
+    this.boss = createBoss(this, this.cfg, st, st.boss.skin || this.stageNum);
     if (this.boss.blocker) this.physics.add.collider(this.player, this.boss.blocker);
     this.skills = new HeroSkills(this);
 
@@ -319,9 +320,9 @@ export class GameScene extends Phaser.Scene {
     this.flagActive = this.fromCheckpoint;
     this.flag = this.add.image(st.checkpointX, st.groundY, this.flagActive ? 'flag_on' : 'flag').setOrigin(0.2, 1).setDepth(2);
 
-    // 보물 상자: 이미 찾은 보물은 나오지 않는다
+    // 보물 상자: 들어올 때마다 자리가 바뀐다. 이미 찾은 보물은 나오지 않는다
     this.chests = [];
-    for (const tr of st.treasures) {
+    for (const tr of placeTreasures(st, this.stageNum)) {
       if (this.save.treasures.includes(tr.id)) continue;
       const img = this.add.image(tr.x, tr.y, 'chest').setOrigin(0.5, 1).setDepth(2).setDisplaySize(44, 34);
       this.tweens.add({ targets: img, y: tr.y - 4, duration: 500, yoyo: true, repeat: -1 });

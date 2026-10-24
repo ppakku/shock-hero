@@ -18,10 +18,32 @@ export function normalizeDifficulty(level) {
   return DIFFICULTIES.includes(level) ? level : 'normal';
 }
 
+// 스테이지가 하나 넘어갈 때마다 조금씩 어려워지는 양 (스테이지 1 은 그대로, 10 이면 9번 쌓임)
+export const STAGE_RAMP = {
+  monsterDamage: 0.03, // 몬스터 피해 +3%
+  monsterSpeed: 0.015, // 몬스터 빠르기 +1.5%
+  monsterWindup: -0.015, // 공격 준비 시간 -1.5%
+  bossHealth: 0.03, // 보스 체력 +3%
+  bossSpeed: -0.015, // 보스 공격 간격 -1.5%
+  bossCombo: 0.02, // 겹쳐 쓰기 확률 +2%p
+};
+
+// 스테이지 번호에 맞춘 배수. 난이도(쉬움, 보통, 어려움) 값에 곱한다(겹쳐 쓰기는 더한다).
+export function stageRamp(stageNum = 1) {
+  const n = Math.max(0, (Number.isFinite(stageNum) ? Math.floor(stageNum) : 1) - 1);
+  const out = {};
+  for (const [k, step] of Object.entries(STAGE_RAMP)) out[k] = k === 'bossCombo' ? step * n : 1 + step * n;
+  return out;
+}
+
 // 게임 설정(cfg)에 난이도 값을 붙인다. 몬스터와 보스는 cfg.difficulty 를 읽는다.
-export function withDifficulty(cfg, level) {
+export function withDifficulty(cfg, level, stageNum = 1) {
   const lv = normalizeDifficulty(level);
-  return { ...cfg, difficulty: { level: lv, ...DIFFICULTY_VALUES[lv] } };
+  const base = DIFFICULTY_VALUES[lv];
+  const r = stageRamp(stageNum);
+  const d = { level: lv };
+  for (const [k, v] of Object.entries(base)) d[k] = k === 'bossCombo' ? Math.min(1, v + r[k]) : v * r[k];
+  return { ...cfg, difficulty: d };
 }
 
 // 어려움에서 더할 몬스터 종류 (스테이지에 이미 나오는 종류 중에서 돌아가며)

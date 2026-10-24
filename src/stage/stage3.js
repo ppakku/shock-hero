@@ -55,11 +55,13 @@ export const stage3 = {
     { x: 3650, type: 'tank' },
   ],
 
-  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
+  // 보물: 자리는 들어올 때마다 무작위 (src/logic/treasures.js). 개수는 여기 적은 만큼.
+  // power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage3-ledge', x: 780, y: 300, power: 'shield' },
-    { id: 'stage3-peak', x: 1840, y: 130 },
-    { id: 'stage3-ember', x: 3650, y: 300, power: 'power' },
+    { id: 'stage3-ledge', power: 'shield' },
+    { id: 'stage3-peak' },
+    { id: 'stage3-ember', power: 'power' },
+    { id: 'stage3-crater' },
   ],
 
   signs: [

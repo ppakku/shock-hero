@@ -49,11 +49,12 @@ export const stage2 = {
     { x: 3250, type: 'fast' },
   ],
 
-  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
+  // 보물: 자리는 들어올 때마다 무작위 (src/logic/treasures.js). 개수는 여기 적은 만큼.
+  // power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage2-pipe', x: 880, y: 210, power: 'rapid' },
-    { id: 'stage2-tower', x: 2640, y: 150, power: 'star' },
-    { id: 'stage2-tank', x: 3180, y: 390 },
+    { id: 'stage2-pipe', power: 'rapid' },
+    { id: 'stage2-tower', power: 'star' },
+    { id: 'stage2-tank' },
   ],
 
   signs: [
@@ -66,7 +67,7 @@ export const stage2 = {
     { x: 0, lines: ['여긴 독 숲이야. 나무에서 초록 독이 뚝뚝 떨어져...', '빨간 녀석은 빠르니까 공격 신호를 잘 봐!'] },
     { x: 1850, lines: ['몬스터를 다 잡아야 보스 문이 열려. 하나도 놓치지 마!'] },
     { x: 1960, lines: ['하늘에 프로스다! 엄청 큰 말벌이야.', '배를 앞으로 구부리고 보라색으로 빛나면 맹독을 쏴. 점선이 가리키는 곳에서 비켜!', '독이 떨어진 곳엔 독구름이 잠깐 남아. 안에 있으면 체력이 조금씩 깎이니까 피하거나 대시로 지나가!', '독을 쏜 뒤엔 낮게 내려와 쉬어. 점프 펀치나 위쪽 공격({up} 누른 채 {punch})으로 잡아!'] },
-    { x: 2150, lines: ['위로 계속 올라가면 뭔가 있을 것 같은데?'] },
+    { x: 2150, lines: ['높은 발판에도 보물이 숨어 있을지 몰라!'] },
     { x: 3540, lines: ['체크포인트!', '이번 보스는 숲을 기어 다니는 포레스트 와처야.', '긴 팔은 점프로 넘고, 덩굴에 잡히면 대시로 빠져나와!'] },
   ],
 

@@ -131,12 +131,11 @@ describe('헤엄치는 몬스터', () => {
 });
 
 describe('스테이지 6 수중 던전', () => {
-  it('마지막 스테이지이고 헤엄치는 스테이지다', () => {
-    expect(stages[stages.length - 1]).toBe(stage6);
+  it('여섯 번째 스테이지이고 유일한 헤엄치는 스테이지다', () => {
+    expect(stages[5]).toBe(stage6);
     expect(stage6.swim).toBe(true);
     expect(stage6.theme.scenery).toBe('underwater');
-    expect(stage6.endingLines.length).toBeGreaterThan(0);
-    for (const st of stages.slice(0, -1)) expect(st.swim).toBeFalsy();
+    for (const st of stages) if (st !== stage6) expect(st.swim).toBeFalsy();
   });
 
   it('발판은 헤엄 천장보다 충분히 아래에 있다 (발판 위에 설 수 있게)', () => {
