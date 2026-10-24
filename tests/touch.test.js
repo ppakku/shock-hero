@@ -64,11 +64,14 @@ describe('태블릿 터치 버튼', () => {
     expect(pad.poll([{ id: 1, x: 330, y: 400 }]).down.left).toBe(true);
   });
 
-  it('조이스틱 위로 밀면 어퍼컷 조준, 비스듬히 옆으로는 아님', () => {
-    expect(stickDirs(0, -40).up).toBe(true);
-    expect(stickDirs(20, -40)).toEqual({ left: false, right: true, up: true });
-    expect(stickDirs(60, -32).up).toBe(false);
-    expect(stickDirs(0, -20).up).toBe(false);
+  it('조이스틱 위쪽으로 밀면 걷지 않고 위쪽 조준만 (에너지탄이 바로 위로)', () => {
+    expect(stickDirs(0, -40)).toEqual({ left: false, right: false, up: true });
+    expect(stickDirs(0, -22).up).toBe(true); // 살짝 밀어도 된다
+    expect(stickDirs(20, -40)).toEqual({ left: false, right: false, up: true }); // 엄지가 옆으로 조금 밀려도 위
+    expect(stickDirs(-30, -35)).toEqual({ left: false, right: false, up: true });
+    expect(stickDirs(50, -32)).toEqual({ left: false, right: true, up: false }); // 옆으로 더 밀면 걷기
+    expect(stickDirs(0, -15).up).toBe(false); // 살짝 닿은 건 무시
+    expect(stickDirs(30, 40)).toEqual({ left: false, right: true, up: false }); // 아래로는 그냥 걷기
   });
 
   it('조이스틱 손가락과 버튼 손가락이 따로: 걸으면서 펀치', () => {

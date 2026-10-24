@@ -20,7 +20,7 @@ export const STICK = {
   zoneTop: 140, // 위쪽 체력바 근처는 빼기
   radius: 50, // 손잡이가 움직이는 거리. 더 멀리 끌면 가운데가 따라온다
   dead: 14, // 이만큼은 움직여야 걷기 시작 (살짝 닿은 건 무시)
-  up: 30, // 위로 이만큼 밀어야 어퍼컷 조준
+  up: 20, // 위로 이만큼 밀면 위쪽 조준 (어퍼컷, 에너지탄 위로)
   hint: { x: 130, y: 440 }, // 손가락을 안 댔을 때 흐리게 보여 주는 자리
 };
 
@@ -45,12 +45,15 @@ export function inStickZone(x, y, s = STICK) {
   return x < s.zoneRight && y > s.zoneTop;
 }
 
-// 조이스틱을 가운데에서 (dx, dy) 만큼 끌었을 때 방향
+// 조이스틱을 가운데에서 (dx, dy) 만큼 끌었을 때 방향.
+// 위쪽(위에서 좌우 45도 안)으로 밀면 걷지 않고 위쪽 조준만 한다. 엄지로 위를 밀면 옆으로도 조금 밀리는데,
+// 그걸 걷기로 치면 에너지탄이 대각선으로 나가서 바로 위로 쏠 수가 없었다.
 export function stickDirs(dx, dy, s = STICK) {
+  const up = dy < -s.up && Math.abs(dx) <= -dy;
   return {
-    left: dx < -s.dead,
-    right: dx > s.dead,
-    up: dy < -s.up && -dy > Math.abs(dx) * 0.6, // 옆보다 위로 더 밀었을 때만
+    left: !up && dx < -s.dead,
+    right: !up && dx > s.dead,
+    up,
   };
 }
 
