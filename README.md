@@ -159,6 +159,7 @@ dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 },
 
 - `cols`, `rows`: 가로, 세로 칸 수. 왼쪽 위 칸부터 0, 1, 2 ... 순서로 재생합니다.
 - `frameRate`: 1초에 몇 장. 계속 반복합니다.
+- 그림이 오른쪽을 보고 있으면 `faces: 'right'` 를 더 적습니다. 예: 포레스트 와처 `watcher_2: { file: 'forest_watcher.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }`
 - 배경은 진짜 투명이어야 합니다. AI가 체크무늬를 그림에 그려 넣었다면 `python3 tools/remove_checker_bg.py 원본.png public/art/결과.png` 로 지울 수 있습니다.
 
 ## 컴퓨터에서 실행하기

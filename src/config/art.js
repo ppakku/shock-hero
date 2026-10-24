@@ -34,11 +34,12 @@ export const customArt = {
   // boss_body_5: 'boss_body_5.png', // 킹 돌연변이 앉은 모습 (왼쪽을 보는 모습)
   // boss_king_stand_5: 'boss_king_stand_5.png', // 킹 돌연변이 일어선 모습 (왼쪽을 보는 모습)
   // boss_throne_5: 'boss_throne_5.png', // 킹 돌연변이 왕좌
-  // watcher_2: 'watcher_2.png', // 포레스트 와처 (네 발로 기는 모습, 왼쪽을 봄)
+  watcher_2: { file: 'forest_watcher.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 포레스트 와처 (아들 그림, 8장, 오른쪽을 봄)
   // watcher_flat_2: 'watcher_flat_2.png', // 지쳐서 엎드린 포레스트 와처
   // watcher_blister: 'watcher_blister.png', // 와처 등의 초록 독혹
   // slime_glob: 'slime_glob.png', // 와처가 뱉는 독 점액
   // 스프라이트 시트는 이렇게 적어요: { file: 파일 이름, cols: 가로 칸 수, rows: 세로 칸 수, frameRate: 1초에 몇 장 }
+  // 그림이 오른쪽을 보고 있으면 faces: 'right' 를 더 적어요.
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
   // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
   // fireball: 'fireball.png', // 용의 불덩이

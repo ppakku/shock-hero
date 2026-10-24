@@ -6,11 +6,15 @@ import { coreDamage } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
 import { floatText } from '../fx/effects.js';
 import { make } from '../fx/textures.js';
+import { sheetFacesRight } from '../fx/spriteSheets.js';
 
 const lerp = Phaser.Math.Linear;
 const W = 260; // 기어 다니는 와처 그림 크기
 const H = 170;
 const FLAT_H = 100; // 지쳐서 엎드린 그림 높이
+const SHEET_H = 290; // 스프라이트 시트(아들 그림)를 쓸 때 화면 높이
+const SHEET_W = Math.round((SHEET_H * 344) / 384); // 한 칸 비율 그대로
+const SHEET_FOOT = 34; // 시트 칸 아래 빈 공간 (화면 픽셀)
 const HALF = 105; // 몸 반쪽 너비
 const ARM_UP = 36; // 할퀴는 팔이 지나가는 높이 (가슴 높이, 점프로 넘을 수 있음)
 const ARM_T = 22; // 팔 두께
@@ -63,7 +67,11 @@ export class WatcherBoss extends BossBase {
     this.shadowG = scene.add.graphics().setDepth(1.5);
     this.armG = scene.add.graphics().setDepth(6);
     this.vineG = scene.add.graphics().setDepth(7);
-    this.sprite = scene.add.image(this.x, this.groundY, `watcher_${skin}`).setOrigin(0.5, 1).setDepth(5).setDisplaySize(W, H);
+    this.sprite = scene.add.sprite(this.x, this.groundY, `watcher_${skin}`).setOrigin(0.5, 1).setDepth(5).setDisplaySize(W, H);
+    // art.js 에 스프라이트 시트(아들 그림)가 있으면 그 애니메이션을 쓴다
+    this.sheet = scene.anims.exists(`watcher_${skin}_anim`);
+    this.sheetRight = sheetFacesRight(scene, `watcher_${skin}`);
+    if (this.sheet) this.sprite.play(`watcher_${skin}_anim`);
     this.blister = scene.add.image(this.x, this.groundY, 'watcher_blister').setDepth(6).setDisplaySize(70, 44);
 
     const hp = this.hpScale;
@@ -308,11 +316,19 @@ export class WatcherBoss extends BossBase {
     const tired = this.tired;
     const breathe = this.action ? 0 : Math.sin(this.t * 3) * 0.03;
     const sq = this.squash + breathe;
-    s.setTexture(tired ? `watcher_flat_${this.skinKey}` : `watcher_${this.skinKey}`);
-    s.setDisplaySize(W * (2 - sq), (tired ? FLAT_H : H) * sq);
-    s.setPosition(this.x, this.groundY - this.air);
+    if (this.sheet) {
+      // 지치면 납작 엎드리고(세로로 눌림) 움직임이 느려진다
+      s.setDisplaySize(SHEET_W * (2 - sq), SHEET_H * sq * (tired ? 0.62 : 1));
+      s.anims.timeScale = tired ? 0.35 : this.raging ? 1.5 : 1;
+      s.setPosition(this.x, this.groundY - this.air + SHEET_FOOT * (tired ? 0.62 : 1));
+      s.setFlipX(this.sheetRight ? this.facing < 0 : this.facing > 0);
+    } else {
+      s.setTexture(tired ? `watcher_flat_${this.skinKey}` : `watcher_${this.skinKey}`);
+      s.setDisplaySize(W * (2 - sq), (tired ? FLAT_H : H) * sq);
+      s.setPosition(this.x, this.groundY - this.air);
+      s.setFlipX(this.facing > 0);
+    }
     s.setAngle(this.angle);
-    s.setFlipX(this.facing > 0);
     s.setAlpha(this.alpha);
     this.bodyX = this.x;
     if (this.flashT > 0) s.setTintFill(0xffffff);
@@ -879,7 +895,8 @@ export class WatcherBoss extends BossBase {
   }
 
   collapse() {
-    this.sprite.setTexture(`watcher_flat_${this.skinKey}`).setDisplaySize(W, FLAT_H);
+    if (this.sheet) this.sprite.anims.stop();
+    else this.sprite.setTexture(`watcher_flat_${this.skinKey}`).setDisplaySize(W, FLAT_H);
     this.scene.tweens.add({ targets: this.sprite, alpha: 0, y: '+=40', duration: 1000 });
   }
 }
