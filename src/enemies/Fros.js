@@ -396,7 +396,7 @@ function splashCloud(s, x, floorY, m) {
 // 독구름 피해: 밀려나지 않고 체력만 조금 깎인다. 대시 무적, 궁극기, 맞은 직후 무적이면 괜찮음.
 function poisonHero(s, p, damage) {
   if (p.dead || p.ultActive || p.dashInvuln > 0 || p.hurtInvuln > 0) return;
-  const dealt = p.health.damage(damage);
+  const dealt = p.tickDamage ? p.tickDamage(damage) : p.health.damage(damage); // 방어력, 무적 별, 강철 몸 반영
   if (dealt <= 0) return;
   s.sfxPlay('poisonTick');
   floatText(s, p.x, p.y - 44, `-${dealt}`, '#c58cff', 18);

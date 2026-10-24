@@ -231,6 +231,17 @@ export class DragonBoss extends BossBase {
     for (const l of this.labels) l?.setVisible(false);
   }
 
+  // 볼트 레이저가 노릴 자리 (때릴 수 있는 부위만)
+  robotTargets() {
+    if (this.state !== 'fight' || this.defeated) return [];
+    const mid = (r) => ({ x: r.centerX, y: r.centerY });
+    const a = this.action;
+    if (a?.type === 'tail' && a.phase === 'stuck' && this.tailPart.alive) return [mid(this.tailRect())];
+    if (this.tired && this.bellyOpen) return [mid(this.bellyRect())];
+    if (this.tired && this.wing.alive) return [mid(this.wingRect())];
+    return [];
+  }
+
   hudParts() {
     return [
       this.tailPart.hud('part'),

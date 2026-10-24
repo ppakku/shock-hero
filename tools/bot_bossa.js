@@ -4,6 +4,7 @@
   const s = window.__shock.scene;
   const B = { t: 0, dashCool: 0, jumpCool: 0, hold: 0, tap: false };
   window.__botState = B;
+  window.__shockAutoPick = true; // 레벨 업 카드 화면에서 멈추지 않게
   s.readInput = function () {
     const dt = 1 / 60;
     B.t += dt;

@@ -225,6 +225,17 @@ export class WatcherBoss extends BossBase {
 
   // ---------- HUD, 궁극기 ----------
 
+  // 볼트 레이저가 노릴 자리 (때릴 수 있는 부위만)
+  robotTargets() {
+    if (this.state !== 'fight' || this.defeated) return [];
+    const mid = (r) => ({ x: r.centerX, y: r.centerY });
+    const a = this.action;
+    if (a?.type === 'claw' && a.phase === 'stuck' && this.arm.alive) return [mid(this.armRect(a))];
+    if (this.tired && this.headOpen) return [mid(this.headRect())];
+    if (this.tired && this.back.alive) return [mid(this.blisterRect())];
+    return [];
+  }
+
   hudParts() {
     return [
       this.arm.hud('part'),
