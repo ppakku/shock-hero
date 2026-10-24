@@ -20,6 +20,9 @@ export const stage5 = {
     ground: 0xa898c0,
     smoke: 0x3a2a4a,
     weather: { kind: 'embers', color: 0xff5ad5 },
+    arenaImage: { key: 'castle_arena', file: 'castle_arena.jpg' }, // 보스전 배경 (Gemini 그림, 왕좌의 방)
+    groundImage: { key: 'castle_ground', file: 'castle_ground.png', surface: 6 }, // 바닥 그림 (Gemini 그림, 보라빛 돌 타일과 벽돌, 좌우로 이어짐)
+    platformImage: { key: 'castle_platform', file: 'castle_platform.png', left: 100, right: 100, surface: 5, scale: 0.45 }, // 보라빛 돌 발판 (Gemini 그림, 양 끝은 그대로, 가운데만 늘림)
   },
 
   platforms: [

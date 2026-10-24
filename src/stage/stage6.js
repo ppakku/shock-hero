@@ -24,6 +24,8 @@ export const stage6 = {
     platform: 0x8fbfbf, // 바위 발판 색
     smoke: 0x0a3440,
     weather: null, // 거품은 배경에서 따로 그림
+    groundImage: { key: 'sea_ground', file: 'sea_ground.png', surface: 5 }, // 바닥 그림 (Gemini 그림, 청록 모래와 바위, 좌우로 이어짐)
+    platformImage: { key: 'sea_platform', file: 'sea_platform.png', left: 110, right: 110, surface: 5, scale: 0.45 }, // 청록 바위 발판 (Gemini 그림, 양 끝은 그대로, 가운데만 늘림)
   },
 
   // 바위 발판 (헤엄쳐서 어디든 올라갈 수 있음)
