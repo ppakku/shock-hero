@@ -73,10 +73,13 @@ export class DragonBoss extends BossBase {
     // art.js 에 스프라이트 시트(아들 그림)가 있으면 그 애니메이션을 쓴다. 시트에는 꼬리까지 그려져 있다.
     this.sheet = scene.anims.exists(`dragon_${skin}_anim`);
     if (this.sheet) this.sprite.play(`dragon_${skin}_anim`);
-    this.sideBall = scene.add.image(0, 0, 'fireball').setDepth(8).setDisplaySize(36, 36).setVisible(false);
+    // 불덩이 그림: 아이들이 그린 애니메이션(fx_fireball_anim)이 있으면 그걸, 없으면 동그란 도형 그림
+    this.ballSheet = scene.anims.exists('fx_fireball_anim');
+    this.ballPool = []; // 하늘에서 떨어지는 불덩이 그림 (다시 쓴다)
+    this.sideBall = this.ballSheet ? this.makeBallSprite() : scene.add.image(0, 0, 'fireball').setDepth(8).setDisplaySize(36, 36).setVisible(false);
     // 불 효과 (겹겹이 쌓은 불꽃 알갱이, 빛 번짐, 아지랑이). 그림만 바꾸고 공격 시간, 피해, 맞는 칸은 그대로.
     this.fire = new FireFx(scene, 8.6);
-    scene.impact?.addGlow(this.sideBall, 0xff7a1f, 8); // WebGL 에서만 빛 번짐
+    if (!this.ballSheet) scene.impact?.addGlow(this.sideBall, 0xff7a1f, 8); // WebGL 에서만 빛 번짐
     this.dt = 1 / 60;
 
     const hp = this.hpScale;
@@ -227,6 +230,25 @@ export class DragonBoss extends BossBase {
   bodyRect() {
     const h = this.tired ? TH : H;
     return new Rect(this.x - 130, this.groundY - this.air - h, 260, h);
+  }
+
+  // 아이들이 그린 불덩이 한 장 (머리가 왼쪽, 꼬리가 오른쪽). 기준점은 머리 가운데.
+  // 머리 지름(약 40px)이 맞는 칸 크기와 비슷하게, 꼬리는 바깥으로 나와도 된다.
+  makeBallSprite() {
+    return this.scene.add
+      .sprite(0, 0, 'fx_fireball')
+      .play('fx_fireball_anim')
+      .setOrigin(0.25, 0.38)
+      .setScale(0.72)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(8.4)
+      .setVisible(false);
+  }
+
+  // 불덩이 그림을 움직이는 쪽으로 돌려서 놓는다 (그림의 머리가 왼쪽이라 진행 각도 + 180도)
+  aimBall(img, x, y, vx, vy) {
+    img.setVisible(true).setPosition(x, y);
+    if (this.ballSheet && (vx || vy)) img.setRotation(Math.atan2(vy, vx) + Math.PI);
   }
 
   // 발밑 그림자 (src/fx/shadows.js 가 그린다). 날아오르면 작아진다.
@@ -723,8 +745,13 @@ export class DragonBoss extends BossBase {
       b.vy += 1400 * dt;
       b.y += b.vy * dt;
       this.fire.trail(b.x, b.y - 8, dt, `ball${i}`);
-      this.fxG.fillStyle(0xff5a1f, 1).fillCircle(b.x, b.y, 16);
-      this.fxG.fillStyle(0xffe08a, 1).fillCircle(b.x - 3, b.y - 3, 7);
+      if (this.ballSheet) {
+        if (!b.img) b.img = this.ballPool.pop() || this.makeBallSprite();
+        this.aimBall(b.img, b.x, b.y, 0, b.vy);
+      } else {
+        this.fxG.fillStyle(0xff5a1f, 1).fillCircle(b.x, b.y, 16);
+        this.fxG.fillStyle(0xffe08a, 1).fillCircle(b.x - 3, b.y - 3, 7);
+      }
       if (b.y >= this.groundY - 14) {
         b.done = true;
         this.scene.sparks.explode(12, b.x, this.groundY - 10);
@@ -734,6 +761,13 @@ export class DragonBoss extends BossBase {
         this.puddles.add(b.x, 90, this.k.fireTime);
       }
     });
+    for (const b of this.balls) {
+      if (b.done && b.img) {
+        b.img.setVisible(false);
+        this.ballPool.push(b.img);
+        b.img = null;
+      }
+    }
     this.balls = this.balls.filter((b) => !b.done);
   }
 
@@ -813,8 +847,15 @@ export class DragonBoss extends BossBase {
     if (sd.type === 'fireball') {
       const dur = k.fireballFlightTime * m;
       const q = Math.min(1, sd.t / dur);
-      this.sideBall.setVisible(true).setPosition(lerp(sd.x0, sd.tx, q), lerp(sd.y0, this.groundY - 18, q) - Math.sin(q * Math.PI) * 140);
-      this.sideBall.setAngle(this.t * 400);
+      const bx = lerp(sd.x0, sd.tx, q);
+      const by = lerp(sd.y0, this.groundY - 18, q) - Math.sin(q * Math.PI) * 140;
+      // 진행 방향 = 이번 위치 - 지난 위치 (처음 프레임은 목표 쪽)
+      const vx = sd.px === undefined ? sd.tx - sd.x0 : bx - sd.px;
+      const vy = sd.py === undefined ? -1 : by - sd.py;
+      sd.px = bx;
+      sd.py = by;
+      this.aimBall(this.sideBall, bx, by, vx, vy);
+      if (!this.ballSheet) this.sideBall.setAngle(this.t * 400);
       this.fire.trail(this.sideBall.x, this.sideBall.y, dt, 'side');
       this.fire.warnGlow(sd.tx, this.groundY - 6, 40, this.t, q, 0xff3020);
       this.warn.fillStyle(0x000000, 0.25 + 0.35 * q).fillEllipse(sd.tx, this.groundY, 40 + 40 * q, 12);
@@ -929,6 +970,7 @@ export class DragonBoss extends BossBase {
     this.action = null;
     this.side = null;
     this.sideBall.setVisible(false);
+    for (const b of this.balls) b.img?.setVisible(false);
     this.balls = [];
     this.flames.clear();
     this.waves.clear();
