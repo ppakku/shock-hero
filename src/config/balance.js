@@ -329,11 +329,47 @@ export const balance = {
   },
 
   // ---------- 레벨 ----------
+  // 경험치는 몬스터와 보스를 쓰러뜨려야 얻어요. 보물은 경험치 대신 특별한 힘을 줘요.
   level: {
     firstLevelXp: 50, // 레벨 2가 되는 데 필요한 경험치
-    xpGrowth: 1.5, // 다음 레벨은 필요 경험치가 이 배수만큼 늘어남
-    healthPerLevel: 10, // 레벨이 오를 때 늘어나는 최대 체력
-    damageBonusPerLevel: 0.1, // 레벨이 오를 때 늘어나는 공격력 (0.1 = 10%)
+    xpGrowth: 1.4, // 다음 레벨은 필요 경험치가 이 배수만큼 늘어남
+    healthPerLevel: 10, // 레벨이 오를 때 늘어나는 최대 체력 (공격력은 레벨 업 카드에서 골라요)
+  },
+
+  // ---------- 레벨 업 카드 (레벨이 오를 때마다 하나 골라요) ----------
+  upgrades: {
+    maxRank: 5, // 카드 하나를 올릴 수 있는 최고 레벨
+    attackPerRank: 0.12, // 공격력: 한 번 고를 때마다 늘어나는 피해 (0.12 = 12%)
+    defensePerRank: 0.08, // 방어력: 한 번 고를 때마다 줄어드는 받는 피해 (0.08 = 8%)
+    speedPerRank: 0.07, // 속도: 한 번 고를 때마다 빨라지는 걷기 속도 (0.07 = 7%)
+    dashCooldownPerRank: 0.08, // 속도: 한 번 고를 때마다 줄어드는 대시 쿨다운 (0.08 = 8%)
+  },
+
+  // ---------- 로봇 볼트 능력 (레벨 업 카드 '로봇 볼트') ----------
+  // zapInterval: 레이저를 쏘는 간격(초), zapDamage: 레이저 피해량, zapTargets: 한 번에 맞히는 적 수
+  robot: {
+    lv1: { zapInterval: 3.0, zapDamage: 8, zapTargets: 1 },
+    lv2: { zapInterval: 2.5, zapDamage: 11, zapTargets: 1 },
+    lv3: { zapInterval: 2.0, zapDamage: 14, zapTargets: 2 },
+    lv4: { zapInterval: 1.6, zapDamage: 17, zapTargets: 2 },
+    lv5: { zapInterval: 1.3, zapDamage: 20, zapTargets: 3 },
+    zapRange: 420, // 이 거리 안의 적만 노려요
+    zapKnockback: 60, // 레이저가 미는 힘 (작게)
+    healFromRank: 4, // 이 레벨부터 볼트가 가끔 체력을 채워 줘요
+    healEvery: 12, // 체력을 채워 주는 간격 (초)
+    healAmount: 10, // 한 번에 채워 주는 체력
+    guardFromRank: 5, // 이 레벨부터 볼트 방패가 가끔 공격 한 번을 막아 줘요
+    guardEvery: 15, // 볼트 방패가 다시 생기는 시간 (초)
+  },
+
+  // ---------- 보물 상자의 특별한 힘 (잠깐 동안만) ----------
+  // 스테이지 파일 보물에 power: 'speed' 처럼 쓰면 그 힘이 나오고, 안 쓰면 아무거나 나와요.
+  powers: {
+    speed: { time: 12, moveMultiplier: 1.5, dashCooldownMultiplier: 0.5 }, // 번개 신발: 엄청 빨라지고 대시를 자주 써요
+    shield: { time: 20, amount: 60 }, // 강철 몸: 체력바 위에 60만큼 방패가 생겨요 (다 깨지거나 시간이 끝나면 사라짐)
+    power: { time: 12, damageMultiplier: 1.6 }, // 파워 장갑: 모든 공격이 1.6배 아파요
+    star: { time: 6, touchDamage: 14, touchEvery: 0.25 }, // 무적 별: 아무것도 아프지 않고, 닿는 적이 다쳐요
+    rapid: { time: 10, shotDamageMultiplier: 0.5 }, // 에너지 연사: 펀치할 때마다 파란 에너지탄이 나가요 (에너지탄 피해의 절반)
   },
 
   // ---------- 세상 ----------

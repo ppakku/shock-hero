@@ -37,10 +37,11 @@ export const stage1 = {
   monsters: [1020, 1300, 1460, 2000, 2250, 2480],
 
   // 보물 상자 (먹으면 사라지고, 한 번 찾은 보물은 다시 안 나옴)
+  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage1-roof', x: 660, y: 330, xp: 30 },
-    { id: 'stage1-chest', x: 1900, y: 180, xp: 50 },
-    { id: 'stage1-crane', x: 2500, y: 300, xp: 40 },
+    { id: 'stage1-roof', x: 660, y: 330, power: 'power' },
+    { id: 'stage1-chest', x: 1900, y: 180, power: 'shield' },
+    { id: 'stage1-crane', x: 2500, y: 300, power: 'speed' },
   ],
 
   signs: [

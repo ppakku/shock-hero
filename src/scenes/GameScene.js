@@ -12,7 +12,11 @@ import { clearStagePatch } from '../logic/save.js';
 import { parseMonsterSpot } from '../logic/monsters.js';
 import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
 import { CONTROL_KEYS, keyText } from '../logic/controls.js';
-import { addXp, maxHealthFor, damageMultiplierFor } from '../logic/progression.js';
+import { addXp, maxHealthFor } from '../logic/progression.js';
+import {
+  PowerSet, POWER_INFO, treasurePower, UPGRADE_INFO, attackMultiplier, damageTakenMultiplier, speedMultiplier,
+  dashCooldownMultiplier, robotStats, normalizeUpgrades, ranksLeft, applyPick, autoPickTrack,
+} from '../logic/growth.js';
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
 
@@ -54,9 +58,10 @@ export class GameScene extends Phaser.Scene {
     this.makeParticles();
 
     const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
+    this.powers = new PowerSet(cfg.powers); // 보물 상자의 특별한 힘 (스테이지마다 새로)
     this.player = new Player(this, startX, st.groundY - 40, cfg, {
       maxHealth: maxHealthFor(this.save.level, cfg.player.maxHealth, cfg.level),
-      damageMultiplier: damageMultiplierFor(this.save.level, cfg.level),
+      powers: this.powers,
     });
     this.physics.add.collider(this.player, this.solids);
     this.physics.add.collider(this.player, this.oneWays);
@@ -75,6 +80,15 @@ export class GameScene extends Phaser.Scene {
     this.skills = new HeroSkills(this);
 
     this.robot = new Robot(this, this.player);
+    this.applyUpgrades();
+    this.powerG = this.add.graphics().setDepth(11);
+    this.powerFxTimer = 0;
+    this.starTouchTimer = 0;
+    // 레벨 업 카드: 고르지 않은 카드가 있으면 스테이지 이름이 지나간 뒤에 보여 준다
+    this.levelUpOpen = false;
+    this.levelUpWait = 1.6;
+    const left = ranksLeft(this.save.upgrades, cfg.upgrades.maxRank);
+    if (this.save.picksPending > left) this.save = saveStore.update({ picksPending: left });
     this.chargeG = this.add.graphics().setDepth(12);
     this.maxLabel = makeText(this, 0, 0, 'MAX!', 14, '#ffd23f').setOrigin(0.5).setDepth(13).setVisible(false);
 
@@ -311,7 +325,9 @@ export class GameScene extends Phaser.Scene {
     this.skills.update(dt);
     this.robot.update(dt);
     this.drawCharge();
+    this.updatePowers(dt);
     this.checkTriggers();
+    this.checkLevelUp(dt);
 
     if (!this.ended && !this.player.dead) this.registry.set('runTime', this.registry.get('runTime') + dt);
 
@@ -416,8 +432,235 @@ export class GameScene extends Phaser.Scene {
     const found = this.stage.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
     floatText(this, tr.x, tr.y - 50, `보물 발견! (${found}/${this.stage.treasures.length})`, '#ffd23f', 24);
     this.sfxPlay('coin');
-    this.robot.say(found === this.stage.treasures.length ? '이 스테이지 보물을 전부 찾았어! 대단해!' : '보물이다! 역시 내 눈은 정확해.', true);
-    this.gainXp(tr.xp, tr.x, tr.y - 70);
+    // 보물은 경험치 대신 잠깐 동안 특별한 힘을 준다
+    const id = treasurePower(tr);
+    this.givePower(id);
+    const info = POWER_INFO[id];
+    const all = found === this.stage.treasures.length;
+    this.robot.say([`${info.name}! ${info.desc}`, ...(all ? ['이 스테이지 보물을 전부 찾았어! 대단해!'] : [])], true);
+  }
+
+  // ---------- 보물 상자의 특별한 힘 ----------
+
+  givePower(id) {
+    if (!this.powers.add(id)) return;
+    const p = this.player;
+    const info = POWER_INFO[id];
+    this.sfxPlay('powerup');
+    ring(this, p.x, p.y, info.tint, 90, 450, 6);
+    this.sparks.explode(30, p.x, p.y);
+    this.showPowerPopup(id);
+  }
+
+  // 화면 가운데 커다란 이름
+  showPowerPopup(id) {
+    const info = POWER_INFO[id];
+    const c = cfg.powers[id];
+    this.powerPopup?.destroy();
+    const box = this.add.container(480, 190).setScrollFactor(0).setDepth(70);
+    const icon = this.add.image(0, -62, info.icon).setScale(1.4);
+    const name = makeText(this, 0, 0, `${info.name}!`, 52, info.color, { strokeThickness: 9 }).setOrigin(0.5);
+    const desc = makeText(this, 0, 50, `${info.desc}  (${c.time}초)`, 20, '#ffffff', { strokeThickness: 5 }).setOrigin(0.5);
+    box.add([icon, name, desc]);
+    box.setScale(0.3);
+    this.powerPopup = box;
+    this.tweens.add({ targets: box, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: box, alpha: 0, y: 160, delay: 1500, duration: 400, onComplete: () => box.destroy() });
+  }
+
+  // 시간 흐르기, 끝난 힘 알리기, 주인공 몸의 효과
+  updatePowers(dt) {
+    const p = this.player;
+    const ended = this.ended ? [] : this.powers.update(dt);
+    for (const id of ended) {
+      floatText(this, p.x, p.y - 60, `${POWER_INFO[id].name} 끝!`, '#bfc7d5', 18);
+      this.sfxPlay('powerEnd');
+      if (id === 'star') p.setTint(0xffffff);
+    }
+    const g = this.powerG.clear();
+    if (p.dead) return;
+    const t = this.time.now;
+    // 끝나기 2초 전부터 깜빡깜빡
+    const showing = (id) => this.powers.has(id) && (this.powers.remaining(id) > 2 || Math.floor(t / 120) % 2 === 0);
+
+    this.powerFxTimer -= dt;
+    const tick = this.powerFxTimer <= 0;
+    if (tick) this.powerFxTimer = 0.05;
+
+    if (showing('speed') && tick && Math.abs(p.body.velocity.x) > 40) this.spawnGhost(p, 0xffe066);
+    if (showing('shield')) {
+      const r = this.powers.shieldMax > 0 ? this.powers.shield / this.powers.shieldMax : 0;
+      g.fillStyle(0x9fd0ff, 0.12 + 0.1 * r).fillCircle(p.x, p.y, 42);
+      g.lineStyle(3, 0xdff0ff, 0.5 + 0.4 * r).strokeCircle(p.x, p.y, 42 + Math.sin(t / 150) * 2);
+    }
+    if (showing('power') || showing('rapid')) {
+      const f = this.skills.fistOffset(p.texture.key.replace('hero_', ''));
+      const fx = p.x + f.x * p.facing;
+      const fy = p.y + f.y;
+      if (showing('power')) {
+        const pulse = 1 + Math.sin(t / 80) * 0.2;
+        g.lineStyle(3, 0xff5a2a, 0.45).strokeCircle(p.x, p.y, 38 * (1 + Math.sin(t / 160) * 0.05));
+        g.fillStyle(0xff5a2a, 0.3).fillCircle(fx, fy, 20 * pulse);
+        g.fillStyle(0xffb04a, 0.7).fillCircle(fx, fy, 10 * pulse);
+        if (tick && Math.random() < 0.5) this.sparks.emitParticleAt(fx, fy - 4, 1);
+      }
+      if (showing('rapid')) {
+        for (let i = 0; i < 3; i++) {
+          const a = t / 120 + (i * Math.PI * 2) / 3;
+          g.fillStyle(0x6fc0ff, 0.9).fillCircle(fx + Math.cos(a) * 14, fy + Math.sin(a) * 14, 3);
+        }
+      }
+    }
+    if (this.powers.has('star')) {
+      // 무지개 빛으로 반짝이고, 닿는 적이 다친다
+      const hue = (t / 600) % 1;
+      if (showing('star')) {
+        const col = Phaser.Display.Color.HSVToRGB(hue, 0.55, 1).color;
+        p.setTint(col);
+        g.fillStyle(col, 0.22).fillCircle(p.x, p.y, 40);
+        g.lineStyle(4, Phaser.Display.Color.HSVToRGB((hue + 0.5) % 1, 0.8, 1).color, 0.8).strokeCircle(p.x, p.y, 40);
+      } else p.setTint(0xffffff);
+      if (tick) this.sparks.emitParticleAt(p.x + Phaser.Math.Between(-18, 18), p.y + Phaser.Math.Between(-28, 28), 1);
+      this.starTouchTimer -= dt;
+      if (this.starTouchTimer <= 0 && !this.ended) {
+        this.starTouchTimer = cfg.powers.star.touchEvery;
+        this.starTouch();
+      }
+    }
+  }
+
+  // 무적 별: 몸에 닿은 몬스터와 보스에게 피해
+  starTouch() {
+    const p = this.player;
+    const c = cfg.powers.star;
+    const b = p.getBounds();
+    const rect = new Phaser.Geom.Rectangle(b.x - 8, b.y - 4, b.width + 16, b.height + 8);
+    const attack = { kind: 'star', damage: c.touchDamage, knockback: 380, range: 0, ratio: 0, full: false };
+    let hit = false;
+    for (const m of this.monsters) {
+      if (!m.dead && intersects(rect, m.getBounds())) {
+        m.takeHit(attack, m.x < p.x ? -1 : 1);
+        hit = true;
+      }
+    }
+    if (this.boss.receiveAttack(rect, attack)) hit = true;
+    if (hit) this.sfxPlay('hit');
+  }
+
+  // 강철 몸 방패가 피해를 받았을 때
+  onShieldAbsorb(player, amount, broke) {
+    floatText(this, player.x, player.y - 46, broke ? '방패 깨짐!' : `방패 -${Math.round(amount)}`, '#bfe0ff', broke ? 22 : 18);
+    ring(this, player.x, player.y, 0xdff0ff, 50, 220, 4);
+    this.sfxPlay(broke ? 'break' : 'tink');
+  }
+
+  // ---------- 레벨 업 카드 ----------
+
+  // 저장된 카드 레벨을 주인공과 볼트에게 적용
+  applyUpgrades() {
+    const up = cfg.upgrades;
+    const u = normalizeUpgrades(this.save.upgrades, up.maxRank);
+    const p = this.player;
+    p.baseDamageMultiplier = attackMultiplier(u, up);
+    p.damageTakenMultiplier = damageTakenMultiplier(u, up);
+    p.speedMultiplier = speedMultiplier(u, up);
+    p.dashCooldownMultiplier = dashCooldownMultiplier(u, up);
+    this.robot.setStats(robotStats(u.robot, cfg.robot));
+  }
+
+  // 싸움 한가운데(슬로모션, 궁극기, 승리 연출, 쓰러짐)에는 카드를 띄우지 않고 기다린다
+  canShowLevelUp() {
+    const p = this.player;
+    return !this.ended && !p.dead && !p.ultActive && !this.skills.ult && this.time.timeScale === 1 && !this.levelUpOpen;
+  }
+
+  checkLevelUp(dt) {
+    if (!(this.save.picksPending > 0) || !this.canShowLevelUp()) return;
+    this.levelUpWait -= dt;
+    if (this.levelUpWait > 0) return;
+    this.openLevelUp();
+  }
+
+  openLevelUp() {
+    this.pickCount = 0;
+    // 자동 테스트 봇: 화면 없이 가장 낮은 카드를 고른다
+    if (window.__shockAutoPick) {
+      let guard = 0;
+      while (this.save.picksPending > 0 && guard++ < 50) {
+        const track = autoPickTrack(normalizeUpgrades(this.save.upgrades, cfg.upgrades.maxRank), cfg.upgrades.maxRank);
+        if (!track || !this.pickUpgrade(track)) {
+          this.save = saveStore.update({ picksPending: 0 });
+          break;
+        }
+      }
+      return;
+    }
+    this.levelUpOpen = true;
+    this.player.cancelCharge();
+    this.sfxPlay('levelup');
+    this.scene.launch('LevelUp');
+    this.scene.bringToTop('LevelUp');
+    this.scene.pause();
+  }
+
+  // 카드 하나 고르기. 고를 수 있었으면 true
+  pickUpgrade(track) {
+    const r = applyPick(saveStore.load(), track, cfg.upgrades.maxRank);
+    if (!r) return false;
+    this.save = saveStore.update(r);
+    this.applyUpgrades();
+    const p = this.player;
+    const info = UPGRADE_INFO[track];
+    const n = (this.pickCount = (this.pickCount || 0) + 1); // 한 번에 여러 장 고르면 글자를 겹치지 않게 위로 쌓는다
+    floatText(this, p.x, p.y - 70 - (n - 1) * 26, `${info.name} Lv ${r.upgrades[track]}!`, info.color, 24);
+    ring(this, p.x, p.y, 0xffd23f, 70, 400, 4);
+    if (track === 'robot' && r.upgrades.robot === 1) this.robotJustUnlocked = true; // 볼트가 처음 싸울 수 있게 됨
+    return true;
+  }
+
+  // LevelUp 장면이 다 고르고 부른다
+  closeLevelUp() {
+    this.levelUpOpen = false;
+    this.levelUpWait = 0.4;
+    this.pickCount = 0;
+    this.scene.stop('LevelUp');
+    this.scene.resume();
+    if (this.robotJustUnlocked) {
+      this.robotJustUnlocked = false;
+      this.robot.say('나도 싸울 수 있어! 가까운 적에게 찌릿 레이저!', true);
+    }
+  }
+
+  // 볼트 레이저가 노릴 곳: 가까운 몬스터, 그리고 지금 때릴 수 있는 보스 부위
+  findRobotTargets(x, y, range, count) {
+    const list = [];
+    const add = (tx, ty) => {
+      const d = Math.hypot(tx - x, ty - y);
+      if (d <= range) list.push({ x: tx, y: ty, d });
+    };
+    for (const m of this.monsters) {
+      if (m.dead || !m.active) continue;
+      const b = m.getBounds();
+      add(b.centerX, b.centerY);
+    }
+    for (const pt of this.bossTargetPoints()) add(pt.x, pt.y);
+    return list.sort((a, b) => a.d - b.d).slice(0, Math.max(1, count));
+  }
+
+  bossTargetPoints() {
+    const b = this.boss;
+    if (!this.bossStarted || !b || b.defeated || b.state !== 'fight') return [];
+    if (typeof b.robotTargets === 'function') return b.robotTargets(); // 보스가 직접 알려 주면 그걸 쓴다
+    const mid = (r) => ({ x: r.centerX ?? r.x + r.width / 2, y: r.centerY ?? r.y + r.height / 2 });
+    if (b.standing && typeof b.standRect === 'function') return b.standStage === 'ready' ? [mid(b.standRect())] : [];
+    const pts = [];
+    if (Array.isArray(b.armsAlive)) {
+      for (const arm of b.armsAlive) if (arm.hittable) pts.push(mid(arm.hitRect()));
+      if (b.coreExposed && b.corePos) pts.push({ x: b.corePos.x, y: b.corePos.y });
+    } else if (typeof b.hitRect === 'function') {
+      pts.push(mid(b.hitRect()));
+    }
+    return pts;
   }
 
   startBossFight() {
@@ -447,6 +690,8 @@ export class GameScene extends Phaser.Scene {
 
   onPlayerAttack(player, attack) {
     const dir = player.facing;
+    // 에너지 연사: 펀치마다 에너지탄 (최대 충전은 원래 쏘니까 빼고)
+    if (this.powers.has('rapid') && !attack.full) this.fireRapidShot(player, attack.up);
     if (attack.up) {
       this.skills.upperAttack(player, attack); // 위쪽 공격(어퍼컷)
       return;
@@ -481,6 +726,13 @@ export class GameScene extends Phaser.Scene {
       this.skills.onDealtDamage(attack.damage);
       if (attack.kind === 'charged') this.shake(0.004 + 0.008 * attack.ratio, 120);
     }
+  }
+
+  fireRapidShot(player, up) {
+    const before = this.skills.shots.length;
+    this.skills.fireShotFrom(player, up);
+    const k = cfg.powers.rapid.shotDamageMultiplier;
+    for (const s of this.skills.shots.slice(before)) s.attack = { ...s.attack, damage: Math.max(1, Math.round(s.attack.damage * k)) };
   }
 
   // 안내 글의 {punch} 같은 표시를 지금 조작 방식의 키 이름으로
@@ -565,15 +817,15 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(1300, () => this.scene.get('HUD')?.showGameOver(this.save.checkpoint === this.stageNum));
   }
 
-  // 대시와 궁극기 때 남는 파란 잔상
-  spawnGhost(player) {
+  // 대시와 궁극기 때 남는 파란 잔상 (번개 신발은 노란 잔상)
+  spawnGhost(player, color = 0x3f9cff) {
     const g = this.add
       .image(player.x, player.y, player.texture.key, player.frame.name)
       .setOrigin(player.originX, player.originY)
       .setScale(player.scaleX, player.scaleY)
       .setFlipX(player.flipX)
       .setAlpha(0.6)
-      .setTintFill(0x3f9cff)
+      .setTintFill(color)
       .setDepth(9);
     this.tweens.add({ targets: g, alpha: 0, x: g.x - player.facing * 10, duration: 240, onComplete: () => g.destroy() });
   }
@@ -606,19 +858,22 @@ export class GameScene extends Phaser.Scene {
   gainXp(amount, x, y) {
     const before = this.save;
     const r = addXp(before, amount, cfg.level);
-    this.save = saveStore.update({ level: r.level, xp: r.xp });
+    // 오른 레벨만큼 레벨 업 카드를 고를 수 있다 (올릴 칸이 남아 있을 때만)
+    const left = ranksLeft(before.upgrades, cfg.upgrades.maxRank);
+    const picksPending = Math.min(left, (before.picksPending || 0) + r.levelsGained);
+    this.save = saveStore.update({ level: r.level, xp: r.xp, picksPending });
     floatText(this, x, y, `+${amount} XP`, '#9fe8ff', 16);
     if (r.levelsGained > 0) {
       const p = this.player;
       p.health.setMax(maxHealthFor(r.level, cfg.player.maxHealth, cfg.level));
       p.health.heal(cfg.level.healthPerLevel * r.levelsGained);
-      p.damageMultiplier = damageMultiplierFor(r.level, cfg.level);
+      this.levelUpWait = Math.max(this.levelUpWait || 0, 0.7); // 레벨 업 글자를 잠깐 보여 준 뒤 카드
       this.time.delayedCall(250, () => {
         floatText(this, p.x, p.y - 70, `레벨 업! Lv ${r.level}`, '#ffd23f', 26);
         ring(this, p.x, p.y, 0xffd23f, 70, 400, 4);
         this.sfxPlay('levelup');
       });
-      this.robot.say('레벨 업! 근육이 0.1mm 커졌어!');
+      this.robot.say(picksPending > 0 ? '레벨 업! 카드를 하나 골라 봐!' : '레벨 업! 근육이 0.1mm 커졌어!');
     }
   }
 

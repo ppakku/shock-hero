@@ -54,10 +54,11 @@ export const stage5 = {
     { x: 4250, type: 'shield' },
   ],
 
+  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage5-tower', x: 1920, y: 80, xp: 80 },
-    { id: 'stage5-hall', x: 3280, y: 300, xp: 50 },
-    { id: 'stage5-throne', x: 4160, y: 210, xp: 60 },
+    { id: 'stage5-tower', x: 1920, y: 80, power: 'rapid' },
+    { id: 'stage5-hall', x: 3280, y: 300 },
+    { id: 'stage5-throne', x: 4160, y: 210, power: 'star' },
   ],
 
   signs: [

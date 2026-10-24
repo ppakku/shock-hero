@@ -52,10 +52,11 @@ export const stage4 = {
     { x: 3850, type: 'jumper' },
   ],
 
+  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage4-icicle', x: 1040, y: 150, xp: 50 },
-    { id: 'stage4-cave', x: 2480, y: 300, xp: 40 },
-    { id: 'stage4-summit', x: 3540, y: 130, xp: 70 },
+    { id: 'stage4-icicle', x: 1040, y: 150, power: 'speed' },
+    { id: 'stage4-cave', x: 2480, y: 300 },
+    { id: 'stage4-summit', x: 3540, y: 130, power: 'star' },
   ],
 
   signs: [

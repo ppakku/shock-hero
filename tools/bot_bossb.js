@@ -2,6 +2,7 @@
 // 진짜 키 입력 대신 scene.readInput 을 바꿔 끼워 같은 입력 값을 넣는다.
 (() => {
   const s = window.__shock.scene;
+  window.__shockAutoPick = true; // 레벨 업 카드는 화면 없이 자동으로 고른다 (봇이 멈추지 않게)
   const B = { hold: 0, dashCool: 0, t: 0, jumpCool: 0, stuck: 0, lastX: 0, jumpHold: 0 };
   window.__botState = B;
   s.readInput = function () {

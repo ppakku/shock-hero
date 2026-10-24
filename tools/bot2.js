@@ -1,6 +1,7 @@
 // 자동 플레이 봇 v2: 몬스터를 모두 사냥하고, 보스의 모든 공격을 피하며 싸운다.
 (() => {
   const s = window.__shock.scene;
+  window.__shockAutoPick = true; // 레벨 업 카드는 화면 없이 자동으로 고른다 (봇이 멈추지 않게)
   const log = (window.__botLog = window.__botLog || []);
   const B = { hold: 0, dashCool: 0, t: 0, jumpCool: 0, stuck: 0, lastX: 0 };
   window.__botState = B;

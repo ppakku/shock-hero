@@ -4,7 +4,7 @@ import { sanitizeNumbers } from '../src/logic/sanitize.js';
 import { Health } from '../src/logic/health.js';
 import { Cooldown } from '../src/logic/cooldown.js';
 import { chargeRatio, resolveAttack } from '../src/logic/combat.js';
-import { addXp, xpToNext, maxHealthFor, damageMultiplierFor } from '../src/logic/progression.js';
+import { addXp, xpToNext, maxHealthFor } from '../src/logic/progression.js';
 import { createSaveStore, defaultSave, clearStagePatch } from '../src/logic/save.js';
 import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets, BOSS_PATTERNS } from '../src/logic/boss.js';
 import { monsterStats, parseMonsterSpot, MONSTER_TYPES } from '../src/logic/monsters.js';
@@ -103,10 +103,9 @@ describe('레벨', () => {
     expect(r.levelsGained).toBeGreaterThan(2);
   });
 
-  it('레벨이 오르면 체력과 공격력이 늘어난다', () => {
+  // 공격력은 레벨 업 카드로 옮겼다 (tests/growth.test.js)
+  it('레벨이 오르면 최대 체력이 늘어난다', () => {
     expect(maxHealthFor(3, 100, cfg.level)).toBe(100 + 2 * cfg.level.healthPerLevel);
-    expect(damageMultiplierFor(1, cfg.level)).toBe(1);
-    expect(damageMultiplierFor(2, cfg.level)).toBeCloseTo(1 + cfg.level.damageBonusPerLevel);
   });
 });
 
