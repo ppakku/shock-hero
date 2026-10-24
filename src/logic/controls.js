@@ -26,9 +26,9 @@ export const CONTROL_INFO = {
 export const TOUCH_INFO = {
   name: '터치 버튼',
   lines: [
-    '이동 ◀ ▶ 버튼    점프 버튼 (물속에선 꾹 눌러 헤엄)    대시 버튼',
-    '펀치 버튼 (꾹 눌렀다 떼면 충전 펀치)    일시정지 오른쪽 위 II',
-    '어퍼컷 ▲ 누른 채 펀치    궁극기 버튼 (파란 게이지가 꽉 차면)',
+    '이동 왼쪽 화면을 엄지로 밀기 (조이스틱)    점프 버튼 (물속에선 꾹 눌러 헤엄)',
+    '펀치 버튼 (꾹 눌렀다 떼면 충전 펀치)    대시 버튼    일시정지 오른쪽 위 II',
+    '어퍼컷 조이스틱을 위로 민 채 펀치    궁극기 버튼 (파란 게이지가 꽉 차면)',
   ],
 };
 
@@ -43,7 +43,7 @@ export const CONTROL_KEYS = {
 export const KEY_NAMES = {
   classic: { move: 'A / D 또는 ← →', jump: 'Space', punch: 'J', dash: 'K 또는 Shift', ult: 'L', up: 'W 나 ↑' },
   arrows: { move: '← →', jump: 'Space 또는 ↑', punch: 'A', dash: 'S 또는 Shift', ult: 'D', up: '↑' },
-  touch: { move: '◀ ▶ 버튼', jump: '점프 버튼', punch: '펀치 버튼', dash: '대시 버튼', ult: '궁극기 버튼', up: '▲ 버튼' },
+  touch: { move: '조이스틱', jump: '점프 버튼', punch: '펀치 버튼', dash: '대시 버튼', ult: '궁극기 버튼', up: '조이스틱 위로' },
 };
 
 // scheme 이 'touch' 면 버튼 이름으로 바꾸고, 뒤에 붙은 말을 버튼에 맞게 고친다 ('J 를' → '펀치 버튼을').
@@ -54,6 +54,7 @@ export function keyText(str, scheme) {
   if (!touch) return out;
   return out
     .replace(/ 또는 마우스 왼쪽/g, '') // 태블릿에는 마우스가 없다
+    .replace(/조이스틱 위로 누른 채/g, '조이스틱을 위로 민 채')
     .replace(/버튼 키를/g, '버튼을')
     .replace(/버튼 키/g, '버튼')
     .replace(/버튼 를/g, '버튼을')

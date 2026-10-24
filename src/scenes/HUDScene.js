@@ -6,7 +6,7 @@ import { xpToNext } from '../logic/progression.js';
 import { DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/growth.js';
 import { makeText, formatTime } from '../ui/text.js';
-import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON } from '../ui/touch.js';
+import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, STICK } from '../ui/touch.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -74,7 +74,7 @@ export class HUDScene extends Phaser.Scene {
   buildTouchPad() {
     this.padG = this.add.graphics().setDepth(90);
     this.padLabels = TOUCH_BUTTONS.map((b) =>
-      makeText(this, b.x, b.y, b.label, b.label.length > 1 ? Math.max(15, Math.round(b.r * 0.44)) : Math.round(b.r * 0.6), '#ffffff')
+      makeText(this, b.x, b.y, b.label, b.label.length > 1 ? Math.max(14, Math.round(b.r * 0.46)) : Math.round(b.r * 0.6), '#ffffff')
         .setOrigin(0.5)
         .setDepth(91),
     );
@@ -82,7 +82,7 @@ export class HUDScene extends Phaser.Scene {
     this.pauseBtn = this.add.container(pb.x, pb.y).setDepth(92);
     const pg = this.add.graphics();
     pg.fillStyle(0x000000, 0.45).fillCircle(0, 0, pb.r).lineStyle(3, 0xffffff, 0.7).strokeCircle(0, 0, pb.r);
-    pg.fillStyle(0xffffff, 0.9).fillRect(-9, -10, 6, 20).fillRect(3, -10, 6, 20);
+    pg.fillStyle(0xffffff, 0.9).fillRect(-7, -8, 5, 16).fillRect(2, -8, 5, 16);
     this.pauseBtn.add(pg);
     this.pauseBtn.setSize(pb.r * 2.4, pb.r * 2.4).setInteractive().on('pointerdown', () => this.togglePause());
   }
@@ -94,13 +94,39 @@ export class HUDScene extends Phaser.Scene {
     this.pauseBtn.setVisible(this.mode === 'play' || this.mode === 'paused');
     if (!show) return;
     const ultReady = typeof p.ultGauge === 'number' && p.ultGauge >= 1;
+    // 버튼은 게임이 잘 보이게 흐릿하게, 누르는 동안만 또렷하게
     TOUCH_BUTTONS.forEach((b, i) => {
       const down = !!touchPad.down[b.id];
       const glow = b.id === 'ult' && ultReady;
-      this.padG.fillStyle(down ? 0xffffff : glow ? 0x3fd0ff : 0x000000, down ? 0.45 : glow ? 0.4 : 0.28).fillCircle(b.x, b.y, b.r);
-      this.padG.lineStyle(3, glow ? 0x9fe8ff : 0xffffff, down ? 0.9 : 0.55).strokeCircle(b.x, b.y, b.r);
-      this.padLabels[i].setAlpha(down ? 1 : 0.8);
+      this.padG.fillStyle(down ? 0xffffff : glow ? 0x3fd0ff : 0x000000, down ? 0.35 : glow ? 0.3 : 0.14).fillCircle(b.x, b.y, b.r);
+      this.padG.lineStyle(3, glow ? 0x9fe8ff : 0xffffff, down ? 0.8 : glow ? 0.6 : 0.32).strokeCircle(b.x, b.y, b.r);
+      this.padLabels[i].setAlpha(down ? 0.95 : glow ? 0.8 : 0.5);
     });
+    this.drawStick();
+  }
+
+  // 왼쪽 조이스틱: 엄지를 댄 자리에 받침, 엄지 쪽에 손잡이. 안 댔으면 왼쪽 아래에 흐리게.
+  drawStick() {
+    const g = this.padG;
+    const st = touchPad.stick;
+    const r = STICK.radius;
+    if (!st) {
+      const h = STICK.hint;
+      g.fillStyle(0x000000, 0.1).fillCircle(h.x, h.y, r + 12);
+      g.lineStyle(3, 0xffffff, 0.22).strokeCircle(h.x, h.y, r + 12);
+      g.fillStyle(0xffffff, 0.18).fillCircle(h.x, h.y, 24);
+      return;
+    }
+    g.fillStyle(0x000000, 0.16).fillCircle(st.ax, st.ay, r + 12);
+    g.lineStyle(3, 0xffffff, 0.4).strokeCircle(st.ax, st.ay, r + 12);
+    let dx = st.x - st.ax;
+    let dy = st.y - st.ay;
+    const d = Math.hypot(dx, dy);
+    if (d > r) {
+      dx = (dx / d) * r;
+      dy = (dy / d) * r;
+    }
+    g.fillStyle(0xffffff, 0.45).fillCircle(st.ax + dx, st.ay + dy, 26);
   }
 
   // 결과 화면과 일시정지 화면에서 손가락으로 누르는 버튼 (태블릿에서만)
