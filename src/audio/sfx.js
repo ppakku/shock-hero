@@ -199,6 +199,41 @@ class Sfx {
         [330, 415, 494, 622].forEach((f, i) => this.tone(f, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.07 }));
         this.hiss(0.6, { vol: 0.15, freq: 900, freqTo: 3000 });
         break;
+      // ----- 수중 던전 (스테이지 6) -----
+      case 'jellyCharge': // 골드해파리가 전기를 모음 (지지직 올라가는 소리)
+        this.tone(300, 0.6, { type: 'sawtooth', vol: 0.08, slideTo: 1200 });
+        this.hiss(0.5, { vol: 0.12, freq: 3000, freqTo: 6000 });
+        break;
+      case 'zap': // 독 화살 발사
+        this.tone(1400, 0.18, { type: 'square', vol: 0.12, slideTo: 300 });
+        this.hiss(0.15, { vol: 0.2, freq: 5000, freqTo: 1500 });
+        break;
+      case 'harden': // 순간 경화 (쨍)
+        [880, 1320].forEach((f, i) => this.tone(f, 0.25, { type: 'triangle', vol: 0.15, delay: i * 0.05 }));
+        break;
+      case 'puff': // 가시복어가 부풂 (뿌우)
+        this.tone(160, 0.35, { type: 'sine', vol: 0.3, slideTo: 420 });
+        break;
+      case 'deflate': // 바람 빠짐 (피유우)
+        this.tone(600, 0.5, { type: 'sine', vol: 0.15, slideTo: 150 });
+        this.hiss(0.4, { vol: 0.12, freq: 2000, freqTo: 400 });
+        break;
+      case 'dart': // 피라냐 돌진 (쓩)
+        this.hiss(0.25, { vol: 0.3, freq: 800, freqTo: 4000 });
+        break;
+      case 'seaRoar': // 심해 아귀왕 등장 (물속 울림)
+        this.tone(55, 1.4, { type: 'sawtooth', vol: 0.35, slideTo: 35 });
+        this.hiss(1.2, { vol: 0.25, freq: 500, freqTo: 80 });
+        break;
+      case 'bubbleUp': // 거품 폭탄이 올라옴 (뽀글뽀글)
+        [400, 520, 460, 640].forEach((f, i) => this.tone(f, 0.08, { type: 'sine', vol: 0.15, slideTo: f * 1.6, delay: i * 0.06 }));
+        break;
+      case 'pop': // 거품이 터짐 (퐁)
+        this.tone(900, 0.08, { type: 'sine', vol: 0.18, slideTo: 1800 });
+        break;
+      case 'ink': // 먹물 (푸슉)
+        this.hiss(0.6, { vol: 0.35, freq: 600, freqTo: 120 });
+        break;
       default:
         break;
     }

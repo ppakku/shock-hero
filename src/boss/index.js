@@ -1,6 +1,7 @@
 import { ArmBoss } from './ArmBoss.js';
 import { IceBoss } from './IceBoss.js';
 import { KingBoss } from './KingBoss.js';
+import { SeaBoss } from './SeaBoss.js'; // 스테이지 6 수중 던전 보스 (임시 디자인: 심해 아귀왕)
 
 // stage.boss.type 이름 → 보스 클래스
 // 아직 따로 만들지 않은 종류는 팔 보스로 대신한다.
@@ -10,6 +11,7 @@ export const BOSS_TYPES = {
   golem: ArmBoss,
   ice: IceBoss,
   king: KingBoss,
+  sea: SeaBoss, // 물속을 헤엄치는 보스
 };
 
 export function bossClassFor(stage) {

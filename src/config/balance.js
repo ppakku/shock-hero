@@ -163,6 +163,66 @@ export const balance = {
       guardBreakStun: 1.0, // 방패가 깨지면 비틀거리는 시간
       turnDelay: 0.5, // 뒤로 돌아가면 방향을 바꾸기까지 걸리는 시간 (뒤를 칠 기회)
     },
+
+    // ===== 수중 던전 (스테이지 6) 몬스터 =====
+    // 금색 골드해파리 GX (아들 디자인): 둥둥 떠다니며 전기 독을 쏘고, 가까이 가면 빛나는 공으로 단단해짐
+    // 단단할 때 맨손 펀치는 "팅!" 튕겨 나가요. 충전 펀치를 반 넘게 모아 때리면 깨져요
+    jelly: {
+      healthMultiplier: 1.3,
+      speedMultiplier: 0.7, // 떠다니는 속도
+      sizeMultiplier: 1.0,
+      xp: 40,
+      swimY: 330, // 떠 있는 기본 높이 (170 ~ 446 사이만 됨, 땅은 480)
+      boltWindup: 0.9, // 보라 점선이 보이고 독을 쏘기까지 시간 (피할 기회)
+      boltSpeed: 240, // 독 화살 속도
+      boltDamage: 12, // 독 화살 피해량
+      boltCooldown: 2.6, // 다음 독까지 기다리는 시간
+      hardenRange: 130, // 주인공이 이만큼 가까우면 순간 경화
+      hardenTime: 1.6, // 단단한 공으로 있는 시간
+      hardenCooldown: 4.0, // 다음 경화까지 기다리는 시간
+      tiredTime: 1.2, // 경화가 풀린 뒤 지쳐서 가라앉는 시간 (때릴 기회)
+      breakRatio: 0.5, // 경화를 깨는 데 필요한 충전 (0.5 = 반 충전)
+    },
+    // 주황 가시복어 뿌뿌: 가까이 가면 가시 공으로 부풀어요. 가시가 섰을 때 맨손으로 때리면 내가 따끔!
+    puffer: {
+      healthMultiplier: 1.0,
+      speedMultiplier: 0.7,
+      sizeMultiplier: 1.0,
+      xp: 35,
+      swimY: 390,
+      puffRange: 170, // 주인공이 이만큼 가까우면 부풀 준비
+      inflateWarning: 0.7, // 부르르 떨며 빨개진 뒤 부풀기까지 시간 (피할 기회)
+      spikyTime: 1.8, // 가시 공으로 있는 시간
+      thornDamage: 8, // 가시 공을 맨손으로 때리면 내가 받는 피해
+      bumpDamage: 12, // 가시 공에 부딪히면 받는 피해
+      puffCooldown: 3.0, // 다음 부풀기까지 기다리는 시간
+      dizzyTime: 1.4, // 바람이 빠진 뒤 어지러운 시간 (때릴 기회)
+    },
+    // 남색 이빨 피라냐: 작고 빠름. 빨간 점선을 따라 일직선으로 돌진해요
+    piranha: {
+      healthMultiplier: 0.6,
+      speedMultiplier: 1.4,
+      damageMultiplier: 0.9,
+      sizeMultiplier: 0.9,
+      xp: 25,
+      swimY: 330,
+      dartWindup: 0.75, // 빨간 점선이 보이고 돌진하기까지 시간 (피할 기회)
+      dartSpeed: 520, // 돌진 속도
+      dartTime: 0.5, // 돌진하는 시간 (점선 길이 = 속도 x 시간)
+      dartCooldown: 2.0, // 다음 돌진까지 기다리는 시간
+      dartRange: 320, // 이 거리 안이면 돌진 준비
+      recoverTime: 0.9, // 돌진 뒤 숨 고르는 시간 (때릴 기회)
+    },
+    // 빨강 집게 꽃게: 바닥을 옆걸음으로 다니다가 집게로 꽉!
+    crab: {
+      healthMultiplier: 1.4,
+      speedMultiplier: 0.9,
+      damageMultiplier: 1.0,
+      windupMultiplier: 1.1,
+      downKnockbackMultiplier: 1.2,
+      sizeMultiplier: 1.0,
+      xp: 30,
+    },
   },
 
   // ---------- 보스 (모든 스테이지 공통 기본값) ----------
@@ -242,6 +302,50 @@ export const balance = {
     chargeDamage: 20, // 돌진 피해량
     tiredTime: 1.6, // 일어선 왕이 공격 뒤 숨 고르는 시간 (때릴 기회)
     coreMultiplier: 2.2, // 왕의 코어 체력 배수 (boss.coreHealth 에 곱함. 일어선 뒤 싸움이 길어져요)
+  },
+
+  // ---------- 헤엄치기 (수중 스테이지, 스테이지 6) ----------
+  // 점프를 누르면 위로 헤엄치고, 꾹 누르고 있으면 계속 올라가요. 떼면 천천히 가라앉아요.
+  swim: {
+    gravityScale: 0.3, // 물속 중력 (0.3 = 땅의 30%. 작을수록 천천히 가라앉음)
+    maxFallSpeed: 210, // 가라앉는 가장 빠른 속도
+    strokeSpeed: 330, // 점프 한 번에 위로 차고 오르는 힘
+    strokeInterval: 0.3, // 점프를 꾹 누르면 이 간격마다 다시 헤엄쳐 올라감
+    maxRiseSpeed: 380, // 위로 오르는 가장 빠른 속도
+    moveMultiplier: 0.8, // 옆으로 헤엄치는 속도 (걷는 속도 260 에 곱함. 0.8 = 208)
+    waterDrag: 7, // 물의 저항 (클수록 빨리 출발하고 빨리 멈춤)
+    dashMultiplier: 0.8, // 헤엄 대시 속도 (대시 속도에 곱함)
+    ceilingY: 150, // 이보다 위로는 못 올라감 (화면 위 체력바에 가리지 않게. 발판은 y 190 보다 낮게 두기)
+  },
+
+  // ---------- 심해 아귀왕 (스테이지 6, 물속 보스) ----------
+  // 스테이지 파일의 boss.healthScale 을 체력에 곱합니다.
+  seaBoss: {
+    lureHealth: 200, // 머리 위 초롱불 체력 (부수면 먹물을 못 씀)
+    jawHealth: 220, // 큰 턱 체력 (부수면 소용돌이 때 깨물지 못함)
+    heartHealth: 420, // 심장(약점) 체력. 초롱불과 턱을 다 부숴야 맞아요
+    swimSpeed: 200, // 헤엄치는 속도
+    idleTime: 1.0, // 공격과 공격 사이 쉬는 시간
+    tiredAfter: 3, // 공격을 이만큼 하면 지쳐서 바닥에 내려앉아요
+    restTime: 3.0, // 바닥에서 헉헉대며 쉬는 시간 (때릴 기회)
+    chargeWarningTime: 1.1, // 돌진 전 빨간 띠 경고 시간
+    chargeSpeed: 620, // 돌진 속도
+    chargeDamage: 20, // 돌진 피해량
+    dizzyTime: 1.8, // 돌진하다 벽에 부딪혀 어지러운 시간 (때릴 기회)
+    bubbleCount: 4, // 바닥에서 올라오는 거품 폭탄 개수
+    bubbleWarningTime: 0.9, // 거품 폭탄이 올라오기 전 바닥 경고 시간
+    bubbleRiseSpeed: 150, // 거품 폭탄이 올라가는 속도
+    bubbleDamage: 12, // 거품 폭탄 피해량 (펀치로 미리 터뜨리면 안전)
+    whirlWarningTime: 1.0, // 소용돌이 전 경고 시간
+    whirlTime: 2.6, // 소용돌이가 빨아들이는 시간
+    whirlPull: 130, // 끌려가는 속도 (헤엄 속도 208 보다 작아야 도망칠 수 있어요)
+    whirlBiteDamage: 18, // 입까지 끌려가면 깨물리는 피해량
+    inkTime: 4.0, // 먹물로 어두워지는 시간
+    sweepWarningTime: 1.0, // 꼬리 휩쓸기 전 바닥 경고 시간
+    sweepSpeed: 520, // 꼬리 휩쓸기 속도
+    sweepDamage: 16, // 꼬리 휩쓸기 피해량
+    sweepHeight: 100, // 꼬리가 휩쓰는 바닥 높이 (헤엄쳐 올라가서 피하기)
+    rageAt: 0.5, // 전체 체력이 이 비율 아래면 분노 모드
   },
 
   // ---------- 레벨 ----------

@@ -12,4 +12,5 @@ Chrome 실행 예:
 
 게임 주소에 `?timer&all` 을 붙인다 (화면 없는 Chrome 은 화면 새로고침 신호가 멈춰서 타이머로 돌려야 함).
 browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포트> browser-harness <<'PY' ... PY`
+- `bot_stage6.js`: 스테이지 6(수중 던전) 봇. 헤엄쳐서 몬스터를 잡고 심해 아귀왕의 띠, 거품, 소용돌이를 피하며 싸운다 (`boss.dangers()` 를 읽음)
 - `bot_bossb.js`, `run_bossb.py`: 주먹 발사, 빨아들이기, 얼음, 킹 보스까지 대응하는 봇과 실행 도우미 (`exec(open("tools/run_bossb.py").read())`, `start_stage(n)`, `skip_to_boss()`, `run()`)

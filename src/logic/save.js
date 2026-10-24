@@ -2,7 +2,7 @@ import { normalizeDifficulty } from './difficulty.js';
 import { normalizeControls } from './controls.js';
 
 const KEY = 'shock-hero-save-v1';
-export const STAGE_COUNT = 5;
+export const STAGE_COUNT = 6; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
 
 export function defaultSave() {
   return {

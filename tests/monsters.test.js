@@ -42,7 +42,7 @@ describe('몬스터 넉백', () => {
 describe('새 몬스터 능력치', () => {
   it('종류 목록에 새 몬스터가 있다', () => {
     for (const t of ['bomber', 'spitter', 'shield']) expect(MONSTER_TYPES).toContain(t);
-    expect(FLYING_TYPES).toEqual(['bomber']);
+    expect(FLYING_TYPES).toContain('bomber'); // 수중 던전의 헤엄치는 몬스터도 중력이 없어서 여기에 들어 있음
   });
 
   it('배수가 아닌 숫자는 그대로 넘어온다', () => {
@@ -156,9 +156,10 @@ describe('스테이지 몬스터 배치', () => {
     expect(firstStage('shield')).toBe(4);
   });
 
-  it('스테이지 5 에는 모든 종류가 나온다', () => {
+  it('스테이지 5 에는 그때까지 나온 모든 종류가 나온다', () => {
     const t = typesIn(stages[4]);
-    for (const type of MONSTER_TYPES) expect(t.has(type), type).toBe(true);
+    // 수중 던전(스테이지 6) 몬스터는 6 에서 처음 나오니 빼고 본다
+    for (const type of MONSTER_TYPES.filter((x) => firstStage(x) > 0 && firstStage(x) <= 5)) expect(t.has(type), type).toBe(true);
   });
 
   it('새 몬스터가 처음 나오는 스테이지에는 보스 문 앞에 안내판이나 로봇 대사가 있다', () => {

@@ -29,7 +29,7 @@ export class TitleScene extends Phaser.Scene {
     on(['RIGHT', 'D'], () => this.move(1));
     on(['UP', 'W'], () => this.setRow(0));
     on(['DOWN', 'S'], () => this.setRow(1));
-    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].forEach((k, i) => kb.on(`keydown-${k}`, () => !this.confirming && this.select(i + 1)));
+    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'].forEach((k, i) => kb.on(`keydown-${k}`, () => !this.confirming && this.select(i + 1)));
     on(['ENTER', 'SPACE'], () => this.activate());
     kb.on('keydown-N', () => {
       if (this.confirming) this.closeConfirm();
@@ -63,11 +63,13 @@ export class TitleScene extends Phaser.Scene {
     const scheme = CONTROL_INFO[save.settings.controls] || CONTROL_INFO.classic;
     makeText(this, width / 2, 166, scheme.lines.join('\n'), 15, '#ffffff', { lineSpacing: 5 }).setOrigin(0.5);
 
-    // 스테이지 카드
+    // 스테이지 카드 (스테이지 수에 맞춰 폭과 간격을 줄인다. 6개면 폭 134, 간격 146)
+    const gap = Math.min(150, Math.floor(880 / stages.length));
+    const cardW = gap - 12;
     this.cards = stages.map((st, i) => {
       const n = i + 1;
-      const x = width / 2 + (i - 2) * 150;
-      const box = this.add.rectangle(x, 266, 136, 80, 0x000000, 0.5).setStrokeStyle(3, 0x888888);
+      const x = width / 2 + (i - (stages.length - 1) / 2) * gap;
+      const box = this.add.rectangle(x, 266, cardW, 80, 0x000000, 0.5).setStrokeStyle(3, 0x888888);
       const locked = n > save.unlocked;
       const found = st.treasures.filter((t) => save.treasures.includes(t.id)).length;
       const best = save.bestTimes[n];

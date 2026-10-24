@@ -32,6 +32,20 @@ export const customArt = {
   // boss_throne_5: 'boss_throne_5.png', // 킹 돌연변이 왕좌
   // boss_core: 'boss_core.png', // 보스 약점(코어)
   // boss_armor: 'boss_armor.png', // 코어를 덮은 장갑
+  // ----- 수중 던전 (스테이지 6) -----
+  // monster_jelly: 'monster_jelly.png', // 골드해파리 GX (오른쪽을 보는 모습, 촉수가 아래로)
+  // monster_jelly_b: 'monster_jelly_b.png', // 골드해파리 촉수가 흔들린 두 번째 그림 (없으면 첫 그림과 같게 넣기)
+  // monster_jelly_ball: 'monster_jelly_ball.png', // 순간 경화: 촉수를 말고 빛나는 공
+  // monster_jelly_bolt: 'monster_jelly_bolt.png', // 골드해파리가 쏘는 전기 독 (오른쪽으로 날아가는 모양)
+  // monster_puffer: 'monster_puffer.png', // 가시복어 평소 모습 (오른쪽을 보는 모습)
+  // monster_puffer_big: 'monster_puffer_big.png', // 가시복어 부푼 모습 (가시 공)
+  // monster_piranha: 'monster_piranha.png', // 이빨 피라냐 (오른쪽을 보는 모습)
+  // monster_crab: 'monster_crab.png', // 집게 꽃게 (오른쪽을 보는 모습)
+  // boss_sea_body_6: 'boss_sea_body_6.png', // 스테이지 6 보스 몸통 (왼쪽을 보는 모습, 아래턱 없이)
+  // boss_sea_jaw_6: 'boss_sea_jaw_6.png', // 스테이지 6 보스 아래턱 (이빨이 위로, 붙는 곳이 오른쪽)
+  // boss_sea_lure: 'boss_sea_lure.png', // 스테이지 6 보스 머리 위 초롱불
+  // boss_sea_heart: 'boss_sea_heart.png', // 스테이지 6 보스 심장 (약점)
+  // boss_sea_bubble: 'boss_sea_bubble.png', // 스테이지 6 보스 거품 폭탄
   // rock: 'rock.png', // 떨어지는 돌
   // glob: 'glob.png', // 독침
   // chest: 'chest.png', // 보물 상자

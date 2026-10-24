@@ -5,7 +5,7 @@ import { Health } from '../src/logic/health.js';
 import { Cooldown } from '../src/logic/cooldown.js';
 import { chargeRatio, resolveAttack } from '../src/logic/combat.js';
 import { addXp, xpToNext, maxHealthFor, damageMultiplierFor } from '../src/logic/progression.js';
-import { createSaveStore, defaultSave, clearStagePatch } from '../src/logic/save.js';
+import { createSaveStore, defaultSave, clearStagePatch, STAGE_COUNT } from '../src/logic/save.js';
 import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets, BOSS_PATTERNS } from '../src/logic/boss.js';
 import { monsterStats, parseMonsterSpot, MONSTER_TYPES } from '../src/logic/monsters.js';
 import { stages } from '../src/stage/index.js';
@@ -147,7 +147,7 @@ describe('저장', () => {
     expect(slower.isRecord).toBe(false);
     expect(slower.best).toBe(100);
     expect(slower.patch.unlocked).toBe(3);
-    expect(clearStagePatch({ ...save, unlocked: 5 }, 5, 300).patch.unlocked).toBe(5);
+    expect(clearStagePatch({ ...save, unlocked: 6 }, 6, 300).patch.unlocked).toBe(6);
   });
 
   it('저장소가 없거나 고장 나도 기본값으로 시작한다', () => {
@@ -233,8 +233,9 @@ describe('몬스터 종류', () => {
 
 // 아이들이 스테이지 파일을 고쳤을 때 실수를 잡아 주는 검사
 describe('스테이지 파일 검사', () => {
-  it('스테이지는 5개', () => {
-    expect(stages).toHaveLength(5);
+  it('스테이지는 6개 (저장의 STAGE_COUNT 와 같다)', () => {
+    expect(stages).toHaveLength(6);
+    expect(STAGE_COUNT).toBe(stages.length);
   });
 
   it('보물 id 는 모든 스테이지에서 겹치지 않는다', () => {
