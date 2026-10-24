@@ -58,6 +58,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.poseName = null; // 잠깐 보여 줄 공격 자세
     this.poseTime = 0;
     this.lastMoving = false;
+    this.swim = null; // 수중 스테이지면 GameScene 이 SwimController 를 붙인다 (src/player/swim.js)
   }
 
   // 공격 피해 배수: 레벨 업 카드(공격력) x 파워 장갑
@@ -155,6 +156,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.hurtLock > 0) return;
 
+    // 수중 스테이지: 걷기와 점프 대신 헤엄치기 (src/player/swim.js)
+    if (this.swim) return this.swim.move(dt, input);
+
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     let speed = this.moveSpeed;
     if (this.isCharging) speed *= this.cfg.charge.moveSpeedMultiplier;
@@ -182,6 +186,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashCd.trigger();
     this.body.allowGravity = false;
     this.setVelocity(dir * this.cfg.dash.speed, 0);
+    this.swim?.onDash(dir, input); // 수중 스테이지: 헤엄 돌진
     this.scene.onDash(this);
   }
 

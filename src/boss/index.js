@@ -3,6 +3,7 @@ import { FrostAstraBoss } from './FrostAstraBoss.js';
 import { KingBoss } from './KingBoss.js';
 import { WatcherBoss } from './WatcherBoss.js';
 import { DragonBoss } from './DragonBoss.js';
+import { SeaBoss } from './SeaBoss.js'; // 스테이지 6 수중 던전 보스 (임시 디자인: 심해 아귀왕)
 
 // stage.boss.type 이름 → 보스 클래스
 // 아직 따로 만들지 않은 종류는 팔 보스로 대신한다.
@@ -12,6 +13,7 @@ export const BOSS_TYPES = {
   king: KingBoss,
   watcher: WatcherBoss, // 스테이지 2: 포레스트 와처 (아들이 디자인)
   dragon: DragonBoss, // 스테이지 3: 아스트라노바X (아들이 디자인)
+  sea: SeaBoss, // 물속을 헤엄치는 보스
 };
 
 export function bossClassFor(stage) {

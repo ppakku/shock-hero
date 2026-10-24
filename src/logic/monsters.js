@@ -1,8 +1,13 @@
 // 몬스터 종류별 능력치. 기본 몬스터(balance.monster)에 종류별 배수(balance.monsterTypes)를 곱한다.
 export const MONSTER_TYPES = ['basic', 'fast', 'tank', 'jumper', 'fros', 'spitter', 'shield'];
+// 수중 던전(스테이지 6) 몬스터: 골드해파리, 가시복어, 피라냐, 꽃게
+export const SEA_TYPES = ['jelly', 'puffer', 'piranha', 'crab'];
+MONSTER_TYPES.push(...SEA_TYPES);
 
 // 하늘을 나는 몬스터 (중력 없음)
 export const FLYING_TYPES = ['fros'];
+// 물속을 헤엄치는 몬스터도 중력이 없다 (src/enemies/SwimMonster.js)
+FLYING_TYPES.push('jelly', 'puffer', 'piranha');
 
 // 예전 이름으로 적어도 알아듣게 (폭탄벌레 bomber → 프로스 fros)
 const OLD_TYPE_NAMES = { bomber: 'fros' };
@@ -20,6 +25,10 @@ export const NORMAL_DIFFICULTY = { level: 'normal', monsterDamage: 1, monsterSpe
 const DAMAGE_KEYS = ['damage', 'venomDamage', 'cloudDamage', 'spitDamage'];
 const SPEED_KEYS = ['moveSpeed', 'lungeSpeed'];
 const WINDUP_KEYS = ['windupTime', 'venomInterval', 'venomWarningTime', 'venomLockTime', 'spitWindup', 'spitCooldown'];
+// 수중 던전 몬스터 숫자 (해파리 독, 복어 가시, 피라냐 돌진)
+DAMAGE_KEYS.push('boltDamage', 'thornDamage', 'bumpDamage');
+SPEED_KEYS.push('boltSpeed', 'dartSpeed');
+WINDUP_KEYS.push('boltWindup', 'boltCooldown', 'inflateWarning', 'puffCooldown', 'dartWindup', 'dartCooldown');
 export function applyDifficulty(stats, difficulty) {
   const d = { ...NORMAL_DIFFICULTY, ...(difficulty ?? {}) };
   const num = (v) => (typeof v === 'number' && v > 0 ? v : 1);

@@ -19,6 +19,9 @@ import {
 } from '../logic/growth.js';
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
+// 수중 던전(스테이지 6): 물속 배경과 헤엄치기
+import { drawUnderwater } from '../fx/underwater.js';
+import { SwimController } from '../player/swim.js';
 
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 const KEY = Phaser.Input.Keyboard.KeyCodes;
@@ -65,6 +68,8 @@ export class GameScene extends Phaser.Scene {
     });
     this.physics.add.collider(this.player, this.solids);
     this.physics.add.collider(this.player, this.oneWays);
+    // 수중 스테이지면 헤엄치기 (src/player/swim.js)
+    if (st.swim) this.player.swim = new SwimController(this.player, cfg.swim, cfg.world.gravity);
 
     this.monsters = [];
     if (!this.fromCheckpoint) {
@@ -123,6 +128,8 @@ export class GameScene extends Phaser.Scene {
   drawBackground() {
     const st = this.stage;
     const th = st.theme;
+    // 수중 던전: 물속 동굴 배경은 따로 그린다 (src/fx/underwater.js)
+    if (th.scenery === 'underwater') return drawUnderwater(this);
     const sky = this.add.graphics().setScrollFactor(0).setDepth(-20);
     sky.fillGradientStyle(th.sky[0], th.sky[0], th.sky[1], th.sky[1], 1).fillRect(0, 0, 960, 540);
     sky.fillStyle(th.sun, 0.9).fillCircle(760, 150, 46);
@@ -360,6 +367,7 @@ export class GameScene extends Phaser.Scene {
     const dt = (Math.min(deltaMs, 50) / 1000) * this.time.timeScale;
     const input = this.readInput();
     this.player.update(dt, input);
+    this.player.swim?.update(dt); // 수중 스테이지: 천장 막기, 거품, 헤엄 자세
     for (const m of this.monsters) m.update(dt);
     this.monsters = this.monsters.filter((m) => !m.dead);
     this.updateGate();
@@ -949,7 +957,8 @@ export class GameScene extends Phaser.Scene {
       this.sfxPlay('slam');
       this.shake(0.02, 600);
       this.gainXp(cfg.boss.xp, boss.bodyX, boss.groundY - 300);
-      this.robot.say(this.isLastStage ? ['해냈다! 괴물들의 왕을 쓰러뜨렸어!', '도시가 완전히 평화를 되찾았어!'] : ['해냈다!', '다음엔 좀 덜 무서운 괴물이면 좋겠어.'], true);
+      // 마지막 스테이지는 스테이지 파일의 endingLines 를 말한다 (없으면 기본 대사)
+      this.robot.say(this.isLastStage ? this.stage.endingLines || ['해냈다! 마지막 보스를 쓰러뜨렸어!', '도시가 완전히 평화를 되찾았어!'] : ['해냈다!', '다음엔 좀 덜 무서운 괴물이면 좋겠어.'], true);
       this.time.delayedCall(1800, () => this.finishVictory());
     });
   }

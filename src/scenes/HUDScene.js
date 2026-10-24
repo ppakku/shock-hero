@@ -128,7 +128,7 @@ export class HUDScene extends Phaser.Scene {
         `걸린 시간 ${formatTime(time)}${isRecord ? '  (최고 기록!)' : ''}`,
         `최고 기록 ${formatTime(best)}    레벨 ${level}    보물 ${treasures}`,
         '',
-        last ? '괴물들의 왕을 쓰러뜨리고 도시를 구했어요! 축하해요!' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
+        last ? '심해의 왕까지 쓰러뜨리고 도시와 바다를 구했어요! 축하해요!' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
         last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
       ].join('\n'),
     );
