@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BossBase } from './BossBase.js';
-import { BossPart, Puddles, GroundWaves, Rect, intersects, damagePart, warnBox } from './bossKit.js';
+import { BossPart, Puddles, GroundWaves, Rect, intersects, damagePart, warnBox, WAVE_H } from './bossKit.js';
 import { chooseDragonAttack, pillarWaves, flyLandingX, gustVelocity, gustPillarXs } from '../logic/dragon.js';
 import { spreadTargets } from '../logic/watcher.js';
 import { coreDamage } from '../logic/boss.js';
@@ -94,7 +94,12 @@ export class DragonBoss extends BossBase {
     this.bellyOpen = false;
 
     this.puddles = new Puddles(scene, this.hazG, { damage: k.fireDamage, color: 0xd8401c, edge: 0xffc040, name: '뜨거운 바닥' });
-    this.flames = new GroundWaves(scene, this.fxG, { damage: k.breathDamage, speed: k.breathSpeed, color: 0xff5a1f, light: 0xffe08a });
+    // 불 뿜기 그림(fx_breath, 아들 그림)이 있으면 땅을 훑는 불길은 그 그림으로 그리고,
+    // GroundWaves 의 세모 도형은 보이지 않는 붓(flameG)에 그리게 한다 (판정은 GroundWaves 그대로).
+    this.breathSheet = scene.anims.exists('fx_breath_anim');
+    this.flameG = this.breathSheet ? scene.add.graphics().setVisible(false) : this.fxG;
+    this.breathPool = [];
+    this.flames = new GroundWaves(scene, this.flameG, { damage: k.breathDamage, speed: k.breathSpeed, color: 0xff5a1f, light: 0xffe08a });
     this.waves = new GroundWaves(scene, this.fxG, { damage: k.landWaveDamage, speed: k.landWaveSpeed, color: 0xff8a3d, light: 0xfff0b0 });
     this.balls = []; // 하늘에서 떨어지는 불덩이
     this.action = null;
@@ -260,6 +265,30 @@ export class DragonBoss extends BossBase {
     for (const x of xs) this.fire.pillarSprite(x, this.groundY, PILLAR_H, PILLAR_ANIM_SCALE);
   }
 
+  // 땅을 훑는 불길 그림: 머리(둥근 불꽃)가 판정 자리, 꼬리는 지나온 쪽으로.
+  // 그림은 머리가 왼쪽이라 오른쪽으로 달리면 뒤집는다. 높이는 판정 높이(WAVE_H)와 맞춘다.
+  drawBreathSprites() {
+    const used = new Set();
+    for (const w of this.flames.list) {
+      if (!w.img) {
+        w.img = this.breathPool.pop() || this.scene.add.sprite(0, 0, 'fx_breath').play('fx_breath_anim').setOrigin(0.08, 1).setDepth(8.4);
+        w.img.anims.setProgress(Math.random());
+      }
+      const s = Math.max(0.3, Math.min(1, w.left / 60)); // 끝에 가면 작아진다 (GroundWaves 와 같은 계산)
+      const frameH = w.img.frame.height || 152;
+      const k = (WAVE_H * 1.25 * s) / frameH; // 그림 칸 높이의 약 80%가 불꽃이라 판정 높이와 비슷하게 보인다
+      w.img.setVisible(true).setScale(k).setFlipX(w.dir > 0).setOrigin(w.dir > 0 ? 0.92 : 0.08, 1).setPosition(w.x, this.groundY + 2);
+      used.add(w.img);
+    }
+    for (const img of this.breathLive || []) {
+      if (!used.has(img)) {
+        img.setVisible(false);
+        this.breathPool.push(img);
+      }
+    }
+    this.breathLive = used;
+  }
+
   // 발밑 그림자 (src/fx/shadows.js 가 그린다). 날아오르면 작아진다.
   shadowSpots() {
     if (this.state === 'dead') return [];
@@ -332,6 +361,7 @@ export class DragonBoss extends BossBase {
     this.dt = dt;
     this.clearFx();
     this.fire.begin();
+    if (this.breathSheet) this.flameG.clear();
     this.shadowG.clear();
     this.windG.clear();
     this.puddles.update(dt, this.groundY, this.t);
@@ -363,6 +393,7 @@ export class DragonBoss extends BossBase {
   drawFire(dt) {
     const gy = this.groundY;
     this.flames.list.forEach((w, i) => this.fire.wall(w.x, gy, 64 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `fl${i}`));
+    if (this.breathSheet) this.drawBreathSprites();
     this.waves.list.forEach((w, i) => this.fire.wall(w.x, gy, 44 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `wv${i}`));
     this.puddles.list.forEach((p, i) => this.fire.lick(p.x, gy, p.w, dt, `pd${i}`));
     if (this.raging) this.fire.aura(this.x, gy - this.air, 220, 200, dt);
@@ -1007,6 +1038,7 @@ export class DragonBoss extends BossBase {
     this.puddles.clear();
     this.windG.clear();
     this.fire.clear();
+    for (const img of this.breathLive || []) img.setVisible(false);
     super.defeat();
   }
 
