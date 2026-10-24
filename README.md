@@ -18,6 +18,8 @@
 
 ## 시작 전에 고르는 것 (타이틀 화면)
 
+타이틀 화면은 흑백 만화 그림체입니다 (docs/title_design.png 오른쪽 그림). 회색 연기 낀 불타는 도시, 옥상 위에서 망토를 휘날리는 주인공, 철판에 적힌 조작법, 사진처럼 핀으로 꽂은 스테이지 카드가 나옵니다. 그림은 모두 코드로 그립니다 (src/ui/titleArt.js). 스테이지 파일에 `titlePhoto: 'water'` 처럼 적으면 카드 사진 장면(city, forest, lava, ice, castle, water)을 고를 수 있습니다.
+
 스테이지 카드 아래 버튼 줄에서 고릅니다. ↓ 키로 버튼 줄로 내려가 ← → 로 고르고 Enter 를 누르거나, 마우스로 눌러도 됩니다.
 
 - **난이도:** 쉬움, 보통, 어려움.
@@ -148,6 +150,7 @@ src/
   enemies/     몬스터 7종류 (Monster.js 기본, Fros.js 프로스, Spitter.js 침뱉기, ShieldMonster.js 방패병)
   boss/        돌연변이 보스 (스테이지마다 설정이 다름)
   scenes/      타이틀, 게임, HUD(체력바 등)
+  ui/          글자 도우미, 타이틀 화면 그림(titleArt.js)과 자리 계산(titleLayout.js)
   fx/ audio/   임시 그림, 효과, 효과음
 tests/         자동 테스트
 ```
