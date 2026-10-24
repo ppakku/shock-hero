@@ -73,6 +73,7 @@ export const stage5 = {
   arena: { startX: 4840, endX: 5800 },
 
   boss: {
+    type: 'king', // 보스 종류 (src/boss/index.js)
     name: '킹 돌연변이',
     arms: 3,
     healthScale: 1.8,

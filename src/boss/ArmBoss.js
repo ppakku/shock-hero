@@ -3,6 +3,7 @@ import { Health } from '../logic/health.js';
 import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets } from '../logic/boss.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
+import { make } from '../fx/textures.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -58,9 +59,10 @@ class BossArm {
   }
 }
 
-// 돌연변이 보스: 팔을 다 부수면 장갑이 떨어지고 코어가 드러난다.
-// 스테이지마다 stage.boss 로 이름, 팔 개수, 체력 배수, 공격 목록이 달라진다.
-export class Boss {
+// 팔 보스(다중 팔 돌연변이): 팔을 다 부수면 장갑이 떨어지고 코어가 드러난다.
+// stage.boss 로 이름, 팔 개수, 체력 배수, 공격 목록이 달라진다.
+// 보스가 지켜야 할 약속은 src/boss/README.md 에 있다.
+export class ArmBoss {
   constructor(scene, cfg, stage, skin = 1) {
     this.scene = scene;
     this.c = cfg.boss;
@@ -114,6 +116,69 @@ export class Boss {
     this.t = 0;
     this.defeated = false;
     this.lastBlockedAt = -10;
+  }
+
+  static makeTextures(scene, stage, skin) {
+    const boss = stage.boss;
+    const c = boss.colors;
+    // 보스 몸통 (왼쪽을 보는 모습)
+    make(scene, `boss_body_${skin}`, 220, 280, (g) => {
+      g.fillStyle(c.main).fillRoundedRect(10, 20, 200, 260, 60);
+      g.fillStyle(c.light).fillRoundedRect(30, 120, 140, 150, 40);
+      g.fillStyle(c.dark).fillCircle(170, 90, 10).fillCircle(150, 230, 8).fillCircle(190, 200, 6);
+      g.fillStyle(0xfff04d).fillEllipse(55, 75, 40, 30).fillEllipse(110, 70, 34, 26);
+      g.fillStyle(0xd40000).fillCircle(48, 76, 8).fillCircle(103, 71, 7);
+      g.fillStyle(0x2a0e25).fillRoundedRect(30, 110, 100, 34, 14);
+      g.fillStyle(0xffffff);
+      for (let i = 0; i < 6; i++) g.fillTriangle(34 + i * 16, 110, 46 + i * 16, 110, 40 + i * 16, 124);
+      if (boss.crown) {
+        g.fillStyle(0xffd23f).fillPoints(
+          [{ x: 40, y: 30 }, { x: 50, y: 0 }, { x: 70, y: 22 }, { x: 90, y: 0 }, { x: 110, y: 22 }, { x: 130, y: 0 }, { x: 140, y: 30 }],
+          true,
+        );
+        g.fillStyle(0xff3a6a).fillCircle(90, 20, 6);
+      }
+    });
+
+    // 보스 팔 (주먹이 아래)
+    make(scene, `boss_arm_${skin}`, 70, 210, (g) => {
+      g.fillStyle(c.arm).fillRoundedRect(18, 0, 34, 160, 14);
+      g.fillStyle(c.dark).fillRect(18, 60, 34, 8).fillRect(18, 110, 34, 8);
+      g.fillStyle(c.light).fillRoundedRect(0, 148, 70, 62, 20);
+      g.lineStyle(4, c.dark).lineBetween(18, 160, 18, 200).lineBetween(35, 160, 35, 205).lineBetween(52, 160, 52, 200);
+    });
+  }
+
+  // HUD 체력바에 보여 줄 부위 목록
+  hudParts() {
+    const parts = this.arms.map((arm) => ({
+      label: arm.alive ? arm.label : `${arm.label} 파괴`,
+      ratio: arm.alive ? arm.health.ratio : 0,
+      kind: 'part',
+    }));
+    parts.push({ label: this.coreExposed ? '코어 (약점!)' : '코어 (잠김)', ratio: this.coreHealth.ratio, kind: 'core', locked: !this.coreExposed });
+    return parts;
+  }
+
+  // 궁극기: 살아 있는 팔은 바닥에 없어도 맞고, 코어가 드러났으면 코어도 맞는다
+  receiveUltimate(damage) {
+    if (this.state !== 'fight' || this.defeated) return false;
+    const target = this.armsAlive[0];
+    if (target) {
+      target.health.damage(damage);
+      floatText(this.scene, target.sprite.x, target.sprite.y - 130, String(damage), '#3fd0ff', 30);
+      flash(this.scene, target.sprite);
+      if (target.health.isDead) this.destroyArm(target);
+      return true;
+    }
+    if (this.coreExposed) {
+      this.coreHealth.damage(damage);
+      floatText(this.scene, this.corePos.x, this.corePos.y - 40, String(damage), '#3fd0ff', 32);
+      flash(this.scene, this.core);
+      if (this.coreHealth.isDead) this.defeat();
+      return true;
+    }
+    return false;
   }
 
   get armsAlive() {

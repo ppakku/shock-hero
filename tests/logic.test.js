@@ -277,11 +277,16 @@ describe('스테이지 파일 검사', () => {
         }
       });
 
-      it('보스 공격 이름과 단계 수가 맞다', () => {
+      it('보스 종류와 공격 목록이 있다', () => {
         const b = st.boss;
-        expect([2, 3]).toContain(b.arms);
-        expect(b.phases).toHaveLength(b.arms + 1);
-        for (const list of b.phases) for (const p of list) expect(Object.keys(BOSS_PATTERNS)).toContain(p);
+        expect(typeof b.type).toBe('string');
+        expect(b.phases.length).toBeGreaterThan(0);
+        // 팔 보스는 [팔 다 있을 때, ..., 팔 다 부순 뒤] 단계 수가 팔 개수 + 1
+        if (b.type === 'arms') {
+          expect([2, 3]).toContain(b.arms);
+          expect(b.phases).toHaveLength(b.arms + 1);
+          for (const list of b.phases) for (const p of list) expect(Object.keys(BOSS_PATTERNS)).toContain(p);
+        }
       });
     });
   });

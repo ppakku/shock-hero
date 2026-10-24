@@ -3,8 +3,9 @@ import { cfg } from '../config/index.js';
 import { getStage, stages } from '../stage/index.js';
 import { Player } from '../player/Player.js';
 import { Robot } from '../player/Robot.js';
-import { Monster } from '../enemies/Monster.js';
-import { Boss } from '../boss/Boss.js';
+import { createMonster } from '../enemies/index.js';
+import { createBoss } from '../boss/index.js';
+import { HeroSkills } from '../player/skills.js';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { clearStagePatch } from '../logic/save.js';
@@ -59,14 +60,15 @@ export class GameScene extends Phaser.Scene {
 
     this.monsters = [];
     if (!this.fromCheckpoint) {
-      for (const spot of st.monsters) this.monsters.push(new Monster(this, parseMonsterSpot(spot, st.groundY), cfg));
+      for (const spot of st.monsters) this.monsters.push(createMonster(this, parseMonsterSpot(spot, st.groundY), cfg));
       this.physics.add.collider(this.monsters, this.solids);
       this.physics.add.collider(this.monsters, this.oneWays);
     }
     this.buildGate();
 
-    this.boss = new Boss(this, cfg, st, this.stageNum);
-    this.physics.add.collider(this.player, this.boss.blocker);
+    this.boss = createBoss(this, cfg, st, this.stageNum);
+    if (this.boss.blocker) this.physics.add.collider(this.player, this.boss.blocker);
+    this.skills = new HeroSkills(this);
 
     this.robot = new Robot(this, this.player);
     this.chargeG = this.add.graphics().setDepth(12);
@@ -86,7 +88,7 @@ export class GameScene extends Phaser.Scene {
     this.keys = this.input.keyboard.addKeys({
       left: KEY.A, right: KEY.D, left2: KEY.LEFT, right2: KEY.RIGHT,
       jump: KEY.SPACE, jump2: KEY.W, jump3: KEY.UP,
-      attack: KEY.J, dash: KEY.K, dash2: KEY.SHIFT,
+      attack: KEY.J, dash: KEY.K, dash2: KEY.SHIFT, ult: KEY.L,
     });
     this.input.mouse?.disableContextMenu();
 
@@ -289,6 +291,7 @@ export class GameScene extends Phaser.Scene {
     this.monsters = this.monsters.filter((m) => !m.dead);
     this.updateGate();
     this.boss.update(dt);
+    this.skills.update(dt);
     this.robot.update(dt);
     this.drawCharge();
     this.checkTriggers();
@@ -305,8 +308,10 @@ export class GameScene extends Phaser.Scene {
     const k = this.keys;
     const justDown = (...keys) => keys.map((key) => Phaser.Input.Keyboard.JustDown(key)).some(Boolean);
     const p = this.input.activePointer;
-    if (this.ended) return { left: false, right: false, jumpDown: false, jumpPressed: false, attackDown: false, dashPressed: false };
+    if (this.ended) return { left: false, right: false, jumpDown: false, jumpPressed: false, attackDown: false, dashPressed: false, upDown: false, ultPressed: false };
     return {
+      upDown: k.jump2.isDown || k.jump3.isDown, // W 나 ↑ 를 누르고 있는지 (위쪽 공격용)
+      ultPressed: justDown(k.ult), // 궁극기 L
       left: k.left.isDown || k.left2.isDown,
       right: k.right.isDown || k.right2.isDown,
       jumpDown: k.jump.isDown || k.jump2.isDown || k.jump3.isDown,
@@ -428,6 +433,16 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    const hitAny = this.hitArea(rect, attack, dir);
+    if (hitAny) {
+      this.sfxPlay('hit');
+      if (attack.kind === 'charged') this.shake(0.004 + 0.008 * attack.ratio, 120);
+    }
+  }
+
+  // 공격 사각형에 닿은 몬스터와 보스에게 피해를 준다. 하나라도 맞았으면 true.
+  // 주먹, 에너지탄, 위쪽 공격 등 모든 주인공 공격이 이 함수를 쓴다.
+  hitArea(rect, attack, dir) {
     let hitAny = false;
     for (const m of this.monsters) {
       if (!m.dead && intersects(rect, m.getBounds())) {
@@ -436,11 +451,30 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (this.boss.receiveAttack(rect, attack)) hitAny = true;
+    return hitAny;
+  }
 
-    if (hitAny) {
-      this.sfxPlay('hit');
-      if (attack.kind === 'charged') this.shake(0.004 + 0.008 * attack.ratio, 120);
+  // 화면 안의 모든 몬스터와 보스에게 피해 (궁극기)
+  hitScreen(attack, bossDamage) {
+    const view = this.cameras.main.worldView;
+    let hitAny = false;
+    for (const m of this.monsters) {
+      if (!m.dead && view.contains(m.x, m.y)) {
+        m.takeHit(attack, m.x < this.player.x ? -1 : 1);
+        hitAny = true;
+      }
     }
+    if (this.bossStarted && this.boss.receiveUltimate(bossDamage)) hitAny = true;
+    return hitAny;
+  }
+
+  // 보스가 부하를 부를 때 (spot = { x, y, type })
+  spawnMonster(spot) {
+    const m = createMonster(this, { y: this.stage.groundY, type: 'basic', ...spot }, cfg);
+    this.physics.add.collider(m, this.solids);
+    this.physics.add.collider(m, this.oneWays);
+    this.monsters.push(m);
+    return m;
   }
 
   onChargeFull(player) {

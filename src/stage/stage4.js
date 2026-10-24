@@ -70,6 +70,7 @@ export const stage4 = {
   arena: { startX: 4440, endX: 5400 },
 
   boss: {
+    type: 'ice', // 보스 종류 (src/boss/index.js)
     name: '얼음 돌연변이',
     arms: 3,
     healthScale: 1.5,

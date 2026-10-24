@@ -72,6 +72,7 @@ export const stage1 = {
   arena: { startX: 3000, endX: 3960 },
 
   boss: {
+    type: 'arms', // 보스 종류 (src/boss/index.js)
     name: '다중 팔 돌연변이',
     arms: 2, // 팔 개수 (2 또는 3)
     healthScale: 1, // 체력 배수 (balance.js 보스 체력에 곱함)

@@ -66,6 +66,7 @@ export const stage2 = {
   arena: { startX: 3840, endX: 4800 },
 
   boss: {
+    type: 'toad', // 보스 종류 (src/boss/index.js)
     name: '독침 돌연변이',
     arms: 2,
     healthScale: 1.2,

@@ -68,6 +68,7 @@ export const stage3 = {
   arena: { startX: 4240, endX: 5200 },
 
   boss: {
+    type: 'golem', // 보스 종류 (src/boss/index.js)
     name: '용암 돌연변이',
     arms: 3,
     healthScale: 1.3,

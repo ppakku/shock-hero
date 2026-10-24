@@ -18,6 +18,7 @@ export class HUDScene extends Phaser.Scene {
     this.dashText = makeText(this, 290, 34, '대시', 13).setOrigin(0.5);
     this.treasureText = makeText(this, 266, 70, '', 14, '#ffd23f').setOrigin(0, 0.5);
     this.timeText = makeText(this, 936, 30, '', 18).setOrigin(1, 0.5);
+    this.ultText = makeText(this, 24, 106, '', 13, '#9fe8ff').setOrigin(0, 0.5).setVisible(false);
     this.stageText = makeText(this, 936, 54, '', 13, '#dddddd').setOrigin(1, 0.5);
     this.monsterText = makeText(this, 600, 30, '', 18, '#ff8a8a').setOrigin(0.5);
     this.bossTitle = makeText(this, 600, 14, '', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
@@ -188,6 +189,18 @@ export class HUDScene extends Phaser.Scene {
 
     const st = gs.stage;
     const found = st.treasures.filter((t) => save.treasures.includes(t.id)).length;
+    // 궁극기 게이지 (주인공에 ultGauge 가 있을 때만)
+    if (typeof p.ultGauge === 'number') {
+      const u = Math.max(0, Math.min(1, p.ultGauge));
+      const ready = u >= 1;
+      const pulse = ready && Math.floor(this.time.now / 200) % 2 === 0;
+      g.fillStyle(0x000000, 0.6).fillRect(20, 84, 236, 10);
+      g.fillStyle(ready ? (pulse ? 0xffffff : 0x3fd0ff) : 0x2a7fa8, 1).fillRect(22, 86, 232 * u, 6);
+      this.ultText.setText(ready ? '궁극기 준비! L 키' : '궁극기').setVisible(true);
+    } else {
+      this.ultText.setVisible(false);
+    }
+
     this.treasureText.setText(`보물 ${found}/${st.treasures.length}`);
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
     this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}`);
@@ -199,12 +212,7 @@ export class HUDScene extends Phaser.Scene {
     this.bossTitle.setVisible(showBoss);
     this.bossLabels.forEach((l) => l.setVisible(showBoss));
     if (showBoss) {
-      const parts = boss.arms.map((arm) => ({
-        ratio: arm.alive ? arm.health.ratio : 0,
-        label: arm.alive ? arm.label : `${arm.label} 파괴`,
-        core: false,
-      }));
-      parts.push({ ratio: boss.coreHealth.ratio, label: boss.coreExposed ? '코어 (약점!)' : '코어 (잠김)', core: true, locked: !boss.coreExposed });
+      const parts = boss.hudParts().slice(0, 4);
       const w = parts.length > 3 ? 118 : 125;
       const step = w + 8;
       const x0 = 600 - (parts.length * step - 8) / 2;
@@ -213,7 +221,7 @@ export class HUDScene extends Phaser.Scene {
       parts.forEach((part, i) => {
         const x = x0 + i * step;
         g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 30, w, 12, 4);
-        if (part.ratio > 0) g.fillStyle(part.locked ? 0x777777 : part.core ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 32, Math.max(6, (w - 4) * part.ratio), 8, 3);
+        if (part.ratio > 0) g.fillStyle(part.locked ? 0x777777 : part.kind === 'core' ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 32, Math.max(6, (w - 4) * part.ratio), 8, 3);
         this.bossLabels[i].setText(part.label).setPosition(x + w / 2, 54);
       });
     }

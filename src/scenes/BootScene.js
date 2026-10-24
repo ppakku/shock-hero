@@ -2,6 +2,9 @@ import Phaser from 'phaser';
 import { customArt } from '../config/art.js';
 import { makeTextures } from '../fx/textures.js';
 import { stages } from '../stage/index.js';
+import { makeHeroTextures } from '../fx/heroTextures.js';
+import { makeMonsterTextures } from '../enemies/index.js';
+import { makeBossTextures } from '../boss/index.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -14,7 +17,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    makeTextures(this, stages);
+    makeTextures(this);
+    makeHeroTextures(this);
+    makeMonsterTextures(this);
+    makeBossTextures(this, stages);
     this.scene.start('Title');
   }
 }
