@@ -14,6 +14,7 @@ const H = 260;
 const TH = 200; // 날개를 늘어뜨리고 쉬는 그림 높이
 const SHEET_H = 340; // 스프라이트 시트(아들 그림)를 쓸 때 화면 높이
 const SHEET_W = Math.round((SHEET_H * 344) / 384); // 한 칸 비율 그대로
+const SHEET_FOOT = 34; // 시트 칸 아래 빈 공간 (화면 픽셀)
 const HALF = 110;
 const TAIL_LEN = 310; // 몸 가운데에서 꼬리 끝까지
 const TAIL_H = 50; // 꼬리 휘두르기 높이 (점프로 넘을 수 있음)
@@ -342,7 +343,8 @@ export class DragonBoss extends BossBase {
       s.setTexture(tired ? `dragon_tired_${this.skinKey}` : `dragon_${this.skinKey}`);
       s.setDisplaySize(W, tired ? TH : H);
     }
-    s.setPosition(this.x, this.groundY - this.air - this.lift);
+    // 시트 그림은 칸 아래에 빈 공간이 있어서 그만큼 내려 발이 땅에 닿게 한다
+    s.setPosition(this.x, this.groundY - this.air - this.lift + (this.sheet ? SHEET_FOOT : 0));
     s.setFlipX(this.facing > 0);
     this.bodyX = this.x;
     // 분노하면 몸의 용암 무늬가 밝게 빛난다
