@@ -5,8 +5,10 @@ import { Health } from '../src/logic/health.js';
 import { Cooldown } from '../src/logic/cooldown.js';
 import { chargeRatio, resolveAttack } from '../src/logic/combat.js';
 import { addXp, xpToNext, maxHealthFor, damageMultiplierFor } from '../src/logic/progression.js';
-import { createSaveStore, defaultSave } from '../src/logic/save.js';
-import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets } from '../src/logic/boss.js';
+import { createSaveStore, defaultSave, clearStagePatch } from '../src/logic/save.js';
+import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets, BOSS_PATTERNS } from '../src/logic/boss.js';
+import { monsterStats, parseMonsterSpot, MONSTER_TYPES } from '../src/logic/monsters.js';
+import { stages } from '../src/stage/index.js';
 
 const cfg = sanitizeNumbers(balance, () => {});
 
@@ -116,12 +118,36 @@ describe('저장', () => {
 
   it('저장한 경험치와 보물은 다시 불러와도 남아 있다', () => {
     const store = createSaveStore(memoryStorage());
-    store.update({ level: 3, xp: 12, treasures: ['stage1-chest'], checkpoint: 'boss' });
+    store.update({ level: 3, xp: 12, treasures: ['stage1-chest'], checkpoint: 2, unlocked: 3 });
     const d = store.load();
     expect(d.level).toBe(3);
     expect(d.xp).toBe(12);
     expect(d.treasures).toEqual(['stage1-chest']);
-    expect(d.checkpoint).toBe('boss');
+    expect(d.checkpoint).toBe(2);
+    expect(d.unlocked).toBe(3);
+  });
+
+  it('예전 저장(스테이지 1만 있던 때)도 이어서 쓴다', () => {
+    const s = memoryStorage();
+    s.setItem('shock-hero-save-v1', JSON.stringify({ level: 5, xp: 3, treasures: ['stage1-chest'], checkpoint: 'boss', bestTime: 60.9 }));
+    const d = createSaveStore(s).load();
+    expect(d.level).toBe(5);
+    expect(d.checkpoint).toBe(1);
+    expect(d.bestTimes[1]).toBe(60.9);
+    expect(d.unlocked).toBe(2);
+  });
+
+  it('스테이지를 깨면 다음 스테이지가 열리고 기록이 남는다', () => {
+    const save = { ...defaultSave(), checkpoint: 1 };
+    const r = clearStagePatch(save, 1, 120);
+    expect(r.patch.unlocked).toBe(2);
+    expect(r.patch.checkpoint).toBe(null);
+    expect(r.isRecord).toBe(true);
+    const slower = clearStagePatch({ ...save, bestTimes: { 1: 100 }, unlocked: 3 }, 1, 120);
+    expect(slower.isRecord).toBe(false);
+    expect(slower.best).toBe(100);
+    expect(slower.patch.unlocked).toBe(3);
+    expect(clearStagePatch({ ...save, unlocked: 5 }, 5, 300).patch.unlocked).toBe(5);
   });
 
   it('저장소가 없거나 고장 나도 기본값으로 시작한다', () => {
@@ -140,15 +166,31 @@ describe('저장', () => {
 });
 
 describe('보스 패턴', () => {
-  it('팔 2개면 내려찍기만, 1개면 쓸기도 섞고, 0개면 돌 떨구기', () => {
-    expect(chooseBossAttack(['a', 'b'], () => 0.99).type).toBe('slam');
-    expect(chooseBossAttack(['a'], () => 0.1).type).toBe('sweep');
-    expect(chooseBossAttack(['a'], () => 0.9).type).toBe('slam');
-    expect(chooseBossAttack([]).type).toBe('rocks');
+  const phases = [['slam', 'doubleSlam'], ['sweep'], ['rocks', 'shockwave']];
+
+  it('부서진 팔 개수에 맞는 목록에서 고른다', () => {
+    expect(['slam', 'doubleSlam']).toContain(chooseBossAttack(phases, 2, 2, null, () => 0.5));
+    expect(chooseBossAttack(phases, 1, 2, null, () => 0.5)).toBe('sweep');
+    expect(['rocks', 'shockwave']).toContain(chooseBossAttack(phases, 0, 2, null, () => 0.5));
+  });
+
+  it('팔이 모자라면 그 공격은 빼고, 방금 한 공격은 되도록 피한다', () => {
+    expect(chooseBossAttack([['doubleSlam', 'slam']], 1, 3, null, () => 0)).toBe('slam');
+    expect(chooseBossAttack([['doubleSlam']], 1, 3)).toBe('slam');
+    for (let i = 0; i < 10; i++) expect(chooseBossAttack(phases, 0, 2, 'rocks', () => i / 10)).toBe('shockwave');
   });
 
   it('팔이 줄수록 빨라진다', () => {
     expect(bossSpeedMultiplier(1)).toBeLessThan(bossSpeedMultiplier(2));
+    expect(bossSpeedMultiplier(2, 3)).toBeLessThan(bossSpeedMultiplier(3, 3));
+    expect(bossSpeedMultiplier(1, 3)).toBeLessThan(bossSpeedMultiplier(2, 3));
+    expect(bossSpeedMultiplier(0, 3)).toBeLessThan(bossSpeedMultiplier(1, 3));
+  });
+
+  it('두 팔 동시 내려찍기는 피할 틈을 남긴다', () => {
+    const [a, b] = doubleSlamTargets(3100, 3060, 3640);
+    expect(a).toBe(3100);
+    expect(Math.abs(a - b)).toBeGreaterThanOrEqual(180);
   });
 
   it('충전 펀치는 코어에 더 아프다', () => {
@@ -164,5 +206,83 @@ describe('보스 패턴', () => {
     expect(xs).toHaveLength(3);
     for (let i = 0; i < xs.length; i++)
       for (let j = i + 1; j < xs.length; j++) expect(Math.abs(xs[i] - xs[j])).toBeGreaterThanOrEqual(90);
+  });
+});
+
+describe('몬스터 종류', () => {
+  it('종류마다 능력치가 다르다', () => {
+    const basic = monsterStats(cfg, 'basic');
+    const fast = monsterStats(cfg, 'fast');
+    const tank = monsterStats(cfg, 'tank');
+    expect(fast.moveSpeed).toBeGreaterThan(basic.moveSpeed);
+    expect(tank.maxHealth).toBeGreaterThan(basic.maxHealth);
+    expect(tank.size).toBeGreaterThan(1);
+    expect(monsterStats(cfg, 'unknown').type).toBe('basic');
+  });
+
+  it('스테이지 파일의 몬스터 한 줄을 읽는다', () => {
+    expect(parseMonsterSpot(900, 480)).toEqual({ x: 900, y: 480, type: 'basic' });
+    expect(parseMonsterSpot({ x: 1, type: 'tank' }, 480)).toEqual({ x: 1, y: 480, type: 'tank' });
+  });
+});
+
+// 아이들이 스테이지 파일을 고쳤을 때 실수를 잡아 주는 검사
+describe('스테이지 파일 검사', () => {
+  it('스테이지는 5개', () => {
+    expect(stages).toHaveLength(5);
+  });
+
+  it('보물 id 는 모든 스테이지에서 겹치지 않는다', () => {
+    const ids = stages.flatMap((s) => s.treasures.map((t) => t.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  stages.forEach((st, i) => {
+    describe(`스테이지 ${i + 1} (${st.name})`, () => {
+      it('순서: 시작 < 보스 문 < 체크포인트 < 보스 구역', () => {
+        expect(st.playerStartX).toBeLessThan(st.gateX);
+        expect(st.gateX).toBeLessThan(st.checkpointX);
+        expect(st.checkpointX).toBeLessThan(st.arena.startX);
+        expect(st.arena.endX).toBe(st.width);
+        expect(st.arena.endX - st.arena.startX).toBe(960);
+      });
+
+      it('몬스터는 모두 보스 문 앞에 있고 종류 이름이 맞다', () => {
+        expect(st.monsters.length).toBeGreaterThan(0);
+        for (const spot of st.monsters) {
+          const m = parseMonsterSpot(spot, st.groundY);
+          expect(m.x).toBeLessThan(st.gateX - 60);
+          if (typeof spot === 'object' && spot.type) expect(MONSTER_TYPES).toContain(spot.type);
+        }
+      });
+
+      it('보물은 3개 이상이고, 보물 문 앞쪽 발판이나 땅 위에 있다', () => {
+        expect(st.treasures.length).toBeGreaterThanOrEqual(3);
+        for (const t of st.treasures) {
+          expect(t.x).toBeLessThan(st.gateX);
+          const onGround = t.y === st.groundY;
+          const onPlatform = st.platforms.some((p) => p.y === t.y && Math.abs(p.x - t.x) <= p.w / 2);
+          expect(onGround || onPlatform, `${t.id} 아래에 발판이 없어요`).toBe(true);
+        }
+      });
+
+      it('발판은 점프로 올라갈 수 있게 이어져 있다', () => {
+        // 땅이나 다른 발판에서 높이 120 이하, 가로 거리가 가까운 발판이 있어야 한다
+        for (const p of st.platforms) {
+          const fromGround = st.groundY - p.y <= 120;
+          const fromOther = st.platforms.some(
+            (q) => q !== p && q.y > p.y && q.y - p.y <= 120 && Math.abs(q.x - p.x) - (q.w + p.w) / 2 <= 90,
+          );
+          expect(fromGround || fromOther, `x ${p.x}, y ${p.y} 발판에 올라갈 방법이 없어요`).toBe(true);
+        }
+      });
+
+      it('보스 공격 이름과 단계 수가 맞다', () => {
+        const b = st.boss;
+        expect([2, 3]).toContain(b.arms);
+        expect(b.phases).toHaveLength(b.arms + 1);
+        for (const list of b.phases) for (const p of list) expect(Object.keys(BOSS_PATTERNS)).toContain(p);
+      });
+    });
   });
 });

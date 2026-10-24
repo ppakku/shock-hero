@@ -103,6 +103,18 @@ class Sfx {
         this.tone(90, 0.9, { type: 'sawtooth', vol: 0.35, slideTo: 55 });
         this.hiss(0.9, { vol: 0.3, freq: 800, freqTo: 150 });
         break;
+      case 'spit':
+        this.hiss(0.15, { vol: 0.3, freq: 900, freqTo: 2500 });
+        this.tone(260, 0.12, { type: 'triangle', vol: 0.15, slideTo: 520 });
+        break;
+      case 'gate':
+        this.tone(220, 0.5, { type: 'sawtooth', vol: 0.15, slideTo: 880 });
+        [659, 880].forEach((f, i) => this.tone(f, 0.18, { vol: 0.1, delay: 0.3 + i * 0.1 }));
+        break;
+      case 'locked':
+        this.tone(160, 0.18, { type: 'square', vol: 0.15 });
+        this.tone(120, 0.2, { type: 'square', vol: 0.15, delay: 0.12 });
+        break;
       case 'beep':
         this.tone(880, 0.12, { type: 'sine', vol: 0.12 });
         break;

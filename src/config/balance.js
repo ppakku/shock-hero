@@ -60,20 +60,64 @@ export const balance = {
     xp: 20, // 처치하면 얻는 경험치
   },
 
-  // ---------- 보스: 다중 팔 돌연변이 ----------
+  // ---------- 몬스터 종류 (기본 몬스터 숫자에 곱하는 배수) ----------
+  // 예: speedMultiplier 1.8 = 기본 몬스터보다 1.8배 빠름
+  monsterTypes: {
+    // 빨강 날쌘돌이: 빠르고 약함
+    fast: {
+      healthMultiplier: 0.7,
+      speedMultiplier: 1.8,
+      damageMultiplier: 0.8,
+      windupMultiplier: 0.75, // 공격 신호가 짧음
+      sizeMultiplier: 0.85,
+      xp: 25,
+    },
+    // 파랑 뚱보: 느리지만 튼튼하고 아픔
+    tank: {
+      healthMultiplier: 2.6,
+      speedMultiplier: 0.6,
+      damageMultiplier: 1.6,
+      windupMultiplier: 1.25,
+      downKnockbackMultiplier: 1.5, // 잘 안 넘어짐
+      sizeMultiplier: 1.4,
+      xp: 45,
+    },
+    // 보라 뜀뛰기: 점프해서 덮침
+    jumper: {
+      healthMultiplier: 1.0,
+      speedMultiplier: 1.1,
+      damageMultiplier: 1.1,
+      windupMultiplier: 1.0,
+      sizeMultiplier: 1.0,
+      xp: 30,
+    },
+  },
+
+  // ---------- 보스 (모든 스테이지 공통 기본값) ----------
+  // 스테이지마다 stageN.js 의 boss.healthScale 을 곱해서 더 튼튼해집니다.
   boss: {
-    armHealth: 60, // 팔 하나의 체력
-    coreHealth: 90, // 약점(코어) 체력
-    idleTime: 1.1, // 공격과 공격 사이 쉬는 시간
+    armHealth: 120, // 팔 하나의 체력
+    coreHealth: 200, // 약점(코어) 체력
+    idleTime: 1.0, // 공격과 공격 사이 쉬는 시간
     slamWarningTime: 1.0, // 내려찍기 전 빨간 경고 시간
     slamDamage: 22, // 내려찍기 피해량
     armRestTime: 1.7, // 찍은 뒤 팔이 바닥에 머무는 시간 (때릴 기회)
+    multiSlamCount: 3, // 연속 내려찍기 횟수
+    multiSlamWarningTime: 0.6, // 연속 내려찍기 한 번마다 경고 시간
+    doubleSlamWarningTime: 1.1, // 두 팔 동시 내려찍기 경고 시간
     sweepWarningTime: 1.0, // 바닥 쓸기 전 경고 시간
     sweepTime: 0.8, // 바닥 쓸기에 걸리는 시간
     sweepDamage: 18, // 바닥 쓸기 피해량
     rockWarningTime: 0.9, // 돌 떨어지기 전 그림자 경고 시간
     rockDamage: 14, // 돌 피해량
     rockCount: 3, // 한 번에 떨어지는 돌 개수
+    shockwaveWarningTime: 0.8, // 땅 울림 전 경고 시간
+    shockwaveSpeed: 430, // 충격파가 바닥을 달리는 속도
+    shockwaveDamage: 16, // 충격파 피해량
+    spitCount: 3, // 독침 개수
+    spitWarningTime: 0.5, // 독침 뱉기 전 경고 시간
+    spitFlightTime: 0.8, // 독침이 날아가는 시간
+    spitDamage: 12, // 독침 피해량
     chargedPunchCoreMultiplier: 1.5, // 충전 펀치로 코어를 치면 피해 배수
     armXp: 30, // 팔 하나 부수면 얻는 경험치
     xp: 200, // 보스를 쓰러뜨리면 얻는 경험치

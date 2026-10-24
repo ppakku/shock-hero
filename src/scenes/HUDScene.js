@@ -18,8 +18,10 @@ export class HUDScene extends Phaser.Scene {
     this.dashText = makeText(this, 290, 34, '대시', 13).setOrigin(0.5);
     this.treasureText = makeText(this, 266, 70, '', 14, '#ffd23f').setOrigin(0, 0.5);
     this.timeText = makeText(this, 936, 30, '', 18).setOrigin(1, 0.5);
-    this.bossTitle = makeText(this, 600, 18, '다중 팔 돌연변이', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
-    this.bossLabels = ['왼팔', '오른팔', '코어'].map((l, i) => makeText(this, 0, 0, l, 12).setOrigin(0.5).setVisible(false));
+    this.stageText = makeText(this, 936, 54, '', 13, '#dddddd').setOrigin(1, 0.5);
+    this.monsterText = makeText(this, 600, 30, '', 18, '#ff8a8a').setOrigin(0.5);
+    this.bossTitle = makeText(this, 600, 14, '', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
+    this.bossLabels = [0, 1, 2, 3].map(() => makeText(this, 0, 0, '', 12).setOrigin(0.5).setVisible(false));
     this.beepTimer = 0;
 
     this.overlay = this.add.container(0, 0).setVisible(false).setDepth(100);
@@ -32,11 +34,20 @@ export class HUDScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', () => this.togglePause());
     this.input.keyboard.on('keydown-P', () => this.togglePause());
     this.input.keyboard.on('keydown-M', () => this.toggleSetting('muted'));
+    this.input.keyboard.on('keydown-T', () => {
+      if (this.mode !== 'paused') return;
+      this.mode = 'play';
+      this.overlay.setVisible(false);
+      this.scene.stop('Game');
+      this.scene.start('Title');
+    });
     this.input.keyboard.on('keydown-H', () => {
       if (this.mode === 'paused') this.toggleSetting('shake');
     });
-    this.input.keyboard.on('keydown-R', () => this.restartFromOverlay());
-    this.input.on('pointerdown', () => this.restartFromOverlay());
+    this.input.keyboard.on('keydown-R', () => this.restartFromOverlay('retry'));
+    this.input.keyboard.on('keydown-ENTER', () => this.restartFromOverlay('next'));
+    this.input.keyboard.on('keydown-T', () => this.restartFromOverlay('title'));
+    this.input.on('pointerdown', () => this.restartFromOverlay('next'));
   }
 
   get game_() {
@@ -68,6 +79,7 @@ export class HUDScene extends Phaser.Scene {
     this.overlayBody.setText(
       [
         'Esc: 계속하기',
+        'T: 타이틀로 (지금 진행은 체크포인트까지만 남아요)',
         `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
         `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
       ].join('\n'),
@@ -89,34 +101,53 @@ export class HUDScene extends Phaser.Scene {
     this.overlayBody.setText(
       [
         hasCheckpoint ? 'R 또는 클릭: 체크포인트에서 다시' : 'R 또는 클릭: 처음부터 다시',
+        'T: 타이틀로',
         '레벨과 경험치, 보물은 그대로 남아 있어요',
       ].join('\n'),
     );
     this.overlay.setVisible(true);
   }
 
-  showVictory({ time, best, isRecord, level }) {
+  showVictory({ stage, last, time, best, isRecord, level, treasures }) {
     this.mode = 'victory';
-    this.overlayTitle.setText('보스 처치!').setColor('#ffd23f');
+    this.victoryStage = stage;
+    this.victoryLast = last;
+    this.overlayTitle.setText(last ? '모든 스테이지 클리어!' : `스테이지 ${stage} 클리어!`).setColor('#ffd23f');
     this.overlayBody.setText(
       [
         `걸린 시간 ${formatTime(time)}${isRecord ? '  (최고 기록!)' : ''}`,
-        `최고 기록 ${formatTime(best)}    레벨 ${level}`,
+        `최고 기록 ${formatTime(best)}    레벨 ${level}    보물 ${treasures}`,
         '',
-        '다음 지역은 아직 공사 중이에요. 다음 단계를 기대해 주세요!',
-        'R 또는 클릭: 처음부터 다시',
+        last ? '괴물들의 왕을 쓰러뜨리고 도시를 구했어요! 축하해요!' : `Enter 또는 클릭: 스테이지 ${stage + 1} 로!`,
+        last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
       ].join('\n'),
     );
     this.overlay.setVisible(true);
   }
 
-  restartFromOverlay() {
+  // retry: 다시 하기, next: 다음으로(게임 오버면 다시 하기), title: 타이틀로
+  restartFromOverlay(kind) {
     if (this.mode !== 'gameover' && this.mode !== 'victory') return;
-    const fromCheckpoint = this.mode === 'gameover';
-    if (!fromCheckpoint) this.registry.set('runTime', 0);
+    const gs = this.game_;
+    const stage = gs.stageNum;
+    let target = { stage, fromCheckpoint: false };
+    if (this.mode === 'gameover') {
+      if (kind === 'title') target = null;
+      else target.fromCheckpoint = true;
+    } else if (kind === 'title' || (kind === 'next' && this.victoryLast)) {
+      target = null;
+    } else if (kind === 'next') {
+      target.stage = stage + 1;
+    }
     this.mode = 'play';
     this.overlay.setVisible(false);
-    this.game_.scene.restart({ fromCheckpoint });
+    if (!target) {
+      this.scene.stop('Game');
+      this.scene.start('Title');
+      return;
+    }
+    if (!target.fromCheckpoint) this.registry.set('runTime', 0);
+    gs.scene.restart(target);
   }
 
   update(_t, deltaMs) {
@@ -155,8 +186,12 @@ export class HUDScene extends Phaser.Scene {
     g.slice(290, 34, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog, false).fillPath();
     this.dashText.setColor(prog >= 1 ? '#000000' : '#ffffff').setStroke(prog >= 1 ? '#3ff0ff' : '#000000', 3);
 
-    this.treasureText.setText(save.treasures.length ? `보물 ${save.treasures.length}` : '');
+    const st = gs.stage;
+    const found = st.treasures.filter((t) => save.treasures.includes(t.id)).length;
+    this.treasureText.setText(`보물 ${found}/${st.treasures.length}`);
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
+    this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}`);
+    this.monsterText.setText(gs.gateOpen || gs.bossStarted ? '' : `남은 몬스터 ${gs.monsters.length}`);
 
     // 보스 체력 (부위별)
     const boss = gs.boss;
@@ -164,16 +199,22 @@ export class HUDScene extends Phaser.Scene {
     this.bossTitle.setVisible(showBoss);
     this.bossLabels.forEach((l) => l.setVisible(showBoss));
     if (showBoss) {
-      const parts = [
-        { ratio: boss.arms[0].alive ? boss.arms[0].health.ratio : 0, label: boss.arms[0].alive ? '왼팔' : '왼팔 파괴', locked: false },
-        { ratio: boss.arms[1].alive ? boss.arms[1].health.ratio : 0, label: boss.arms[1].alive ? '오른팔' : '오른팔 파괴', locked: false },
-        { ratio: boss.coreHealth.ratio, label: boss.coreExposed ? '코어 (약점!)' : '코어 (잠김)', locked: !boss.coreExposed },
-      ];
+      const parts = boss.arms.map((arm) => ({
+        ratio: arm.alive ? arm.health.ratio : 0,
+        label: arm.alive ? arm.label : `${arm.label} 파괴`,
+        core: false,
+      }));
+      parts.push({ ratio: boss.coreHealth.ratio, label: boss.coreExposed ? '코어 (약점!)' : '코어 (잠김)', core: true, locked: !boss.coreExposed });
+      const w = parts.length > 3 ? 118 : 125;
+      const step = w + 8;
+      const x0 = 600 - (parts.length * step - 8) / 2;
+      this.bossTitle.setText(boss.name);
+      this.bossLabels.forEach((l, i) => l.setVisible(i < parts.length));
       parts.forEach((part, i) => {
-        const x = 400 + i * 135;
-        g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 32, 125, 12, 4);
-        g.fillStyle(part.locked ? 0x777777 : i === 2 ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 34, 121 * part.ratio, 8, 3);
-        this.bossLabels[i].setText(part.label).setPosition(x + 62, 56);
+        const x = x0 + i * step;
+        g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 30, w, 12, 4);
+        g.fillStyle(part.locked ? 0x777777 : part.core ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 32, (w - 4) * part.ratio, 8, 3);
+        this.bossLabels[i].setText(part.label).setPosition(x + w / 2, 54);
       });
     }
   }

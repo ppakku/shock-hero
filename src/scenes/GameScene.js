@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
 import { cfg } from '../config/index.js';
-import { stage1 } from '../stage/stage1.js';
+import { getStage, stages } from '../stage/index.js';
 import { Player } from '../player/Player.js';
 import { Robot } from '../player/Robot.js';
 import { Monster } from '../enemies/Monster.js';
 import { Boss } from '../boss/Boss.js';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
+import { clearStagePatch } from '../logic/save.js';
+import { parseMonsterSpot } from '../logic/monsters.js';
 import { addXp, maxHealthFor, damageMultiplierFor } from '../logic/progression.js';
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
@@ -21,13 +23,17 @@ export class GameScene extends Phaser.Scene {
 
   create(data = {}) {
     this.cfg = cfg;
-    this.stage = stage1;
     this.save = saveStore.load();
+    this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
+    this.stage = getStage(this.stageNum);
+    this.isLastStage = this.stageNum === stages.length;
     this.ended = false;
     this.bossStarted = false;
     this.lowHealthWarned = false;
     this.firedTalks = new Set();
-    this.fromCheckpoint = data.fromCheckpoint && this.save.checkpoint === 'boss';
+    this.bossTips = new Set();
+    this.gateNagAt = -10;
+    this.fromCheckpoint = data.fromCheckpoint && this.save.checkpoint === this.stageNum;
     if (!this.registry.has('runTime')) this.registry.set('runTime', 0);
 
     // 슬로모션이 남아 있을 수 있으니 시간 속도를 되돌린다
@@ -53,15 +59,13 @@ export class GameScene extends Phaser.Scene {
 
     this.monsters = [];
     if (!this.fromCheckpoint) {
-      for (const x of st.monsters) {
-        const m = new Monster(this, x, st.groundY - 30, cfg);
-        this.monsters.push(m);
-      }
+      for (const spot of st.monsters) this.monsters.push(new Monster(this, parseMonsterSpot(spot, st.groundY), cfg));
       this.physics.add.collider(this.monsters, this.solids);
       this.physics.add.collider(this.monsters, this.oneWays);
     }
+    this.buildGate();
 
-    this.boss = new Boss(this, cfg, st);
+    this.boss = new Boss(this, cfg, st, this.stageNum);
     this.physics.add.collider(this.player, this.boss.blocker);
 
     this.robot = new Robot(this, this.player);
@@ -71,6 +75,8 @@ export class GameScene extends Phaser.Scene {
     if (this.fromCheckpoint) {
       for (const t of st.talks) if (t.x < st.checkpointX) this.firedTalks.add(t);
       this.robot.say(['다시 가 보자! 이번엔 할 수 있어.']);
+    } else {
+      this.showStageBanner();
     }
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -95,11 +101,12 @@ export class GameScene extends Phaser.Scene {
 
   drawBackground() {
     const st = this.stage;
+    const th = st.theme;
     const sky = this.add.graphics().setScrollFactor(0).setDepth(-20);
-    sky.fillGradientStyle(0x2a1640, 0x2a1640, 0xe0703c, 0xe0703c, 1).fillRect(0, 0, 960, 540);
-    sky.fillStyle(0xffc46b, 0.9).fillCircle(760, 150, 46);
+    sky.fillGradientStyle(th.sky[0], th.sky[0], th.sky[1], th.sky[1], 1).fillRect(0, 0, 960, 540);
+    sky.fillStyle(th.sun, 0.9).fillCircle(760, 150, 46);
 
-    const rng = new Phaser.Math.RandomDataGenerator(['shock-hero']);
+    const rng = new Phaser.Math.RandomDataGenerator([`shock-hero-${this.stageNum}`]);
     const layer = (factor, color, minH, maxH, depth, windows) => {
       const g = this.add.graphics().setScrollFactor(factor, 1).setDepth(depth);
       const span = st.width * factor + 960;
@@ -114,21 +121,38 @@ export class GameScene extends Phaser.Scene {
         if (windows) {
           for (let wy = top + 14; wy < st.groundY - 20; wy += 26) {
             for (let wx = x + 10; wx < x + w - 14; wx += 20) {
-              if (rng.frac() < 0.35) g.fillStyle(0xffd27a, 0.7).fillRect(wx, wy, 8, 12);
+              if (rng.frac() < 0.35) g.fillStyle(th.window, 0.7).fillRect(wx, wy, 8, 12);
             }
           }
         }
         x += w + rng.between(6, 30);
       }
     };
-    layer(0.25, 0x3a2350, 160, 320, -15, false);
-    layer(0.55, 0x22152f, 90, 230, -12, true);
+    layer(0.25, th.far, 160, 320, -15, false);
+    layer(0.55, th.near, 90, 230, -12, true);
 
     // 연기
     const smoke = this.add.graphics().setScrollFactor(0.4, 1).setDepth(-14);
     for (let i = 0; i < 12; i++) {
       const sx = rng.between(0, st.width * 0.4 + 960);
-      for (let j = 0; j < 5; j++) smoke.fillStyle(0x555060, 0.18).fillCircle(sx + j * 12, 300 - j * 40, 30 + j * 8);
+      for (let j = 0; j < 5; j++) smoke.fillStyle(th.smoke, 0.18).fillCircle(sx + j * 12, 300 - j * 40, 30 + j * 8);
+    }
+
+    // 날씨 (눈, 불씨, 독 거품)
+    const w = th.weather;
+    if (w) {
+      const opts = {
+        snow: { y: -10, speedY: { min: 40, max: 90 }, speedX: { min: -20, max: 20 }, scale: { min: 0.15, max: 0.35 }, lifespan: 9000 },
+        embers: { y: 560, speedY: { min: -80, max: -30 }, speedX: { min: -15, max: 15 }, scale: { start: 0.35, end: 0 }, lifespan: 6000 },
+        bubbles: { y: 560, speedY: { min: -60, max: -25 }, speedX: { min: -10, max: 10 }, scale: { min: 0.2, max: 0.5 }, lifespan: 7000 },
+      }[w.kind];
+      if (opts) {
+        const { y, ...rest } = opts;
+        this.add
+          .particles(0, y, 'puff', { x: { min: 0, max: 960 }, frequency: 120, alpha: { start: 0.8, end: 0.1 }, tint: w.color, ...rest })
+          .setScrollFactor(0)
+          .setDepth(-5);
+      }
     }
   }
 
@@ -137,7 +161,7 @@ export class GameScene extends Phaser.Scene {
     this.solids = [];
     this.oneWays = [];
 
-    const ground = this.add.tileSprite(st.width / 2, st.groundY + 30, st.width, 60, 'ground').setDepth(0);
+    const ground = this.add.tileSprite(st.width / 2, st.groundY + 30, st.width, 60, 'ground').setDepth(0).setTint(st.theme.ground);
     this.physics.add.existing(ground, true);
     this.solids.push(ground);
 
@@ -174,13 +198,74 @@ export class GameScene extends Phaser.Scene {
     this.flagActive = this.fromCheckpoint;
     this.flag = this.add.image(st.checkpointX, st.groundY, this.flagActive ? 'flag_on' : 'flag').setOrigin(0.2, 1).setDepth(2);
 
-    // 숨겨진 보물
-    const tr = st.treasure;
-    this.treasureFound = this.save.treasures.includes(tr.id);
-    this.chest = this.add.image(tr.x, tr.y, this.treasureFound ? 'chest_open' : 'chest').setOrigin(0.5, 1).setDepth(2).setDisplaySize(44, 34);
-    if (!this.treasureFound) {
-      this.tweens.add({ targets: this.chest, y: tr.y - 4, duration: 500, yoyo: true, repeat: -1 });
+    // 보물 상자: 이미 찾은 보물은 나오지 않는다
+    this.chests = [];
+    for (const tr of st.treasures) {
+      if (this.save.treasures.includes(tr.id)) continue;
+      const img = this.add.image(tr.x, tr.y, 'chest').setOrigin(0.5, 1).setDepth(2).setDisplaySize(44, 34);
+      this.tweens.add({ targets: img, y: tr.y - 4, duration: 500, yoyo: true, repeat: -1 });
+      this.chests.push({ tr, img });
     }
+  }
+
+  // 보스 문: 몬스터를 다 잡아야 열린다
+  buildGate() {
+    const st = this.stage;
+    this.gateOpen = this.fromCheckpoint || this.monsters.length === 0;
+    if (this.gateOpen) return;
+    const x = st.gateX;
+    this.gateWall = this.add.rectangle(x, 270, 24, 540, 0xff3040, 0);
+    this.physics.add.existing(this.gateWall, true);
+    this.physics.add.collider(this.player, this.gateWall);
+    this.physics.add.collider(this.monsters, this.gateWall);
+    this.gateG = this.add.graphics().setDepth(3);
+    this.gateLabel = makeText(this, x, st.groundY - 300, '', 18, '#ffffff', { backgroundColor: '#5a0010cc', padding: { x: 8, y: 4 } })
+      .setOrigin(0.5)
+      .setDepth(4);
+  }
+
+  updateGate() {
+    if (this.gateOpen || !this.gateG) return;
+    const st = this.stage;
+    const left = this.monsters.length;
+    if (left === 0) {
+      this.openGate();
+      return;
+    }
+    const x = st.gateX;
+    const t = this.time.now / 1000;
+    const g = this.gateG.clear();
+    g.fillStyle(0xff3040, 0.25 + 0.1 * Math.sin(t * 6)).fillRect(x - 12, 0, 24, st.groundY);
+    for (let y = (t * 120) % 40; y < st.groundY; y += 40) g.fillStyle(0xffa0a8, 0.7).fillRect(x - 10, y, 20, 6);
+    g.lineStyle(3, 0xff6070, 1).lineBetween(x - 12, 0, x - 12, st.groundY).lineBetween(x + 12, 0, x + 12, st.groundY);
+    this.gateLabel.setText(`몬스터 ${left}마리 남음`);
+
+    const p = this.player;
+    if (!p.dead && p.x > x - 50 && this.time.now / 1000 - this.gateNagAt > 5) {
+      this.gateNagAt = this.time.now / 1000;
+      this.sfxPlay('locked');
+      this.robot.say(`문이 잠겼어! 몬스터가 ${left}마리 남았어. 뒤로 가서 다 잡자!`, true);
+    }
+  }
+
+  openGate() {
+    this.gateOpen = true;
+    const x = this.stage.gateX;
+    this.gateWall.destroy();
+    this.gateLabel.destroy();
+    this.tweens.add({ targets: this.gateG, alpha: 0, duration: 500, onComplete: () => this.gateG.destroy() });
+    this.sparks.explode(30, x, this.stage.groundY - 100);
+    floatText(this, x, this.stage.groundY - 160, '문이 열렸다!', '#3ff07a', 28);
+    this.sfxPlay('gate');
+    this.robot.say('몬스터를 다 잡았어! 문이 열렸다. 보스한테 가 보자!', true);
+  }
+
+  showStageBanner() {
+    const t = makeText(this, 480, 200, `스테이지 ${this.stageNum}\n${this.stage.name}`, 44, '#ffd23f', { strokeThickness: 8 })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(60);
+    this.tweens.add({ targets: t, alpha: 0, delay: 1600, duration: 600, onComplete: () => t.destroy() });
   }
 
   makeParticles() {
@@ -202,6 +287,7 @@ export class GameScene extends Phaser.Scene {
     this.player.update(dt, input);
     for (const m of this.monsters) m.update(dt);
     this.monsters = this.monsters.filter((m) => !m.dead);
+    this.updateGate();
     this.boss.update(dt);
     this.robot.update(dt);
     this.drawCharge();
@@ -265,27 +351,35 @@ export class GameScene extends Phaser.Scene {
       this.flagActive = true;
       this.flag.setTexture('flag_on');
       p.health.healFull();
-      this.save = saveStore.update({ checkpoint: 'boss' });
+      this.save = saveStore.update({ checkpoint: this.stageNum });
       floatText(this, st.checkpointX, st.groundY - 110, '체크포인트! 체력 회복', '#3ff07a', 22);
       this.sfxPlay('coin');
     }
 
-    if (!this.treasureFound) {
-      const tr = st.treasure;
-      if (Math.abs(p.x - tr.x) < 34 && Math.abs(p.y - (tr.y - 20)) < 50) {
-        this.treasureFound = true;
-        this.tweens.killTweensOf(this.chest);
-        this.chest.setTexture('chest_open').setY(tr.y);
-        this.save = saveStore.update({ treasures: [...this.save.treasures, tr.id] });
-        this.sparks.explode(24, tr.x, tr.y - 20);
-        floatText(this, tr.x, tr.y - 50, '비밀 보물 발견!', '#ffd23f', 24);
-        this.sfxPlay('coin');
-        this.robot.say('비밀 보물이다! 역시 내 눈은 정확해.', true);
-        this.gainXp(tr.xp, tr.x, tr.y - 70);
-      }
+    for (const c of this.chests) {
+      const tr = c.tr;
+      if (c.taken || Math.abs(p.x - tr.x) >= 34 || Math.abs(p.y - (tr.y - 20)) >= 50) continue;
+      this.takeTreasure(c);
     }
+    this.chests = this.chests.filter((c) => !c.taken);
 
     if (!this.bossStarted && p.x >= st.arena.startX + 80) this.startBossFight();
+  }
+
+  // 보물을 먹으면 상자가 열리고 위로 떠오르며 사라진다
+  takeTreasure(c) {
+    const { tr, img } = c;
+    c.taken = true;
+    this.tweens.killTweensOf(img);
+    img.setTexture('chest_open').setY(tr.y);
+    this.tweens.add({ targets: img, y: tr.y - 40, alpha: 0, scale: img.scale * 1.3, delay: 150, duration: 500, onComplete: () => img.destroy() });
+    this.save = saveStore.update({ treasures: [...this.save.treasures, tr.id] });
+    this.sparks.explode(24, tr.x, tr.y - 20);
+    const found = this.stage.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
+    floatText(this, tr.x, tr.y - 50, `보물 발견! (${found}/${this.stage.treasures.length})`, '#ffd23f', 24);
+    this.sfxPlay('coin');
+    this.robot.say(found === this.stage.treasures.length ? '이 스테이지 보물을 전부 찾았어! 대단해!' : '보물이다! 역시 내 눈은 정확해.', true);
+    this.gainXp(tr.xp, tr.x, tr.y - 70);
   }
 
   startBossFight() {
@@ -303,9 +397,10 @@ export class GameScene extends Phaser.Scene {
     this.boss.startFight();
     this.sfxPlay('roar');
     this.shake(0.01, 600);
-    const title = makeText(this, a.startX + 480, 150, '다중 팔 돌연변이 등장!', 40, '#ff5555', { strokeThickness: 8 }).setOrigin(0.5).setDepth(60);
+    const title = makeText(this, a.startX + 480, 150, `${this.boss.name} 등장!`, 40, '#ff5555', { strokeThickness: 8 }).setOrigin(0.5).setDepth(60);
     this.tweens.add({ targets: title, alpha: 0, delay: 1400, duration: 500, onComplete: () => title.destroy() });
     this.robot.say(['으악, 크다!', '빨간 곳에 팔이 떨어져. 피한 다음 바닥에 박힌 팔을 때려!'], true);
+    this.bossTips.add('slam');
   }
 
   // ---------- 플레이어 이벤트 ----------
@@ -383,7 +478,7 @@ export class GameScene extends Phaser.Scene {
     this.chargeG.clear();
     this.maxLabel.setVisible(false);
     this.robot.say('히어로! 일어나! 체크포인트로 돌아가자.', true);
-    this.time.delayedCall(1300, () => this.scene.get('HUD')?.showGameOver(this.save.checkpoint === 'boss'));
+    this.time.delayedCall(1300, () => this.scene.get('HUD')?.showGameOver(this.save.checkpoint === this.stageNum));
   }
 
   spawnGhost(player) {
@@ -393,7 +488,7 @@ export class GameScene extends Phaser.Scene {
 
   onMonsterKilled(monster) {
     this.greenGoo.explode(16, monster.x, monster.y);
-    this.gainXp(cfg.monster.xp, monster.x, monster.y - 40);
+    this.gainXp(monster.m.xp, monster.x, monster.y - 40);
   }
 
   gainXp(amount, x, y) {
@@ -445,18 +540,26 @@ export class GameScene extends Phaser.Scene {
       this.sfxPlay('slam');
       this.shake(0.02, 600);
       this.gainXp(cfg.boss.xp, boss.bodyX, boss.groundY - 300);
-      this.robot.say(['해냈다! 도시가 살았어!', '다음엔 좀 덜 무서운 괴물이면 좋겠어.'], true);
+      this.robot.say(this.isLastStage ? ['해냈다! 괴물들의 왕을 쓰러뜨렸어!', '도시가 완전히 평화를 되찾았어!'] : ['해냈다!', '다음엔 좀 덜 무서운 괴물이면 좋겠어.'], true);
       this.time.delayedCall(1800, () => this.finishVictory());
     });
   }
 
   finishVictory() {
     const time = this.registry.get('runTime');
-    const best = this.save.bestTime ? Math.min(this.save.bestTime, time) : time;
-    const isRecord = !this.save.bestTime || time < this.save.bestTime;
-    this.save = saveStore.update({ bestTime: best, checkpoint: null });
+    const { patch, isRecord, best } = clearStagePatch(saveStore.load(), this.stageNum, time);
+    this.save = saveStore.update(patch);
     this.sfxPlay('victory');
-    this.scene.get('HUD')?.showVictory({ time, best, isRecord, level: this.save.level });
+    const found = this.stage.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
+    this.scene.get('HUD')?.showVictory({
+      stage: this.stageNum,
+      last: this.isLastStage,
+      time,
+      best,
+      isRecord,
+      level: this.save.level,
+      treasures: `${found}/${this.stage.treasures.length}`,
+    });
   }
 
   // ---------- 도우미 ----------
@@ -476,5 +579,9 @@ export class GameScene extends Phaser.Scene {
 
   gooAt(x, y, n) {
     this.goo.explode(n, x, y);
+  }
+
+  greenGooAt(x, y, n) {
+    this.greenGoo.explode(n, x, y);
   }
 }

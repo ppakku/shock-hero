@@ -9,11 +9,15 @@
 export const customArt = {
   // player: 'player.png', // 주인공 (오른쪽을 보는 모습으로 그려 주세요)
   // monster: 'monster.png', // 초록 몬스터 (오른쪽을 보는 모습)
+  // monster_fast: 'monster_fast.png', // 빨강 날쌘돌이
+  // monster_tank: 'monster_tank.png', // 파랑 뚱보
+  // monster_jumper: 'monster_jumper.png', // 보라 뜀뛰기
   // robot: 'robot.png', // 로봇 조수 볼트
-  // boss_body: 'boss_body.png', // 보스 몸통
-  // boss_arm: 'boss_arm.png', // 보스 팔 (주먹이 아래로)
+  // boss_body_1: 'boss_body_1.png', // 스테이지 1 보스 몸통 (왼쪽을 보는 모습). 2~5 도 같은 식
+  // boss_arm_1: 'boss_arm_1.png', // 스테이지 1 보스 팔 (주먹이 아래로). 2~5 도 같은 식
   // boss_core: 'boss_core.png', // 보스 약점(코어)
   // boss_armor: 'boss_armor.png', // 코어를 덮은 장갑
   // rock: 'rock.png', // 떨어지는 돌
+  // glob: 'glob.png', // 독침
   // chest: 'chest.png', // 보물 상자
 };

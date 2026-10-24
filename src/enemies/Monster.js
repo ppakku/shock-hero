@@ -2,23 +2,30 @@ import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
+import { monsterStats } from '../logic/monsters.js';
+
+const TEXTURE = { basic: 'monster', fast: 'monster_fast', tank: 'monster_tank', jumper: 'monster_jumper' };
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
-// 초록 몬스터: 순찰 → 추격 → (빨개짐) 공격 준비 → 달려들기 → 멍하게 쉬기
+// 몬스터: 순찰 → 추격 → (빨개짐) 공격 준비 → 달려들기(뜀뛰기는 점프) → 멍하게 쉬기
 export class Monster extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, cfg) {
-    super(scene, x, y, 'monster');
+  constructor(scene, spot, cfg) {
+    const m = monsterStats(cfg, spot.type);
+    const x = spot.x;
+    const y = spot.y - 30 * m.size;
+    super(scene, x, y, TEXTURE[m.type]);
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.setDisplaySize(52, 48);
+    this.setDisplaySize(52 * m.size, 48 * m.size);
     this.body.setSize(this.width * 0.8, this.height * 0.85, true);
     this.setCollideWorldBounds(true);
     this.setDragX(900);
     this.setDepth(5);
 
-    this.m = cfg.monster;
+    this.m = m;
+    this.type = m.type;
     this.health = new Health(this.m.maxHealth);
     this.state = 'idle';
     this.stateTime = 0;
@@ -45,7 +52,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const dx = p.x - this.x;
     const dist = Math.abs(dx);
     const playerReachable = !p.dead && Math.abs(p.y - this.y) < 90;
-    this.alert.setPosition(this.x, this.y - 40);
+    this.alert.setPosition(this.x, this.y - 40 * this.m.size);
 
     switch (this.state) {
       case 'idle': {
@@ -76,6 +83,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         if (this.stateTime >= this.m.windupTime) {
           this.hasHit = false;
           this.setVelocityX(this.facing * this.m.lungeSpeed);
+          if (this.type === 'jumper') this.setVelocityY(-520);
           this.changeState('attack');
         }
         break;
@@ -84,6 +92,16 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         if (!this.hasHit && intersects(this.attackRect(), p.getBounds())) {
           const result = p.hurt(this.m.damage, this.x);
           if (result !== 'ignored') this.hasHit = true;
+        }
+        if (this.type === 'jumper') {
+          // 뜀뛰기는 땅에 내려앉을 때까지 날아간다
+          this.setVelocityX(this.hasHit ? this.body.velocity.x * 0.9 : this.facing * this.m.lungeSpeed * 0.8);
+          const landed = this.stateTime > 0.15 && (this.body.blocked.down || this.body.touching.down);
+          if (landed || this.stateTime > 1.4) {
+            this.scene.dustAt(this.x, this.y + 20, 5);
+            this.changeState('recover');
+          }
+          break;
         }
         // 주인공에게 닿으면 멈춘다 (뚫고 지나가지 않게)
         const ahead = dx * this.facing;
@@ -113,9 +131,11 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   attackRect() {
-    const w = 46;
+    const s = this.m.size;
+    if (this.type === 'jumper' && this.state === 'attack') return new Rect(this.x - 26, this.y - 24, 52, 48);
+    const w = 46 * s;
     const x = this.facing > 0 ? this.x + 8 : this.x - 8 - w;
-    return new Rect(x, this.y - 20, w, 40);
+    return new Rect(x, this.y - 20 * s, w, 40 * s);
   }
 
   takeHit(attack, dir) {
