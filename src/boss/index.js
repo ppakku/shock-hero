@@ -1,5 +1,5 @@
 import { ArmBoss } from './ArmBoss.js';
-import { IceBoss } from './IceBoss.js';
+import { FrostAstraBoss } from './FrostAstraBoss.js';
 import { KingBoss } from './KingBoss.js';
 
 // stage.boss.type 이름 → 보스 클래스
@@ -8,7 +8,7 @@ export const BOSS_TYPES = {
   arms: ArmBoss,
   toad: ArmBoss,
   golem: ArmBoss,
-  ice: IceBoss,
+  ice: FrostAstraBoss, // 혹한의 아스트라 (아들 디자인)
   king: KingBoss,
 };
 

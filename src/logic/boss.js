@@ -12,11 +12,12 @@ export const BOSS_PATTERNS = {
   summon: { arms: 0 }, // 부하 부르기 (킹 돌연변이)
 };
 
-// 얼음 돌연변이(날아다니는 보스) 공격 이름
+// 혹한의 아스트라(스테이지 4, 날아다니는 얼음 용) 공격 이름
 export const ICE_PATTERNS = {
   icicles: '고드름 비', // 그림자를 피하기
   dive: '급강하', // 대시로 통과
-  frostBreath: '얼음 숨결', // 점프로 넘기
+  freezeBreath: '냉기 브레스', // 파란 부채꼴 밖으로, 바닥을 달리는 서리는 점프나 대시
+  avalanche: '빙천지락', // 빛나는 바닥에서 얼음 가시가 솟음. 빛 없는 틈에 서기
   hop: '뛰어 내려찍기', // 날개가 부서진 뒤. 그림자를 피하기
 };
 
@@ -142,6 +143,37 @@ export function difficultyOf(cfg) {
 // 'rocks' = 위에서 떨어지는 것(그림자 피하기), 'wave' = 땅 울림 충격파(점프)
 export function comboKind(mainType, rand = Math.random) {
   if (['rocks', 'icicles', 'leap', 'hop'].includes(mainType)) return 'wave';
-  if (['shockwave', 'frostBreath'].includes(mainType)) return 'rocks';
+  if (['shockwave', 'frostBreath', 'freezeBreath'].includes(mainType)) return 'rocks';
   return rand() < 0.5 ? 'rocks' : 'wave';
 }
+
+// 냉기 브레스 부채꼴이 바닥에 닿는 곳 [가까운 끝, 먼 끝]. 용 바로 밑과 뒤쪽은 안전하다.
+// x: 용 몸 가운데, dir: 브레스 방향(1 오른쪽, -1 왼쪽), near: 용에서 부채꼴 시작까지, len: 부채꼴 바닥 길이
+export function breathCone(x, dir, near, len) {
+  const a = x + dir * near;
+  const b = x + dir * (near + len);
+  return { near: a, far: b, lo: Math.min(a, b), hi: Math.max(a, b) };
+}
+
+// 빙천지락 얼음 가시 자리: gap 간격 줄을 번갈아 두 묶음으로 나눈다.
+// 첫 묶음이 솟을 때는 둘째 묶음 자리가 안전하고, 그 반대도 마찬가지.
+// waves 가 3 이면 첫 묶음이 한 번 더 솟는다 (분노).
+export function avalancheWaves(minX, maxX, gap, offset = 0, waves = 2) {
+  const xs = [];
+  for (let x = minX + (offset % gap); x <= maxX; x += gap) xs.push(Math.round(x));
+  const a = xs.filter((_, i) => i % 2 === 0);
+  const b = xs.filter((_, i) => i % 2 === 1);
+  const out = [];
+  for (let i = 0; i < waves; i++) out.push(i % 2 === 0 ? a : b);
+  return out;
+}
+
+// 혹한의 아스트라 높이와 크기 (테스트에서 공정한지 확인함)
+export const FROST = {
+  highY: 140, // 높이 날 때 몸 가운데 (맞는 곳 아래쪽 y 195: 위쪽 공격이 안 닿음)
+  lowY: 250, // 급강하 뒤 낮게 뜰 때 몸 가운데 (맞는 곳 아래쪽 y 305: 점프 펀치, 위쪽 공격이 닿음)
+  hitHalfH: 55, // 날 때 맞는 곳의 위아래 반 높이
+  breathH: 60, // 바닥을 달리는 서리 높이 (점프로 넘기)
+  spikeW: 68, // 얼음 가시 하나가 아픈 폭
+  spikeH: 110, // 얼음 가시 높이
+};
