@@ -8,6 +8,7 @@ import { ComboHazards } from './comboHazards.js';
 import { drawIceShard, drawFrostCone } from './bossFx.js';
 import { flash, floatText } from '../fx/effects.js';
 import { make } from '../fx/textures.js';
+import { sheetFacesRight } from '../fx/spriteSheets.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -31,6 +32,20 @@ const CHEST = { x: 12, y: 20 };
 // 아들이 그린 디자인 시트의 색 (밝은 파랑, 중간 파랑, 짙은 남색, 연한 회청색, 밝은 하늘색)
 const PALETTE = { bright: 0x3d9be0, main: 0x2a5fa8, dark: 0x1a2552, pale: 0xc4cee0, light: 0xd8f6ff };
 const RAGE_TINT = 0xff9ab4;
+const GROUND_TINT = 0x9fb4d4; // 날개가 다 부서져 땅에 떨어졌을 때 (시트 그림) 어둡고 얼어붙은 빛
+
+// 스프라이트 시트(아들 그림, 칸 344x384, 오른쪽을 보는 모습)를 쓸 때
+// 모든 칸은 발이 칸 속 (198, 359) 에 오게 맞춰 두었다 (docs/frost_astra_frames.png 를 칸마다 잘라 발을 맞춤).
+const SHEET_H = 340; // 화면 높이
+const SHEET_W = Math.round((SHEET_H * 344) / 384); // 한 칸 비율 그대로
+const SHEET_K = SHEET_H / 384; // 칸 1픽셀이 화면 몇 픽셀인지
+const SHEET_ORIGIN_Y = 359 / 384; // 기준점을 발에 둔다 (웅크려도 발이 땅에 붙어 있게)
+const SHEET_DX = (198 - 172) * SHEET_K; // 발이 칸 가운데보다 앞(머리 쪽)으로 나와 있는 거리
+// 칸마다 눈 위치 (칸 속 좌표). 날갯짓하면 고개가 오르내려서 칸마다 다르다
+const SHEET_EYES = [[296, 195], [296, 212], [319, 217], [309, 210], [284, 155], [289, 157], [279, 155], [281, 150]];
+const SHEET_MOUTHS = [[301, 217], [314, 235], [334, 235], [321, 230], [291, 180], [301, 182], [286, 180], [289, 175]]; // 칸마다 입 위치
+const SHEET_CHEST = [262, 245]; // 가슴 (얼음 심장 자리)
+const SHEET_CHEST_LOW = [245, 245]; // 날개를 늘어뜨린 2번 칸의 가슴 (땅에 떨어졌을 때)
 
 const TIPS = {
   icicles: '고드름이 떨어져! 바닥 그림자 밖으로 피해!',
@@ -78,6 +93,18 @@ export class FrostAstraBoss extends BossBase {
       };
     });
     this.body = scene.add.image(this.x, this.y, `boss_ice_body_${skin}`).setDepth(5).setDisplaySize(220, 170);
+    // art.js 에 스프라이트 시트(아들 그림)가 있으면 몸통과 날개 대신 그 애니메이션을 쓴다.
+    // 맞는 곳, 날개 체력, 심장 같은 규칙은 그대로이고 그림만 바뀐다.
+    this.sheet = scene.anims.exists(`astra_${skin}_anim`);
+    this.flashT = 0;
+    if (this.sheet) {
+      this.sheetRight = sheetFacesRight(scene, `astra_${skin}`);
+      this.sprite = scene.add.sprite(this.x, this.y, `astra_${skin}`).setDepth(5).setOrigin(0.5, SHEET_ORIGIN_Y).setDisplaySize(SHEET_W, SHEET_H);
+      this.animKey = `astra_${skin}_anim`;
+      this.sprite.play(this.animKey);
+      this.body.setVisible(false);
+      for (const w of this.wings) w.sprite.setVisible(false);
+    }
     this.heart = scene.add.image(this.x, this.y, 'ice_heart').setDepth(6).setDisplaySize(26, 32).setAlpha(0.6);
     this.heartHealth = new Health(Math.round(this.ic.heartHealth * this.hpScale));
     this.icicles = [];
@@ -284,6 +311,14 @@ export class FrostAstraBoss extends BossBase {
     return { x: this.x + this.face * MOUTH.x, y: this.y + MOUTH.y };
   }
 
+  // 브레스 그림(빛, 부채꼴, 얼음 조각)이 나오는 입. 시트 그림은 칸마다 입이 달라서 그 자리를 쓴다.
+  // 맞는 판정(breathTriangle)은 그대로 this.mouth 를 쓴다 (바닥 쪽 부채꼴은 거의 같다)
+  get mouthFx() {
+    if (!this.sheet || this.feetY === undefined) return this.mouth;
+    const m = SHEET_MOUTHS[Number(this.sprite.frame.name)] || SHEET_MOUTHS[0];
+    return { x: this.x + this.face * (m[0] - 198) * SHEET_K, y: this.feetY + (m[1] - 359) * SHEET_K };
+  }
+
   // 플레이어 공격이 맞는 곳 (날 때는 날개까지 넓게)
   hitRect() {
     if (this.mode === 'fly') return new Rect(this.x - 120, this.y - FROST.hitHalfH, 240, FROST.hitHalfH * 2);
@@ -312,9 +347,10 @@ export class FrostAstraBoss extends BossBase {
     // 날갯짓에 맞춰 몸이 살짝 오르내림
     const bob = folded ? 0 : Math.cos(this.flap) * 4;
     this.body.setPosition(this.x, this.y + bob).setFlipX(flipped);
+    if (this.sheet) this.poseSheet(dt, folded, fast, bob);
     const s = Math.sin(this.flap);
     for (const w of this.wings) {
-      if (!w.alive) continue;
+      if (!w.alive || this.sheet) continue;
       w.sprite.setPosition(this.x + w.side * 14, this.y - 30 + bob);
       if (folded) w.sprite.setAngle(w.side * -40).setScale(w.sx * 0.7, w.sy * 0.85);
       else w.sprite.setAngle(w.side * s * 32).setScale(w.sx, w.sy * (0.78 + 0.22 * s));
@@ -327,7 +363,10 @@ export class FrostAstraBoss extends BossBase {
         if (Math.random() < 0.35) this.scene.sfxPlay('flap');
       }
     }
-    this.heart.setPosition(this.x + this.face * CHEST.x, this.y + CHEST.y + bob);
+    if (this.sheet) {
+      const chest = this.mode === 'grounded' ? SHEET_CHEST_LOW : SHEET_CHEST;
+      this.heart.setPosition(this.x + this.face * (chest[0] - 198) * SHEET_K, this.feetY + (chest[1] - 359) * SHEET_K);
+    } else this.heart.setPosition(this.x + this.face * CHEST.x, this.y + CHEST.y + bob);
     if (this.heartOpen && !this.defeated) {
       const k = 1 + Math.sin(this.t * 8) * 0.12;
       this.heart.setDisplaySize(30 * k * 1.3, 36 * k * 1.3).setAlpha(1);
@@ -340,12 +379,51 @@ export class FrostAstraBoss extends BossBase {
     }
   }
 
+  // 스프라이트 시트 그림 맞추기: 발이 (this.x, 몸 가운데 + GROUND_OFF) 에 오게 놓는다.
+  // 땅에 서면 몸 가운데가 바닥에서 GROUND_OFF 만큼 위라서 발이 바닥에 딱 닿는다.
+  poseSheet(dt, folded, fast, bob) {
+    const s = this.sprite;
+    this.flashT = Math.max(0, this.flashT - dt);
+    this.feetY = this.y + GROUND_OFF + bob;
+    if (this.defeated) {
+      // 쓰러질 때는 collapse 의 움직임을 그대로 두고, 맞을 때 하얀 깜빡임만 지운다
+      if (s.tintFill) s.setTint(this.raging ? RAGE_TINT : 0xffffff);
+      return;
+    }
+    // 그림은 발이 칸 가운데보다 머리 쪽에 있어서, 바라보는 쪽 반대로 조금 옮긴다
+    s.setPosition(this.x - this.face * SHEET_DX, this.feetY);
+    s.setFlipX(this.sheetRight ? this.face < 0 : this.face > 0);
+    if (this.mode === 'grounded') {
+      // 날개가 다 부서짐: 시트에는 날개가 그려져 있어서 날갯짓을 멈추고
+      // 날개를 아래로 늘어뜨린 칸(2번)에 세워 둔 채 숨만 쉰다 (어둡게 얼어붙은 빛)
+      if (s.anims.isPlaying) s.anims.stop();
+      s.setFrame(2);
+      const breathe = 1 + Math.sin(this.t * 3) * 0.02;
+      s.setDisplaySize(SHEET_W * (2 - breathe), SHEET_H * breathe);
+    } else {
+      if (!s.anims.isPlaying) s.play(this.animKey);
+      // 지쳐서 내려앉으면 느리게 날개를 치며 살짝 웅크리고, 급강하나 포효 때는 빠르게, 화나면 더 빠르게
+      s.anims.timeScale = folded ? 0.4 : fast ? 1.8 : this.raging ? 1.5 : 1;
+      s.setDisplaySize(SHEET_W, folded ? SHEET_H * 0.92 : SHEET_H);
+    }
+    if (this.flashT > 0) s.setTintFill(0xffffff);
+    else if (this.raging) s.setTint(RAGE_TINT);
+    else if (this.mode === 'grounded') s.setTint(GROUND_TINT);
+    else s.clearTint();
+  }
+
   // 빛나는 눈 (분노하면 붉게)
   drawEyes() {
     if (this.defeated) return;
     const bob = this.mode === 'fly' ? Math.cos(this.flap) * 4 : 0;
-    const ex = this.x + this.face * EYE.x;
-    const ey = this.y + EYE.y + bob;
+    let ex = this.x + this.face * EYE.x;
+    let ey = this.y + EYE.y + bob;
+    if (this.sheet) {
+      // 시트 그림은 칸마다 고개 높이가 달라서 지금 칸의 눈 자리를 쓴다
+      const eye = SHEET_EYES[Number(this.sprite.frame.name)] || SHEET_EYES[0];
+      ex = this.x + this.face * (eye[0] - 198) * SHEET_K;
+      ey = this.feetY + (eye[1] - 359) * SHEET_K;
+    }
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 6);
     const col = this.raging ? 0xff5070 : 0x7ff8ff;
     this.fxG.fillStyle(col, 0.25 + 0.2 * pulse).fillCircle(ex, ey, 9 + pulse * 3);
@@ -734,7 +812,7 @@ export class FrostAstraBoss extends BossBase {
       }
       const k = Math.min(1, a.warnT / dur);
       const blink = 0.5 + 0.5 * Math.sin(this.t * 20);
-      const m = this.mouth;
+      const m = this.mouthFx;
       // 바닥 부채꼴 자리 (파란 점선 테두리)
       if (a.ready) {
         this.warn.fillStyle(0x3fd0ff, 0.12 + 0.12 * blink).fillTriangle(m.x, m.y, a.coneNear, gy + 4, a.coneFar, gy + 4);
@@ -768,7 +846,7 @@ export class FrostAstraBoss extends BossBase {
       return;
     }
     if (a.phase === 'blow') {
-      const m = this.mouth;
+      const m = this.mouthFx;
       const blowDur = this.ic.breathTime * Math.max(0.75, this.speed);
       const power = Math.min(1, a.t / 0.12) * (a.t > blowDur - 0.2 ? Math.max(0, (blowDur - a.t) / 0.2) : 1);
       if (a.t < blowDur) {
@@ -1050,6 +1128,7 @@ export class FrostAstraBoss extends BossBase {
     const tint = this.raging ? RAGE_TINT : null;
     flash(this.scene, wing.sprite, tint);
     flash(this.scene, this.body, tint);
+    this.flashT = 0.07; // 시트 그림 깜빡임 (pose 에서 칠함)
     this.scene.sparks?.explode(8, this.x + wing.side * 60, this.y - 30);
     if (wing.health.isDead) this.breakWing(wing);
   }
@@ -1059,6 +1138,7 @@ export class FrostAstraBoss extends BossBase {
     floatText(this.scene, this.heart.x, this.heart.y - 40, String(dmg), color, color === '#ffffff' ? 20 : 30);
     flash(this.scene, this.heart);
     flash(this.scene, this.body, this.raging ? RAGE_TINT : null);
+    this.flashT = 0.07;
     this.scene.sparks?.explode(10, this.heart.x, this.heart.y);
     if (this.heartHealth.isDead) this.defeat();
   }
@@ -1070,6 +1150,8 @@ export class FrostAstraBoss extends BossBase {
     floatText(this.scene, this.x + wing.side * 70, this.y - 120, `${wing.label} 파괴!`, '#ff9a1f', 30);
     // 얼음 날개가 산산조각
     for (let i = 0; i < 3; i++) this.scene.sparks?.explode(8, this.x + wing.side * (40 + i * 40), this.y - 40 - i * 15);
+    // 시트 그림을 쓸 때는 숨겨 둔 얼음 날개 조각을 그 자리에 보여 주고 떨어뜨린다
+    if (this.sheet) wing.sprite.setVisible(true).setPosition(this.x + wing.side * 14, this.y - 30).setAlpha(0.85).setTint(GROUND_TINT);
     this.scene.tweens.add({
       targets: wing.sprite,
       angle: wing.side * 120,
@@ -1109,6 +1191,10 @@ export class FrostAstraBoss extends BossBase {
   collapse() {
     this.shadowG.clear();
     const targets = [this.body, this.heart, ...this.wingsAlive.map((w) => w.sprite)];
+    if (this.sheet) {
+      this.sprite.anims.stop();
+      targets.push(this.sprite);
+    }
     this.scene.tweens.add({ targets, alpha: 0, y: this.groundY - 20, angle: 30, duration: 900 });
   }
 }

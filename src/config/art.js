@@ -28,6 +28,7 @@ export const customArt = {
   // boss_fist_1: 'boss_fist_1.png', // 스테이지 1 보스가 날리는 주먹 (왼쪽을 보는 모습). 5 도 같은 식
   // boss_ice_body_4: 'boss_ice_body_4.png', // 혹한의 아스트라 몸통 (왼쪽을 보는 모습, 날개 없이, 220x170 비율. 머리 왼쪽 위, 꼬리 오른쪽 아래)
   // boss_ice_wing_4: 'boss_ice_wing_4.png', // 혹한의 아스트라 날개 하나 (오른쪽 날개, 붙는 곳이 왼쪽 아래, 170x130 비율, 반투명 얼음 막)
+  astra_4: { file: 'frost_astra.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 혹한의 아스트라 (아들 그림, 8장 날갯짓, 머리가 오른쪽이라 오른쪽을 봄). 있으면 위 몸통과 날개 대신 씀
   // ice_heart: 'ice_heart.png', // 혹한의 아스트라 얼음 심장 (약점, 가슴에 붙음)
   // ice_icicle: 'ice_icicle.png', // 떨어지는 고드름 (뾰족한 쪽이 아래)
   // frost_spike: 'frost_spike.png', // 빙천지락 때 바닥에서 솟는 얼음 가시 (아래쪽이 바닥, 80x120 비율)
