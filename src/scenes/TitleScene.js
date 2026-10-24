@@ -29,6 +29,7 @@ export class TitleScene extends Phaser.Scene {
     const controls = [
       '이동 A / D 또는 ← →    점프 Space    대시 K 또는 Shift',
       '펀치 J 또는 마우스 왼쪽 (꾹 눌렀다 떼면 충전 펀치)    일시정지 Esc',
+      '어퍼컷 W 나 ↑ 누른 채 펀치    궁극기 L (파란 게이지가 꽉 차면)',
     ].join('\n');
     makeText(this, width / 2, 196, controls, 16, '#ffffff', { lineSpacing: 6 }).setOrigin(0.5);
 

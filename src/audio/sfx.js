@@ -130,6 +130,26 @@ class Sfx {
           this.tone(f, 0.25, { vol: 0.13, delay: i * 0.14 }),
         );
         break;
+      case 'shot': // 파란 에너지탄 발사
+        this.tone(300, 0.25, { type: 'sawtooth', vol: 0.18, slideTo: 1200 });
+        this.hiss(0.25, { vol: 0.25, freq: 900, freqTo: 4000 });
+        break;
+      case 'upper': // 어퍼컷 휙
+        this.hiss(0.12, { vol: 0.35, freq: 800, freqTo: 5000 });
+        this.tone(220, 0.12, { type: 'triangle', vol: 0.25, slideTo: 660 });
+        break;
+      case 'ultReady': // 궁극기 게이지 꽉 참
+        [659, 880, 1175].forEach((f, i) => this.tone(f, 0.12, { type: 'triangle', vol: 0.14, delay: i * 0.07 }));
+        break;
+      case 'ultimate': // 궁극기 시작 (하늘로 뜀)
+        this.tone(200, 0.45, { type: 'sawtooth', vol: 0.22, slideTo: 1400 });
+        this.hiss(0.45, { vol: 0.3, freq: 600, freqTo: 5000 });
+        break;
+      case 'ultimateBoom': // 땅을 찍는 큰 충격파
+        this.hiss(0.9, { vol: 0.7, freq: 1500, freqTo: 50 });
+        this.tone(90, 0.8, { type: 'sine', vol: 0.6, slideTo: 25 });
+        this.tone(440, 0.5, { type: 'sawtooth', vol: 0.15, slideTo: 110, delay: 0.05 });
+        break;
       default:
         break;
     }

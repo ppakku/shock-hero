@@ -1,17 +1,30 @@
 import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
 import { Cooldown } from '../logic/cooldown.js';
-import { chargeRatio, resolveAttack } from '../logic/combat.js';
+import { chargeRatio, resolveAttack, upperRect } from '../logic/combat.js';
+import { HERO_FRAME, HERO_ORIGIN_Y } from '../fx/heroTextures.js';
 
-// 주인공: 이동, 점프, 대시, 충전 펀치, 피격.
-// 공격 판정과 효과는 scene.onPlayerAttack 이 맡는다.
+// 주인공: 이동, 점프, 대시, 충전 펀치, 위쪽 공격, 궁극기, 피격.
+// 공격 판정과 효과는 scene.onPlayerAttack 이, 에너지탄과 궁극기는 scene.skills 가 맡는다.
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, cfg, { maxHealth, damageMultiplier }) {
-    super(scene, x, y, 'player');
+    // customArt 로 player 그림을 넣었으면 그 한 장을 모든 동작에 쓴다
+    const customArt = Boolean(scene.registry.get('heroCustomArt'));
+    super(scene, x, y, customArt ? 'player' : 'hero_idle0');
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.setDisplaySize(40, 60);
-    this.body.setSize(this.width * 0.8, this.height * 0.93, true);
+    this.customArt = customArt;
+    if (customArt) {
+      this.setDisplaySize(44, 64);
+      this.body.setSize(this.width * 0.7, this.height * 0.9, true);
+    } else {
+      // 그림은 2배로 촘촘하게 그렸으니 절반 크기로 보여 준다. 몸통 판정은 30 x 56
+      const k = this.width / HERO_FRAME.w;
+      this.setScale(1 / k);
+      this.setOrigin(0.5, HERO_ORIGIN_Y);
+      this.body.setSize(30 * k, 56 * k, false);
+      this.body.setOffset((this.width - 30 * k) / 2, HERO_FRAME.feetY * k - 56 * k);
+    }
     this.setCollideWorldBounds(true);
     this.setDragX(1200);
     this.setDepth(10);
@@ -34,6 +47,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpBuffer = 0;
     this.ghostTimer = 0;
     this.dead = false;
+    this.ultGauge = 0; // 궁극기 게이지 0 ~ 1 (HUD 가 그린다)
+    this.ultActive = false; // 궁극기 쓰는 중 (무적)
+    this.ultPose = null;
+    this.poseName = null; // 잠깐 보여 줄 공격 자세
+    this.poseTime = 0;
+    this.lastMoving = false;
   }
 
   get dashing() {
@@ -50,6 +69,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(dt, input) {
+    this.step(dt, input);
+    this.updateAnim();
+  }
+
+  step(dt, input) {
+    this.poseTime = Math.max(0, this.poseTime - dt);
     this.dashCd.update(dt);
     this.attackCd.update(dt);
     this.dashInvuln = Math.max(0, this.dashInvuln - dt);
@@ -69,6 +94,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const blinking = this.hurtInvuln > 0 && Math.floor(this.hurtInvuln * 16) % 2 === 0;
     this.setAlpha(blinking ? 0.35 : 1);
+
+    // 궁극기 중에는 scene.skills 가 움직인다
+    if (this.ultActive) return;
+    if (input.ultPressed && this.hurtLock <= 0 && this.scene.skills?.startUltimate(this)) return;
 
     if (this.dashing) {
       this.dashTime -= dt;
@@ -94,7 +123,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const before = this.chargeRatio;
       this.chargeHeld += dt;
       if (before < 1 && this.chargeRatio >= 1) this.scene.onChargeFull(this);
-      if (!input.attackDown) this.releaseAttack();
+      if (!input.attackDown) this.releaseAttack(input);
     }
 
     if (this.hurtLock > 0) return;
@@ -135,8 +164,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(this.body.velocity.x * 0.3);
   }
 
-  releaseAttack() {
-    const attack = resolveAttack(this.chargeHeld, this.cfg, this.damageMultiplier);
+  releaseAttack(input = {}) {
+    const attack = resolveAttack(this.chargeHeld, this.cfg, this.damageMultiplier, { up: Boolean(input.upDown) });
+    this.lastMoving = Boolean(input.left || input.right);
+    const glow = attack.kind === 'charged';
+    this.poseName = attack.up ? (glow ? 'upperGlow' : 'upper') : glow ? 'punchGlow' : 'punch';
+    this.poseTime = glow ? 0.26 : 0.16;
     this.charging = false;
     this.chargeHeld = 0;
     this.attackCd.trigger();
@@ -153,7 +186,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // 결과: 'hit' 맞음, 'dodged' 대시로 피함, 'ignored' 무적 중이라 무시
   hurt(damage, fromX, knockback = this.cfg.player.hurtKnockback) {
-    if (this.dead) return 'ignored';
+    if (this.dead || this.ultActive) return 'ignored';
     if (this.dashInvuln > 0) {
       this.scene.onDodge(this);
       return 'dodged';
@@ -181,6 +214,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(0);
     this.scene.tweens.add({ targets: this, angle: -90 * this.facing, duration: 400 });
     this.scene.onPlayerDied(this);
+  }
+
+  // 동작에 맞는 그림(애니메이션)으로 바꾼다
+  updateAnim() {
+    if (this.customArt) return;
+    const onGround = this.body.blocked.down || this.body.touching.down;
+    let a;
+    if (this.dead || this.hurtLock > 0) a = 'hurt';
+    else if (this.ultActive) a = this.ultPose || 'slam';
+    else if (this.dashing) a = 'dash';
+    else if (this.poseTime > 0 && this.poseName) a = this.poseName;
+    else if (this.isCharging) a = 'charge';
+    else if (!onGround) a = this.body.velocity.y < 0 ? 'jump' : 'fall';
+    else if (Math.abs(this.body.velocity.x) > 30) a = 'run';
+    else a = 'idle';
+    this.play(`hero-${a}`, true);
+  }
+
+  // 위쪽 공격(어퍼컷)이 닿는 키 큰 사각형
+  upperRect(reach) {
+    const r = upperRect(this.x, this.y, this.facing, reach, this.cfg.skills.upperWidth);
+    return new Phaser.Geom.Rectangle(r.x, r.y, r.w, r.h);
   }
 
   attackRect(range) {

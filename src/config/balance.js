@@ -45,6 +45,33 @@ export const balance = {
     cooldown: 0.7, // 다음 대시까지 기다리는 시간
   },
 
+  // ---------- 궁극기 (L 키, 게이지가 꽉 찼을 때) ----------
+  ultimate: {
+    damage: 60, // 화면 안 몬스터에게 주는 피해
+    bossDamage: 60, // 보스에게 주는 피해
+    knockback: 600, // 몬스터를 날려 보내는 힘
+    gaugePerDamage: 0.005, // 적에게 피해 1을 줄 때 차는 양 (1 이 되면 꽉 참. 0.005 면 피해 200)
+    gaugePerHurt: 0.004, // 내가 피해 1을 받을 때 차는 양
+    jumpSpeed: 760, // 하늘로 뛰어오르는 힘
+    slamSpeed: 1300, // 땅으로 내려꽂는 속도
+    slowMotionScale: 0.3, // 땅을 찍은 순간 느려지는 정도 (0.3 = 3배 느리게)
+    slowMotionTime: 0.5, // 느린 화면이 이어지는 시간
+    invincibleAfter: 0.8, // 궁극기가 끝나고도 무적인 시간
+  },
+
+  // ---------- 특수 기술 ----------
+  skills: {
+    upperDamage: 10, // 어퍼컷(W 나 ↑ + 펀치) 피해량
+    upperKnockback: 160, // 어퍼컷이 미는 힘
+    upperReach: 220, // 어퍼컷이 머리 위로 닿는 높이
+    upperWidth: 80, // 어퍼컷이 닿는 폭
+    shotDamage: 30, // 최대 충전 때 나가는 에너지탄 피해량
+    shotKnockback: 420, // 에너지탄이 미는 힘
+    shotSpeed: 760, // 에너지탄 속도
+    shotDistance: 350, // 에너지탄이 날아가는 거리
+    shotSize: 44, // 에너지탄 크기
+  },
+
   // ---------- 초록 몬스터 ----------
   monster: {
     maxHealth: 30, // 체력
