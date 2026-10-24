@@ -902,6 +902,12 @@ export class GameScene extends Phaser.Scene {
     this.sfxPlay('jump');
   }
 
+  // 더블 점프: 발밑에서 먼지가 퍼진다
+  onPlayerDoubleJump(player) {
+    this.sfxPlay('jump');
+    this.dustAt(player.x, player.y + 30, 10);
+  }
+
   onDodge(player) {
     this.sfxPlay('dodge');
     floatText(this, player.x, player.y - 50, '회피!', '#3ff0ff', 20);

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
 import { Cooldown } from '../logic/cooldown.js';
+import { jumpKind } from '../logic/jump.js';
 import { chargeRatio, resolveAttack, upperRect } from '../logic/combat.js';
 import { HERO_FRAME, HERO_ORIGIN_Y } from '../fx/heroTextures.js';
 
@@ -50,6 +51,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.wasJumpDown = false;
     this.coyote = 0;
     this.jumpBuffer = 0;
+    this.airJumpsLeft = 0; // 공중에서 더 뛸 수 있는 횟수 (땅에 닿으면 다시 참)
     this.ghostTimer = 0;
     this.dead = false;
     this.ultGauge = 0; // 궁극기 게이지 0 ~ 1 (HUD 가 그린다)
@@ -127,6 +129,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const onGround = this.body.blocked.down || this.body.touching.down;
     this.coyote = onGround ? 0.1 : Math.max(0, this.coyote - dt);
+    if (onGround) this.airJumpsLeft = this.cfg.player.airJumps || 0;
     this.jumpBuffer = input.jumpPressed ? 0.12 : Math.max(0, this.jumpBuffer - dt);
 
     const blinking = this.hurtInvuln > 0 && Math.floor(this.hurtInvuln * 16) % 2 === 0;
@@ -175,11 +178,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (dir !== 0) this.facing = dir;
     this.setFlipX(this.facing < 0);
 
-    if (this.jumpBuffer > 0 && this.coyote > 0) {
+    const kind = jumpKind({ jumpPressed: input.jumpPressed, jumpBuffer: this.jumpBuffer, coyote: this.coyote, airJumpsLeft: this.airJumpsLeft });
+    if (kind === 'ground') {
       this.setVelocityY(-this.cfg.player.jumpSpeed);
       this.jumpBuffer = 0;
       this.coyote = 0;
       this.scene.onPlayerJump();
+    } else if (kind === 'air') {
+      // 더블 점프: 공중에서 한 번 더 (떨어지는 중이어도 위로 다시 뜀)
+      this.setVelocityY(-this.cfg.player.doubleJumpSpeed);
+      this.jumpBuffer = 0;
+      this.airJumpsLeft -= 1;
+      this.scene.tweens.add({ targets: this, angle: { from: 0, to: 360 * this.facing }, duration: 320, onComplete: () => !this.dead && this.setAngle(0) });
+      this.scene.onPlayerDoubleJump?.(this);
     }
     // 점프 버튼을 일찍 떼면 낮게 뛴다
     if (jumpReleased && this.body.velocity.y < 0) this.setVelocityY(this.body.velocity.y * 0.5);
