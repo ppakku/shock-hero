@@ -47,14 +47,14 @@ export class FireFx {
     // 불꽃 (주황에서 빨강으로 식어 감)
     this.flame = P(webgl ? 'fx_soft' : 'fx_flame', {
       lifespan: { min: 260, max: 560 }, speed: { min: 20, max: 110 }, gravityY: -340,
-      scale: { start: 0.75, end: 0.15 }, alpha: { start: 0.95, end: 0 }, blendMode: ADD,
-      ...(webgl ? { color: [0xfff4b0, 0xffa030, 0xff4a1a, 0x7a1008], colorEase: 'Quad.easeOut' } : {}),
+      scale: { start: 0.75, end: 0.15 }, alpha: { start: 0.9, end: 0 }, // 보통 섞기: 밝은 용암 배경에서도 주황 빨강 색이 살아 있게
+      ...(webgl ? { color: [0xffd060, 0xff7a18, 0xd8280c, 0x4a0c06], colorEase: 'Quad.easeOut' } : {}),
       maxParticles: 260, maxAliveParticles: 260,
     }, depth);
     // 하얀 노랑 심지
     this.core = P(webgl ? 'fx_soft' : 'fx_core', {
       lifespan: { min: 140, max: 300 }, speed: { min: 10, max: 60 }, gravityY: -200,
-      scale: { start: 0.5, end: 0.1 }, alpha: { start: 1, end: 0 }, blendMode: ADD,
+      scale: { start: 0.5, end: 0.1 }, alpha: { start: 0.75, end: 0 }, blendMode: ADD,
       ...(webgl ? { tint: [0xffffff, 0xfff6c8] } : {}),
       maxParticles: 140, maxAliveParticles: 140,
     }, depth + 0.2);
@@ -158,7 +158,7 @@ export class FireFx {
     along(this.n('jetC', 160, dt, 6), this.core, 10);
     this.ember.emitParticleAt(x1 + Phaser.Math.Between(-30, 30), y1 - 6, this.n('jetE', 50, dt, 3));
     this.smoke.emitParticleAt(x1, y1 - 30, this.n('jetS', 8, dt, 1));
-    this.glow(x0, y0, 46 + Math.sin(t * 30) * 6, 0xffb040, 0.9);
+    this.glow(x0, y0, 46 + Math.sin(t * 30) * 6, 0xffa040, 0.6);
     this.glow((x0 + x1) / 2, (y0 + y1) / 2, 70, 0xff6020, 0.45);
     this.glow(x1, y1 - 10, 90, 0xff5a1f, 0.65);
   }
@@ -182,7 +182,7 @@ export class FireFx {
     for (let i = 0; i < c; i++) this.core.emitParticleAt(x + Phaser.Math.Between(-w / 5, w / 5), groundY - Math.random() * h * 0.9, 1);
     this.ember.emitParticleAt(x, groundY - h, this.n(`${key}E`, 36, dt, 3));
     this.smoke.emitParticleAt(x, groundY - h, this.n(`${key}S`, 8, dt, 1));
-    this.glow(x, groundY - 10, w * 1.6, 0xffa040, 0.85);
+    this.glow(x, groundY - 10, w * 1.6, 0xff8a30, 0.55);
     this.glow(x, groundY - h * 0.5, w * 2.2, 0xff5020, 0.4);
     this.shimmer(x, groundY - h - 90, groundY - h + 10, w * 1.3, t + x * 0.01);
   }
@@ -210,7 +210,7 @@ export class FireFx {
     this.flame.explode(particleBudget(26 * power, lf, 60), x, y);
     this.ember.explode(particleBudget(18 * power, lf, 40), x, y);
     this.smoke.explode(particleBudget(5 * power, lf, 12), x, y - 10);
-    this.flashGlow(x, y, 70 + 50 * power, 0xffc060, 0.95);
+    this.flashGlow(x, y, 70 + 50 * power, 0xffa040, 0.7);
   }
 
   // 잠깐 번쩍이는 큰 빛 (트윈으로 사라짐)
