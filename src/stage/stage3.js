@@ -56,31 +56,31 @@ export const stage3 = {
 
   signs: [
     { x: 300, text: '스테이지 3: 용암 지대\n파란 뚱보는 아주 튼튼해!' },
-    { x: 4100, text: '보스 구역!\n땅이 울리면 점프!' },
+    { x: 4100, text: '보스 구역!\n불길은 점프로 넘어!' },
   ],
 
   talks: [
     { x: 0, lines: ['으, 뜨거워! 신발 녹는 거 아니야?', '파란 뚱보는 튼튼해. 충전 펀치를 여러 번 먹여!'] },
     { x: 1250, lines: ['저 높은 곳까지 올라갈 수 있겠어?'] },
-    { x: 3940, lines: ['체크포인트!', '이번 보스는 팔이 세 개야!', '땅이 울리면 점프로 충격파를 넘어!'] },
+    { x: 3940, lines: ['체크포인트!', '이번 보스는 붉은 용 아스트라노바X야!', '땅을 훑는 불길은 점프로 넘고, 날개 바람은 앞으로 걸어서 버텨!'] },
   ],
 
   arena: { startX: 4240, endX: 5200 },
 
   boss: {
-    type: 'golem', // 보스 종류 (src/boss/index.js)
-    name: '용암 돌연변이',
-    arms: 3,
-    healthScale: 1.3,
-    speedScale: 0.95,
-    rockBonus: 1, // 돌을 더 많이 떨굼
-    colors: { main: 0xa83a1f, light: 0xd8602f, dark: 0x6a200f, arm: 0xc04a26 },
-    // 팔이 3개라 [팔 3개, 2개, 1개, 0개(코어)] 네 단계
+    type: 'dragon', // 보스 종류 (src/boss/index.js). 숫자는 balance.js 의 dragonBoss
+    name: '아스트라노바X', // 아들이 디자인한 붉은 용
+    healthScale: 1, // 체력 배수 (1.5 = 1.5배 튼튼)
+    speedScale: 1, // 공격 속도 배수 (작을수록 빠름)
+    colors: { main: 0xc8282a, dark: 0x7a1418, armor: 0x2e2a2c, lava: 0xff7a1f, belly: 0xf0d0a0 },
+    // 공격: breath(불 뿜기), wing(날개 바람), tail(꼬리 휘두르기), fly(날아올라 불 폭격), pillars(용암 불기둥)
+    // [꼬리와 날개가 다 있을 때, 하나 부서졌을 때, 둘 다 부서졌을 때]
+    // fly 는 가끔만 나오게 목록에 한 번씩만 넣었어요
     phases: [
-      ['slam', 'doubleSlam', 'shockwave'],
-      ['doubleSlam', 'multiSlam', 'rocks'],
-      ['sweep', 'multiSlam', 'shockwave'],
-      ['rocks', 'shockwave', 'spit'],
+      ['breath', 'tail', 'wing', 'pillars'],
+      ['breath', 'tail', 'wing', 'pillars', 'fly'],
+      ['breath', 'tail', 'pillars', 'fly', 'wing'],
     ],
+    intro: ['저건... 아스트라노바X! 용이다!', '꼬리가 땅에 떨어지거나 날개가 처지면 그때 때려!'],
   },
 };

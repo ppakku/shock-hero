@@ -53,29 +53,31 @@ export const stage2 = {
 
   signs: [
     { x: 300, text: '스테이지 2: 독 공장\n빨간 몬스터는 아주 빨라!' },
-    { x: 3700, text: '보스 구역!\n독침을 조심해' },
+    { x: 3700, text: '보스 구역!\n덩굴에 잡히면 대시!' },
   ],
 
   talks: [
     { x: 0, lines: ['여긴 독 공장이야. 냄새 진짜 고약하다...', '빨간 녀석은 빠르니까 공격 신호를 잘 봐!'] },
     { x: 1850, lines: ['몬스터를 다 잡아야 보스 문이 열려. 하나도 놓치지 마!'] },
     { x: 2150, lines: ['위로 계속 올라가면 뭔가 있을 것 같은데?'] },
-    { x: 3540, lines: ['체크포인트!', '이번 보스는 독침을 뱉어. 멈추지 말고 계속 움직여!'] },
+    { x: 3540, lines: ['체크포인트!', '이번 보스는 숲을 기어 다니는 포레스트 와처야.', '긴 팔은 점프로 넘고, 덩굴에 잡히면 대시로 빠져나와!'] },
   ],
 
   arena: { startX: 3840, endX: 4800 },
 
   boss: {
-    type: 'toad', // 보스 종류 (src/boss/index.js)
-    name: '독침 돌연변이',
-    arms: 2,
-    healthScale: 1.2,
-    speedScale: 0.95,
-    colors: { main: 0x2f7a2f, light: 0x4fae4f, dark: 0x1d4d1d, arm: 0x3f9a3f },
+    type: 'watcher', // 보스 종류 (src/boss/index.js). 숫자는 balance.js 의 watcherBoss
+    name: '포레스트 와처', // 아들이 디자인한 숲 괴물
+    healthScale: 1, // 체력 배수 (1.5 = 1.5배 튼튼)
+    speedScale: 1, // 공격 속도 배수 (작을수록 빠름)
+    colors: { main: 0x4a3526, dark: 0x2b1d14, moss: 0x55602a, slime: 0xb6ff2a },
+    // 공격: claw(긴 팔 할퀴기), burrow(땅속에서 튀어나오기), spit(독 점액), vines(덩굴 붙잡기), crawl(벽 타고 천장으로)
+    // [긴 팔과 등 독혹이 다 있을 때, 하나 부서졌을 때, 둘 다 부서졌을 때]
     phases: [
-      ['slam', 'spit', 'doubleSlam'],
-      ['sweep', 'spit', 'multiSlam'],
-      ['rocks', 'spit', 'shockwave'],
+      ['claw', 'spit', 'burrow', 'vines'],
+      ['claw', 'burrow', 'vines', 'crawl', 'spit'],
+      ['burrow', 'vines', 'crawl', 'spit'],
     ],
+    intro: ['으으, 저 눈 좀 봐... 숲의 감시자야!', '빨간 신호를 보고 피한 다음, 지쳐서 엎드리면 때려!'],
   },
 };

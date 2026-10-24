@@ -15,6 +15,13 @@ export const customArt = {
   // robot: 'robot.png', // 로봇 조수 볼트
   // boss_body_1: 'boss_body_1.png', // 스테이지 1 보스 몸통 (왼쪽을 보는 모습). 2~5 도 같은 식
   // boss_arm_1: 'boss_arm_1.png', // 스테이지 1 보스 팔 (주먹이 아래로). 2~5 도 같은 식
+  // watcher_2: 'watcher_2.png', // 포레스트 와처 (네 발로 기는 모습, 왼쪽을 봄)
+  // watcher_flat_2: 'watcher_flat_2.png', // 지쳐서 엎드린 포레스트 와처
+  // watcher_blister: 'watcher_blister.png', // 와처 등의 초록 독혹
+  // slime_glob: 'slime_glob.png', // 와처가 뱉는 독 점액
+  // dragon_3: 'dragon_3.png', // 아스트라노바X (서서 날개를 편 모습, 왼쪽을 봄)
+  // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
+  // fireball: 'fireball.png', // 용의 불덩이
   // boss_core: 'boss_core.png', // 보스 약점(코어)
   // boss_armor: 'boss_armor.png', // 코어를 덮은 장갑
   // rock: 'rock.png', // 떨어지는 돌
