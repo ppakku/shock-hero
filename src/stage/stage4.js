@@ -61,31 +61,30 @@ export const stage4 = {
   signs: [
     { x: 300, text: '스테이지 4: 얼음 산\n보라 몬스터는 점프해서 덮쳐!' },
     { x: 2180, text: '방패병 주의!\n충전 펀치로 방패 깨기, 아니면 뒤에서!' },
-    { x: 4300, text: '보스 구역!\n충격파가 두 번 와' },
+    { x: 4300, text: '보스 구역!\n하늘을 나는 괴물이 있대' },
   ],
 
   talks: [
     { x: 0, lines: ['으슬으슬 추워... 내 회로가 얼겠어.', '보라 녀석은 점프해서 덮쳐. 대시로 밑으로 빠져나가!'] },
     { x: 2200, lines: ['방패를 든 녀석이야! 앞에서 그냥 치면 막혀.', '충전 펀치로 방패를 깨! 아니면 뒤로 돌아가서 때려.'] },
     { x: 2950, lines: ['산꼭대기에 뭔가 있을 거야. 올라가 보자!'] },
-    { x: 4140, lines: ['체크포인트!', '얼음 돌연변이는 빨라. 침착하게!'] },
+    { x: 4140, lines: ['체크포인트!', '얼음 돌연변이는 하늘을 날아다녀.', '지쳐서 땅에 내려오거나 낮게 뜨면 그때 때려!'] },
   ],
 
   arena: { startX: 4440, endX: 5400 },
 
   boss: {
-    type: 'ice', // 보스 종류 (src/boss/index.js)
+    type: 'ice', // 보스 종류 (src/boss/index.js): 하늘을 나는 얼음 박쥐 용
     name: '얼음 돌연변이',
-    arms: 3,
-    healthScale: 1.5,
-    speedScale: 0.9,
-    shockwaves: 2, // 충격파 개수
-    colors: { main: 0x2f6aa8, light: 0x6fa8e0, dark: 0x1d3f6a, arm: 0x4a8ad0 },
+    healthScale: 1.5, // 체력 배수 (balance.js 의 iceBoss 체력에 곱함)
+    speedScale: 0.9, // 공격 속도 (작을수록 빠름)
+    colors: { main: 0x2f6aa8, light: 0x8fc8f0, dark: 0x1d3f6a },
+    // [날개 둘 다 있을 때, 날개 하나 부서진 뒤, 날개 다 부서져 땅에 떨어진 뒤] 쓰는 공격
+    // icicles(고드름 비), dive(급강하), frostBreath(얼음 숨결), hop(뛰어 내려찍기, 땅에서만)
     phases: [
-      ['slam', 'doubleSlam', 'spit'],
-      ['multiSlam', 'doubleSlam', 'shockwave', 'rocks'],
-      ['sweep', 'multiSlam', 'spit'],
-      ['rocks', 'shockwave', 'spit'],
+      ['icicles', 'dive', 'frostBreath'],
+      ['dive', 'icicles', 'frostBreath'],
+      ['hop', 'frostBreath', 'icicles'],
     ],
   },
 };

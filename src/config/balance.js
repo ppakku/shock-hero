@@ -193,6 +193,55 @@ export const balance = {
     chargedPunchCoreMultiplier: 1.5, // 충전 펀치로 코어를 치면 피해 배수
     armXp: 30, // 팔 하나 부수면 얻는 경험치
     xp: 200, // 보스를 쓰러뜨리면 얻는 경험치
+    rocketPunchWarningTime: 1.2, // 주먹 발사 전 팔을 뒤로 당기는 시간 (경고)
+    rocketPunchSpeed: 700, // 날아가는 주먹 속도
+    rocketPunchDamage: 18, // 주먹 발사 피해량
+    rocketPunchStuckTime: 1.8, // 벽에 박힌 주먹을 때릴 수 있는 시간
+    inhaleWarningTime: 1.0, // 빨아들이기 전 경고 시간
+    inhaleTime: 2.6, // 빨아들이는 시간
+    inhalePull: 150, // 끌려가는 속도 (걷는 속도 260 보다 작아야 도망칠 수 있어요)
+    inhaleBiteDamage: 20, // 입까지 끌려가면 깨물리는 피해량
+    rageAt: 0.5, // 코어 체력이 이 비율 아래면 분노 모드 (0.5 = 절반)
+    rageSpeed: 0.8, // 분노하면 공격 시간에 곱하는 값 (작을수록 빠름)
+    rageChainGap: 0.3, // 분노 때 공격 두 개를 이어서 할 때 사이 시간
+  },
+
+  // ---------- 얼음 돌연변이 (스테이지 4, 날아다니는 보스) ----------
+  // 스테이지 파일의 boss.healthScale 을 체력에 곱합니다.
+  iceBoss: {
+    wingHealth: 150, // 날개 하나의 체력
+    heartHealth: 320, // 얼음 심장(약점) 체력. 날개를 다 부숴야 맞아요
+    flySpeed: 280, // 하늘을 나는 속도
+    idleTime: 0.9, // 공격과 공격 사이 쉬는 시간
+    tiredAfter: 3, // 공격을 이만큼 하면 지쳐서 땅에 내려와요
+    restTime: 3.2, // 땅에서 헉헉대며 쉬는 시간 (때릴 기회)
+    hoverTime: 1.8, // 급강하 뒤 낮게 떠 있는 시간 (점프 펀치, 위쪽 공격 기회)
+    icicleCount: 4, // 고드름 개수
+    icicleWarningTime: 1.0, // 고드름 떨어지기 전 그림자 경고 시간
+    icicleDamage: 14, // 고드름 피해량
+    diveWarningTime: 1.1, // 급강하 전 경고 시간
+    diveTime: 1.0, // 급강하로 싸움터를 가로지르는 시간
+    diveDamage: 20, // 급강하 피해량
+    breathWarningTime: 1.0, // 얼음 숨결 전 경고 시간
+    breathSpeed: 400, // 얼음 숨결이 바닥을 달리는 속도
+    breathDamage: 16, // 얼음 숨결 피해량
+    hopWarningTime: 0.9, // 날개가 부서진 뒤 뛰어올라 내려찍기 경고 시간
+    hopDamage: 20, // 뛰어 내려찍기 피해량
+    rageAt: 0.5, // 전체 체력이 이 비율 아래면 분노 모드
+  },
+
+  // ---------- 킹 돌연변이 (스테이지 5, 마지막 보스) ----------
+  // 팔과 코어 체력은 위 boss 숫자를 같이 써요.
+  kingBoss: {
+    summonMax: 2, // 한 번에 살아 있을 수 있는 부하 수
+    summonWarningTime: 1.0, // 부하가 나오기 전 보라색 구멍 경고 시간
+    leapWarningTime: 0.9, // 일어선 왕이 뛰어올라 내려찍기 전 경고 시간
+    leapDamage: 22, // 뛰어 내려찍기 피해량
+    chargeWarningTime: 1.0, // 돌진 전 경고 시간
+    chargeSpeed: 650, // 돌진 속도
+    chargeDamage: 20, // 돌진 피해량
+    tiredTime: 1.6, // 일어선 왕이 공격 뒤 숨 고르는 시간 (때릴 기회)
+    coreMultiplier: 2.2, // 왕의 코어 체력 배수 (boss.coreHealth 에 곱함. 일어선 뒤 싸움이 길어져요)
   },
 
   // ---------- 레벨 ----------

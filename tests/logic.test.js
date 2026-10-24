@@ -193,6 +193,11 @@ describe('보스 패턴', () => {
     expect(Math.abs(a - b)).toBeGreaterThanOrEqual(180);
   });
 
+  it('새 공격(주먹 발사, 빨아들이기, 부하 부르기)도 공격 목록에 있다', () => {
+    for (const p of ['rocketPunch', 'inhale', 'summon']) expect(Object.keys(BOSS_PATTERNS)).toContain(p);
+    expect(chooseBossAttack([['inhale']], 0, 2)).toBe('inhale');
+  });
+
   it('충전 펀치는 코어에 더 아프다', () => {
     expect(coreDamage({ kind: 'charged', damage: 40 }, 1.5)).toBe(60);
     expect(coreDamage({ kind: 'punch', damage: 8 }, 1.5)).toBe(8);
