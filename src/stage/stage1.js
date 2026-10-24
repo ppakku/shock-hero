@@ -20,6 +20,10 @@ export const stage1 = {
     ground: 0xffffff, // 땅 색 (흰색 = 원래 색)
     smoke: 0x555060,
     weather: null,
+    bgImage: { key: 'city_bg', file: 'city_bg.jpg' }, // 걸어가는 동안 배경 (Gemini 그림, 부서진 도시 저녁)
+    arenaImage: { key: 'city_arena', file: 'city_arena.jpg' }, // 보스전 배경 (Gemini 그림, 고철 처리장)
+    groundImage: { key: 'city_ground', file: 'city_ground.png', surface: 2 }, // 바닥 그림 (Gemini 그림, 부서진 도로, 좌우로 이어짐)
+    platformImage: { key: 'city_platform', file: 'city_platform.png', left: 90, right: 90, surface: 12, scale: 0.45 }, // 녹슨 철골 발판 (Gemini 그림, 양 끝 90 은 그대로, 가운데만 늘림)
   },
 
   // 올라설 수 있는 철골 발판 (아래에서 뚫고 올라갈 수 있음)
