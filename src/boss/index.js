@@ -1,5 +1,5 @@
 import { ArmBoss } from './ArmBoss.js';
-import { IceBoss } from './IceBoss.js';
+import { FrostAstraBoss } from './FrostAstraBoss.js';
 import { KingBoss } from './KingBoss.js';
 import { WatcherBoss } from './WatcherBoss.js';
 import { DragonBoss } from './DragonBoss.js';
@@ -8,7 +8,7 @@ import { DragonBoss } from './DragonBoss.js';
 // 아직 따로 만들지 않은 종류는 팔 보스로 대신한다.
 export const BOSS_TYPES = {
   arms: ArmBoss,
-  ice: IceBoss,
+  ice: FrostAstraBoss, // 스테이지 4: 혹한의 아스트라 (아들이 디자인)
   king: KingBoss,
   watcher: WatcherBoss, // 스테이지 2: 포레스트 와처 (아들이 디자인)
   dragon: DragonBoss, // 스테이지 3: 아스트라노바X (아들이 디자인)

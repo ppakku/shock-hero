@@ -25,3 +25,42 @@ export function drawRageAura(g, x, y, w, h, t) {
   g.fillStyle(0xff2020, 0.12 + 0.12 * pulse).fillEllipse(x, y, w + pulse * 20, h + pulse * 10);
   return pulse;
 }
+
+// 얼음 조각 하나 (마름모). angle 은 뾰족한 쪽 방향(라디안)
+export function drawIceShard(g, x, y, size, angle, color = 0xe8fbff, alpha = 1) {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const L = size;
+  const W = size * 0.35;
+  g.fillStyle(color, alpha).fillPoints(
+    [
+      { x: x + c * L, y: y + s * L },
+      { x: x - s * W, y: y + c * W },
+      { x: x - c * L * 0.6, y: y - s * L * 0.6 },
+      { x: x + s * W, y: y - c * W },
+    ],
+    true,
+  );
+}
+
+// 냉기 브레스 부채꼴: 입(mx, my)에서 바닥 x0~x1 까지 퍼지는 서리.
+// power 0~1 (뿜기 시작할 때 커짐), t 는 흔들림용 시간
+export function drawFrostCone(g, mx, my, x0, x1, gy, t, power = 1) {
+  const wob = Math.sin(t * 30) * 6;
+  const pts = (shrink) => {
+    const mid = (x0 + x1) / 2;
+    const a = Phaser_lerp(x0, mid, shrink);
+    const b = Phaser_lerp(x1, mid, shrink);
+    return [{ x: mx, y: my }, { x: a, y: gy + 6 }, { x: b + wob, y: gy + 6 }];
+  };
+  g.fillStyle(0x7fd8ff, 0.35 * power).fillPoints(pts(0), true);
+  g.fillStyle(0xbff4ff, 0.45 * power).fillPoints(pts(0.25), true);
+  g.fillStyle(0xffffff, 0.55 * power).fillPoints(pts(0.6), true);
+  // 바닥이 하얗게 얼어붙음
+  g.fillStyle(0xf0fbff, 0.7 * power).fillEllipse((x0 + x1) / 2, gy, Math.abs(x1 - x0) * 1.05, 26);
+  g.lineStyle(3, 0xffffff, 0.8 * power).strokePoints(pts(0), true);
+}
+
+function Phaser_lerp(a, b, k) {
+  return a + (b - a) * k;
+}

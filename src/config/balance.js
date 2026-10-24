@@ -214,8 +214,7 @@ export const balance = {
     rageChainGap: 0.3, // 분노 때 공격 두 개를 이어서 할 때 사이 시간
   },
 
-  // ---------- 얼음 돌연변이 (스테이지 4, 날아다니는 보스) ----------
-  // 스테이지 파일의 boss.healthScale 을 체력에 곱합니다.
+  // ---------- 혹한의 아스트라 (스테이지 4, 날아다니는 얼음 용, 아들 디자인) ----------
   iceBoss: {
     wingHealth: 150, // 날개 하나의 체력
     heartHealth: 320, // 얼음 심장(약점) 체력. 날개를 다 부숴야 맞아요
@@ -230,9 +229,16 @@ export const balance = {
     diveWarningTime: 1.1, // 급강하 전 경고 시간
     diveTime: 1.0, // 급강하로 싸움터를 가로지르는 시간
     diveDamage: 20, // 급강하 피해량
-    breathWarningTime: 1.0, // 얼음 숨결 전 경고 시간
-    breathSpeed: 400, // 얼음 숨결이 바닥을 달리는 속도
-    breathDamage: 16, // 얼음 숨결 피해량
+    breathWarningTime: 1.2, // 냉기 브레스 전 입이 빛나는 경고 시간
+    breathTime: 1.5, // 냉기 브레스를 뿜는 시간
+    breathConeNear: 50, // 용 몸 가운데에서 부채꼴이 바닥에 닿기 시작하는 거리 (그 안쪽, 용 밑은 안전)
+    breathConeLength: 260, // 부채꼴이 바닥을 덮는 길이
+    breathWaveDelay: 0.45, // 부채꼴 끝에 서리가 쌓였다가 달려 나가기까지 시간 (점프 준비 시간)
+    breathSpeed: 420, // 부채꼴 끝에서 서리가 바닥을 달리는 속도
+    breathDamage: 18, // 냉기 브레스 피해량 (한 번만 맞음)
+    avalancheWarningTime: 0.95, // 빙천지락 얼음 가시가 솟기 전 바닥이 빛나는 시간
+    avalancheGap: 140, // 얼음 가시 자리 간격 (번갈아 솟아서 틈이 생김)
+    avalancheDamage: 18, // 얼음 가시 피해량
     hopWarningTime: 0.9, // 날개가 부서진 뒤 뛰어올라 내려찍기 경고 시간
     hopDamage: 20, // 뛰어 내려찍기 피해량
     rageAt: 0.5, // 전체 체력이 이 비율 아래면 분노 모드

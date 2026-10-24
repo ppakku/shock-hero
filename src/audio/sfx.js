@@ -214,6 +214,24 @@ class Sfx {
       case 'flap':
         this.hiss(0.12, { vol: 0.15, freq: 500, freqTo: 200 });
         break;
+      case 'breathCharge': // 혹한의 아스트라 입에 냉기가 모임 (점점 높아짐)
+        this.tone(300, 1.0, { type: 'sine', vol: 0.12, slideTo: 1400 });
+        this.hiss(1.0, { vol: 0.12, freq: 800, freqTo: 5000 });
+        break;
+      case 'freezeBreath': // 냉기 브레스 쏴아아
+        this.hiss(1.4, { vol: 0.45, freq: 7000, freqTo: 600 });
+        this.tone(1200, 0.9, { type: 'triangle', vol: 0.07, slideTo: 500 });
+        this.tone(90, 0.8, { type: 'sawtooth', vol: 0.12, slideTo: 60 });
+        break;
+      case 'avalanche': // 빙천지락 땅울림
+        this.tone(55, 1.0, { type: 'sawtooth', vol: 0.35, slideTo: 35 });
+        this.hiss(1.0, { vol: 0.35, freq: 400, freqTo: 80 });
+        break;
+      case 'spikeBurst': // 얼음 가시가 솟음 (쩡!)
+        this.tone(2200, 0.18, { type: 'triangle', vol: 0.14, slideTo: 3200 });
+        this.hiss(0.25, { vol: 0.35, freq: 6000, freqTo: 1200 });
+        this.tone(140, 0.2, { type: 'square', vol: 0.15, slideTo: 70 });
+        break;
       case 'summon':
         [330, 415, 494, 622].forEach((f, i) => this.tone(f, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.07 }));
         this.hiss(0.6, { vol: 0.15, freq: 900, freqTo: 3000 });

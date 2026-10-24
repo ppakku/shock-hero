@@ -1,4 +1,4 @@
-// 자동 플레이 봇 (보스 B): bot2 에 주먹 발사, 빨아들이기, 얼음 돌연변이, 킹 돌연변이 대응을 더했다.
+// 자동 플레이 봇 (보스 B): bot2 에 주먹 발사, 빨아들이기, 혹한의 아스트라, 킹 돌연변이 대응을 더했다.
 // 진짜 키 입력 대신 scene.readInput 을 바꿔 끼워 같은 입력 값을 넣는다.
 (() => {
   const s = window.__shock.scene;
@@ -158,7 +158,7 @@
   }
   window.__botArmPlan = armPlan;
 
-  // 점프해서 공중에서 충전 펀치 (낮게 뜬 얼음 돌연변이용)
+  // 점프해서 공중에서 충전 펀치 (낮게 뜬 혹한의 아스트라용)
   function jumpStrike(p, inp, h, tx) {
     const { go, face, jump, grounded, B } = h;
     if (grounded && !B.air) {
@@ -175,7 +175,7 @@
     }
   }
 
-  // 얼음 돌연변이 (날아다니는 보스)
+  // 혹한의 아스트라 (날아다니는 얼음 용)
   window.__botIcePlan = function (boss, p, inp, h) {
     const { go, dash, jump, strike, flee, B } = h;
     const a = boss.action;
@@ -194,9 +194,16 @@
         const dx = boss.x - p.x;
         if (Math.sign(dx) === -a.dir && Math.abs(dx) < 175 && boss.y > boss.groundY - 170) { B.hold = 0; dash(Math.sign(dx) || 1); return inp; }
       }
-      if (a.type === 'frostBreath' && a.phase === 'blow') {
+      // 냉기 브레스: 부채꼴 밖으로, 바닥을 달리는 서리는 점프
+      if (a.type === 'freezeBreath' && (a.phase === 'aim' || a.phase === 'blow')) zones.push([a.coneLo - 30, a.coneHi + 30]);
+      if (a.type === 'freezeBreath' && a.phase === 'blow') {
         const d = (p.x - a.front) * a.dir;
-        if (d > 0 && d < 62) { B.hold = 0; jump(); return inp; }
+        if (d > 0 && d < 100 && a.t >= boss.ic.breathWaveDelay - 0.05) { B.hold = 0; jump(); return inp; }
+      }
+      // 빙천지락: 지금 빛나거나 솟은 가시 자리를 피하기
+      if (a.type === 'avalanche' && a.phase !== 'after') {
+        const xs = a.waves[a.phase === 'rise' || a.phase === 'roar' ? 0 : a.wave];
+        for (const x of xs) zones.push([x - 58, x + 58]);
       }
       if (a.type === 'dive' && a.phase === 'hover') {
         jumpStrike(p, inp, h, Phaser_clamp(boss.x - 60, lo + 40, hi - 40));
@@ -207,7 +214,7 @@
     if (flee(zones, lo, hi)) return inp;
     if (boss.mode === 'grounded' && !(a && a.type === 'crash')) {
       const inZone = (x) => zones.some(([l, r]) => x > l && x < r);
-      if (!(a && a.type === 'frostBreath' && a.phase === 'blow') && !inZone(boss.x - 112)) { strike(boss.x, 1.0, boss.arenaStart, 112); return inp; }
+      if (!(a && (a.type === 'freezeBreath' || a.type === 'avalanche')) && !inZone(boss.x - 112)) { strike(boss.x, 1.0, boss.arenaStart, 112); return inp; }
     }
     B.hold = 0;
     // 공격이 없으면 싸움터 가운데쯤에서 기다리기
