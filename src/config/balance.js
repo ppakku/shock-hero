@@ -13,6 +13,8 @@ export const balance = {
     maxHealth: 100, // 처음 체력
     moveSpeed: 260, // 걷는 속도
     jumpSpeed: 640, // 점프 힘 (클수록 높이 뜀)
+    airJumps: 1, // 공중에서 한 번 더 뛸 수 있는 횟수 (더블 점프). 0 이면 더블 점프 없음
+    doubleJumpSpeed: 560, // 더블 점프 힘 (첫 점프보다 조금 약함)
     hurtInvincibleTime: 0.8, // 맞은 뒤 깜빡이며 무적인 시간
     hurtKnockback: 260, // 맞았을 때 뒤로 밀리는 힘
   },
