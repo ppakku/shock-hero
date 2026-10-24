@@ -114,6 +114,21 @@ class Sfx {
         this.hiss(0.35, { vol: 0.5, freq: 1500, freqTo: 120 });
         this.tone(110, 0.3, { type: 'sawtooth', vol: 0.25, slideTo: 40 });
         break;
+      case 'venomCharge': // 프로스가 배를 구부리고 맹독을 모음 (우우웅)
+        this.tone(180, 0.6, { type: 'sawtooth', vol: 0.08, slideTo: 480 });
+        this.tone(360, 0.6, { type: 'triangle', vol: 0.06, slideTo: 960 });
+        break;
+      case 'venomShot': // 맹독 발사 (퓨욱)
+        this.hiss(0.18, { vol: 0.3, freq: 700, freqTo: 2200 });
+        this.tone(420, 0.16, { type: 'triangle', vol: 0.14, slideTo: 160 });
+        break;
+      case 'venomSplash': // 맹독이 터지며 독구름이 생김 (푸슉)
+        this.hiss(0.4, { vol: 0.35, freq: 1200, freqTo: 300 });
+        this.tone(140, 0.25, { type: 'sine', vol: 0.15, slideTo: 70 });
+        break;
+      case 'poisonTick': // 독구름에 체력이 깎임 (작게 칙)
+        this.tone(300, 0.07, { type: 'square', vol: 0.06, slideTo: 200 });
+        break;
       case 'spitCharge': // 침뱉기가 볼을 부풀림
         this.tone(200, 0.5, { type: 'triangle', vol: 0.12, slideTo: 420 });
         break;

@@ -9,7 +9,7 @@ export const TEXTURE = {
   fast: 'monster_fast',
   tank: 'monster_tank',
   jumper: 'monster_jumper',
-  bomber: 'monster_bomber',
+  fros: 'monster_fros',
   spitter: 'monster_spitter',
   shield: 'monster_shield',
 };

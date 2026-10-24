@@ -122,20 +122,28 @@ export const balance = {
       sizeMultiplier: 1.0,
       xp: 30,
     },
-    // 노랑 폭탄벌레: 하늘을 날다가 주인공 위에서 폭탄을 떨어뜨림
-    // 바닥에 빨간 원(그림자)이 생기면 거기로 폭탄이 떨어져요. 점프 펀치나 위쪽 공격으로 잡기
-    bomber: {
+    // 프로스 (아들 디자인 말벌): 하늘을 날다가 주인공에게 비스듬히 맹독을 쏨
+    // 배를 앞으로 구부리고 보라색으로 빛나면 쏘기 직전. 독이 떨어진 곳에 독구름이 잠깐 남아요.
+    // 독을 쏜 뒤 낮게 내려와 쉴 때 점프 펀치나 위쪽 공격으로 잡기
+    fros: {
       healthMultiplier: 0.6,
       speedMultiplier: 1.2, // 따라오는 속도 (주인공보다는 느림)
-      sizeMultiplier: 1.0,
+      sizeMultiplier: 1.35, // 커다란 말벌
       xp: 35,
       hoverY: 290, // 떠 있는 높이 (250 ~ 340 사이만 됨, 땅은 480)
-      bombInterval: 2.8, // 폭탄을 떨어뜨리는 간격
-      bombWarningTime: 0.9, // 빨간 원이 보이고 폭탄이 떨어지기까지 시간 (피할 기회)
-      bombFallTime: 0.35, // 폭탄이 떨어지는 데 걸리는 시간
-      bombDamage: 14, // 폭탄 피해량
-      bombRadius: 55, // 폭발 크기
-      tiredTime: 1.3, // 폭탄을 떨어뜨린 뒤 낮게 내려와 쉬는 시간 (때릴 기회)
+      preferDist: 170, // 주인공 옆으로 이만큼 떨어져서 비스듬히 쏨
+      shootRange: 320, // 이 가로 거리 안이면 맹독을 쏨
+      venomInterval: 3.0, // 맹독을 쏘는 간격
+      venomWarningTime: 1.0, // 배가 보라색으로 빛나고 쏘기까지 시간 (피할 기회)
+      venomLockTime: 0.35, // 쏘기 직전 조준이 멈추는 시간 (점선이 하얗게 깜빡이면 그 자리를 피하기)
+      venomSpeed: 300, // 맹독이 날아가는 속도
+      venomDamage: 10, // 맹독에 직접 맞으면 받는 피해
+      cloudTime: 1.5, // 독구름이 남아 있는 시간
+      cloudWidth: 100, // 독구름 너비 (대시 한 번으로 지나갈 수 있게)
+      cloudHeight: 70, // 독구름 높이
+      cloudDamage: 3, // 독구름 안에 있으면 한 번에 깎이는 체력
+      cloudTickTime: 0.35, // 독구름 피해 간격
+      tiredTime: 1.4, // 독을 쏜 뒤 낮게 내려와 쉬는 시간 (때릴 기회)
     },
     // 청록 침뱉기: 거리를 두고 느린 침을 뱉음. 점프로 넘거나 대시로 뚫기
     spitter: {

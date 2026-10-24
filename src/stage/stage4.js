@@ -40,7 +40,7 @@ export const stage4 = {
     900,
     { x: 1300, type: 'jumper' },
     { x: 1500, type: 'fast' },
-    { x: 1650, type: 'bomber' },
+    { x: 1650, type: 'fros' },
     { x: 1850, type: 'tank' },
     { x: 2100, type: 'jumper' },
     { x: 2400, type: 'shield' }, // 방패병

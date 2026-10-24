@@ -12,8 +12,11 @@ export const customArt = {
   // monster_fast: 'monster_fast.png', // 빨강 날쌘돌이
   // monster_tank: 'monster_tank.png', // 파랑 뚱보
   // monster_jumper: 'monster_jumper.png', // 보라 뜀뛰기
-  // monster_bomber: 'monster_bomber.png', // 노랑 폭탄벌레 (하늘을 나는 모습)
-  // monster_bomb: 'monster_bomb.png', // 폭탄벌레가 떨어뜨리는 폭탄
+  // monster_fros: 'monster_fros.png', // 프로스 말벌 (오른쪽을 보는 모습, 날개 위로)
+  // monster_fros_flap: 'monster_fros_flap.png', // 프로스 날개 아래로 (monster_fros 와 같은 크기로 그리면 날갯짓이 돼요)
+  // monster_fros_aim: 'monster_fros_aim.png', // 프로스가 배를 앞으로 구부려 독을 쏘기 직전 (같은 크기로)
+  // monster_venom: 'monster_venom.png', // 프로스의 맹독 (오른쪽으로 날아가는 모양)
+  // monster_poison_puff: 'monster_poison_puff.png', // 독구름 한 덩이 (여러 개를 겹쳐 구름이 돼요)
   // monster_spitter: 'monster_spitter.png', // 청록 침뱉기
   // monster_spit: 'monster_spit.png', // 침뱉기의 침 (오른쪽으로 날아가는 모양)
   // monster_shield: 'monster_shield.png', // 회색 방패병 (방패가 오른쪽 앞에 있게)

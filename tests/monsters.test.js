@@ -5,14 +5,18 @@ import { stages } from '../src/stage/index.js';
 import {
   MONSTER_TYPES,
   FLYING_TYPES,
-  BOMBER_MIN_Y,
-  BOMBER_MAX_Y,
+  FROS_MIN_Y,
+  FROS_MAX_Y,
   monsterStats,
   parseMonsterSpot,
   pushedKnockback,
-  bomberHoverY,
-  bomberXRange,
-  bombLandingY,
+  frosHoverY,
+  frosXRange,
+  frosHoverX,
+  floorBelowY,
+  venomDirection,
+  venomLanding,
+  maxCloudDamage,
   spitterMove,
   shieldResult,
 } from '../src/logic/monsters.js';
@@ -41,15 +45,16 @@ describe('몬스터 넉백', () => {
 
 describe('새 몬스터 능력치', () => {
   it('종류 목록에 새 몬스터가 있다', () => {
-    for (const t of ['bomber', 'spitter', 'shield']) expect(MONSTER_TYPES).toContain(t);
-    expect(FLYING_TYPES).toEqual(['bomber']);
+    for (const t of ['fros', 'spitter', 'shield']) expect(MONSTER_TYPES).toContain(t);
+    expect(FLYING_TYPES).toEqual(['fros']);
+    expect(MONSTER_TYPES).not.toContain('bomber');
   });
 
   it('배수가 아닌 숫자는 그대로 넘어온다', () => {
-    const b = monsterStats(cfg, 'bomber');
-    expect(b.type).toBe('bomber');
-    expect(b.bombDamage).toBe(balance.monsterTypes.bomber.bombDamage);
-    expect(b.bombRadius).toBeGreaterThan(20);
+    const b = monsterStats(cfg, 'fros');
+    expect(b.type).toBe('fros');
+    expect(b.venomDamage).toBe(balance.monsterTypes.fros.venomDamage);
+    expect(b.cloudWidth).toBeGreaterThan(40);
     expect(b.healthMultiplier).toBeUndefined();
     const s = monsterStats(cfg, 'spitter');
     expect(s.spitSpeed).toBeLessThan(cfg.player.moveSpeed); // 침은 걷는 것보다 느림
@@ -62,10 +67,19 @@ describe('새 몬스터 능력치', () => {
     }
   });
 
-  it('폭탄벌레 경고 시간은 주인공이 반지름 밖으로 걸어 나갈 만큼 길다', () => {
-    const b = monsterStats(cfg, 'bomber');
-    const walk = cfg.player.moveSpeed * (b.bombWarningTime + b.bombFallTime);
-    expect(walk).toBeGreaterThan(b.bombRadius * 2);
+  it('프로스 조준이 멈춘 뒤에도 독구름 밖으로 걸어 나갈 시간이 있다', () => {
+    const f = monsterStats(cfg, 'fros');
+    expect(cfg.player.moveSpeed * f.venomLockTime).toBeGreaterThan(f.cloudWidth / 2 + 20);
+    expect(f.venomWarningTime).toBeGreaterThan(f.venomLockTime);
+  });
+
+  it('독구름은 약 1.5초 남고, 계속 서 있어도 피해가 작다', () => {
+    const f = monsterStats(cfg, 'fros');
+    expect(f.cloudTime).toBeGreaterThanOrEqual(1.2);
+    expect(f.cloudTime).toBeLessThanOrEqual(2);
+    expect(f.cloudTickTime).toBeGreaterThanOrEqual(0.25);
+    expect(maxCloudDamage(f.cloudTime, f.cloudTickTime, f.cloudDamage)).toBeLessThanOrEqual(cfg.player.maxHealth * 0.2);
+    expect(f.venomDamage).toBeLessThan(cfg.player.maxHealth * 0.2);
   });
 });
 
@@ -75,7 +89,7 @@ describe('난이도', () => {
   const hard = { level: 'hard', monsterDamage: 1.25, monsterSpeed: 1.15, monsterWindup: 0.8 };
 
   it('난이도가 없으면 보통과 같다', () => {
-    expect(monsterStats(cfg, 'bomber')).toEqual(monsterStats(withDiff({ level: 'normal', monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1 }), 'bomber'));
+    expect(monsterStats(cfg, 'fros')).toEqual(monsterStats(withDiff({ level: 'normal', monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1 }), 'fros'));
   });
 
   it('쉬움은 약하고 느리고 신호가 길며, 어려움은 반대', () => {
@@ -90,11 +104,17 @@ describe('난이도', () => {
       expect(e.windupTime).toBeCloseTo(n.windupTime * 1.3);
       expect(h.windupTime).toBeCloseTo(n.windupTime * 0.8);
     }
-    const nb = monsterStats(cfg, 'bomber');
-    const eb = monsterStats(withDiff(easy), 'bomber');
-    expect(eb.bombWarningTime).toBeCloseTo(nb.bombWarningTime * 1.3);
-    expect(eb.bombInterval).toBeCloseTo(nb.bombInterval * 1.3);
-    expect(eb.bombDamage).toBeLessThan(nb.bombDamage);
+    const nf = monsterStats(cfg, 'fros');
+    const ef = monsterStats(withDiff(easy), 'fros');
+    const hf = monsterStats(withDiff(hard), 'fros');
+    expect(ef.venomWarningTime).toBeCloseTo(nf.venomWarningTime * 1.3);
+    expect(ef.venomInterval).toBeCloseTo(nf.venomInterval * 1.3);
+    expect(hf.venomLockTime).toBeCloseTo(nf.venomLockTime * 0.8);
+    expect(ef.venomDamage).toBeLessThan(nf.venomDamage);
+    expect(hf.venomDamage).toBeGreaterThan(nf.venomDamage);
+    expect(ef.cloudDamage).toBeLessThanOrEqual(nf.cloudDamage);
+    expect(ef.cloudDamage).toBeGreaterThanOrEqual(1);
+    expect(hf.cloudDamage).toBeGreaterThan(nf.cloudDamage);
     const hs = monsterStats(withDiff(hard), 'spitter');
     const ns = monsterStats(cfg, 'spitter');
     expect(hs.spitWindup).toBeCloseTo(ns.spitWindup * 0.8);
@@ -103,26 +123,53 @@ describe('난이도', () => {
   });
 });
 
-describe('폭탄벌레', () => {
+describe('프로스', () => {
   it('높이는 언제나 250 ~ 340 사이', () => {
-    expect(bomberHoverY(480)).toBe(290); // 스테이지 파일에 y 를 안 적으면 땅 높이 → 기본 높이
-    expect(bomberHoverY(100)).toBe(BOMBER_MIN_Y);
-    expect(bomberHoverY(390)).toBe(BOMBER_MAX_Y);
-    expect(bomberHoverY(300)).toBe(300);
-    expect(bomberHoverY(undefined, 270)).toBe(270);
+    expect(frosHoverY(480)).toBe(290); // 스테이지 파일에 y 를 안 적으면 땅 높이 → 기본 높이
+    expect(frosHoverY(100)).toBe(FROS_MIN_Y);
+    expect(frosHoverY(390)).toBe(FROS_MAX_Y);
+    expect(frosHoverY(300)).toBe(300);
+    expect(frosHoverY(undefined, 270)).toBe(270);
+  });
+
+  it('예전 이름 bomber 로 적어도 프로스가 나온다', () => {
+    expect(parseMonsterSpot({ x: 100, type: 'bomber' }, 480).type).toBe('fros');
+    expect(parseMonsterSpot({ x: 100, type: 'fros' }, 480).type).toBe('fros');
+  });
+
+  it('주인공 옆 위쪽에 떠 있고, 문 쪽이 막히면 반대편으로 간다', () => {
+    const range = { min: 40, max: 1000 };
+    expect(frosHoverX(600, 500, 170, range)).toBe(670);
+    expect(frosHoverX(400, 500, 170, range)).toBe(330);
+    expect(frosHoverX(990, 900, 170, range)).toBe(730); // 오른쪽은 문 너머라 왼쪽으로
+  });
+
+  it('맹독은 언제나 아래로 비스듬히 날아가 바닥에 떨어진다', () => {
+    const d = venomDirection(600, 290, 430, 450);
+    expect(d.x).toBeLessThan(0);
+    expect(d.y).toBeGreaterThan(0);
+    expect(Math.hypot(d.x, d.y)).toBeCloseTo(1);
+    const flat = venomDirection(600, 290, 300, 280); // 주인공이 더 높아도 아래로
+    expect(flat.y).toBeGreaterThanOrEqual(0.35 - 1e-9);
+    const land = venomLanding(600, 290, d, [], 480);
+    expect(land.y).toBe(480);
+    expect(land.x).toBeLessThan(600);
+    // 날아가는 길에 발판이 있으면 발판 위에 떨어진다
+    const plat = venomLanding(600, 290, { x: 0, y: 1 }, [{ x: 600, y: 390, w: 128 }], 480);
+    expect(plat.y).toBe(390);
   });
 
   it('보스 문이 닫혀 있으면 문을 넘어가지 않는다', () => {
     const st = stages[1];
-    expect(bomberXRange(st, false).max).toBeLessThan(st.gateX);
-    expect(bomberXRange(st, true).max).toBeLessThan(st.width);
-    expect(bomberXRange(st, false).min).toBeGreaterThan(0);
+    expect(frosXRange(st, false).max).toBeLessThan(st.gateX);
+    expect(frosXRange(st, true).max).toBeLessThan(st.width);
+    expect(frosXRange(st, false).min).toBeGreaterThan(0);
   });
 
-  it('폭탄은 아래 발판 위에, 없으면 땅에 떨어진다', () => {
+  it('쓰러지면 아래 발판 위에, 없으면 땅에 떨어진다', () => {
     const plats = [{ x: 500, y: 390, w: 128 }, { x: 500, y: 200, w: 128 }];
-    expect(bombLandingY(500, 290, plats, 480)).toBe(390);
-    expect(bombLandingY(800, 290, plats, 480)).toBe(480);
+    expect(floorBelowY(500, 290, plats, 480)).toBe(390);
+    expect(floorBelowY(800, 290, plats, 480)).toBe(480);
   });
 });
 
@@ -150,8 +197,8 @@ describe('스테이지 몬스터 배치', () => {
   const typesIn = (st) => new Set(st.monsters.map((s) => parseMonsterSpot(s, st.groundY).type));
   const firstStage = (type) => stages.findIndex((st) => typesIn(st).has(type)) + 1;
 
-  it('폭탄벌레는 2, 침뱉기는 3, 방패병은 4 스테이지부터 나온다', () => {
-    expect(firstStage('bomber')).toBe(2);
+  it('프로스는 2, 침뱉기는 3, 방패병은 4 스테이지부터 나온다', () => {
+    expect(firstStage('fros')).toBe(2);
     expect(firstStage('spitter')).toBe(3);
     expect(firstStage('shield')).toBe(4);
   });
@@ -162,12 +209,19 @@ describe('스테이지 몬스터 배치', () => {
   });
 
   it('새 몬스터가 처음 나오는 스테이지에는 보스 문 앞에 안내판이나 로봇 대사가 있다', () => {
-    const intro = { bomber: '폭탄벌레', spitter: '침', shield: '방패' };
+    const intro = { fros: '프로스', spitter: '침', shield: '방패' };
     for (const [type, word] of Object.entries(intro)) {
       const st = stages[firstStage(type) - 1];
       const first = Math.min(...st.monsters.map((s) => parseMonsterSpot(s, st.groundY)).filter((m) => m.type === type).map((m) => m.x));
       const texts = [...st.signs.map((s) => [s.x, s.text]), ...st.talks.map((t) => [t.x, t.lines.join(' ')])];
       expect(texts.some(([x, text]) => x < first && x < st.gateX && text.includes(word)), type).toBe(true);
+    }
+  });
+
+  it('안내 글에 예전 이름 폭탄벌레가 남아 있지 않다', () => {
+    for (const st of stages) {
+      const all = [...st.signs.map((s) => s.text), ...st.talks.flatMap((t) => t.lines)].join('\n');
+      expect(all).not.toContain('폭탄벌레');
     }
   });
 

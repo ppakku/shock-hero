@@ -42,7 +42,7 @@ export const stage3 = {
     { x: 2100, type: 'spitter' }, // 침뱉기
     { x: 2300, type: 'fast' },
     { x: 2600, type: 'tank' },
-    { x: 2750, type: 'bomber' },
+    { x: 2750, type: 'fros' },
     2900,
     { x: 3200, type: 'fast' },
     { x: 3400, type: 'spitter' },
