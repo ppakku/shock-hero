@@ -10,6 +10,7 @@ import { makeText } from '../ui/text.js';
 import { make } from '../fx/textures.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
 import { BossBase } from './BossBase.js';
+import { customArt } from '../config/art.js';
 import { drawSwirl } from './bossFx.js';
 
 const Rect = Phaser.Geom.Rectangle;
@@ -32,6 +33,7 @@ const TIPS = {
 };
 const FIST_W = 66;
 const FIST_H = 56;
+const ARM_CUT = 148; // 팔 그림 210 높이 중 이 아래가 주먹 (art.js 에 armCut 을 적으면 그 값)
 
 // 부술 수 있는 팔 하나
 class BossArm {
@@ -743,7 +745,7 @@ export class ArmBoss extends BossBase {
         a.phase = 'fly';
         a.t = 0;
         const frame = s.frame;
-        s.setCrop(0, 0, frame.width, frame.height * (148 / 210));
+        s.setCrop(0, 0, frame.width, frame.height * ((customArt[s.texture.key]?.armCut || ARM_CUT) / 210));
         arm.fist = this.scene.add.image(s.x, fistY, `boss_fist_${this.skin}`).setDepth(8).setDisplaySize(FIST_W, FIST_H);
         this.scene.sfxPlay('rocket');
         this.scene.shake(0.006, 120);
