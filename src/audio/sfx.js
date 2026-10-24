@@ -1,0 +1,127 @@
+// 소리 파일 없이 브라우저가 직접 만드는 효과음.
+// 나중에 진짜 소리 파일로 바꾸려면 play() 안의 이름별 코드를 교체하면 된다.
+
+class Sfx {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+  }
+
+  // 브라우저는 사용자가 클릭/키를 누른 뒤에만 소리를 허락한다.
+  unlock() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.45;
+      this.master.connect(this.ctx.destination);
+      const len = this.ctx.sampleRate * 0.5;
+      this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = this.noise.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  }
+
+  tone(freq, dur, { type = 'square', vol = 0.2, slideTo = null, delay = 0 } = {}) {
+    const t = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(this.master);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+
+  hiss(dur, { vol = 0.3, freq = 1200, freqTo = null, delay = 0 } = {}) {
+    const t = this.ctx.currentTime + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(freq, t);
+    if (freqTo) filter.frequency.exponentialRampToValueAtTime(freqTo, t + dur);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(filter).connect(gain).connect(this.master);
+    src.start(t);
+    src.stop(t + dur + 0.02);
+  }
+
+  play(name) {
+    if (this.muted || !this.ctx) return;
+    switch (name) {
+      case 'punch':
+        this.hiss(0.08, { vol: 0.35, freq: 2500 });
+        this.tone(180, 0.08, { type: 'triangle', vol: 0.3, slideTo: 90 });
+        break;
+      case 'charged':
+        this.hiss(0.2, { vol: 0.5, freq: 1800, freqTo: 300 });
+        this.tone(120, 0.25, { type: 'sawtooth', vol: 0.3, slideTo: 45 });
+        break;
+      case 'chargeFull':
+        this.tone(660, 0.08, { type: 'square', vol: 0.12 });
+        this.tone(990, 0.12, { type: 'square', vol: 0.12, delay: 0.07 });
+        break;
+      case 'hit':
+        this.tone(220, 0.1, { type: 'square', vol: 0.18, slideTo: 110 });
+        break;
+      case 'tink':
+        this.tone(1400, 0.12, { type: 'triangle', vol: 0.18, slideTo: 1100 });
+        break;
+      case 'dash':
+        this.hiss(0.18, { vol: 0.25, freq: 600, freqTo: 3000 });
+        break;
+      case 'jump':
+        this.tone(300, 0.1, { type: 'square', vol: 0.08, slideTo: 520 });
+        break;
+      case 'hurt':
+        this.tone(400, 0.25, { type: 'square', vol: 0.2, slideTo: 120 });
+        break;
+      case 'dodge':
+        this.tone(900, 0.06, { type: 'triangle', vol: 0.15 });
+        this.tone(1300, 0.08, { type: 'triangle', vol: 0.15, delay: 0.05 });
+        break;
+      case 'slam':
+        this.hiss(0.45, { vol: 0.6, freq: 500, freqTo: 60 });
+        this.tone(70, 0.4, { type: 'sine', vol: 0.5, slideTo: 30 });
+        break;
+      case 'break':
+        this.hiss(0.5, { vol: 0.5, freq: 3000, freqTo: 200 });
+        this.tone(200, 0.4, { type: 'sawtooth', vol: 0.25, slideTo: 40 });
+        break;
+      case 'warn':
+        this.tone(520, 0.1, { type: 'square', vol: 0.08 });
+        break;
+      case 'roar':
+        this.tone(90, 0.9, { type: 'sawtooth', vol: 0.35, slideTo: 55 });
+        this.hiss(0.9, { vol: 0.3, freq: 800, freqTo: 150 });
+        break;
+      case 'beep':
+        this.tone(880, 0.12, { type: 'sine', vol: 0.12 });
+        break;
+      case 'coin':
+        this.tone(988, 0.08, { type: 'square', vol: 0.1 });
+        this.tone(1319, 0.2, { type: 'square', vol: 0.1, delay: 0.08 });
+        break;
+      case 'levelup':
+        [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.15, { vol: 0.12, delay: i * 0.08 }));
+        break;
+      case 'victory':
+        [523, 659, 784, 1047, 784, 1047].forEach((f, i) =>
+          this.tone(f, 0.25, { vol: 0.13, delay: i * 0.14 }),
+        );
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+export const sfx = new Sfx();
