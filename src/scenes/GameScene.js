@@ -136,6 +136,48 @@ export class GameScene extends Phaser.Scene {
         const w = rng.between(60, 130);
         const h = rng.between(minH, maxH);
         const top = st.groundY - h;
+        if (th.scenery === 'mountains') {
+          // 얼음 산: 겹친 뾰족한 봉우리와 눈 덮인 꼭대기
+          const peakW = w * 2.2;
+          const px = x + w / 2;
+          g.fillStyle(color, 1).fillTriangle(px - peakW / 2, st.groundY + 60, px, top - 40, px + peakW / 2, st.groundY + 60);
+          g.fillStyle(0xf4fbff, windows ? 0.85 : 0.5).fillTriangle(px - peakW * 0.14, top + h * 0.12, px, top - 40, px + peakW * 0.14, top + h * 0.12);
+          x += w + rng.between(6, 30);
+          continue;
+        }
+        if (th.scenery === 'volcano') {
+          // 용암 지대: 들쭉날쭉한 바위산, 갈라진 틈에서 빛나는 용암
+          const px = x + w / 2;
+          g.fillStyle(color, 1).fillPoints(
+            [
+              { x: x - 10, y: st.groundY + 60 }, { x: x + w * 0.15, y: top + h * 0.3 }, { x: px - 8, y: top },
+              { x: px + 12, y: top + 18 }, { x: x + w * 0.85, y: top + h * 0.25 }, { x: x + w + 10, y: st.groundY + 60 },
+            ],
+            true,
+          );
+          if (windows) {
+            g.lineStyle(3, th.window, 0.8).lineBetween(px, top + 20, px - 10, top + h * 0.5).lineBetween(px - 10, top + h * 0.5, px + 6, st.groundY);
+          }
+          x += w + rng.between(6, 30);
+          continue;
+        }
+        if (th.scenery === 'castle') {
+          // 괴물 성: 성벽과 뾰족 지붕 탑, 톱니 모양 성가퀴, 빛나는 창
+          g.fillStyle(color, 1).fillRect(x, top, w, h + 60);
+          for (let cx = x; cx < x + w - 6; cx += 14) g.fillRect(cx, top - 10, 8, 10);
+          if (rng.frac() < 0.5) {
+            const tx = x + w * 0.3;
+            const tw = w * 0.4;
+            g.fillRect(tx, top - 60, tw, 60);
+            g.fillTriangle(tx - 6, top - 60, tx + tw / 2, top - 110, tx + tw + 6, top - 60);
+            if (windows) g.fillStyle(th.window, 0.8).fillRect(tx + tw / 2 - 4, top - 45, 8, 14);
+          }
+          if (windows) {
+            for (let wy = top + 20; wy < st.groundY - 30; wy += 40) if (rng.frac() < 0.4) g.fillStyle(th.window, 0.7).fillRect(x + w / 2 - 4, wy, 8, 16);
+          }
+          x += w + rng.between(6, 30);
+          continue;
+        }
         if (th.scenery === 'forest') {
           // 숲: 굽은 나무줄기와 둥근 잎 덩어리, 잎 사이 반딧불
           const cx = x + w / 2;

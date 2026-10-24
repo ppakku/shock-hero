@@ -11,6 +11,7 @@ export const stage3 = {
   checkpointX: 3940,
 
   theme: {
+    scenery: 'volcano', // 배경 모양
     sky: [0x2a0a08, 0xd8401c],
     sun: 0xff8a3d,
     far: 0x4a1a12,

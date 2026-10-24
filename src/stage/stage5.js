@@ -11,6 +11,7 @@ export const stage5 = {
   checkpointX: 4540,
 
   theme: {
+    scenery: 'castle', // 배경 모양
     sky: [0x08040f, 0x4a1a5a],
     sun: 0xd8d8ff, // 달
     far: 0x24102e,
