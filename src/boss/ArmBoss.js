@@ -31,8 +31,9 @@ const TIPS = {
   rocketPunch: '주먹이 날아온다! 낮으면 점프, 높으면 가만히 서 있어!',
   inhale: '빨아들인다! 반대쪽으로 계속 달려! 충전하면 느려지니까 조심!',
 };
-const FIST_W = 66;
+const FIST_W = 66; // 코드로 그린 날아가는 주먹 크기
 const FIST_H = 56;
+const ART_FIST = { w: 96, h: 66 }; // art.js 의 주먹 그림은 더 크게 (높은 펀치 띠 높이 66 에 맞춤)
 const ARM_CUT = 148; // 팔 그림 210 높이 중 이 아래가 주먹 (art.js 에 armCut 을 적으면 그 값)
 
 // 부술 수 있는 팔 하나
@@ -54,7 +55,8 @@ class BossArm {
 
   // 플레이어 주먹이 맞는 곳 (주먹과 팔 아래쪽)
   hitRect() {
-    if (this.fist) return new Rect(this.fist.x - FIST_W / 2 - 6, this.fist.y - FIST_H / 2 - 6, FIST_W + 12, FIST_H + 12);
+    const { w, h } = this.fistSize;
+    if (this.fist) return new Rect(this.fist.x - w / 2 - 6, this.fist.y - h / 2 - 6, w + 12, h + 12);
     return new Rect(this.sprite.x - 35, this.sprite.y - 120, 70, 120);
   }
 
@@ -133,6 +135,8 @@ export class ArmBoss extends BossBase {
     const names = count === 3 ? ['오른팔', '가운데 팔', '왼팔'] : count === 2 ? ['오른팔', '왼팔'] : ['팔'];
     this.arms = slots.slice(0, count).map((s, i) => new BossArm(scene, s.id, names[i], s.home, s.shoulder, armHp, tex, i % 2 ? colors.light : colors.arm));
     this.totalArms = count;
+    this.fistSize = customArt[`boss_fist_${skin}`] ? ART_FIST : { w: FIST_W, h: FIST_H };
+    for (const arm of this.arms) arm.fistSize = this.fistSize;
 
     this.rocks = [];
     this.waves = [];
@@ -730,7 +734,8 @@ export class ArmBoss extends BossBase {
     const band = rocketBand(a.height, this.groundY);
     const fistY = (band.top + band.bottom) / 2;
     const launchX = this.maxArmX + 40;
-    const wallX = this.arenaStart + FIST_W / 2 + 4;
+    const { w: fistW, h: fistH } = this.fistSize;
+    const wallX = this.arenaStart + fistW / 2 + 4;
     const p = this.scene.player;
 
     if (a.phase === 'aim') {
@@ -739,14 +744,14 @@ export class ArmBoss extends BossBase {
       // 팔을 뒤로 당긴다 (부들부들)
       const e = Phaser.Math.Easing.Cubic.Out(Math.min(1, k * 1.6));
       s.x = lerp(a.fromX, launchX + 30 * k, e) + (k > 0.5 ? Math.sin(this.t * 60) * 3 : 0);
-      s.y = lerp(a.fromY, fistY + FIST_H / 2 + 4, e);
+      s.y = lerp(a.fromY, fistY + fistH / 2 + 4, e);
       this.drawRocketWarning(band, launchX, a.height, k);
       if (a.t >= dur) {
         a.phase = 'fly';
         a.t = 0;
         const frame = s.frame;
         s.setCrop(0, 0, frame.width, frame.height * ((customArt[s.texture.key]?.armCut || ARM_CUT) / 210));
-        arm.fist = this.scene.add.image(s.x, fistY, `boss_fist_${this.skin}`).setDepth(8).setDisplaySize(FIST_W, FIST_H);
+        arm.fist = this.scene.add.image(s.x, fistY, `boss_fist_${this.skin}`).setDepth(8).setDisplaySize(fistW, fistH);
         this.scene.sfxPlay('rocket');
         this.scene.shake(0.006, 120);
       }
@@ -759,12 +764,12 @@ export class ArmBoss extends BossBase {
       fist.y = fistY + Math.sin(this.t * 40) * 2;
       // 불꽃 꼬리와 지나가는 높이
       const trail = Math.min(220, launchX - fist.x);
-      this.fxG.fillStyle(0xffb030, 0.45).fillRect(fist.x + FIST_W / 2, band.top + 14, trail, band.bottom - band.top - 28);
+      this.fxG.fillStyle(0xffb030, 0.45).fillRect(fist.x + fistW / 2, band.top + 14, trail, band.bottom - band.top - 28);
       this.warn.lineStyle(2, 0xff4444, 0.7).strokeRect(this.arenaStart, band.top, Math.max(0, fist.x - this.arenaStart), band.bottom - band.top);
       this.label(0, a.height === 'high' ? '가만히!' : '점프!', fist.x, band.top - 26, 24);
-      if (Math.random() < 0.6) this.scene.dustAt(fist.x + FIST_W / 2, fist.y, 1);
+      if (Math.random() < 0.6) this.scene.dustAt(fist.x + fistW / 2, fist.y, 1);
       if (!a.hasHit) {
-        const rect = new Rect(fist.x - FIST_W / 2, band.top, FIST_W, band.bottom - band.top);
+        const rect = new Rect(fist.x - fistW / 2, band.top, fistW, band.bottom - band.top);
         if (intersects(rect, p.getBounds()) && p.hurt(this.c.rocketPunchDamage, fist.x + 100, 380) !== 'ignored') a.hasHit = true;
       }
       if (fist.x <= wallX) {
@@ -775,7 +780,7 @@ export class ArmBoss extends BossBase {
         this.scene.shake(0.012, 220);
         this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(wallX - 20, fist.y, 14);
-        this.scene.tweens.add({ targets: fist, y: this.groundY - FIST_H / 2, angle: -20, duration: 260, ease: 'Bounce.easeOut' });
+        this.scene.tweens.add({ targets: fist, y: this.groundY - fistH / 2, angle: -20, duration: 260, ease: 'Bounce.easeOut' });
         arm.setHittable(true);
       }
       return;
@@ -797,7 +802,7 @@ export class ArmBoss extends BossBase {
       // 주먹이 높이 날아서 돌아온다 (돌아올 때는 아프지 않음)
       const k = Math.min(1, a.t / 0.7);
       fist.x = lerp(a.backFrom.x, s.x, k);
-      fist.y = lerp(a.backFrom.y, s.y - FIST_H / 2, k) - Math.sin(k * Math.PI) * 180;
+      fist.y = lerp(a.backFrom.y, s.y - fistH / 2, k) - Math.sin(k * Math.PI) * 180;
       if (k >= 1) this.endAction();
     }
   }

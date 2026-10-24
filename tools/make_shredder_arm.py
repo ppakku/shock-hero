@@ -1,7 +1,7 @@
 # 사용법: python3 tools/make_shredder_arm.py 원본.png public/art
 # 파쇄자 쇠팔(왼쪽)과 주먹(오른쪽)이 나란히 있는 그림 한 장에서 게임용 그림 두 장을 만든다.
 #   shredder_arm.png  : 팔뚝 아래에 아래를 향한 주먹을 붙인 팔 (70x210 비율, 아래 80/210 이 주먹, art.js 의 armCut: 130)
-#   shredder_fist.png : 로켓 펀치로 날아가는 주먹 (왼쪽을 향함, 66x56 비율)
+#   shredder_fist.png : 로켓 펀치로 날아가는 주먹 (왼쪽을 향함, 여백 없음, 게임에서 96x66)
 # 그려 넣어진 체크무늬 배경은 바깥에서부터, 막힌 틈 안은 회색 두 톤이 섞인 덩어리만 지운다.
 import sys
 from collections import deque
@@ -107,10 +107,10 @@ arm.alpha_composite(forearm.resize((fa_w, fa_h), Image.LANCZOS), ((AW - fa_w) //
 arm.alpha_composite(down.resize((fw, fh), Image.LANCZOS), ((AW - fw) // 2, AH - fh))
 arm.save(f'{outdir}/shredder_arm.png', optimize=True)
 
-FW, FH = 66 * S, 56 * S
-fist_img = Image.new('RGBA', (FW, FH), (0, 0, 0, 0))
-sc = min(FW / left.width, FH / left.height)
-lw, lh = round(left.width * sc), round(left.height * sc)
-fist_img.alpha_composite(left.resize((lw, lh), Image.LANCZOS), ((FW - lw) // 2, (FH - lh) // 2))
+# 주먹은 여백 없이 가로 96 기준 4배로 (게임에서 96x66 으로 그림)
+FW = 96 * S
+FH = round(left.height * FW / left.width)
+fist_img = left.resize((FW, FH), Image.LANCZOS)
+lw, lh = FW, FH
 fist_img.save(f'{outdir}/shredder_fist.png', optimize=True)
 print('arm', arm.size, 'forearm', (fa_w, fa_h), 'fist', (fw, fh), '| fist', fist_img.size, (lw, lh))
