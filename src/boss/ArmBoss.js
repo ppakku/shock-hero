@@ -8,6 +8,7 @@ import { ComboHazards } from './comboHazards.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
 import { make } from '../fx/textures.js';
+import { sheetFacesRight } from '../fx/spriteSheets.js';
 import { BossBase } from './BossBase.js';
 import { drawSwirl } from './bossFx.js';
 
@@ -16,6 +17,7 @@ const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 const lerp = Phaser.Math.Linear;
 const RAISED_Y = 230; // 팔을 들고 있을 때 주먹 아래쪽 높이
 const WAVE_H = 44; // 충격파 높이 (점프로 넘을 수 있음)
+const SHEET_ORIGIN_Y = 0.9; // 스프라이트 시트 칸 아래 빈 공간(약 10%)만큼 기준점을 올림
 
 // 처음 보는 공격이면 로봇이 알려 주는 말
 const TIPS = {
@@ -78,7 +80,7 @@ class BossArm {
   }
 }
 
-// 팔 보스(다중 팔 돌연변이): 팔을 다 부수면 장갑이 떨어지고 코어가 드러난다.
+// 팔 보스(스테이지 1 파쇄자, 스테이지 5 킹이 물려 씀): 팔을 다 부수면 장갑이 떨어지고 코어가 드러난다.
 // stage.boss 로 이름, 팔 개수, 체력 배수, 공격 목록이 달라진다.
 // 보스가 지켜야 할 약속은 src/boss/README.md 에 있다.
 export class ArmBoss extends BossBase {
@@ -99,10 +101,19 @@ export class ArmBoss extends BossBase {
     this.aura = scene.add.graphics().setDepth(3);
     this.links = scene.add.graphics().setDepth(3);
 
-    this.body = scene.add.image(this.bodyX, this.groundY, `boss_body_${skin}`).setOrigin(0.5, 1).setDepth(4).setDisplaySize(lay.bodyW, lay.bodyH);
+    this.body = scene.add.sprite(this.bodyX, this.groundY, `boss_body_${skin}`).setOrigin(0.5, 1).setDepth(4).setDisplaySize(lay.bodyW, lay.bodyH);
+    // art.js 에 스프라이트 시트(아들 그림, 예: 파쇄자)가 있으면 애니메이션으로 그린다.
+    // 칸 아래 빈 공간만큼 기준점을 올려 발이 땅에 닿게 하고, 오른쪽을 보는 그림이면 뒤집어 왼쪽(주인공 쪽)을 보게 한다.
+    this.sheet = scene.anims.exists(`boss_body_${skin}_anim`);
+    if (this.sheet) {
+      const sheetH = lay.bodyH * 1.18;
+      this.body.setOrigin(0.5, SHEET_ORIGIN_Y).setDisplaySize(Math.round((sheetH * 344) / 384), sheetH);
+      this.body.setFlipX(sheetFacesRight(scene, `boss_body_${skin}`)).play(`boss_body_${skin}_anim`);
+    }
     this.blocker = scene.add.zone(this.bodyX, this.groundY - lay.bodyH / 2, lay.bodyW - 20, lay.bodyH);
     scene.physics.add.existing(this.blocker, true);
 
+    // 약점(코어)은 몸통 앞 아래: 땅에 서서 치는 펀치가 닿는 높이여야 한다
     this.corePos = { x: this.frontX + 12, y: this.groundY - 80 };
     this.core = scene.add.image(this.corePos.x, this.corePos.y, 'boss_core').setDepth(6).setDisplaySize(56, 56);
     this.armor = scene.add.image(this.corePos.x, this.corePos.y, 'boss_armor').setDepth(7).setDisplaySize(80, 80);
