@@ -11,6 +11,9 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     const save = saveStore.load();
+    const firstPick = save.checkpoint || save.unlocked;
+    // 주소에 ?all 을 붙이면 모든 스테이지를 열어 준다 (테스트용, 저장은 안 바뀜)
+    if (new URLSearchParams(window.location.search).has('all')) save.unlocked = stages.length;
     const { width } = this.scale;
     const g = this.add.graphics();
     g.fillGradientStyle(0x2a1640, 0x2a1640, 0xd9643a, 0xd9643a, 1).fillRect(0, 0, 960, 540);
@@ -31,7 +34,7 @@ export class TitleScene extends Phaser.Scene {
 
     // 스테이지 고르기
     this.save = save;
-    this.selected = save.checkpoint || save.unlocked;
+    this.selected = firstPick;
     this.cards = stages.map((st, i) => {
       const n = i + 1;
       const x = width / 2 + (i - 2) * 150;
