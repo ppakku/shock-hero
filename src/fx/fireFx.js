@@ -81,6 +81,7 @@ export class FireFx {
     // 아지랑이 (불 위에서 흔들리는 희미한 물결 줄)
     this.haze = scene.add.graphics().setDepth(depth + 0.15).setBlendMode(ADD);
     this.acc = {};
+    this.sheetSprites = new Set(); // 폭발, 불기둥 그림 (끝나면 사라짐)
     this.allEmitters = [this.smoke, this.flame, this.core, this.ember, this.gustL, this.gustR];
   }
 
@@ -175,11 +176,14 @@ export class FireFx {
   }
 
   // 솟아오르는 불기둥 (폭 w, 높이 h)
-  column(x, groundY, h, w, dt, t, key = 'col') {
-    const n = this.n(`${key}F`, 260, dt, 9);
-    for (let i = 0; i < n; i++) this.flame.emitParticleAt(x + Phaser.Math.Between(-w / 2, w / 2), groundY - Math.random() * h, 1);
-    const c = this.n(`${key}C`, 120, dt, 5);
-    for (let i = 0; i < c; i++) this.core.emitParticleAt(x + Phaser.Math.Between(-w / 5, w / 5), groundY - Math.random() * h * 0.9, 1);
+  // light = true 면 불기둥 그림(fx_pillar)이 몸통을 그리니 알갱이는 불씨와 빛만 조금
+  column(x, groundY, h, w, dt, t, key = 'col', light = false) {
+    if (!light) {
+      const n = this.n(`${key}F`, 260, dt, 9);
+      for (let i = 0; i < n; i++) this.flame.emitParticleAt(x + Phaser.Math.Between(-w / 2, w / 2), groundY - Math.random() * h, 1);
+      const c = this.n(`${key}C`, 120, dt, 5);
+      for (let i = 0; i < c; i++) this.core.emitParticleAt(x + Phaser.Math.Between(-w / 5, w / 5), groundY - Math.random() * h * 0.9, 1);
+    }
     this.ember.emitParticleAt(x, groundY - h, this.n(`${key}E`, 36, dt, 3));
     this.smoke.emitParticleAt(x, groundY - h, this.n(`${key}S`, 8, dt, 1));
     this.glow(x, groundY - 10, w * 1.6, 0xff8a30, 0.55);
@@ -235,9 +239,52 @@ export class FireFx {
     for (let i = 0; i < n; i++) this.ember.emitParticleAt(x + Phaser.Math.Between(-w / 2, w / 2), y - Math.random() * h, 1);
   }
 
+  // ---------- 아이들이 그린 애니메이션 (있을 때만) ----------
+
+  get hasExplosion() {
+    return this.scene.anims.exists('fx_explosion_anim');
+  }
+
+  get hasPillar() {
+    return this.scene.anims.exists('fx_pillar_anim');
+  }
+
+  // 한 번 재생하고 사라지는 그림. 끝나면 destroy.
+  playOnce(key, x, y, scale, originY, timeScale = 1) {
+    const spr = this.scene.add.sprite(x, y, key).setOrigin(0.5, originY).setScale(scale).setDepth(this.glowDepth + 0.05);
+    this.sheetSprites.add(spr);
+    spr.on('animationcomplete', () => {
+      this.sheetSprites.delete(spr);
+      spr.destroy();
+    });
+    spr.play(`${key}_anim`);
+    spr.anims.timeScale = timeScale;
+    return spr;
+  }
+
+  // 펑! 폭발 그림 (땅에 닿은 지점 x, y). 동시에 6개까지, 효과 줄이기면 3개와 작은 크기.
+  // 그림이 없으면 false (알갱이 폭발만).
+  explosion(x, y, scale = 0.6) {
+    if (!this.hasExplosion) return false;
+    const live = [...this.sheetSprites].filter((s) => s.texture.key === 'fx_explosion').length;
+    if (live >= (this.lowFx ? 3 : 6)) return false;
+    this.playOnce('fx_explosion', x, y, scale * (this.lowFx ? 0.7 : 1), 0.95);
+    return true;
+  }
+
+  // 솟는 불기둥 그림: 표시 높이 h (판정 높이와 같게). 칸 맨 아래 가운데가 땅.
+  // timeScale 로 솟구치는 장면(3~5장)이 피해 나는 시간에 맞게 늘인다.
+  pillarSprite(x, groundY, h, timeScale = 1) {
+    if (!this.hasPillar) return null;
+    const frameH = this.scene.textures.getFrame('fx_pillar', 0)?.height || 538;
+    return this.playOnce('fx_pillar', x, groundY + 4, h / frameH, 1, timeScale);
+  }
+
   // 모두 멈추고 지우기
   clear() {
     for (const e of this.allEmitters) e.killAll();
+    for (const s of this.sheetSprites) s.destroy();
+    this.sheetSprites.clear();
     this.begin();
     this.end();
   }
