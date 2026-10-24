@@ -511,6 +511,7 @@ export class WatcherBoss extends BossBase {
         a.t = 0;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.014, 260);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.x, this.groundY, 20);
         this.scene.greenGooAt(this.x, this.groundY - 20, 14);
         this.hurtPlayer(new Rect(this.x - HALF, this.groundY - 150, HALF * 2, 150), k.burstDamage, this.x, 360);

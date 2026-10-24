@@ -1025,6 +1025,7 @@ export class FrostAstraBoss extends BossBase {
         this.y = baseY;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.016, 300);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.x, this.groundY, 18);
         this.scene.sparks?.explode(16, this.x, this.groundY - 10);
         if (intersects(new Rect(a.tx - 95, this.groundY - 120, 190, 120), p.getBounds())) p.hurt(this.ic.hopDamage, this.x, 380);
@@ -1081,6 +1082,7 @@ export class FrostAstraBoss extends BossBase {
       if (this.y >= this.groundBodyY) {
         this.scene.sfxPlay('slam');
         this.scene.shake(0.02, 400);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.x, this.groundY, 24);
         this.next(a, 'after');
       }

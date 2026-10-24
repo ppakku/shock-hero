@@ -236,6 +236,7 @@ export class HeroSkills {
     s.sfxPlay('ultimateBoom');
     s.cameras.main.flash(320, 150, 215, 255);
     s.shake(0.03, 500);
+    s.impact?.ultimate(); // 멈칫 + 확대 + 하얀 번쩍임 + 색 갈라짐 (src/fx/impact.js)
     s.dustAt(p.x, groundY - 4, 30);
     s.sparks.explode(40, p.x, groundY - 20);
     ring(s, p.x, groundY - 30, 0x3fd0ff, 520, 700, 10);

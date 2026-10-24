@@ -268,6 +268,7 @@ export class KingBoss extends ArmBoss {
         this.ky = this.groundY;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.02, 400);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.kx, this.groundY, 24);
         this.standStage = 'ready';
         this.timer = 1.2;
@@ -369,6 +370,7 @@ export class KingBoss extends ArmBoss {
         this.ky = this.groundY;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.018, 300);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.kx, this.groundY, 20);
         if (intersects(zone, p.getBounds())) p.hurt(this.kc.leapDamage, this.kx, 380);
         // 양쪽으로 충격파 (점프로 넘기)
@@ -427,6 +429,7 @@ export class KingBoss extends ArmBoss {
         this.kx = a.endX;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.014, 250);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.kx + a.dir * 40, this.groundY - 60, 14);
         floatText(this.scene, this.kx, this.groundY - STAND_H - 20, '어질어질...', '#ffd23f', 20);
         a.phase = 'after';

@@ -5,7 +5,8 @@ import { chooseDragonAttack, pillarWaves, flyLandingX, gustVelocity, gustPillarX
 import { spreadTargets } from '../logic/watcher.js';
 import { coreDamage } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
-import { floatText } from '../fx/effects.js';
+import { floatText, ring } from '../fx/effects.js';
+import { FireFx } from '../fx/fireFx.js';
 import { make } from '../fx/textures.js';
 
 const lerp = Phaser.Math.Linear;
@@ -73,6 +74,10 @@ export class DragonBoss extends BossBase {
     this.sheet = scene.anims.exists(`dragon_${skin}_anim`);
     if (this.sheet) this.sprite.play(`dragon_${skin}_anim`);
     this.sideBall = scene.add.image(0, 0, 'fireball').setDepth(8).setDisplaySize(36, 36).setVisible(false);
+    // 불 효과 (겹겹이 쌓은 불꽃 알갱이, 빛 번짐, 아지랑이). 그림만 바꾸고 공격 시간, 피해, 맞는 칸은 그대로.
+    this.fire = new FireFx(scene, 8.6);
+    scene.impact?.addGlow(this.sideBall, 0xff7a1f, 8); // WebGL 에서만 빛 번짐
+    this.dt = 1 / 60;
 
     const hp = this.hpScale;
     this.tailPart = new BossPart('꼬리', Math.round(k.tailHealth * hp));
@@ -224,6 +229,12 @@ export class DragonBoss extends BossBase {
     return new Rect(this.x - 130, this.groundY - this.air - h, 260, h);
   }
 
+  // 발밑 그림자 (src/fx/shadows.js 가 그린다). 날아오르면 작아진다.
+  shadowSpots() {
+    if (this.state === 'dead') return [];
+    return [{ x: this.x, feetY: this.groundY - this.air, w: 250 }];
+  }
+
   facePlayer() {
     const p = this.scene.player;
     if (Math.abs(p.x - this.x) > 30) this.facing = p.x < this.x ? -1 : 1;
@@ -287,7 +298,9 @@ export class DragonBoss extends BossBase {
       return;
     }
 
+    this.dt = dt;
     this.clearFx();
+    this.fire.begin();
     this.shadowG.clear();
     this.windG.clear();
     this.puddles.update(dt, this.groundY, this.t);
@@ -310,7 +323,18 @@ export class DragonBoss extends BossBase {
     }
     if (this.side) this.runSide(dt);
     this.updateBalls(dt);
+    this.drawFire(dt);
+    this.fire.end();
     this.draw();
+  }
+
+  // 땅을 달리는 불길, 착지 충격파, 뜨거운 바닥, 화난 몸의 불씨
+  drawFire(dt) {
+    const gy = this.groundY;
+    this.flames.list.forEach((w, i) => this.fire.wall(w.x, gy, 64 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `fl${i}`));
+    this.waves.list.forEach((w, i) => this.fire.wall(w.x, gy, 44 * Math.max(0.3, Math.min(1, w.left / 60)), dt, this.t, `wv${i}`));
+    this.puddles.list.forEach((p, i) => this.fire.lick(p.x, gy, p.w, dt, `pd${i}`));
+    if (this.raging) this.fire.aura(this.x, gy - this.air, 220, 200, dt);
   }
 
   walk(dt) {
@@ -446,6 +470,10 @@ export class DragonBoss extends BossBase {
       const q = Math.min(1, a.t / dur);
       this.fxG.fillStyle(0xff9a1f, 0.4 + 0.4 * Math.sin(this.t * 25)).fillCircle(mo.x, mo.y + 20, 10 + 12 * q);
       const wall = f < 0 ? this.arenaStart : this.arenaEnd;
+      // 입에 불이 모이고, 불길이 지나갈 바닥이 깜빡이며 달아오른다
+      this.fire.glow(mo.x, mo.y + 20, 26 + 54 * q, 0xffa040, 0.45 + 0.45 * q);
+      this.fire.core.emitParticleAt(mo.x, mo.y + 20, this.fire.n('breathAim', 20 + 60 * q, this.dt, 3));
+      for (let x = startX; (x - wall) * f < 0; x += f * 130) this.fire.warnGlow(x, this.groundY - 10, 44, this.t, q, 0xff3010);
       warnBox(this.warn, Math.min(startX, wall), this.groundY - 44, Math.abs(wall - startX), 44, this.t);
       this.label(0, '불 뿜기! 점프로 넘어!', (startX + wall) / 2, this.groundY - 130, 24);
       if (a.t >= dur) {
@@ -457,13 +485,15 @@ export class DragonBoss extends BossBase {
     }
     // 입에서 땅으로 불줄기
     if (a.spawned < a.count || a.t < a.next) {
-      this.fxG.fillStyle(0xff5a1f, 0.85).fillTriangle(mo.x, mo.y + 14, startX - 20, this.groundY, startX + f * 40, this.groundY);
-      this.fxG.fillStyle(0xffe08a, 0.85).fillTriangle(mo.x, mo.y + 18, startX - 8, this.groundY, startX + f * 16, this.groundY);
+      this.fxG.fillStyle(0xff5a1f, 0.6).fillTriangle(mo.x, mo.y + 14, startX - 20, this.groundY, startX + f * 40, this.groundY);
+      this.fxG.fillStyle(0xffe08a, 0.6).fillTriangle(mo.x, mo.y + 18, startX - 8, this.groundY, startX + f * 16, this.groundY);
+      this.fire.jet(mo.x, mo.y + 16, startX + f * 10, this.groundY - 6, this.dt, this.t);
     }
     if (a.spawned < a.count && a.t >= a.next) {
       a.spawned += 1;
       a.next = a.t + Math.max(0.95, k.breathGap * m); // 점프 한 번(약 0.9초)이 끝난 뒤에 다음 불길
       this.flames.spawn(startX, f, 1000);
+      this.fire.burst(startX, this.groundY - 12, 1.2);
       this.scene.sfxPlay('fire');
     }
     if (a.spawned >= a.count && this.flames.list.length === 0) this.afterAttack();
@@ -478,6 +508,8 @@ export class DragonBoss extends BossBase {
     const p = this.scene.player;
     const markPillars = (q) => {
       for (const x of a.pillars) {
+        this.fire.warnGlow(x, this.groundY - 6, 46, this.t, q);
+        this.fire.ember.emitParticleAt(x + Phaser.Math.Between(-24, 24), this.groundY - 4, this.fire.n(`wingE${x}`, 10 + 20 * q, dt, 2));
         this.warn.fillStyle(0xff7a1f, 0.25 + 0.45 * q).fillEllipse(x, this.groundY, PILLAR_W * (0.6 + 0.6 * q), 18);
         this.warn.lineStyle(3, 0xffd23f, 0.6 + 0.4 * Math.sin(this.t * 20)).strokeEllipse(x, this.groundY, PILLAR_W + 14, 22);
       }
@@ -505,12 +537,17 @@ export class DragonBoss extends BossBase {
         const x = this.x + Math.sign(a.push) * 140 + off;
         this.windG.lineStyle(3, 0xffffff, 0.5).lineBetween(x, y, x + Math.sign(a.push) * 50, y);
       }
+      // 날리는 먼지와 불씨
+      this.fire.gust(this.x + Math.sign(a.push) * 130, this.groundY - 250, this.groundY - 6, Math.sign(a.push), dt);
+      if (Math.random() < 0.3) this.scene.dustAt(this.x + Math.sign(a.push) * 160, this.groundY, 1);
       this.label(0, '버텨! 벽 쪽에 불기둥!', this.x, this.groundY - H - 40, 22);
       if (a.t >= k.gustTime) {
         a.phase = 'burst';
         a.t = 0;
         this.scene.sfxPlay('fire');
         this.scene.shake(0.008, 160);
+        for (const x of a.pillars) this.fire.burst(x, this.groundY - 10, 1.4);
+        this.scene.impact?.zoomPunch(0.018, 60, 220);
       }
       return;
     }
@@ -529,8 +566,9 @@ export class DragonBoss extends BossBase {
     const p = this.scene.player;
     const h = PILLAR_H * grow;
     const wob = Math.sin(this.t * 40 + x) * 6;
-    this.fxG.fillStyle(0xff5a1f, 0.9).fillRect(x - PILLAR_W / 2 - wob / 2, this.groundY - h, PILLAR_W + wob, h);
-    this.fxG.fillStyle(0xffe08a, 0.9).fillRect(x - PILLAR_W / 4, this.groundY - h, PILLAR_W / 2, h);
+    this.fxG.fillStyle(0xff5a1f, 0.6).fillRect(x - PILLAR_W / 2 - wob / 2, this.groundY - h, PILLAR_W + wob, h);
+    this.fxG.fillStyle(0xffe08a, 0.65).fillRect(x - PILLAR_W / 4, this.groundY - h, PILLAR_W / 2, h);
+    this.fire.column(x, this.groundY, h, PILLAR_W, this.dt, this.t, `col${Math.round(x)}`);
     if (!holder.hasHit && intersects(new Rect(x - PILLAR_W / 2 + 6, this.groundY - h, PILLAR_W - 12, h), p.getBounds())) {
       if (p.hurt(this.k.pillarDamage, x, 300) !== 'ignored') holder.hasHit = true;
     }
@@ -548,6 +586,9 @@ export class DragonBoss extends BossBase {
     if (a.phase === 'aim') {
       const dur = k.tailWarningTime * m;
       this.tail.lift = 140 * Math.min(1, a.t / (dur * 0.6));
+      // 꼬리 끝이 빨갛게 달아오른다
+      const tp = this.tailPoints().tip;
+      this.fire.warnGlow(tp.x, tp.y, 40, this.t, Math.min(1, a.t / dur), 0xff3010);
       warnBox(this.warn, Math.min(reach0, reach1), this.groundY - TAIL_H - 10, Math.abs(reach1 - reach0), TAIL_H + 10, this.t);
       this.label(0, '꼬리! 점프나 대시!', (reach0 + reach1) / 2, this.groundY - 160, 22);
       if (a.t >= dur) {
@@ -559,6 +600,13 @@ export class DragonBoss extends BossBase {
     }
     if (a.phase === 'sweep') {
       this.tail.lift = Math.max(0, 140 * (1 - a.t / 0.12));
+      // 휘두른 자리에 남는 바람 자국
+      const fade = 1 - Math.min(1, a.t / 0.18);
+      for (let i = 0; i < 3; i++) {
+        const y = this.groundY - 14 - i * 14;
+        this.fxG.lineStyle(10 - i * 3, 0xfff0d0, 0.45 * fade).lineBetween(reach0, y, reach1 + f * i * 20, y + 4);
+      }
+      this.fire.gust(reach1, this.groundY - 40, this.groundY - 6, -f, dt);
       if (!a.hasHit) {
         const r = this.hurtPlayer(new Rect(Math.min(reach0, reach1), this.groundY - TAIL_H, Math.abs(reach1 - reach0), TAIL_H), k.tailDamage, this.x, 380);
         if (r === 'hit' || r === 'dodged') a.hasHit = true;
@@ -569,6 +617,10 @@ export class DragonBoss extends BossBase {
         this.scene.sfxPlay('slam');
         this.scene.shake(0.01, 160);
         this.scene.dustAt(this.x - f * 220, this.groundY, 12);
+        // 꼬리가 땅을 쾅: 멈칫 + 돌 부스러기 + 충격 고리
+        this.scene.impact?.bossSlam(0.8);
+        this.scene.sparks.explode(14, this.x - f * 220, this.groundY - 10);
+        ring(this.scene, this.x - f * 220, this.groundY - 8, 0xffc080, 110, 320, 6);
       }
       return;
     }
@@ -592,12 +644,16 @@ export class DragonBoss extends BossBase {
     for (const b of a.bombs) {
       if (b.done) continue;
       this.warn.fillStyle(0x000000, 0.3).fillEllipse(b.x, this.groundY, 70, 14);
+      this.fire.warnGlow(b.x, this.groundY - 6, 40, this.t, 1, 0xff3020);
       this.warn.lineStyle(3, 0xff4444, 0.6 + 0.4 * Math.sin(this.t * 20)).strokeCircle(b.x, this.groundY - 30, 40);
     }
     if (a.phase !== 'land' || a.t < 0.01) warnBox(this.warn, a.lx - HALF, this.groundY - 150, HALF * 2, 150, this.t);
+    if (a.phase !== 'takeoff') this.fire.warnGlow(a.lx, this.groundY - 10, HALF, this.t, 0.6, 0xff2010);
     if (a.phase === 'takeoff') {
       const dur = k.takeoffTime * m;
       this.lift = Math.abs(Math.sin(this.t * 12)) * 12;
+      this.fire.gust(this.x - 120, this.groundY - 60, this.groundY - 4, -1, dt);
+      this.fire.gust(this.x + 120, this.groundY - 60, this.groundY - 4, 1, dt);
       this.label(0, '날아오른다!', this.x, this.groundY - H - 40, 24);
       if (a.t >= dur) {
         a.phase = 'rise';
@@ -610,7 +666,6 @@ export class DragonBoss extends BossBase {
     }
     if (a.phase === 'rise') {
       this.air = FLY_H * Phaser.Math.Easing.Cubic.Out(Math.min(1, a.t / 0.5));
-      this.shadowG.fillStyle(0x000000, 0.25).fillEllipse(this.x, this.groundY, 160, 18);
       if (a.t >= 0.5) {
         a.phase = 'cross';
         a.t = 0;
@@ -623,7 +678,6 @@ export class DragonBoss extends BossBase {
       const q = Math.min(1, a.t / dur);
       this.x = lerp(a.x0, a.lx, q);
       this.air = FLY_H + Math.sin(this.t * 8) * 10;
-      this.shadowG.fillStyle(0x000000, 0.2).fillEllipse(this.x, this.groundY, 160, 16);
       this.label(0, '불덩이 조심! 빨간 칸에 내려앉아!', (this.arenaStart + this.arenaEnd) / 2, 110, 22);
       for (const b of a.bombs) {
         if (!b.done && (this.x - b.x) * this.facing >= 0) {
@@ -646,8 +700,13 @@ export class DragonBoss extends BossBase {
       if (q >= 1) {
         this.air = 0;
         this.scene.sfxPlay('slam');
-        this.scene.shake(0.016, 300);
+        // 쿵! 위아래로 흔들리고 잠깐 멈칫, 불길이 터진다
+        if (this.scene.impact) this.scene.impact.bossSlam(1.4, true);
+        else this.scene.shake(0.016, 300);
         this.scene.dustAt(this.x, this.groundY, 20);
+        this.fire.burst(this.x, this.groundY - 14, 2.4);
+        ring(this.scene, this.x, this.groundY - 10, 0xffb040, 240, 420, 8);
+        ring(this.scene, this.x, this.groundY - 10, 0xfff0c0, 140, 300, 4);
         this.hurtPlayer(new Rect(this.x - HALF, this.groundY - 150, HALF * 2, 150), k.landDamage, this.x, 380);
         this.waves.spawn(this.x - HALF, -1, k.landWaveDistance);
         this.waves.spawn(this.x + HALF, 1, k.landWaveDistance);
@@ -660,19 +719,21 @@ export class DragonBoss extends BossBase {
 
   updateBalls(dt) {
     const p = this.scene.player;
-    for (const b of this.balls) {
+    this.balls.forEach((b, i) => {
       b.vy += 1400 * dt;
       b.y += b.vy * dt;
+      this.fire.trail(b.x, b.y - 8, dt, `ball${i}`);
       this.fxG.fillStyle(0xff5a1f, 1).fillCircle(b.x, b.y, 16);
       this.fxG.fillStyle(0xffe08a, 1).fillCircle(b.x - 3, b.y - 3, 7);
       if (b.y >= this.groundY - 14) {
         b.done = true;
         this.scene.sparks.explode(12, b.x, this.groundY - 10);
         this.scene.dustAt(b.x, this.groundY, 6);
+        this.fire.burst(b.x, this.groundY - 12, 1.3);
         this.hurtPlayer(new Rect(b.x - 40, this.groundY - 70, 80, 70), this.k.bombDamage, b.x, 240);
         this.puddles.add(b.x, 90, this.k.fireTime);
       }
-    }
+    });
     this.balls = this.balls.filter((b) => !b.done);
   }
 
@@ -687,6 +748,9 @@ export class DragonBoss extends BossBase {
       if (lt < w.warn) {
         const q = lt / w.warn;
         for (const x of w.xs) {
+          // 갈라진 틈이 깜빡이며 달아오르고 불씨가 올라온다 (어디서 솟을지 잘 보이게)
+          this.fire.warnGlow(x, this.groundY - 6, 46, this.t, q);
+          this.fire.ember.emitParticleAt(x + Phaser.Math.Between(-20, 20), this.groundY - 4, this.fire.n(`pilE${x}`, 8 + 24 * q, this.dt, 2));
           this.warn.fillStyle(0xff7a1f, 0.25 + 0.45 * q).fillEllipse(x, this.groundY, PILLAR_W * (0.6 + 0.6 * q), 18);
           this.warn.lineStyle(3, 0xffd23f, 0.6 + 0.4 * Math.sin(this.t * 20)).strokeEllipse(x, this.groundY, PILLAR_W + 14, 22);
           this.warn.fillStyle(0xff2020, 0.08 + 0.1 * q).fillRect(x - PILLAR_W / 2, this.groundY - PILLAR_H, PILLAR_W, PILLAR_H);
@@ -698,6 +762,8 @@ export class DragonBoss extends BossBase {
           w.burst = true;
           this.scene.sfxPlay('fire');
           this.scene.shake(0.008, 160);
+          for (const x of w.xs) this.fire.burst(x, this.groundY - 10, 1);
+          this.scene.impact?.zoomPunch(0.012, 50, 180);
         }
         for (const x of w.xs) this.drawPillar(x, Math.min(1, (lt - w.warn) / 0.08), w);
       }
@@ -748,12 +814,16 @@ export class DragonBoss extends BossBase {
       const dur = k.fireballFlightTime * m;
       const q = Math.min(1, sd.t / dur);
       this.sideBall.setVisible(true).setPosition(lerp(sd.x0, sd.tx, q), lerp(sd.y0, this.groundY - 18, q) - Math.sin(q * Math.PI) * 140);
+      this.sideBall.setAngle(this.t * 400);
+      this.fire.trail(this.sideBall.x, this.sideBall.y, dt, 'side');
+      this.fire.warnGlow(sd.tx, this.groundY - 6, 40, this.t, q, 0xff3020);
       this.warn.fillStyle(0x000000, 0.25 + 0.35 * q).fillEllipse(sd.tx, this.groundY, 40 + 40 * q, 12);
       this.warn.lineStyle(3, 0xff4444, 0.6 + 0.4 * Math.sin(this.t * 20)).strokeCircle(sd.tx, this.groundY - 40, 45);
       this.label(2, '불덩이도 날아온다!', sd.tx, this.groundY - 120, 20);
       if (q >= 1) {
         this.sideBall.setVisible(false);
         this.scene.sparks.explode(12, sd.tx, this.groundY - 10);
+        this.fire.burst(sd.tx, this.groundY - 12, 1.3);
         this.hurtPlayer(new Rect(sd.tx - 45, this.groundY - 80, 90, 80), k.bombDamage, sd.tx, 260);
         this.puddles.add(sd.tx, 90, k.fireTime);
         this.side = null;
@@ -764,6 +834,7 @@ export class DragonBoss extends BossBase {
     if (sd.t < warn) {
       const q = sd.t / warn;
       for (const x of sd.xs) {
+        this.fire.warnGlow(x, this.groundY - 6, 46, this.t, q);
         this.warn.fillStyle(0xff7a1f, 0.25 + 0.45 * q).fillEllipse(x, this.groundY, PILLAR_W * (0.6 + 0.6 * q), 18);
         this.warn.lineStyle(3, 0xffd23f, 0.6 + 0.4 * Math.sin(this.t * 20)).strokeEllipse(x, this.groundY, PILLAR_W + 14, 22);
       }
@@ -773,6 +844,7 @@ export class DragonBoss extends BossBase {
     if (!sd.burst) {
       sd.burst = true;
       this.scene.sfxPlay('fire');
+      for (const x of sd.xs) this.fire.burst(x, this.groundY - 10, 1);
     }
     for (const x of sd.xs) this.drawPillar(x, 1, sd);
     if (sd.t >= warn + 0.45) this.side = null;
@@ -840,6 +912,8 @@ export class DragonBoss extends BossBase {
     this.scene.sfxPlay('break');
     this.scene.shake(0.015, 300);
     this.scene.sparks.explode(24, x, this.groundY - 40);
+    this.scene.impact?.partBreak(); // 멈칫 + 확대 + 번쩍
+    this.fire.burst(x, this.groundY - 60, 2);
     floatText(this.scene, x, this.groundY - 150, `${part.label} 파괴!`, '#ff9a1f', 30);
     this.scene.gainXp(this.k.partXp, x, this.groundY - 120);
     if (!this.tailPart.alive && !this.wing.alive) {
@@ -860,6 +934,7 @@ export class DragonBoss extends BossBase {
     this.waves.clear();
     this.puddles.clear();
     this.windG.clear();
+    this.fire.clear();
     super.defeat();
   }
 

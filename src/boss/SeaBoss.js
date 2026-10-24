@@ -595,6 +595,7 @@ export class SeaBoss extends BossBase {
         this.x = a.endX;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.016, 300);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         ring(this.scene, this.x + a.dir * 110, this.y, 0xffffff, 80, 300, 5);
         floatText(this.scene, this.x, this.y - 100, '쿵! 어질어질...', '#ffd23f', 24);
         this.next(a, 'dizzy');

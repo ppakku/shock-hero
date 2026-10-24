@@ -54,6 +54,10 @@ export class HUDScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-H', () => {
       if (this.mode === 'paused') this.toggleSetting('shake');
     });
+    // 효과 줄이기 (느린 노트북이나 번쩍임이 불편한 사람용)
+    this.input.keyboard.on('keydown-F', () => {
+      if (this.mode === 'paused') this.toggleSetting('lowFx');
+    });
     this.input.keyboard.on('keydown-R', () => this.restartFromOverlay('retry'));
     this.input.keyboard.on('keydown-ENTER', () => this.restartFromOverlay('next'));
     this.input.keyboard.on('keydown-T', () => this.restartFromOverlay('title'));
@@ -134,8 +138,8 @@ export class HUDScene extends Phaser.Scene {
     this.overlayButtons.forEach((b) => b.destroy());
     this.overlayButtons = [];
     if (!this.touch) return;
-    const w = 210;
-    const gap = 24;
+    const w = specs.length > 4 ? 172 : 210; // 버튼이 5개면 조금 좁게 (화면 폭 안에 들어가게)
+    const gap = specs.length > 4 ? 12 : 24;
     const x0 = 480 - ((specs.length - 1) * (w + gap)) / 2;
     specs.forEach((sp, i) => {
       const c = this.add.container(x0 + i * (w + gap), 450);
@@ -182,6 +186,7 @@ export class HUDScene extends Phaser.Scene {
             'Esc: 계속하기',
             'T: 타이틀로 (지금 진행은 체크포인트까지만 남아요)',
             `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
+            `F: 효과 줄이기 ${s.lowFx ? '켜짐' : '꺼짐'}`,
             `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
           ]
       ).join('\n'),
@@ -191,6 +196,7 @@ export class HUDScene extends Phaser.Scene {
       { text: '타이틀로', fn: () => this.pauseToTitle() },
       { text: `소리 ${s.muted ? '꺼짐' : '켜짐'}`, fn: () => this.toggleSetting('muted') },
       { text: `흔들림 ${s.shake ? '켜짐' : '꺼짐'}`, fn: () => this.toggleSetting('shake') },
+      { text: `효과 ${s.lowFx ? '줄임' : '보통'}`, fn: () => this.toggleSetting('lowFx') },
     ]);
     this.overlay.setVisible(true);
   }
@@ -200,6 +206,7 @@ export class HUDScene extends Phaser.Scene {
     const settings = { ...save.settings, [name]: !save.settings[name] };
     saveStore.update({ settings });
     if (name === 'muted') sfx.muted = settings.muted;
+    if (name === 'lowFx') this.game_?.impact?.setLowFx(settings.lowFx); // 하던 게임에 바로 적용
     if (this.mode === 'paused') this.showPauseText();
   }
 

@@ -547,6 +547,7 @@ export class ArmBoss extends BossBase {
   impact(arm, damage) {
     const s = arm.sprite;
     this.scene.shake(0.012, 220);
+    this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
     this.scene.sfxPlay('slam');
     this.scene.dustAt(s.x, this.groundY, 16);
     const p = this.scene.player;
@@ -770,6 +771,7 @@ export class ArmBoss extends BossBase {
         a.t = 0;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.012, 220);
+        this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(wallX - 20, fist.y, 14);
         this.scene.tweens.add({ targets: fist, y: this.groundY - FIST_H / 2, angle: -20, duration: 260, ease: 'Bounce.easeOut' });
         arm.setHittable(true);

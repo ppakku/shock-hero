@@ -23,6 +23,10 @@ import { isTouchDevice, touchPad, touchPoints } from '../ui/touch.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
+// 때리는 맛(멈칫, 확대, 번쩍임), 발밑 그림자, 앞쪽 실루엣
+import { ImpactFx } from '../fx/impact.js';
+import { Shadows } from '../fx/shadows.js';
+import { Foreground } from '../fx/foreground.js';
 
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 const KEY = Phaser.Input.Keyboard.KeyCodes;
@@ -61,6 +65,8 @@ export class GameScene extends Phaser.Scene {
     this.drawBackground();
     this.buildLevel();
     this.makeParticles();
+    this.impact = new ImpactFx(this); // 보스가 만들 때 효과 줄이기 설정을 읽으므로 보스보다 먼저
+    this.foreground = new Foreground(this);
 
     const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
     this.powers = new PowerSet(cfg.powers); // 보물 상자의 특별한 힘 (스테이지마다 새로)
@@ -87,6 +93,7 @@ export class GameScene extends Phaser.Scene {
     this.skills = new HeroSkills(this);
 
     this.robot = new Robot(this, this.player);
+    this.shadows = new Shadows(this);
     this.applyUpgrades();
     this.powerG = this.add.graphics().setDepth(11);
     this.powerFxTimer = 0;
@@ -396,6 +403,8 @@ export class GameScene extends Phaser.Scene {
   // ---------- 매 프레임 ----------
 
   update(_time, deltaMs) {
+    // 멈칫(히트 스톱) 중이면 이번 프레임은 멈춰 있는다
+    if (this.impact.tick(deltaMs)) return;
     const dt = (Math.min(deltaMs, 50) / 1000) * this.time.timeScale;
     const input = this.readInput();
     this.player.update(dt, input);
@@ -410,6 +419,8 @@ export class GameScene extends Phaser.Scene {
     this.updatePowers(dt);
     this.checkTriggers();
     this.checkLevelUp(dt);
+    this.shadows.update();
+    this.foreground.update();
 
     if (!this.ended && !this.player.dead) this.registry.set('runTime', this.registry.get('runTime') + dt);
 
@@ -817,6 +828,7 @@ export class GameScene extends Phaser.Scene {
       this.sfxPlay('hit');
       this.skills.onDealtDamage(attack.damage);
       if (attack.kind === 'charged') this.shake(0.004 + 0.008 * attack.ratio, 120);
+      if (attack.full) this.impact.chargedHit(dir); // 최대 충전 펀치: 멈칫 + 확대 + 번쩍
     }
   }
 
@@ -976,6 +988,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.timeScale = scale;
     this.physics.world.timeScale = 1 / scale;
     this.cameras.main.flash(250, 255, 255, 255);
+    this.impact.bossDefeated();
     this.sfxPlay('break');
     this.ended = true;
 

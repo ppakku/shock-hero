@@ -15,7 +15,8 @@ export function defaultSave() {
     unlocked: 1, // 갈 수 있는 가장 높은 스테이지
     checkpoint: null, // null 이면 처음부터, 숫자면 그 스테이지의 보스 앞 체크포인트
     bestTimes: {}, // 스테이지별 가장 빨리 깬 시간(초). 예: { 1: 95.2 }
-    settings: { shake: true, muted: false, difficulty: 'normal', controls: 'classic' },
+    // lowFx: 효과 줄이기 (빛 번짐, 멈칫, 확대, 번쩍임을 끄고 불꽃 수를 줄인다)
+    settings: { shake: true, muted: false, difficulty: 'normal', controls: 'classic', lowFx: false },
   };
 }
 
@@ -48,6 +49,7 @@ function normalize(data) {
   if (data.settings && typeof data.settings === 'object') {
     if (typeof data.settings.shake === 'boolean') d.settings.shake = data.settings.shake;
     if (typeof data.settings.muted === 'boolean') d.settings.muted = data.settings.muted;
+    if (typeof data.settings.lowFx === 'boolean') d.settings.lowFx = data.settings.lowFx;
     d.settings.difficulty = normalizeDifficulty(data.settings.difficulty);
     d.settings.controls = normalizeControls(data.settings.controls);
   }
