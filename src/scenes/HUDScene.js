@@ -118,7 +118,7 @@ export class HUDScene extends Phaser.Scene {
         `걸린 시간 ${formatTime(time)}${isRecord ? '  (최고 기록!)' : ''}`,
         `최고 기록 ${formatTime(best)}    레벨 ${level}    보물 ${treasures}`,
         '',
-        last ? '괴물들의 왕을 쓰러뜨리고 도시를 구했어요! 축하해요!' : `Enter 또는 클릭: 스테이지 ${stage + 1} 로!`,
+        last ? '괴물들의 왕을 쓰러뜨리고 도시를 구했어요! 축하해요!' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
         last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
       ].join('\n'),
     );
@@ -213,7 +213,7 @@ export class HUDScene extends Phaser.Scene {
       parts.forEach((part, i) => {
         const x = x0 + i * step;
         g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 30, w, 12, 4);
-        g.fillStyle(part.locked ? 0x777777 : part.core ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 32, (w - 4) * part.ratio, 8, 3);
+        if (part.ratio > 0) g.fillStyle(part.locked ? 0x777777 : part.core ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 32, Math.max(6, (w - 4) * part.ratio), 8, 3);
         this.bossLabels[i].setText(part.label).setPosition(x + w / 2, 54);
       });
     }

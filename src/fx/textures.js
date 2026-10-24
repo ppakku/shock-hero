@@ -134,6 +134,11 @@ export function makeTextures(scene, stages = []) {
     g.fillStyle(0x9a9083).fillCircle(18, 14, 6);
   });
 
+  make(scene, 'heart', 24, 22, (g) => {
+    g.fillStyle(0xff3a5a).fillCircle(7, 7, 7).fillCircle(17, 7, 7).fillTriangle(0, 9, 24, 9, 12, 22);
+    g.fillStyle(0xffb0c0).fillCircle(6, 5, 2.5);
+  });
+
   make(scene, 'glob', 24, 24, (g) => {
     g.fillStyle(0x7dff4a).fillCircle(12, 12, 12);
     g.fillStyle(0xd8ffb0).fillCircle(8, 8, 4);

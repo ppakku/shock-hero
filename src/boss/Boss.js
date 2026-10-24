@@ -452,7 +452,7 @@ export class Boss {
     const a = this.action;
     a.t += dt;
     const m = this.speed;
-    const startX = this.frontX - 30;
+    const startX = this.frontX + 10;
     if (a.phase === 'aim') {
       const dur = this.c.shockwaveWarningTime * m;
       const alpha = 0.15 + 0.15 * Math.sin(this.t * 20);

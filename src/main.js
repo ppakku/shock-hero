@@ -8,7 +8,7 @@ import { HUDScene } from './scenes/HUDScene.js';
 // ?timer 를 붙이면 화면 새로고침 신호 대신 타이머로 돈다 (화면 없는 브라우저에서 자동 확인할 때)
 const useTimer = new URLSearchParams(window.location.search).has('timer');
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: 960,
@@ -22,3 +22,6 @@ new Phaser.Game({
   },
   scene: [BootScene, TitleScene, GameScene, HUDScene],
 });
+
+// 자동 확인용 (브라우저 콘솔에서 window.__shockGame 으로 접근)
+window.__shockGame = game;

@@ -489,6 +489,26 @@ export class GameScene extends Phaser.Scene {
   onMonsterKilled(monster) {
     this.greenGoo.explode(16, monster.x, monster.y);
     this.gainXp(monster.m.xp, monster.x, monster.y - 40);
+    if (Math.random() < cfg.monster.heartDropChance) this.dropHeart(monster.x, monster.y - 10);
+  }
+
+  // 하트: 먹으면 체력이 찬다. 10초 뒤 사라진다.
+  dropHeart(x, y) {
+    const h = this.physics.add.image(x, y, 'heart').setDepth(6).setBounce(0.3).setVelocity(Phaser.Math.Between(-60, 60), -320);
+    h.body.setSize(24, 22);
+    this.physics.add.collider(h, this.solids);
+    this.physics.add.collider(h, this.oneWays);
+    this.physics.add.overlap(this.player, h, () => {
+      const ph = this.player.health;
+      if (!h.active || this.player.dead || ph.current >= ph.max) return;
+      const healed = ph.heal(cfg.monster.heartHeal);
+      floatText(this, h.x, h.y - 20, `+${Math.round(healed)} 체력`, '#ff8aa0', 18);
+      this.sfxPlay('coin');
+      h.destroy();
+    });
+    this.time.delayedCall(8000, () => {
+      if (h.active) this.tweens.add({ targets: h, alpha: 0, duration: 200, yoyo: true, repeat: 4, onComplete: () => h.destroy() });
+    });
   }
 
   gainXp(amount, x, y) {
@@ -550,6 +570,8 @@ export class GameScene extends Phaser.Scene {
     const { patch, isRecord, best } = clearStagePatch(saveStore.load(), this.stageNum, time);
     this.save = saveStore.update(patch);
     this.sfxPlay('victory');
+    this.robot.queue = [];
+    this.robot.bubble.setVisible(false);
     const found = this.stage.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
     this.scene.get('HUD')?.showVictory({
       stage: this.stageNum,
