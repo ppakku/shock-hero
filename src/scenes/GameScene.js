@@ -437,8 +437,10 @@ export class GameScene extends Phaser.Scene {
     this.shake(0.01, 600);
     const title = makeText(this, a.startX + 480, 150, `${this.boss.name} 등장!`, 40, '#ff5555', { strokeThickness: 8 }).setOrigin(0.5).setDepth(60);
     this.tweens.add({ targets: title, alpha: 0, delay: 1400, duration: 500, onComplete: () => title.destroy() });
-    this.robot.say(this.boss.introLines || ['으악, 크다!', '빨간 곳에 팔이 떨어져. 피한 다음 바닥에 박힌 팔을 때려!'], true);
-    this.bossTips.add('slam');
+    // 보스마다 등장 대사가 다르다 (보스 클래스의 introLines 또는 스테이지 파일의 boss.intro)
+    const intro = this.boss.introLines || this.stage.boss.intro;
+    this.robot.say(intro || ['으악, 크다!', '빨간 곳에 팔이 떨어져. 피한 다음 바닥에 박힌 팔을 때려!'], true);
+    if (!intro) this.bossTips.add('slam');
   }
 
   // ---------- 플레이어 이벤트 ----------

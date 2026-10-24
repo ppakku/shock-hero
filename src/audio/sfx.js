@@ -136,6 +136,10 @@ class Sfx {
         this.hiss(0.25, { vol: 0.4, freq: 4000, freqTo: 800 });
         this.tone(900, 0.15, { type: 'square', vol: 0.12, slideTo: 300 });
         break;
+      case 'fire':
+        this.hiss(0.5, { vol: 0.45, freq: 400, freqTo: 2500 });
+        this.tone(110, 0.35, { type: 'sawtooth', vol: 0.2, slideTo: 220 });
+        break;
       case 'gate':
         this.tone(220, 0.5, { type: 'sawtooth', vol: 0.15, slideTo: 880 });
         [659, 880].forEach((f, i) => this.tone(f, 0.18, { vol: 0.1, delay: 0.3 + i * 0.1 }));

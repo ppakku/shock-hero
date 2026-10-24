@@ -252,6 +252,82 @@ export const balance = {
     coreMultiplier: 2.2, // 왕의 코어 체력 배수 (boss.coreHealth 에 곱함. 일어선 뒤 싸움이 길어져요)
   },
 
+  // ---------- 스테이지 2 보스: 포레스트 와처 (아들이 디자인한 숲 괴물) ----------
+  // 땅에 박힌 긴 팔을 때리고, 지쳐서 엎드렸을 때 등의 초록 독혹을 때려요.
+  // 둘 다 부수면 엎드릴 때마다 머리(약점)가 낮게 내려와요.
+  // 체력은 stage2.js 의 boss.healthScale 과 난이도를 곱해요.
+  watcherBoss: {
+    armHealth: 180, // 긴 팔 체력
+    backHealth: 200, // 등 독혹 체력
+    headHealth: 240, // 머리(약점) 체력
+    idleTime: 0.9, // 공격과 공격 사이 쉬는 시간
+    comboLength: 3, // 이만큼 공격하면 지쳐서 엎드림
+    tiredTime: 3.2, // 엎드려 있는 시간 (때릴 기회). 이때 독 웅덩이도 마름
+    clawWarningTime: 0.9, // 긴 팔 할퀴기 전 빨간 줄 경고 시간
+    clawLength: 520, // 팔이 닿는 거리
+    clawDamage: 18, // 할퀴기 피해량
+    clawStuckTime: 1.6, // 팔이 땅에 박혀 있는 시간 (때릴 기회)
+    burrowWarningTime: 1.2, // 땅속에 숨은 뒤 튀어나올 자리를 보여 주는 시간
+    burstDamage: 22, // 튀어나올 때 피해량
+    spitCount: 3, // 독 점액 개수 (화나면 1개 더)
+    spitWarningTime: 0.6, // 독 점액 뱉기 전 경고 시간
+    spitFlightTime: 0.8, // 독 점액이 날아가는 시간
+    spitDamage: 10, // 독 점액 피해량
+    puddleTime: 4, // 독 웅덩이가 남아 있는 시간
+    puddleWidth: 90, // 독 웅덩이 너비
+    puddleDamage: 4, // 독 웅덩이에 서 있으면 조금씩 깎이는 체력
+    vineCount: 3, // 솟아나는 덩굴 개수 (화나면 1개 더)
+    vineWarningTime: 1.0, // 덩굴이 솟기 전 잎사귀 경고 시간
+    vineDamage: 9, // 덩굴에 잡힐 때 피해량
+    vineHoldTime: 1.4, // 덩굴이 붙잡고 있는 시간 (대시로 바로 빠져나올 수 있음)
+    crawlSpeed: 520, // 벽과 천장을 기어가는 속도
+    dripCount: 3, // 천장에서 떨어뜨리는 독 방울 개수 (화나면 1개 더)
+    chargedPunchHeadMultiplier: 1.5, // 충전 펀치로 머리를 치면 피해 배수
+    partXp: 30, // 긴 팔이나 등 독혹을 부수면 얻는 경험치
+  },
+
+  // ---------- 스테이지 3 보스: 아스트라노바X (아들이 디자인한 붉은 용) ----------
+  // 꼬리를 휘두른 뒤 땅에 떨어진 꼬리를, 날개가 축 처졌을 때 날개를 때려요.
+  // 둘 다 부수면 공격이 끝날 때마다 헉헉거려요. 그때 크림색 배(약점)를 때려요.
+  // 체력은 stage3.js 의 boss.healthScale 과 난이도를 곱해요.
+  dragonBoss: {
+    tailHealth: 170, // 꼬리 체력
+    wingHealth: 190, // 날개 체력
+    bellyHealth: 300, // 배(약점) 체력
+    idleTime: 1.2, // 공격과 공격 사이 걸어 다니는 시간
+    walkSpeed: 60, // 걷는 속도
+    keepDistance: 280, // 주인공과 이만큼 떨어져 있으려고 함
+    restTime: 2.4, // 배가 드러난 뒤 공격 끝나고 헉헉거리는 시간 (때릴 기회)
+    breathWarningTime: 0.9, // 불 뿜기 전 경고 시간
+    breathSpeed: 420, // 땅을 훑는 불길 속도
+    breathDamage: 16, // 불길 피해량 (점프로 넘기)
+    breathGap: 1.2, // 불길과 불길 사이 시간 (점프하고 내려올 시간)
+    wingWarningTime: 0.9, // 날개 바람 전 경고 시간
+    gustTime: 1.6, // 날개 바람이 부는 시간
+    gustStrength: 170, // 바람이 미는 힘 (걷는 속도 260 보다 작아야 버틸 수 있음)
+    wingDownTime: 2.6, // 날개가 축 처져 있는 시간 (때릴 기회)
+    tailWarningTime: 0.9, // 꼬리 휘두르기 전 경고 시간
+    tailDamage: 18, // 꼬리 피해량
+    tailStuckTime: 1.8, // 꼬리가 땅에 떨어져 있는 시간 (때릴 기회)
+    takeoffTime: 0.7, // 날아오르기 전 날갯짓 시간
+    flyCrossTime: 1.8, // 하늘을 가로지르는 시간
+    bombCount: 3, // 하늘에서 떨어뜨리는 불덩이 개수 (화나면 1개 더)
+    bombDamage: 14, // 불덩이 피해량
+    landDamage: 22, // 내려앉을 때 깔리면 피해량
+    landWaveDamage: 12, // 내려앉을 때 충격파 피해량 (점프로 넘기)
+    landWaveSpeed: 400, // 내려앉을 때 충격파 속도
+    landWaveDistance: 360, // 내려앉을 때 충격파가 가는 거리
+    pillarWarningTime: 0.9, // 불기둥이 솟기 전 바닥이 빛나는 시간
+    pillarWaveGap: 0.1, // 첫 불기둥 묶음이 솟고 나서 다음 묶음이 빛나기까지 시간
+    pillarSpacing: 120, // 불기둥 자리 간격
+    pillarDamage: 18, // 불기둥 피해량
+    fireballFlightTime: 1.0, // 겹치기 공격 불덩이가 날아가는 시간
+    fireTime: 2.5, // 불덩이가 떨어진 바닥이 뜨거운 시간
+    fireDamage: 5, // 뜨거운 바닥에 서 있으면 깎이는 체력
+    chargedPunchBellyMultiplier: 1.5, // 충전 펀치로 배를 치면 피해 배수
+    partXp: 30, // 꼬리나 날개를 부수면 얻는 경험치
+  },
+
   // ---------- 레벨 ----------
   level: {
     firstLevelXp: 50, // 레벨 2가 되는 데 필요한 경험치
