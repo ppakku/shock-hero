@@ -1,5 +1,5 @@
 // =============================================================
-//  스테이지 5: 괴물 성 (다음은 마지막 스테이지 6 수중 던전)
+//  스테이지 5: 괴물 성 (다음은 스테이지 6 수중 던전)
 // =============================================================
 
 export const stage5 = {
@@ -55,11 +55,13 @@ export const stage5 = {
     { x: 4250, type: 'shield' },
   ],
 
-  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
+  // 보물: 자리는 들어올 때마다 무작위 (src/logic/treasures.js). 개수는 여기 적은 만큼.
+  // power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage5-tower', x: 1920, y: 80, power: 'rapid' },
-    { id: 'stage5-hall', x: 3280, y: 300 },
-    { id: 'stage5-throne', x: 4160, y: 210, power: 'star' },
+    { id: 'stage5-tower', power: 'rapid' },
+    { id: 'stage5-hall' },
+    { id: 'stage5-throne', power: 'star' },
+    { id: 'stage5-dungeon' },
   ],
 
   signs: [
@@ -69,7 +71,7 @@ export const stage5 = {
 
   talks: [
     { x: 0, lines: ['여기가 괴물들의 성이야.', '모든 몬스터가 다 나와. 지금까지 배운 걸 다 써!'] },
-    { x: 1150, lines: ['탑 꼭대기까지 올라가면 큰 보물이 있대!'] },
+    { x: 1150, lines: ['탑 꼭대기에도 보물이 있을지 몰라!'] },
     { x: 2650, lines: ['방패병, 프로스, 침뱉기까지 다 모였어.', '보라 독구름은 피하고, 침은 넘고, 방패는 충전 펀치로!'] },
     { x: 4540, lines: ['마지막 체크포인트!', '킹 돌연변이는 부하도 부르고 주먹도 날려.', '팔을 다 부수면 일어나서 뛰어다닐 거야. 끝까지 가자, 히어로!'] },
   ],

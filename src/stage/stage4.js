@@ -53,11 +53,13 @@ export const stage4 = {
     { x: 3850, type: 'jumper' },
   ],
 
-  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
+  // 보물: 자리는 들어올 때마다 무작위 (src/logic/treasures.js). 개수는 여기 적은 만큼.
+  // power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage4-icicle', x: 1040, y: 150, power: 'speed' },
-    { id: 'stage4-cave', x: 2480, y: 300 },
-    { id: 'stage4-summit', x: 3540, y: 130, power: 'star' },
+    { id: 'stage4-icicle', power: 'speed' },
+    { id: 'stage4-cave' },
+    { id: 'stage4-summit', power: 'star' },
+    { id: 'stage4-glacier' },
   ],
 
   signs: [
@@ -69,7 +71,7 @@ export const stage4 = {
   talks: [
     { x: 0, lines: ['으슬으슬 추워... 내 회로가 얼겠어.', '보라 녀석은 점프해서 덮쳐. 대시로 밑으로 빠져나가!'] },
     { x: 2200, lines: ['방패를 든 녀석이야! 앞에서 그냥 치면 막혀.', '충전 펀치로 방패를 깨! 아니면 뒤로 돌아가서 때려.'] },
-    { x: 2950, lines: ['산꼭대기에 뭔가 있을 거야. 올라가 보자!'] },
+    { x: 2950, lines: ['보물은 갈수록 높은 곳에 숨어 있어. 올라가 보자!'] },
     { x: 4140, lines: ['체크포인트!', '혹한의 아스트라는 하늘을 나는 얼음 용이야.', '냉기 브레스는 파란 부채꼴 밖으로, 빙천지락은 빛나는 바닥을 피해!', '지쳐서 내려오거나 낮게 뜨면 그때 때려!'] },
   ],
 

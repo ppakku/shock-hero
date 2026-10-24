@@ -37,11 +37,12 @@ export const stage1 = {
   monsters: [1020, 1300, 1460, 2000, 2250, 2480],
 
   // 보물 상자 (먹으면 사라지고, 한 번 찾은 보물은 다시 안 나옴)
-  // 보물: power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
+  // 보물: 자리는 들어올 때마다 무작위 (src/logic/treasures.js). 개수는 여기 적은 만큼.
+  // power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
   treasures: [
-    { id: 'stage1-roof', x: 660, y: 330, power: 'power' },
-    { id: 'stage1-chest', x: 1900, y: 180, power: 'shield' },
-    { id: 'stage1-crane', x: 2500, y: 300, power: 'speed' },
+    { id: 'stage1-roof', power: 'power' },
+    { id: 'stage1-chest', power: 'shield' },
+    { id: 'stage1-crane', power: 'speed' },
   ],
 
   signs: [
@@ -54,10 +55,10 @@ export const stage1 = {
 
   talks: [
     { x: 0, lines: ['히어로! 도시가 엉망이야.', '일단 걸어 보자. 설마 걷는 법 까먹은 건 아니지?'] },
-    { x: 560, lines: ['저 위에 반짝이는 거 보여? 보물이야!'] },
+    { x: 560, lines: ['보물 상자가 어딘가에 숨어 있어! 올 때마다 자리가 바뀐대.'] },
     { x: 900, lines: ['저기 초록 녀석! 펀치 한 방 먹여 줘.'] },
     { x: 1180, lines: ['꾹 눌렀다 떼면 충전 펀치! 오래 누를수록 멀리 날아가.'] },
-    { x: 1500, lines: ['어? 저 위에 뭔가 또 반짝이는데?'] },
+    { x: 1500, lines: ['발판 위도 잘 살펴봐. 뭔가 반짝일지도?'] },
     { x: 1760, lines: ['빨개지면 공격 신호야. 대시로 쓩 피해!'] },
     { x: 2300, lines: ['저 앞 빨간 문 보여? 몬스터를 다 잡아야 열려!'] },
     {
