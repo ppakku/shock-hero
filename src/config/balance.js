@@ -83,7 +83,9 @@ export const balance = {
     attackTime: 0.2, // 달려드는 시간
     lungeSpeed: 380, // 달려드는 속도
     recoverTime: 0.8, // 공격 뒤 멍하게 있는 시간 (때릴 기회)
-    downKnockback: 450, // 이 힘 이상으로 맞으면 쓰러짐
+    downKnockback: 450, // 이 힘 이상으로 맞으면 쓰러짐 (최대 충전 펀치는 700 이라 쓰러짐)
+    knockbackScale: 0.6, // 펀치에 맞고 밀려나는 정도 (0.6 = 펀치 힘의 60% 만큼만 밀림)
+    heroKnockback: 200, // 몬스터에게 맞은 주인공이 뒤로 밀려나는 힘
     xp: 20, // 처치하면 얻는 경험치
     heartDropChance: 0.35, // 쓰러질 때 하트를 떨어뜨릴 확률 (0.35 = 35%)
     heartHeal: 20, // 하트를 먹으면 채워지는 체력
@@ -119,6 +121,47 @@ export const balance = {
       windupMultiplier: 1.0,
       sizeMultiplier: 1.0,
       xp: 30,
+    },
+    // 노랑 폭탄벌레: 하늘을 날다가 주인공 위에서 폭탄을 떨어뜨림
+    // 바닥에 빨간 원(그림자)이 생기면 거기로 폭탄이 떨어져요. 점프 펀치나 위쪽 공격으로 잡기
+    bomber: {
+      healthMultiplier: 0.6,
+      speedMultiplier: 1.2, // 따라오는 속도 (주인공보다는 느림)
+      sizeMultiplier: 1.0,
+      xp: 35,
+      hoverY: 290, // 떠 있는 높이 (250 ~ 340 사이만 됨, 땅은 480)
+      bombInterval: 2.8, // 폭탄을 떨어뜨리는 간격
+      bombWarningTime: 0.9, // 빨간 원이 보이고 폭탄이 떨어지기까지 시간 (피할 기회)
+      bombFallTime: 0.35, // 폭탄이 떨어지는 데 걸리는 시간
+      bombDamage: 14, // 폭탄 피해량
+      bombRadius: 55, // 폭발 크기
+      tiredTime: 1.3, // 폭탄을 떨어뜨린 뒤 낮게 내려와 쉬는 시간 (때릴 기회)
+    },
+    // 청록 침뱉기: 거리를 두고 느린 침을 뱉음. 점프로 넘거나 대시로 뚫기
+    spitter: {
+      healthMultiplier: 0.8,
+      speedMultiplier: 0.9,
+      sizeMultiplier: 1.0,
+      xp: 35,
+      keepAway: 220, // 주인공이 이만큼 가까우면 뒤로 물러남
+      shootRange: 460, // 이 거리 안이면 침을 뱉음
+      spitWindup: 0.8, // 볼이 부풀고 초록으로 깜빡인 뒤 뱉기까지 시간 (피할 기회)
+      spitSpeed: 230, // 침이 날아가는 속도 (느릴수록 피하기 쉬움)
+      spitDamage: 12, // 침 피해량
+      spitCooldown: 2.2, // 다음 침까지 기다리는 시간
+    },
+    // 회색 방패병: 앞쪽 방패로 기본 펀치를 막음. 충전 펀치로 방패를 깨거나 뒤에서 때리기
+    shield: {
+      healthMultiplier: 1.5,
+      speedMultiplier: 0.8,
+      damageMultiplier: 1.2,
+      windupMultiplier: 1.2,
+      downKnockbackMultiplier: 1.2, // 최대 충전 펀치면 쓰러짐
+      sizeMultiplier: 1.1,
+      xp: 45,
+      guardBreakTime: 3.0, // 방패가 깨진 뒤 다시 드는 데 걸리는 시간
+      guardBreakStun: 1.0, // 방패가 깨지면 비틀거리는 시간
+      turnDelay: 0.5, // 뒤로 돌아가면 방향을 바꾸기까지 걸리는 시간 (뒤를 칠 기회)
     },
   },
 

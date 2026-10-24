@@ -2,9 +2,17 @@ import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
-import { monsterStats } from '../logic/monsters.js';
+import { monsterStats, pushedKnockback } from '../logic/monsters.js';
 
-const TEXTURE = { basic: 'monster', fast: 'monster_fast', tank: 'monster_tank', jumper: 'monster_jumper' };
+export const TEXTURE = {
+  basic: 'monster',
+  fast: 'monster_fast',
+  tank: 'monster_tank',
+  jumper: 'monster_jumper',
+  bomber: 'monster_bomber',
+  spitter: 'monster_spitter',
+  shield: 'monster_shield',
+};
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -35,6 +43,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.patrolDir = -1;
     this.hasHit = false;
     this.dead = false;
+    this.flying = false; // 하늘을 나는 몬스터만 true
     this.alert = makeText(scene, x, y - 40, '!', 28, '#ff4444').setOrigin(0.5).setDepth(30).setVisible(false);
   }
 
@@ -48,11 +57,38 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   update(dt) {
     if (this.dead) return;
     this.stateTime += dt;
+    this.alert.setPosition(this.x, this.y - 40 * this.m.size);
+    if (!this.updateHurt()) this.think(dt);
+    this.setFlipX(this.facing < 0);
+  }
+
+  // 맞고 비틀거리거나 쓰러져 있는 동안. 그런 상태면 true
+  updateHurt() {
+    if (this.state === 'stunned') {
+      if (this.stateTime >= this.stunTime) this.changeState('chase');
+      return true;
+    }
+    if (this.state === 'down') {
+      if (this.stateTime >= 1.0) {
+        this.setAngle(0);
+        this.changeState('chase');
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // 주인공 쪽으로 몸을 돌린다 (방패병은 천천히 돈다)
+  faceToward(dx, _dt) {
+    this.facing = Math.sign(dx) || this.facing;
+  }
+
+  // 종류마다 다르게 움직이는 부분 (기본: 순찰, 추격, 공격 준비, 달려들기, 쉬기)
+  think(dt) {
     const p = this.scene.player;
     const dx = p.x - this.x;
     const dist = Math.abs(dx);
     const playerReachable = !p.dead && Math.abs(p.y - this.y) < 90;
-    this.alert.setPosition(this.x, this.y - 40 * this.m.size);
 
     switch (this.state) {
       case 'idle': {
@@ -63,7 +99,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         break;
       }
       case 'chase': {
-        this.facing = Math.sign(dx) || this.facing;
+        this.faceToward(dx, dt);
         this.setVelocityX(dist > 30 ? this.facing * this.m.moveSpeed : 0);
         if (dist <= this.m.attackRange && playerReachable) {
           this.setVelocityX(0);
@@ -76,7 +112,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       }
       case 'windup': {
         this.setVelocityX(0);
-        this.facing = Math.sign(dx) || this.facing;
+        this.faceToward(dx, dt);
         // 빨간 깜빡임 + "!" 로 공격 신호
         if (Math.floor(this.stateTime * 12) % 2 === 0) this.setTint(0xff3030);
         else this.clearTint();
@@ -90,7 +126,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       }
       case 'attack': {
         if (!this.hasHit && intersects(this.attackRect(), p.getBounds())) {
-          const result = p.hurt(this.m.damage, this.x);
+          const result = p.hurt(this.m.damage, this.x, this.m.heroKnockback);
           if (result !== 'ignored') this.hasHit = true;
         }
         if (this.type === 'jumper') {
@@ -113,21 +149,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         if (this.stateTime >= this.m.recoverTime) this.changeState('chase');
         break;
       }
-      case 'stunned': {
-        if (this.stateTime >= this.stunTime) this.changeState('chase');
-        break;
-      }
-      case 'down': {
-        if (this.stateTime >= 1.0) {
-          this.setAngle(0);
-          this.changeState('chase');
-        }
-        break;
-      }
       default:
         break;
     }
-    this.setFlipX(this.facing < 0);
   }
 
   attackRect() {
@@ -143,8 +167,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.health.damage(attack.damage);
     floatText(this.scene, this.x, this.y - 30, String(attack.damage), attack.kind === 'charged' ? '#ffd23f' : '#ffffff', attack.kind === 'charged' ? 26 : 20);
     flash(this.scene, this);
-    const k = attack.knockback;
-    this.setVelocity(dir * k, -Math.min(k * 0.5, 420));
+    // 쓰러질지는 원래 펀치 힘으로 정하고, 실제로 밀리는 거리만 줄인다
+    const k = attack.knockback || 0;
+    const push = pushedKnockback(k, this.m.knockbackScale);
+    this.setVelocity(dir * push, -Math.min(push * 0.5, 420));
     this.facing = -dir;
 
     if (this.health.isDead) {
