@@ -189,7 +189,7 @@ export class TitleScene extends Phaser.Scene {
     const bg = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.75).setInteractive();
     const plate = this.add.image(480, 262, 'tt-plate').setDisplaySize(660, 200);
     const msg = this.add
-      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 스테이지 기록이 모두 지워져요.', {
+      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록이 모두 지워져요.', {
         fontFamily: FONT,
         fontStyle: 'bold',
         fontSize: '21px',
