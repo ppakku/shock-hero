@@ -10,6 +10,8 @@ import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { clearStagePatch } from '../logic/save.js';
 import { parseMonsterSpot } from '../logic/monsters.js';
+import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
+import { CONTROL_KEYS } from '../logic/controls.js';
 import { addXp, maxHealthFor, damageMultiplierFor } from '../logic/progression.js';
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
@@ -23,8 +25,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(data = {}) {
-    this.cfg = cfg;
     this.save = saveStore.load();
+    this.difficulty = this.save.settings.difficulty;
+    this.cfg = withDifficulty(cfg, this.difficulty);
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
     this.stage = getStage(this.stageNum);
     this.isLastStage = this.stageNum === stages.length;
@@ -60,13 +63,14 @@ export class GameScene extends Phaser.Scene {
 
     this.monsters = [];
     if (!this.fromCheckpoint) {
-      for (const spot of st.monsters) this.monsters.push(createMonster(this, parseMonsterSpot(spot, st.groundY), cfg));
+      const spots = adjustMonsters(st.monsters.map((spot) => parseMonsterSpot(spot, st.groundY)), this.difficulty, st.gateX);
+      for (const spot of spots) this.monsters.push(createMonster(this, spot, this.cfg));
       this.physics.add.collider(this.monsters, this.solids);
       this.physics.add.collider(this.monsters, this.oneWays);
     }
     this.buildGate();
 
-    this.boss = createBoss(this, cfg, st, this.stageNum);
+    this.boss = createBoss(this, this.cfg, st, this.stageNum);
     if (this.boss.blocker) this.physics.add.collider(this.player, this.boss.blocker);
     this.skills = new HeroSkills(this);
 
@@ -85,11 +89,12 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(120, 80);
     this.cameras.main.fadeIn(300);
 
-    this.keys = this.input.keyboard.addKeys({
-      left: KEY.A, right: KEY.D, left2: KEY.LEFT, right2: KEY.RIGHT,
-      jump: KEY.SPACE, jump2: KEY.W, jump3: KEY.UP,
-      attack: KEY.J, dash: KEY.K, dash2: KEY.SHIFT, ult: KEY.L,
-    });
+    // 조작 방식(타이틀에서 고름)에 맞는 키들
+    const scheme = CONTROL_KEYS[this.save.settings.controls] || CONTROL_KEYS.classic;
+    this.keys = {};
+    for (const [action, names] of Object.entries(scheme)) {
+      this.keys[action] = names.map((n) => this.input.keyboard.addKey(KEY[n]));
+    }
     this.input.mouse?.disableContextMenu();
 
     const hud = this.scene.get('HUD');
@@ -306,18 +311,19 @@ export class GameScene extends Phaser.Scene {
 
   readInput() {
     const k = this.keys;
-    const justDown = (...keys) => keys.map((key) => Phaser.Input.Keyboard.JustDown(key)).some(Boolean);
+    const down = (action) => k[action].some((key) => key.isDown);
+    const justDown = (action) => k[action].map((key) => Phaser.Input.Keyboard.JustDown(key)).some(Boolean);
     const p = this.input.activePointer;
     if (this.ended) return { left: false, right: false, jumpDown: false, jumpPressed: false, attackDown: false, dashPressed: false, upDown: false, ultPressed: false };
     return {
-      upDown: k.jump2.isDown || k.jump3.isDown, // W 나 ↑ 를 누르고 있는지 (위쪽 공격용)
-      ultPressed: justDown(k.ult), // 궁극기 L
-      left: k.left.isDown || k.left2.isDown,
-      right: k.right.isDown || k.right2.isDown,
-      jumpDown: k.jump.isDown || k.jump2.isDown || k.jump3.isDown,
-      jumpPressed: justDown(k.jump, k.jump2, k.jump3),
-      attackDown: k.attack.isDown || (p.isDown && p.leftButtonDown()),
-      dashPressed: justDown(k.dash, k.dash2),
+      upDown: down('up'), // 위쪽 공격용 (W 나 ↑)
+      ultPressed: justDown('ult'), // 궁극기
+      left: down('left'),
+      right: down('right'),
+      jumpDown: down('jump'),
+      jumpPressed: justDown('jump'),
+      attackDown: down('attack') || (p.isDown && p.leftButtonDown()),
+      dashPressed: justDown('dash'),
     };
   }
 
@@ -493,7 +499,7 @@ export class GameScene extends Phaser.Scene {
 
   // 보스가 부하를 부를 때 (spot = { x, y, type })
   spawnMonster(spot) {
-    const m = createMonster(this, { y: this.stage.groundY, type: 'basic', ...spot }, cfg);
+    const m = createMonster(this, { y: this.stage.groundY, type: 'basic', ...spot }, this.cfg);
     this.physics.add.collider(m, this.solids);
     this.physics.add.collider(m, this.oneWays);
     this.monsters.push(m);

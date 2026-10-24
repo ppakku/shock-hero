@@ -3,6 +3,7 @@ import { cfg } from '../config/index.js';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { xpToNext } from '../logic/progression.js';
+import { DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { makeText, formatTime } from '../ui/text.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
@@ -203,7 +204,7 @@ export class HUDScene extends Phaser.Scene {
 
     this.treasureText.setText(`보물 ${found}/${st.treasures.length}`);
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
-    this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}`);
+    this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}  (${DIFFICULTY_INFO[gs.difficulty]?.name ?? '보통'})`);
     this.monsterText.setText(gs.gateOpen || gs.bossStarted ? '' : `남은 몬스터 ${gs.monsters.length}`);
 
     // 보스 체력 (부위별)

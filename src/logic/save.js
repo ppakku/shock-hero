@@ -1,3 +1,6 @@
+import { normalizeDifficulty } from './difficulty.js';
+import { normalizeControls } from './controls.js';
+
 const KEY = 'shock-hero-save-v1';
 export const STAGE_COUNT = 5;
 
@@ -9,7 +12,7 @@ export function defaultSave() {
     unlocked: 1, // 갈 수 있는 가장 높은 스테이지
     checkpoint: null, // null 이면 처음부터, 숫자면 그 스테이지의 보스 앞 체크포인트
     bestTimes: {}, // 스테이지별 가장 빨리 깬 시간(초). 예: { 1: 95.2 }
-    settings: { shake: true, muted: false },
+    settings: { shake: true, muted: false, difficulty: 'normal', controls: 'classic' },
   };
 }
 
@@ -37,6 +40,8 @@ function normalize(data) {
   if (data.settings && typeof data.settings === 'object') {
     if (typeof data.settings.shake === 'boolean') d.settings.shake = data.settings.shake;
     if (typeof data.settings.muted === 'boolean') d.settings.muted = data.settings.muted;
+    d.settings.difficulty = normalizeDifficulty(data.settings.difficulty);
+    d.settings.controls = normalizeControls(data.settings.controls);
   }
   return d;
 }
@@ -85,6 +90,11 @@ export function clearStagePatch(save, stageNum, time) {
     isRecord,
     best: isRecord ? time : prev,
   };
+}
+
+// 레벨 초기화: 레벨, 경험치, 보물, 스테이지 기록을 지우고 설정만 남긴다
+export function resetProgress(save) {
+  return { ...defaultSave(), settings: { ...save.settings } };
 }
 
 export function browserStorage() {
