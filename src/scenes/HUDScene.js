@@ -16,16 +16,16 @@ export class HUDScene extends Phaser.Scene {
     this.hpText = makeText(this, 24, 44, '', 14).setOrigin(0, 0.5);
     this.lvText = makeText(this, 24, 70, '', 14, '#9fe8ff').setOrigin(0, 0.5);
     this.dashText = makeText(this, 290, 34, '대시', 13).setOrigin(0.5);
-    this.treasureText = makeText(this, 340, 34, '', 14, '#ffd23f').setOrigin(0, 0.5);
+    this.treasureText = makeText(this, 266, 70, '', 14, '#ffd23f').setOrigin(0, 0.5);
     this.timeText = makeText(this, 936, 30, '', 18).setOrigin(1, 0.5);
-    this.bossTitle = makeText(this, 480, 470, '다중 팔 돌연변이', 18, '#ff9ad5').setOrigin(0.5).setVisible(false);
-    this.bossLabels = ['왼팔', '오른팔', '코어'].map((l, i) => makeText(this, 300 + i * 180, 500, l, 13).setOrigin(0.5).setVisible(false));
+    this.bossTitle = makeText(this, 600, 18, '다중 팔 돌연변이', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
+    this.bossLabels = ['왼팔', '오른팔', '코어'].map((l, i) => makeText(this, 0, 0, l, 12).setOrigin(0.5).setVisible(false));
     this.beepTimer = 0;
 
     this.overlay = this.add.container(0, 0).setVisible(false).setDepth(100);
     this.overlayBg = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.6);
-    this.overlayTitle = makeText(this, 480, 200, '', 48, '#ffffff', { strokeThickness: 8 }).setOrigin(0.5);
-    this.overlayBody = makeText(this, 480, 300, '', 20, '#ffffff', { lineSpacing: 10 }).setOrigin(0.5);
+    this.overlayTitle = makeText(this, 480, 170, '', 48, '#ffffff', { strokeThickness: 8 }).setOrigin(0.5);
+    this.overlayBody = makeText(this, 480, 230, '', 20, '#ffffff', { lineSpacing: 10 }).setOrigin(0.5, 0);
     this.overlay.add([this.overlayBg, this.overlayTitle, this.overlayBody]);
     this.mode = 'play';
 
@@ -43,9 +43,10 @@ export class HUDScene extends Phaser.Scene {
     return this.scene.get('Game');
   }
 
+  // 첫 시작 때는 HUD 가 아직 만들어지기 전일 수 있다
   onGameStart() {
     this.mode = 'play';
-    this.overlay.setVisible(false);
+    this.overlay?.setVisible(false);
   }
 
   togglePause() {
@@ -169,10 +170,10 @@ export class HUDScene extends Phaser.Scene {
         { ratio: boss.coreHealth.ratio, label: boss.coreExposed ? '코어 (약점!)' : '코어 (잠김)', locked: !boss.coreExposed },
       ];
       parts.forEach((part, i) => {
-        const x = 230 + i * 180;
-        g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 484, 140, 12, 4);
-        g.fillStyle(part.locked ? 0x777777 : i === 2 ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 486, 136 * part.ratio, 8, 3);
-        this.bossLabels[i].setText(part.label).setPosition(x + 70, 510);
+        const x = 400 + i * 135;
+        g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 32, 125, 12, 4);
+        g.fillStyle(part.locked ? 0x777777 : i === 2 ? 0xffb030 : 0xc96cff, 1).fillRoundedRect(x + 2, 34, 121 * part.ratio, 8, 3);
+        this.bossLabels[i].setText(part.label).setPosition(x + 62, 56);
       });
     }
   }

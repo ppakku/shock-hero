@@ -57,7 +57,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       }
       case 'chase': {
         this.facing = Math.sign(dx) || this.facing;
-        if (dist > 20) this.setVelocityX(this.facing * this.m.moveSpeed);
+        this.setVelocityX(dist > 30 ? this.facing * this.m.moveSpeed : 0);
         if (dist <= this.m.attackRange && playerReachable) {
           this.setVelocityX(0);
           this.changeState('windup');
@@ -69,6 +69,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       }
       case 'windup': {
         this.setVelocityX(0);
+        this.facing = Math.sign(dx) || this.facing;
         // 빨간 깜빡임 + "!" 로 공격 신호
         if (Math.floor(this.stateTime * 12) % 2 === 0) this.setTint(0xff3030);
         else this.clearTint();
@@ -80,11 +81,13 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         break;
       }
       case 'attack': {
-        this.setVelocityX(this.facing * this.m.lungeSpeed);
         if (!this.hasHit && intersects(this.attackRect(), p.getBounds())) {
           const result = p.hurt(this.m.damage, this.x);
           if (result !== 'ignored') this.hasHit = true;
         }
+        // 주인공에게 닿으면 멈춘다 (뚫고 지나가지 않게)
+        const ahead = dx * this.facing;
+        this.setVelocityX(this.hasHit || ahead < 36 ? 0 : this.facing * this.m.lungeSpeed);
         if (this.stateTime >= this.m.attackTime) this.changeState('recover');
         break;
       }
