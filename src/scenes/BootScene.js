@@ -17,6 +17,10 @@ export class BootScene extends Phaser.Scene {
     for (const [key, entry] of Object.entries(customArt)) this.load.image(key, `art/${artFile(entry)}`);
     // 수중 던전(스테이지 6) 배경: 아들이 그린 물속 동굴 그림 (못 불러오면 코드 배경만 그림)
     this.load.image('underwater_bg', 'art/underwater_bg.jpg');
+    // 스테이지 파일 theme 의 bgImage(걸어가는 동안 배경), arenaImage(보스전 배경) 그림
+    for (const st of stages) {
+      for (const pic of [st.theme.bgImage, st.theme.arenaImage]) if (pic) this.load.image(pic.key, `art/${pic.file}`);
+    }
   }
 
   create() {

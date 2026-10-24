@@ -213,8 +213,19 @@ export class GameScene extends Phaser.Scene {
         x += w + rng.between(6, 30);
       }
     };
-    layer(0.25, th.far, 160, 320, -15, false);
-    layer(0.55, th.near, 90, 230, -12, true);
+    // 아이들이 그린 배경 그림이 있으면(theme.bgImage) 건물/산 실루엣 대신 그 그림을 깐다.
+    // 그림 높이를 화면에 맞추고, 스테이지 끝까지 걸어가는 동안 그림 끝까지 천천히 흘러가게 한다.
+    const bgKey = th.bgImage && this.textures.exists(th.bgImage.key) ? th.bgImage.key : null;
+    if (bgKey) {
+      const img = this.add.image(0, 0, bgKey).setOrigin(0, 0).setDepth(-15);
+      const scale = 540 / img.height;
+      img.setScale(scale);
+      const factor = Math.max(0, (img.width * scale - 960) / Math.max(1, st.width - 960));
+      img.setScrollFactor(factor, 0);
+    } else {
+      layer(0.25, th.far, 160, 320, -15, false);
+      layer(0.55, th.near, 90, 230, -12, true);
+    }
 
     // 연기
     const smoke = this.add.graphics().setScrollFactor(0.4, 1).setDepth(-14);
@@ -731,6 +742,13 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.stopFollow();
     cam.pan(a.startX + 480, 270, 700, 'Sine.easeInOut');
+    // 보스전 배경 그림(theme.arenaImage)이 있으면 서서히 나타난다
+    const arenaKey = this.stage.theme.arenaImage?.key;
+    if (arenaKey && this.textures.exists(arenaKey)) {
+      const bg = this.add.image(480, 270, arenaKey).setScrollFactor(0).setDepth(-14).setAlpha(0);
+      bg.setScale(540 / bg.height);
+      this.tweens.add({ targets: bg, alpha: 1, duration: 1200 });
+    }
     this.boss.startFight();
     this.sfxPlay('roar');
     this.shake(0.01, 600);
