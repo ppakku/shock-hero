@@ -88,7 +88,7 @@ export class BossBase {
   }
 
   hideLabels() {
-    for (const l of this.labels) l.setVisible(false);
+    for (const l of this.labels) l?.setVisible(false); // 번호를 건너뛰어 만든 글자도 있을 수 있음
   }
 
   clearFx() {

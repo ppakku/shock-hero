@@ -61,32 +61,35 @@ export const stage5 = {
 
   signs: [
     { x: 300, text: '스테이지 5: 괴물 성\n마지막 싸움!' },
-    { x: 4700, text: '괴물들의 왕이\n기다린다...' },
+    { x: 4700, text: '괴물들의 왕이\n왕좌에서 기다린다...' },
   ],
 
   talks: [
     { x: 0, lines: ['여기가 괴물들의 성이야.', '모든 몬스터가 다 나와. 지금까지 배운 걸 다 써!'] },
     { x: 1150, lines: ['탑 꼭대기까지 올라가면 큰 보물이 있대!'] },
-    { x: 4540, lines: ['마지막 체크포인트!', '킹 돌연변이는 모든 공격을 다 써.', '우린 할 수 있어. 가자, 히어로!'] },
+    { x: 4540, lines: ['마지막 체크포인트!', '킹 돌연변이는 부하도 부르고 주먹도 날려.', '팔을 다 부수면 일어나서 뛰어다닐 거야. 끝까지 가자, 히어로!'] },
   ],
 
   arena: { startX: 4840, endX: 5800 },
 
   boss: {
-    type: 'king', // 보스 종류 (src/boss/index.js)
+    type: 'king', // 보스 종류 (src/boss/index.js): 왕좌에 앉은 왕
     name: '킹 돌연변이',
-    arms: 3,
-    healthScale: 1.8,
-    speedScale: 0.85,
-    rockBonus: 2,
-    shockwaves: 2,
-    crown: true,
+    arms: 3, // 팔 개수 (2 또는 3)
+    healthScale: 1.5, // 체력 배수 (balance.js 보스 체력에 곱함)
+    speedScale: 0.85, // 공격 속도 (작을수록 빠름)
+    rockBonus: 2, // 돌 떨구기 때 더 떨어지는 돌
+    shockwaves: 2, // 충격파 개수
     colors: { main: 0x5a1a2a, light: 0x8a2a3a, dark: 0x30101a, arm: 0x7a2a3a },
+    minions: ['basic', 'fast', 'jumper'], // 부를 수 있는 부하 종류
+    // [팔 다 있을 때, 팔 1개 부순 뒤, 팔 2개 부순 뒤] 앉아서 쓰는 공격
     phases: [
-      ['slam', 'doubleSlam', 'multiSlam', 'spit'],
-      ['doubleSlam', 'sweep', 'shockwave', 'rocks'],
-      ['sweep', 'multiSlam', 'spit', 'shockwave'],
-      ['rocks', 'shockwave', 'spit'],
+      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'spit'],
+      ['multiSlam', 'sweep', 'rocketPunch', 'inhale', 'summon', 'shockwave'],
+      ['rocketPunch', 'inhale', 'rocks', 'spit', 'summon', 'sweep'],
     ],
+    // 팔을 다 부수면 왕좌에서 일어나서 쓰는 공격
+    // leap(뛰어 내려찍기), charge(돌진), inhale(빨아들이기), summon(부하 부르기), rocks(돌 떨구기)
+    finalPhase: ['leap', 'charge', 'inhale', 'summon', 'rocks'],
   },
 };

@@ -65,6 +65,7 @@ export const stage1 = {
         '체크포인트! 체력을 꽉 채웠어.',
         '저 앞 괴물은 팔을 바닥에 찍고 나면 잠깐 못 움직여.',
         '그때 충전 펀치로 팔을 부숴!',
+        '주먹이 날아오면 낮을 땐 점프, 높을 땐 가만히!',
       ],
     },
   ],
@@ -75,14 +76,14 @@ export const stage1 = {
     type: 'arms', // 보스 종류 (src/boss/index.js)
     name: '다중 팔 돌연변이',
     arms: 2, // 팔 개수 (2 또는 3)
-    healthScale: 1, // 체력 배수 (balance.js 보스 체력에 곱함)
+    healthScale: 1.6, // 체력 배수 (balance.js 보스 체력에 곱함)
     speedScale: 1, // 공격 속도 (작을수록 빠름)
     colors: { main: 0x6b2fa8, light: 0x8e4fd0, dark: 0x4e1f80, arm: 0x7a3cbf },
     // [팔 다 있을 때, 팔 1개 부순 뒤, 팔 다 부순 뒤(코어)] 쓰는 공격
     phases: [
-      ['slam', 'multiSlam'],
-      ['slam', 'sweep', 'multiSlam'],
-      ['rocks', 'shockwave'],
+      ['slam', 'multiSlam', 'rocketPunch'],
+      ['slam', 'sweep', 'rocketPunch', 'inhale'],
+      ['rocks', 'shockwave', 'inhale'],
     ],
   },
 };

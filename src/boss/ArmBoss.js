@@ -1,9 +1,15 @@
 import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
-import { chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets } from '../logic/boss.js';
+import {
+  chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets,
+  pickRocketHeight, rocketBand, inhaleStep, shouldRage, restAfterAttack, difficultyOf,
+} from '../logic/boss.js';
+import { ComboHazards } from './comboHazards.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
 import { make } from '../fx/textures.js';
+import { BossBase } from './BossBase.js';
+import { drawSwirl } from './bossFx.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -19,7 +25,11 @@ const TIPS = {
   rocks: '그림자가 보이면 피해! 돌이 떨어져.',
   shockwave: '땅이 울린다! 충격파는 점프로 넘어!',
   spit: '독침이 날아와! 한곳에 서 있지 마!',
+  rocketPunch: '주먹이 날아온다! 낮으면 점프, 높으면 가만히 서 있어!',
+  inhale: '빨아들인다! 반대쪽으로 계속 달려! 충전하면 느려지니까 조심!',
 };
+const FIST_W = 66;
+const FIST_H = 56;
 
 // 부술 수 있는 팔 하나
 class BossArm {
@@ -40,7 +50,13 @@ class BossArm {
 
   // 플레이어 주먹이 맞는 곳 (주먹과 팔 아래쪽)
   hitRect() {
+    if (this.fist) return new Rect(this.fist.x - FIST_W / 2 - 6, this.fist.y - FIST_H / 2 - 6, FIST_W + 12, FIST_H + 12);
     return new Rect(this.sprite.x - 35, this.sprite.y - 120, 70, 120);
+  }
+
+  // 반짝이는 부분 (주먹이 날아가 있으면 주먹)
+  get shiny() {
+    return this.fist || this.sprite;
   }
 
   // 보스 공격이 플레이어를 맞히는 곳 (팔 전체)
@@ -55,46 +71,45 @@ class BossArm {
     }
     this.hittable = on;
     this.hint.setVisible(this.hittable);
-    if (!this.hittable) this.sprite.clearTint();
+    if (!this.hittable) {
+      this.sprite.clearTint();
+      this.fist?.clearTint();
+    }
   }
 }
 
 // 팔 보스(다중 팔 돌연변이): 팔을 다 부수면 장갑이 떨어지고 코어가 드러난다.
 // stage.boss 로 이름, 팔 개수, 체력 배수, 공격 목록이 달라진다.
 // 보스가 지켜야 할 약속은 src/boss/README.md 에 있다.
-export class ArmBoss {
+export class ArmBoss extends BossBase {
   constructor(scene, cfg, stage, skin = 1) {
-    this.scene = scene;
-    this.c = cfg.boss;
-    this.def = stage.boss;
-    this.name = this.def.name;
-    this.groundY = stage.groundY;
-    this.minX = stage.arena.startX + 60;
-    this.bodyX = stage.arena.endX - 150;
-    this.frontX = this.bodyX - 110;
+    super(scene, cfg, stage, skin);
+    // 난이도: 체력 배수, 공격 시간 배수, 겹쳐 쓰기 확률
+    this.diff = difficultyOf(cfg);
+    this.hpScale *= this.diff.bossHealth;
+    const lay = this.layout();
+    this.frontX = this.bodyX - lay.bodyW / 2;
     this.maxArmX = this.frontX - 70;
     this.mouth = { x: this.bodyX - 70, y: this.groundY - 170 };
-
-    const hpScale = this.def.healthScale || 1;
-    this.tempo = this.def.speedScale || 1;
+    // 빨아들이는 입 (몸통 그림의 입 자리)
+    this.mouthOpen = { x: this.bodyX - lay.bodyW * 0.14, y: this.groundY - lay.bodyH * 0.55 };
+    this.biteX = this.frontX - 40;
     const colors = this.def.colors;
 
+    this.aura = scene.add.graphics().setDepth(3);
     this.links = scene.add.graphics().setDepth(3);
-    this.warn = scene.add.graphics().setDepth(2);
-    this.fxG = scene.add.graphics().setDepth(8);
-    this.labels = [];
 
-    this.body = scene.add.image(this.bodyX, this.groundY, `boss_body_${skin}`).setOrigin(0.5, 1).setDepth(4).setDisplaySize(220, 280);
-    this.blocker = scene.add.zone(this.bodyX, this.groundY - 140, 200, 280);
+    this.body = scene.add.image(this.bodyX, this.groundY, `boss_body_${skin}`).setOrigin(0.5, 1).setDepth(4).setDisplaySize(lay.bodyW, lay.bodyH);
+    this.blocker = scene.add.zone(this.bodyX, this.groundY - lay.bodyH / 2, lay.bodyW - 20, lay.bodyH);
     scene.physics.add.existing(this.blocker, true);
 
     this.corePos = { x: this.frontX + 12, y: this.groundY - 80 };
     this.core = scene.add.image(this.corePos.x, this.corePos.y, 'boss_core').setDepth(6).setDisplaySize(56, 56);
     this.armor = scene.add.image(this.corePos.x, this.corePos.y, 'boss_armor').setDepth(7).setDisplaySize(80, 80);
-    this.coreHealth = new Health(Math.round(this.c.coreHealth * hpScale));
+    this.coreHealth = new Health(Math.round(this.c.coreHealth * this.hpScale));
     this.coreExposed = false;
 
-    const armHp = Math.round(this.c.armHealth * hpScale);
+    const armHp = Math.round(this.c.armHealth * this.hpScale);
     const tex = `boss_arm_${skin}`;
     const slots = [
       { id: 'a', home: { x: this.maxArmX - 60, y: RAISED_Y }, shoulder: { x: this.frontX + 25, y: this.groundY - 210 } },
@@ -109,13 +124,15 @@ export class ArmBoss {
     this.rocks = [];
     this.waves = [];
     this.globs = [];
-    this.state = 'dormant';
     this.action = null;
-    this.lastType = null;
-    this.timer = 0;
-    this.t = 0;
-    this.defeated = false;
-    this.lastBlockedAt = -10;
+    this.chained = false;
+    this.rocketCount = 0;
+    this.combo = new ComboHazards(this, { waveMaxX: this.frontX });
+  }
+
+  // 몸통 크기 (킹 돌연변이는 더 크다)
+  layout() {
+    return { bodyW: 220, bodyH: 280 };
   }
 
   static makeTextures(scene, stage, skin) {
@@ -147,6 +164,15 @@ export class ArmBoss {
       g.fillStyle(c.light).fillRoundedRect(0, 148, 70, 62, 20);
       g.lineStyle(4, c.dark).lineBetween(18, 160, 18, 200).lineBetween(35, 160, 35, 205).lineBetween(52, 160, 52, 200);
     });
+
+    // 날아가는 주먹 (왼쪽을 보는 모습, 뒤에 불꽃)
+    make(scene, `boss_fist_${skin}`, FIST_W, FIST_H, (g) => {
+      g.fillStyle(0xffb030).fillTriangle(66, 10, 66, 46, 46, 28);
+      g.fillStyle(0xfff3a0).fillTriangle(66, 18, 66, 38, 54, 28);
+      g.fillStyle(c.light).fillRoundedRect(0, 4, 52, 48, 18);
+      g.lineStyle(4, c.dark).lineBetween(8, 16, 26, 16).lineBetween(6, 28, 26, 28).lineBetween(8, 40, 26, 40);
+      g.fillStyle(c.dark).fillRect(40, 8, 8, 40);
+    });
   }
 
   // HUD 체력바에 보여 줄 부위 목록
@@ -166,8 +192,9 @@ export class ArmBoss {
     const target = this.armsAlive[0];
     if (target) {
       target.health.damage(damage);
-      floatText(this.scene, target.sprite.x, target.sprite.y - 130, String(damage), '#3fd0ff', 30);
-      flash(this.scene, target.sprite);
+      const r = target.hitRect();
+      floatText(this.scene, r.centerX, r.y - 10, String(damage), '#3fd0ff', 30);
+      flash(this.scene, target.shiny);
       if (target.health.isDead) this.destroyArm(target);
       return true;
     }
@@ -181,13 +208,24 @@ export class ArmBoss {
     return false;
   }
 
+  // 남은 전체 체력 비율 (팔 + 코어)
+  get healthRatio() {
+    let cur = this.coreHealth.current;
+    let max = this.coreHealth.max;
+    for (const a of this.arms) {
+      cur += a.alive ? a.health.current : 0;
+      max += a.health.max;
+    }
+    return cur / max;
+  }
+
   get armsAlive() {
     return this.arms.filter((a) => a.alive);
   }
 
   // 시간에 곱하는 값 (작을수록 빠름)
   get speed() {
-    return bossSpeedMultiplier(this.armsAlive.length, this.totalArms) * this.tempo;
+    return bossSpeedMultiplier(this.armsAlive.length, this.totalArms) * this.tempo * this.diff.bossSpeed * (this.raging ? this.c.rageSpeed : 1);
   }
 
   startFight() {
@@ -197,9 +235,45 @@ export class ArmBoss {
     this.scene.tweens.add({ targets: this.body, x: this.bodyX + 6, duration: 60, yoyo: true, repeat: 10 });
   }
 
+  // 분노 모드: 코어 체력이 절반 아래로 내려가면 빨개지고 공격 두 개를 쉬지 않고 이어서 한다
+  rageRatio() {
+    return this.coreHealth.ratio;
+  }
+
+  updateRage() {
+    if (this.state !== 'fight' || this.defeated) return;
+    if (shouldRage(this.rageRatio(), this.c.rageAt, this.raging)) this.enterRage();
+  }
+
+  enterRage() {
+    this.raging = true;
+    this.chained = false;
+    this.scene.sfxPlay('rage');
+    this.scene.shake(0.014, 600);
+    this.body.setTint(0xff6a6a);
+    floatText(this.scene, this.bodyX, this.groundY - this.layout().bodyH - 50, '분노 모드!', '#ff3030', 34);
+    this.scene.robot.say(['보스가 화났어! 빨개졌다!', '이제 쉬지 않고 두 번씩 공격해. 정신 바짝 차려!'], true);
+  }
+
+  drawRage() {
+    this.aura.clear();
+    if (!this.raging || this.defeated) return;
+    const pulse = 0.5 + 0.5 * Math.sin(this.t * 10);
+    const lay = this.layout();
+    const cx = this.bodyX;
+    this.aura.fillStyle(0xff2020, 0.12 + 0.12 * pulse).fillEllipse(cx, this.groundY - lay.bodyH / 2, lay.bodyW + 60 + pulse * 20, lay.bodyH + 50);
+    this.label(7, '분노!', cx, this.groundY - lay.bodyH - 24, 22 + Math.round(pulse * 4), '#ff3030');
+  }
+
+  // 처음 보는 공격이면 로봇이 알려 준다
+  tip(type, text = TIPS[type]) {
+    super.tip(type, text);
+  }
+
   update(dt) {
     this.t += dt;
     this.drawLinks();
+    this.updateRage();
 
     if (this.coreExposed && !this.defeated) {
       const s = 1 + Math.sin(this.t * 8) * 0.08;
@@ -207,10 +281,12 @@ export class ArmBoss {
     }
     for (const arm of this.arms) {
       if (arm.hittable) {
-        arm.hint.setPosition(arm.sprite.x, arm.sprite.y - 230).setAlpha(0.6 + Math.sin(this.t * 12) * 0.4);
-        if (Math.floor(this.t * 8) % 2 === 0) arm.sprite.setTint(0xfff3a0);
-        else arm.sprite.clearTint();
-      }
+        if (arm.fist) arm.hint.setPosition(arm.fist.x + 10, arm.fist.y - 60);
+        else arm.hint.setPosition(arm.sprite.x, arm.sprite.y - 230);
+        arm.hint.setAlpha(0.6 + Math.sin(this.t * 12) * 0.4);
+        if (Math.floor(this.t * 8) % 2 === 0) arm.shiny.setTint(0xfff3a0);
+        else arm.shiny.clearTint();
+      } else if (this.raging && arm.alive) arm.sprite.setTint(0xff8080);
     }
 
     if (this.state === 'dormant' || this.state === 'dead') {
@@ -229,19 +305,32 @@ export class ArmBoss {
 
     this.bobArms(dt);
     if (!this.action) {
+      this.hideLabels();
+      this.drawRage();
       this.timer -= dt;
       if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      this.combo.update(dt);
       return;
     }
 
     this.warn.clear();
     this.fxG.clear();
     this.hideLabels();
+    this.drawRage();
+    this.runAction(dt);
+    this.combo.update(dt);
+  }
+
+  // 공격 종류별로 나눠 실행 (킹 돌연변이가 더 붙인다)
+  runAction(dt) {
     const a = this.action;
     if (a.jobs) this.runArmJobs(dt);
     else if (a.type === 'rocks') this.runRocks(dt);
     else if (a.type === 'shockwave') this.runShockwave(dt);
     else if (a.type === 'spit') this.runSpit(dt);
+    else if (a.type === 'rocketPunch') this.runRocketPunch(dt);
+    else if (a.type === 'inhale') this.runInhale(dt);
+    else this.endAction();
   }
 
   bobArms(dt) {
@@ -261,23 +350,6 @@ export class ArmBoss {
       this.links.lineStyle(26, arm.linkColor, 1).lineBetween(arm.shoulder.x, arm.shoulder.y, top.x, top.y);
       this.links.fillStyle(arm.linkColor, 1).fillCircle(arm.shoulder.x, arm.shoulder.y, 16).fillCircle(top.x, top.y, 14);
     }
-  }
-
-  // 경고 글자 (프레임마다 다시 그림)
-  label(i, text, x, y, size = 22) {
-    if (!this.labels[i]) this.labels[i] = makeText(this.scene, 0, 0, '', size, '#ff5555').setOrigin(0.5).setDepth(31);
-    this.labels[i].setText(text).setFontSize(size).setPosition(x, y).setVisible(true);
-  }
-
-  hideLabels() {
-    for (const l of this.labels) l.setVisible(false);
-  }
-
-  tip(type) {
-    const said = this.scene.bossTips;
-    if (!TIPS[type] || said.has(type)) return;
-    said.add(type);
-    this.scene.robot.say(TIPS[type], true);
   }
 
   startAction(forceType = null) {
@@ -311,11 +383,21 @@ export class ArmBoss {
     } else if (type === 'spit') {
       a.count = Math.max(1, Math.round(this.c.spitCount));
       a.fired = 0;
+    } else if (type === 'rocketPunch') {
+      a.arm = pickArm();
+      a.height = pickRocketHeight(this.rocketCount, Math.random);
+      this.rocketCount += 1;
+      a.fromX = a.arm.sprite.x;
+      a.fromY = a.arm.sprite.y;
+      a.arm.busy = true;
+    } else if (type === 'inhale') {
+      this.scene.tweens.add({ targets: this.body, scaleY: this.body.scaleY * 1.06, duration: 500, yoyo: true });
     }
     if (a.jobs) for (const j of a.jobs) j.arm.busy = true;
     this.action = a;
     this.scene.sfxPlay('warn');
     this.tip(type);
+    this.combo.maybeStart(type, this.diff.bossCombo);
   }
 
   makeJob(arm, kind, target, warnTime, repeats = 1) {
@@ -330,6 +412,11 @@ export class ArmBoss {
         j.arm.setHittable(false);
       }
     }
+    if (a?.arm) {
+      a.arm.busy = false;
+      a.arm.setHittable(false);
+      this.removeFist(a.arm);
+    }
     this.action = null;
     this.warn.clear();
     this.fxG.clear();
@@ -339,7 +426,9 @@ export class ArmBoss {
     this.rocks = [];
     this.waves = [];
     this.globs = [];
-    this.timer = this.c.idleTime * this.speed;
+    const rest = restAfterAttack(this.raging, this.chained, this.c.idleTime * this.speed, this.c.rageChainGap);
+    this.timer = rest.wait;
+    this.chained = rest.chained;
   }
 
   // ---------- 팔 공격 (내려찍기, 연속, 두 팔, 바닥 쓸기) ----------
@@ -609,6 +698,194 @@ export class ArmBoss {
     }
   }
 
+  // ---------- 주먹 발사 (낮으면 점프, 높으면 가만히) ----------
+
+  runRocketPunch(dt) {
+    const a = this.action;
+    const arm = a.arm;
+    a.t += dt;
+    if (!arm.alive) {
+      if (a.phase !== 'gone') {
+        a.phase = 'gone';
+        a.t = 0;
+      }
+      if (a.t >= 0.4) this.endAction();
+      return;
+    }
+    const s = arm.sprite;
+    const band = rocketBand(a.height, this.groundY);
+    const fistY = (band.top + band.bottom) / 2;
+    const launchX = this.maxArmX + 40;
+    const wallX = this.arenaStart + FIST_W / 2 + 4;
+    const p = this.scene.player;
+
+    if (a.phase === 'aim') {
+      const dur = this.c.rocketPunchWarningTime * this.speed;
+      const k = Math.min(1, a.t / dur);
+      // 팔을 뒤로 당긴다 (부들부들)
+      const e = Phaser.Math.Easing.Cubic.Out(Math.min(1, k * 1.6));
+      s.x = lerp(a.fromX, launchX + 30 * k, e) + (k > 0.5 ? Math.sin(this.t * 60) * 3 : 0);
+      s.y = lerp(a.fromY, fistY + FIST_H / 2 + 4, e);
+      this.drawRocketWarning(band, launchX, a.height, k);
+      if (a.t >= dur) {
+        a.phase = 'fly';
+        a.t = 0;
+        const frame = s.frame;
+        s.setCrop(0, 0, frame.width, frame.height * (148 / 210));
+        arm.fist = this.scene.add.image(s.x, fistY, `boss_fist_${this.skin}`).setDepth(8).setDisplaySize(FIST_W, FIST_H);
+        this.scene.sfxPlay('rocket');
+        this.scene.shake(0.006, 120);
+      }
+      return;
+    }
+
+    const fist = arm.fist;
+    if (a.phase === 'fly') {
+      fist.x -= this.c.rocketPunchSpeed * dt;
+      fist.y = fistY + Math.sin(this.t * 40) * 2;
+      // 불꽃 꼬리와 지나가는 높이
+      const trail = Math.min(220, launchX - fist.x);
+      this.fxG.fillStyle(0xffb030, 0.45).fillRect(fist.x + FIST_W / 2, band.top + 14, trail, band.bottom - band.top - 28);
+      this.warn.lineStyle(2, 0xff4444, 0.7).strokeRect(this.arenaStart, band.top, Math.max(0, fist.x - this.arenaStart), band.bottom - band.top);
+      this.label(0, a.height === 'high' ? '가만히!' : '점프!', fist.x, band.top - 26, 24);
+      if (Math.random() < 0.6) this.scene.dustAt(fist.x + FIST_W / 2, fist.y, 1);
+      if (!a.hasHit) {
+        const rect = new Rect(fist.x - FIST_W / 2, band.top, FIST_W, band.bottom - band.top);
+        if (intersects(rect, p.getBounds()) && p.hurt(this.c.rocketPunchDamage, fist.x + 100, 380) !== 'ignored') a.hasHit = true;
+      }
+      if (fist.x <= wallX) {
+        fist.x = wallX;
+        a.phase = 'stuck';
+        a.t = 0;
+        this.scene.sfxPlay('slam');
+        this.scene.shake(0.012, 220);
+        this.scene.dustAt(wallX - 20, fist.y, 14);
+        this.scene.tweens.add({ targets: fist, y: this.groundY - FIST_H / 2, angle: -20, duration: 260, ease: 'Bounce.easeOut' });
+        arm.setHittable(true);
+      }
+      return;
+    }
+
+    if (a.phase === 'stuck') {
+      if (a.t >= this.c.rocketPunchStuckTime) {
+        arm.setHittable(false);
+        a.phase = 'back';
+        a.t = 0;
+        a.backFrom = { x: fist.x, y: fist.y };
+        this.scene.tweens.killTweensOf(fist);
+        fist.setAngle(0).setFlipX(true);
+      }
+      return;
+    }
+
+    if (a.phase === 'back') {
+      // 주먹이 높이 날아서 돌아온다 (돌아올 때는 아프지 않음)
+      const k = Math.min(1, a.t / 0.7);
+      fist.x = lerp(a.backFrom.x, s.x, k);
+      fist.y = lerp(a.backFrom.y, s.y - FIST_H / 2, k) - Math.sin(k * Math.PI) * 180;
+      if (k >= 1) this.endAction();
+    }
+  }
+
+  drawRocketWarning(band, launchX, height, k) {
+    const alpha = 0.18 + 0.14 * Math.sin(this.t * 18);
+    const x0 = this.arenaStart;
+    const w = launchX - x0;
+    const h = band.bottom - band.top;
+    this.warn.fillStyle(0xff2020, alpha).fillRect(x0, band.top, w, h);
+    this.warn.lineStyle(3, 0xff4444, 1).strokeRect(x0, band.top, w, h);
+    // 왼쪽으로 흐르는 화살표
+    const cy = band.top + h / 2;
+    const shift = (this.t * 240) % 120;
+    for (let x = launchX - 40 - shift; x > x0 + 20; x -= 120) {
+      this.warn.fillStyle(0xffe0e0, 0.85).fillTriangle(x - 22, cy, x + 4, cy - 14, x + 4, cy + 14);
+    }
+    const mid = (x0 + launchX) / 2;
+    if (height === 'high') {
+      this.label(0, '높다! 가만히!', mid, band.top - 30, 28);
+      this.label(1, '점프하면 맞아!', mid, band.top - 62, 18, '#ffd23f');
+    } else {
+      this.label(0, '낮다! 점프!', mid, band.top - 30, 28);
+      this.label(1, '▲ 점프 ▲', mid, band.top - 62, 18, '#ffd23f');
+    }
+    if (k > 0.6) this.label(2, '!', launchX + 10, band.top - 20, 30);
+  }
+
+  removeFist(arm) {
+    if (arm.fist) {
+      this.scene.tweens.killTweensOf(arm.fist);
+      arm.fist.destroy();
+      arm.fist = null;
+    }
+    if (arm.alive && arm.sprite.active) arm.sprite.setCrop();
+  }
+
+  // ---------- 빨아들이기 (반대쪽으로 달려서 버티기) ----------
+
+  runInhale(dt) {
+    const a = this.action;
+    a.t += dt;
+    const p = this.scene.player;
+    const m = this.mouthOpen;
+    const dir = this.inhaleSide();
+    if (a.phase === 'aim') {
+      const dur = this.c.inhaleWarningTime * this.speed;
+      const k = Math.min(1, a.t / dur);
+      this.fxG.fillStyle(0x10040e, 0.9).fillEllipse(m.x, m.y, 30 + 30 * k, 16 + 30 * k);
+      drawSwirl(this.fxG, m.x, m.y, this.t, 0.35 + 0.3 * k, dir);
+      this.label(0, '빨아들인다! 반대쪽으로 달려!', this.arenaStart + 480, 120, 26);
+      if (a.t >= dur) {
+        a.phase = 'pull';
+        a.t = 0;
+        this.scene.sfxPlay('inhale');
+      }
+      return;
+    }
+    if (a.phase === 'pull') {
+      const open = 60 + Math.sin(this.t * 14) * 6;
+      this.fxG.fillStyle(0x10040e, 0.95).fillEllipse(m.x, m.y, open, open * 0.9);
+      drawSwirl(this.fxG, m.x, m.y, this.t, 1, dir);
+      this.label(0, '버텨! 반대쪽으로 달려!', this.arenaStart + 480, 120, 26);
+      if (Math.random() < 0.3) this.scene.dustAt(m.x + dir * Phaser.Math.Between(150, 600), this.groundY, 1);
+      if (!p.dead) {
+        const target = this.biteTargetX();
+        p.x = inhaleStep(p.x, target, this.c.inhalePull, dt);
+        if (Math.abs(p.x - target) < 2) {
+          this.bite(p, dir);
+          a.phase = 'after';
+          a.t = 0;
+          return;
+        }
+      }
+      if (a.t >= this.c.inhaleTime) {
+        a.phase = 'after';
+        a.t = 0;
+      }
+      return;
+    }
+    if (a.t >= 0.5) this.endAction();
+  }
+
+  // 빨아들이는 쪽 (-1 = 왼쪽에서 끌어옴)
+  inhaleSide() {
+    return -1;
+  }
+
+  // 여기까지 끌려오면 깨물린다
+  biteTargetX() {
+    return this.biteX;
+  }
+
+  // 입까지 끌려오면 깨물고 뱉는다
+  bite(p, dir) {
+    this.scene.sfxPlay('bite');
+    this.scene.shake(0.012, 200);
+    floatText(this.scene, p.x, p.y - 60, '꽉!', '#ff5555', 30);
+    const r = p.hurt(this.c.inhaleBiteDamage, p.x - dir * 100, 650);
+    if (r !== 'hit') p.setVelocity(dir * 650, -260);
+    this.scene.robot.say('으악, 깨물렸어! 다음엔 더 멀리 도망가!', true);
+  }
+
   // ---------- 플레이어 공격 처리. 맞혔으면 true ----------
 
   receiveAttack(rect, attack) {
@@ -617,9 +894,10 @@ export class ArmBoss {
     for (const arm of this.armsAlive) {
       if (!arm.hittable || !intersects(rect, arm.hitRect())) continue;
       arm.health.damage(attack.damage);
-      floatText(this.scene, arm.sprite.x, arm.sprite.y - 130, String(attack.damage), attack.kind === 'charged' ? '#ffd23f' : '#ffffff', attack.kind === 'charged' ? 28 : 20);
-      flash(this.scene, arm.sprite);
-      this.scene.gooAt(arm.sprite.x, arm.sprite.y - 60, 6);
+      const hr = arm.hitRect();
+      floatText(this.scene, hr.centerX, hr.y - 10, String(attack.damage), attack.kind === 'charged' ? '#ffd23f' : '#ffffff', attack.kind === 'charged' ? 28 : 20);
+      flash(this.scene, arm.shiny);
+      this.scene.gooAt(hr.centerX, hr.centerY, 6);
       if (arm.health.isDead) this.destroyArm(arm);
       hit = true;
     }
@@ -636,7 +914,8 @@ export class ArmBoss {
     }
 
     if (!hit) {
-      const bodyRect = new Rect(this.bodyX - 110, this.groundY - 280, 220, 280);
+      const lay = this.layout();
+      const bodyRect = new Rect(this.bodyX - lay.bodyW / 2, this.groundY - lay.bodyH, lay.bodyW, lay.bodyH);
       const touchedArm = this.armsAlive.some((arm) => intersects(rect, arm.hitRect()));
       if (intersects(rect, bodyRect) || touchedArm) {
         this.scene.sfxPlay('tink');
@@ -655,6 +934,11 @@ export class ArmBoss {
     arm.busy = false;
     arm.setHittable(false);
     arm.hint.destroy();
+    if (arm.fist) {
+      const f = arm.fist;
+      arm.fist = null;
+      this.scene.tweens.add({ targets: f, angle: 60, alpha: 0, y: f.y + 20, duration: 600, onComplete: () => f.destroy() });
+    }
     this.scene.sfxPlay('break');
     this.scene.shake(0.015, 300);
     this.scene.gooAt(arm.sprite.x, arm.sprite.y - 80, 30);
@@ -690,16 +974,18 @@ export class ArmBoss {
   }
 
   defeat() {
-    this.defeated = true;
-    this.state = 'dead';
+    if (this.defeated) return;
     this.endAction();
-    this.scene.onBossDefeated(this);
+    this.combo.clear();
+    this.aura.clear();
+    super.defeat();
   }
 
   // 쓰러지는 연출 (GameScene 이 슬로모션 뒤 부른다)
   collapse() {
     const targets = [this.body, this.core, ...this.armsAlive.map((a) => a.sprite)];
     this.links.clear();
+    this.aura.clear();
     this.scene.tweens.add({ targets, alpha: 0, y: '+=60', duration: 900 });
   }
 }

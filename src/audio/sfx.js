@@ -130,6 +130,41 @@ class Sfx {
           this.tone(f, 0.25, { vol: 0.13, delay: i * 0.14 }),
         );
         break;
+      case 'rocket':
+        this.hiss(0.5, { vol: 0.4, freq: 400, freqTo: 3000 });
+        this.tone(140, 0.4, { type: 'sawtooth', vol: 0.2, slideTo: 420 });
+        break;
+      case 'inhale':
+        this.hiss(1.4, { vol: 0.35, freq: 3500, freqTo: 300 });
+        this.tone(200, 1.2, { type: 'sine', vol: 0.15, slideTo: 80 });
+        break;
+      case 'bite':
+        this.tone(120, 0.12, { type: 'square', vol: 0.3, slideTo: 60 });
+        this.hiss(0.1, { vol: 0.4, freq: 1500, delay: 0.05 });
+        break;
+      case 'rage':
+        this.tone(70, 1.1, { type: 'sawtooth', vol: 0.4, slideTo: 40 });
+        this.tone(140, 1.1, { type: 'square', vol: 0.15, slideTo: 90 });
+        this.hiss(1.0, { vol: 0.35, freq: 1200, freqTo: 100 });
+        break;
+      case 'icicle':
+        this.tone(1800, 0.25, { type: 'triangle', vol: 0.12, slideTo: 2600 });
+        this.hiss(0.2, { vol: 0.3, freq: 5000, freqTo: 1500, delay: 0.05 });
+        break;
+      case 'freeze':
+        this.hiss(0.9, { vol: 0.35, freq: 6000, freqTo: 800 });
+        this.tone(900, 0.6, { type: 'sine', vol: 0.08, slideTo: 1600 });
+        break;
+      case 'swoop':
+        this.hiss(0.7, { vol: 0.4, freq: 300, freqTo: 2500 });
+        break;
+      case 'flap':
+        this.hiss(0.12, { vol: 0.15, freq: 500, freqTo: 200 });
+        break;
+      case 'summon':
+        [330, 415, 494, 622].forEach((f, i) => this.tone(f, 0.18, { type: 'sine', vol: 0.12, delay: i * 0.07 }));
+        this.hiss(0.6, { vol: 0.15, freq: 900, freqTo: 3000 });
+        break;
       default:
         break;
     }

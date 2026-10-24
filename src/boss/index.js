@@ -1,4 +1,6 @@
 import { ArmBoss } from './ArmBoss.js';
+import { IceBoss } from './IceBoss.js';
+import { KingBoss } from './KingBoss.js';
 
 // stage.boss.type 이름 → 보스 클래스
 // 아직 따로 만들지 않은 종류는 팔 보스로 대신한다.
@@ -6,8 +8,8 @@ export const BOSS_TYPES = {
   arms: ArmBoss,
   toad: ArmBoss,
   golem: ArmBoss,
-  ice: ArmBoss,
-  king: ArmBoss,
+  ice: IceBoss,
+  king: KingBoss,
 };
 
 export function bossClassFor(stage) {
