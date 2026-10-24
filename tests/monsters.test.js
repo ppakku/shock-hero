@@ -69,6 +69,40 @@ describe('새 몬스터 능력치', () => {
   });
 });
 
+describe('난이도', () => {
+  const withDiff = (d) => ({ ...cfg, difficulty: d });
+  const easy = { level: 'easy', monsterDamage: 0.7, monsterSpeed: 0.9, monsterWindup: 1.3 };
+  const hard = { level: 'hard', monsterDamage: 1.25, monsterSpeed: 1.15, monsterWindup: 0.8 };
+
+  it('난이도가 없으면 보통과 같다', () => {
+    expect(monsterStats(cfg, 'bomber')).toEqual(monsterStats(withDiff({ level: 'normal', monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1 }), 'bomber'));
+  });
+
+  it('쉬움은 약하고 느리고 신호가 길며, 어려움은 반대', () => {
+    for (const type of MONSTER_TYPES) {
+      const n = monsterStats(cfg, type);
+      const e = monsterStats(withDiff(easy), type);
+      const h = monsterStats(withDiff(hard), type);
+      expect(e.damage, type).toBeLessThan(n.damage);
+      expect(h.damage, type).toBeGreaterThan(n.damage);
+      expect(e.moveSpeed).toBeCloseTo(n.moveSpeed * 0.9);
+      expect(h.lungeSpeed).toBeCloseTo(n.lungeSpeed * 1.15);
+      expect(e.windupTime).toBeCloseTo(n.windupTime * 1.3);
+      expect(h.windupTime).toBeCloseTo(n.windupTime * 0.8);
+    }
+    const nb = monsterStats(cfg, 'bomber');
+    const eb = monsterStats(withDiff(easy), 'bomber');
+    expect(eb.bombWarningTime).toBeCloseTo(nb.bombWarningTime * 1.3);
+    expect(eb.bombInterval).toBeCloseTo(nb.bombInterval * 1.3);
+    expect(eb.bombDamage).toBeLessThan(nb.bombDamage);
+    const hs = monsterStats(withDiff(hard), 'spitter');
+    const ns = monsterStats(cfg, 'spitter');
+    expect(hs.spitWindup).toBeCloseTo(ns.spitWindup * 0.8);
+    expect(hs.spitCooldown).toBeCloseTo(ns.spitCooldown * 0.8);
+    expect(hs.spitDamage).toBeGreaterThan(ns.spitDamage);
+  });
+});
+
 describe('폭탄벌레', () => {
   it('높이는 언제나 250 ~ 340 사이', () => {
     expect(bomberHoverY(480)).toBe(290); // 스테이지 파일에 y 를 안 적으면 땅 높이 → 기본 높이

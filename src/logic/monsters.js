@@ -10,7 +10,28 @@ export const BOMBER_MIN_Y = 250;
 export const BOMBER_MAX_Y = 340;
 export const BOMBER_DEFAULT_Y = 290;
 
+// 난이도가 없으면 보통
+export const NORMAL_DIFFICULTY = { level: 'normal', monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1 };
+
+// 난이도 배수를 곱한다. 피해(monsterDamage), 속도(monsterSpeed), 공격 준비와 경고와 공격 간격(monsterWindup)
+const DAMAGE_KEYS = ['damage', 'bombDamage', 'spitDamage'];
+const SPEED_KEYS = ['moveSpeed', 'lungeSpeed'];
+const WINDUP_KEYS = ['windupTime', 'bombInterval', 'bombWarningTime', 'spitWindup', 'spitCooldown'];
+export function applyDifficulty(stats, difficulty) {
+  const d = { ...NORMAL_DIFFICULTY, ...(difficulty ?? {}) };
+  const num = (v) => (typeof v === 'number' && v > 0 ? v : 1);
+  const out = { ...stats };
+  for (const k of DAMAGE_KEYS) if (typeof out[k] === 'number') out[k] = Math.max(1, Math.round(out[k] * num(d.monsterDamage)));
+  for (const k of SPEED_KEYS) if (typeof out[k] === 'number') out[k] *= num(d.monsterSpeed);
+  for (const k of WINDUP_KEYS) if (typeof out[k] === 'number') out[k] *= num(d.monsterWindup);
+  return out;
+}
+
 export function monsterStats(cfg, type = 'basic') {
+  return applyDifficulty(baseMonsterStats(cfg, type), cfg.difficulty);
+}
+
+function baseMonsterStats(cfg, type) {
   const base = cfg.monster;
   const t = (cfg.monsterTypes && cfg.monsterTypes[type]) || null;
   if (!t || type === 'basic') return { ...base, type: 'basic', size: 1 };
