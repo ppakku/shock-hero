@@ -74,7 +74,7 @@ export class HUDScene extends Phaser.Scene {
   buildTouchPad() {
     this.padG = this.add.graphics().setDepth(90);
     this.padLabels = TOUCH_BUTTONS.map((b) =>
-      makeText(this, b.x, b.y, b.label, b.label.length > 1 ? Math.round(b.r * 0.42) : Math.round(b.r * 0.6), '#ffffff')
+      makeText(this, b.x, b.y, b.label, b.label.length > 1 ? Math.max(15, Math.round(b.r * 0.44)) : Math.round(b.r * 0.6), '#ffffff')
         .setOrigin(0.5)
         .setDepth(91),
     );

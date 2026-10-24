@@ -2,17 +2,17 @@
 // 좌표는 게임 화면(960 x 540) 기준. HUD 장면은 카메라가 움직이지 않아서 그대로 쓴다.
 // 버튼 위치나 크기를 바꾸고 싶으면 아래 숫자만 고치면 된다 (r = 반지름).
 export const TOUCH_BUTTONS = [
-  { id: 'left', label: '◀', x: 82, y: 462, r: 48 },
-  { id: 'right', label: '▶', x: 196, y: 462, r: 48 },
-  { id: 'up', label: '▲', x: 139, y: 360, r: 40 }, // 누른 채 펀치하면 어퍼컷
-  { id: 'jump', label: '점프', x: 724, y: 474, r: 48 },
-  { id: 'attack', label: '펀치', x: 852, y: 436, r: 60 },
-  { id: 'dash', label: '대시', x: 740, y: 366, r: 40 },
-  { id: 'ult', label: '궁극기', x: 868, y: 316, r: 40 },
+  { id: 'left', label: '◀', x: 66, y: 478, r: 38 },
+  { id: 'right', label: '▶', x: 158, y: 478, r: 38 },
+  { id: 'up', label: '▲', x: 112, y: 394, r: 32 }, // 누른 채 펀치하면 어퍼컷
+  { id: 'jump', label: '점프', x: 752, y: 488, r: 38 },
+  { id: 'attack', label: '펀치', x: 868, y: 462, r: 48 },
+  { id: 'dash', label: '대시', x: 768, y: 400, r: 32 },
+  { id: 'ult', label: '궁극기', x: 880, y: 362, r: 32 },
 ];
 
 // 일시정지 버튼 (오른쪽 위, 시간 글자 아래)
-export const PAUSE_BUTTON = { x: 912, y: 96, r: 26 };
+export const PAUSE_BUTTON = { x: 916, y: 94, r: 22 };
 
 // 손가락이 버튼 테두리 조금 밖을 눌러도 눌린 걸로 친다 (아이 손가락은 자주 빗나간다)
 const SLACK = 1.25;
