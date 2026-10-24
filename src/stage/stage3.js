@@ -14,7 +14,8 @@ export const stage3 = {
     scenery: 'volcano', // 배경 모양 (그림을 못 불러오면 이걸 그림)
     bgImage: { key: 'lava_bg', file: 'lava_bg.jpg' }, // 걸어가는 동안 배경 (아들 그림)
     arenaImage: { key: 'lava_arena', file: 'lava_arena.jpg' }, // 보스전 배경 (아들 그림)
-    platform: 0x9a6a5a, // 발판 색 (그을린 바위 느낌)
+    platform: 0x9a6a5a, // 발판 색 (그림을 못 불러올 때)
+    platformImage: { key: 'lava_platform', file: 'lava_platform.png', left: 80, right: 80, surface: 4, scale: 0.5 }, // 떠 있는 바위 발판 (아들 그림, 양 끝 80 은 그대로, 가운데만 늘림)
     groundImage: { key: 'lava_ground', file: 'lava_ground.png', surface: 30 }, // 바닥 그림 (아들 그림, 좌우로 이어짐)
     sky: [0x2a0a08, 0xd8401c],
     sun: 0xff8a3d,

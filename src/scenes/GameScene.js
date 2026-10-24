@@ -283,6 +283,16 @@ export class GameScene extends Phaser.Scene {
       plat.body.checkCollision.left = false;
       plat.body.checkCollision.right = false;
       this.oneWays.push(plat);
+      // 발판 그림(theme.platformImage)이 있으면 보이는 발판만 그 그림으로 (밟는 높이는 그대로).
+      // 양 끝(left, right)은 그대로 두고 가운데만 늘려서 발판 길이가 달라도 모양이 유지된다.
+      const pi = st.theme.platformImage;
+      if (pi && this.textures.exists(pi.key)) {
+        const s = pi.scale || 0.5;
+        const src = this.textures.get(pi.key).getSourceImage();
+        const w = Math.max(p.w / s, pi.left + pi.right + 4);
+        plat.setVisible(false);
+        this.add.nineslice(p.x, p.y - (pi.surface || 0), pi.key, undefined, w, src.height, pi.left, pi.right, 0, 0).setOrigin(0.5, 0).setScale(s).setDepth(0);
+      }
     }
 
     for (const s of st.signs) {

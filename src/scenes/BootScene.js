@@ -19,7 +19,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('underwater_bg', 'art/underwater_bg.jpg');
     // 스테이지 파일 theme 의 bgImage(걸어가는 동안 배경), arenaImage(보스전 배경) 그림
     for (const st of stages) {
-      for (const pic of [st.theme.bgImage, st.theme.arenaImage, st.theme.groundImage]) if (pic) this.load.image(pic.key, `art/${pic.file}`);
+      for (const pic of [st.theme.bgImage, st.theme.arenaImage, st.theme.groundImage, st.theme.platformImage]) if (pic) this.load.image(pic.key, `art/${pic.file}`);
     }
   }
 

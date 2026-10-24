@@ -164,6 +164,8 @@ arenaImage: { key: 'lava_arena', file: 'lava_arena.jpg' }, // 보스 구역에 �
 
 그림은 `public/art/` 에 넣고, 크면 JPG 로 줄여 주세요(높이 720 정도). 그림 맨 아래 60 정도는 땅에 가려집니다.
 
+공중 발판 그림: `platformImage: { key, file, left, right, surface, scale }` (양 끝 `left`, `right` 픽셀은 그대로 두고 가운데만 늘립니다).
+
 바닥 그림도 같은 곳에 적습니다: `groundImage: { key: 'lava_ground', file: 'lava_ground.png', surface: 30 }` (`surface` 는 그림 위에서 걸어 다니는 윗면까지 높이).
 AI 바닥 그림은 `python3 tools/make_ground_tile.py 원본.png public/art/결과.png` 로 체크무늬를 지우고, 높이를 맞추고, 좌우 이음새를 없앤 타일로 만들 수 있습니다.
 
