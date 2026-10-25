@@ -4,7 +4,7 @@ import { makeText, FONT } from '../ui/text.js';
 import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
-import { stageStars, starText, totalStars } from '../logic/rewards.js';
+import { stageStars, totalStars, STAR_KINDS } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO } from '../logic/controls.js';
 import { isTouchDevice } from '../ui/touch.js';
@@ -361,7 +361,7 @@ export class TitleScene extends Phaser.Scene {
     const { x, y } = layout.positions[i];
     const locked = n > save.unlocked;
     const found = st.treasures.filter((t) => save.treasures.includes(t.id)).length;
-    const stars = starText(stageStars(save, st, n));
+    const stars = stageStars(save, st, n);
     const box = this.add.container(x, y).setDepth(15).setAngle(cardTilt(i)).setScale(layout.scale);
     const glow = this.add.image(0, 0, 'tt-card-glow');
     const paper = this.add.image(0, 0, 'tt-card-paper');
@@ -378,15 +378,22 @@ export class TitleScene extends Phaser.Scene {
       .text(-1, 22, st.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '11px', color: '#ffffff' })
       .setOrigin(0.5);
     const pin = this.add.image(42, -28, 'tt-pin');
-    const treasure = brushText(this, 0, 41, `${stars}  보물 ${found}/${st.treasures.length}`, 14, '#1b1b1b', {
+    const treasure = brushText(this, 26, 41, `보물 ${found}/${st.treasures.length}`, 14, '#1b1b1b', {
       strokeThickness: 0,
     }).setOrigin(0.5);
-    const parts = [glow, paper, green, frame, photo, caption, name, pin, title, treasure];
+    // 별 3개 (금색): 깨기, 보물 전부, 안 쓰러지고 깨기
+    const starMarks = STAR_KINDS.map((k, j) =>
+      this.add
+        .text(-48 + j * 17, 41, '★', { fontFamily: FONT, fontSize: '19px', color: stars[k] ? '#ffc21f' : '#8a8a8a', stroke: '#2a2a2a', strokeThickness: 3 })
+        .setOrigin(0.5),
+    );
+    const parts = [glow, paper, green, frame, photo, caption, name, pin, title, treasure, ...starMarks];
     if (locked) {
       photo.setTint(0x555555);
       caption.setVisible(false);
       name.setVisible(false);
       treasure.setVisible(false);
+      starMarks.forEach((m) => m.setVisible(false));
       const shade = this.add.rectangle(0, 0, CARD_W - 6, CARD_H - 6, 0x000000, 0.5);
       const lockG = this.add.graphics();
       lockG.lineStyle(4, 0xcfcfcf, 1).strokeCircle(0, 2, 8);
