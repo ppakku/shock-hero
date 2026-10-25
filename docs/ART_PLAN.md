@@ -42,7 +42,7 @@
 
 ### 5. 나머지 스테이지 (배경 파노라마, 보스전 배경, 바닥, 발판, 효과)
 - [x] 스테이지 1 파괴된 도시 (`city_bg.jpg`, `city_arena.jpg`, `city_ground.png`, `city_platform.png`, Gemini 웹에서 만듦)
-- [ ] 스테이지 2 독 숲
-- [ ] 스테이지 4 얼음 산
-- [ ] 스테이지 5 괴물 성
-- [ ] 스테이지 6 수중 던전 (배경 있음, 바닥과 발판)
+- [x] 스테이지 2 독 숲 (`forest_bg.jpg`, `forest_arena.jpg`, `forest_ground.png`, `forest_platform.png`)
+- [x] 스테이지 4 얼음 산 (`ice_bg.jpg`, `ice_arena.jpg`, `ice_ground.png`, `ice_platform.png`)
+- [x] 스테이지 5 괴물 성 (`castle_bg.jpg`, `castle_arena.jpg`, `castle_ground.png`, `castle_platform.png`, 배경은 Gemini 원본 다운로드 오류로 화면 크기 그림을 키움)
+- [x] 스테이지 6 수중 던전 (아들 배경 + `sea_ground.png`, `sea_platform.png`)
