@@ -69,12 +69,13 @@ export class ShieldMonster extends Monster {
     const s = this.scene;
     this.guardUp = false;
     this.guardTimer = this.m.guardBreakTime;
-    this.setTexture('monster_shield_broken').setDisplaySize(52 * this.m.size, 48 * this.m.size);
+    this.setLook('monster_shield_broken');
     s.sfxPlay('shieldBreak');
     floatText(s, this.x, this.y - 56, '방패 깨짐!', '#ffd23f', 24);
     s.sparks.explode(14, this.x + this.facing * 24, this.y - 4);
     // 깨진 방패 조각이 날아감
     const piece = s.add.image(this.x + this.facing * 22, this.y, 'monster_shield_piece').setDepth(6);
+    piece.setDisplaySize((36 * piece.width) / piece.height, 36);
     s.tweens.add({
       targets: piece,
       x: piece.x - this.facing * 80,
@@ -90,7 +91,7 @@ export class ShieldMonster extends Monster {
 
   raiseGuard() {
     this.guardUp = true;
-    this.setTexture('monster_shield').setDisplaySize(52 * this.m.size, 48 * this.m.size);
+    this.setLook('monster_shield');
     floatText(this.scene, this.x, this.y - 50, '방패!', '#bfe4ff', 18);
   }
 }

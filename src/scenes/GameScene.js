@@ -332,7 +332,8 @@ export class GameScene extends Phaser.Scene {
     this.chests = [];
     for (const tr of placeTreasures(st, this.stageNum)) {
       if (this.save.treasures.includes(tr.id)) continue;
-      const img = this.add.image(tr.x, tr.y, 'chest').setOrigin(0.5, 1).setDepth(2).setDisplaySize(44, 34);
+      const img = this.add.image(tr.x, tr.y, 'chest').setOrigin(0.5, 1).setDepth(2);
+      img.setDisplaySize((40 * img.width) / img.height, 40); // 그림 비율을 지켜 높이만 맞춘다 (art.js 의 상자 그림)
       this.tweens.add({ targets: img, y: tr.y - 4, duration: 500, yoyo: true, repeat: -1 });
       this.chests.push({ tr, img });
     }

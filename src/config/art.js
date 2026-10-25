@@ -19,9 +19,9 @@ export const customArt = {
   // monster_poison_puff: 'monster_poison_puff.png', // 독구름 한 덩이 (여러 개를 겹쳐 구름이 돼요)
   // monster_spitter: 'monster_spitter.png', // 청록 침뱉기
   // monster_spit: 'monster_spit.png', // 침뱉기의 침 (오른쪽으로 날아가는 모양)
-  // monster_shield: 'monster_shield.png', // 회색 방패병 (방패가 오른쪽 앞에 있게)
-  // monster_shield_broken: 'monster_shield_broken.png', // 방패가 깨진 방패병
-  // monster_shield_piece: 'monster_shield_piece.png', // 날아가는 방패 조각
+  monster_shield: { file: 'monster_shield.png', cols: 4, rows: 2, frameRate: 7 }, // 방패병 (Gemini 그림, 8장 걷기, 오른쪽을 봄, 방패가 오른쪽 앞)
+  monster_shield_broken: { file: 'monster_shield_broken.png', cols: 4, rows: 2, frameRate: 12 }, // 방패가 깨진 방패병 (Gemini 그림, 8장 허둥지둥)
+  monster_shield_piece: 'monster_shield_piece.png', // 날아가는 깨진 방패 (Gemini 그림)
   // robot: 'robot.png', // 로봇 조수 볼트
   // boss_body_1: 'boss_body_1.png', // 스테이지 1 보스 몸통 (왼쪽을 보는 모습). 2~5 도 같은 식
   // boss_arm_1: 'boss_arm_1.png', // 스테이지 1 보스 팔 (주먹이 아래로). 2~5 도 같은 식
@@ -44,12 +44,14 @@ export const customArt = {
   fx_fireball: { file: 'fx_fireball.png', cols: 4, rows: 1, frameRate: 12 }, // 불덩이 (아들 그림, 4장 반복, 왼쪽으로 날아가는 모양, 밝을수록 진함: 더하기 합성 추천)
   boss_arm_1: { file: 'shredder_arm.png', armCut: 130 }, // 파쇄자 쇠팔 (아들 그림, 주먹이 아래로). armCut: 210 높이 중 이 아래가 주먹이라 로켓 펀치 때 잘라 냄
   boss_fist_1: 'shredder_fist.png', // 파쇄자가 날리는 주먹 (아들 그림, 왼쪽을 봄)
+  boss_link_1: 'boss_link_pipe.png', // 파쇄자 몸통과 팔을 잇는 녹슨 쇠 파이프 (Gemini 그림, 가로로 이어 붙는 띠)
   boss_body_1: { file: 'shredder.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 스테이지 1 보스 파쇄자 (아들 그림, 8장, 오른쪽을 봄)
   boss_body_5: { file: 'king_seated.png', cols: 4, rows: 2, frameRate: 6, faces: 'right' }, // 킹 돌연변이 앉은 모습 (Gemini 그림, 8장 숨쉬기, 오른쪽을 봄)
   boss_king_stand_5: { file: 'king_stand.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 킹 돌연변이 일어선 모습 (Gemini 그림, 8장 쿵쿵 걷기, 오른쪽을 봄)
   boss_throne_5: 'king_throne.png', // 킹 돌연변이 왕좌 (Gemini 그림)
   boss_arm_5: { file: 'king_arm.png', armCut: 139 }, // 킹 돌연변이 팔 (Gemini 그림, 주먹이 아래로). armCut: 금 팔찌 윗선, 이 아래가 주먹
   boss_fist_5: 'king_fist.png', // 킹 돌연변이가 날리는 주먹 (Gemini 그림, 왼쪽을 봄)
+  boss_link_5: 'boss_link_muscle.png', // 킹 돌연변이 몸통과 팔을 잇는 근육 줄 (Gemini 그림, 가로로 이어 붙는 띠)
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
   // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
   // fireball: 'fireball.png', // 용의 불덩이
@@ -71,5 +73,6 @@ export const customArt = {
   // boss_sea_bubble: 'boss_sea_bubble.png', // 스테이지 6 보스 거품 폭탄
   // rock: 'rock.png', // 떨어지는 돌
   // glob: 'glob.png', // 독침
-  // chest: 'chest.png', // 보물 상자
+  chest: 'chest.png', // 보물 상자 (Gemini 그림)
+  chest_open: 'chest_open.png', // 열린 보물 상자 (Gemini 그림, 금화와 보석)
 };

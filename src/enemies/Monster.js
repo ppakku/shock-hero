@@ -28,12 +28,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, tex);
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.setDisplaySize(52 * m.size, 48 * m.size);
-    // art.js 에 걷기 스프라이트 시트(8장, 오른쪽을 봄)가 있으면 칸 비율대로 크기를 맞추고 걷기를 반복 재생한다
-    if (scene.anims.exists(`${tex}_anim`)) {
-      const h = 48 * m.size * SHEET_SIZE;
-      this.setDisplaySize((h * this.width) / this.height, h).play({ key: `${tex}_anim`, startFrame: Phaser.Math.Between(0, 7) });
-    }
+    this.sizeToLook(tex, m.size);
     this.body.setSize(this.width * 0.8, this.height * 0.85, true);
     this.setCollideWorldBounds(true);
     this.setDragX(900);
@@ -59,6 +54,22 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.stateTime = 0;
     this.alert.setVisible(state === 'windup');
     if (state !== 'windup') this.clearTint();
+  }
+
+  // 그림 크기 맞추기: art.js 에 걷기 스프라이트 시트(8장, 오른쪽을 봄)가 있으면 칸 비율대로 맞추고 반복 재생, 없으면 코드 그림 한 장
+  sizeToLook(tex, size) {
+    if (this.scene.anims.exists(`${tex}_anim`)) {
+      const h = 48 * size * SHEET_SIZE;
+      this.setDisplaySize((h * this.width) / this.height, h).play({ key: `${tex}_anim`, startFrame: Phaser.Math.Between(0, 7) });
+    } else {
+      this.setDisplaySize(52 * size, 48 * size);
+    }
+  }
+
+  // 생김새 바꾸기 (예: 방패병의 방패가 깨짐)
+  setLook(tex) {
+    this.stop().setTexture(tex);
+    this.sizeToLook(tex, this.m.size);
   }
 
   update(dt) {

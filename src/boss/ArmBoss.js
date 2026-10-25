@@ -34,6 +34,7 @@ const TIPS = {
 const FIST_W = 66; // 코드로 그린 날아가는 주먹 크기
 const FIST_H = 56;
 const ART_FIST = { w: 96, h: 66 }; // art.js 의 주먹 그림은 더 크게 (높은 펀치 띠 높이 66 에 맞춤)
+const LINK_W = 30; // art.js 의 줄 띠 그림 굵기
 const ARM_CUT = 148; // 팔 그림 210 높이 중 이 아래가 주먹 (art.js 에 armCut 을 적으면 그 값)
 
 // 부술 수 있는 팔 하나
@@ -360,13 +361,36 @@ export class ArmBoss extends BossBase {
     }
   }
 
+  // 몸통 어깨와 팔을 잇는 줄. art.js 에 boss_link_<번호> 띠 그림이 있으면 그 그림을 줄 길이만큼 이어 붙여 그린다
   drawLinks() {
     this.links.clear();
+    const key = `boss_link_${this.skin}`;
+    const art = Boolean(customArt[key]) && this.scene.textures.exists(key);
+    this.hideLinks();
     for (const arm of this.armsAlive) {
       const top = { x: arm.sprite.x, y: arm.sprite.y - 200 };
+      if (art) {
+        if (!arm.link) {
+          const tex = this.scene.textures.get(key).getSourceImage();
+          arm.link = this.scene.add.tileSprite(0, 0, 10, LINK_W, key).setDepth(3).setTileScale(LINK_W / tex.height);
+        }
+        const dx = top.x - arm.shoulder.x;
+        const dy = top.y - arm.shoulder.y;
+        arm.link
+          .setVisible(true)
+          .setPosition((arm.shoulder.x + top.x) / 2, (arm.shoulder.y + top.y) / 2)
+          .setSize(Math.hypot(dx, dy) + 16, LINK_W)
+          .setRotation(Math.atan2(dy, dx));
+        continue;
+      }
       this.links.lineStyle(26, arm.linkColor, 1).lineBetween(arm.shoulder.x, arm.shoulder.y, top.x, top.y);
       this.links.fillStyle(arm.linkColor, 1).fillCircle(arm.shoulder.x, arm.shoulder.y, 16).fillCircle(top.x, top.y, 14);
     }
+  }
+
+  // 줄 그림 숨기기 (부서진 팔, 쓰러질 때, 왕이 일어선 뒤)
+  hideLinks() {
+    for (const arm of this.arms) arm.link?.setVisible(false);
   }
 
   startAction(forceType = null) {
@@ -1005,6 +1029,7 @@ export class ArmBoss extends BossBase {
   collapse() {
     const targets = [this.body, this.core, ...this.armsAlive.map((a) => a.sprite)];
     this.links.clear();
+    this.hideLinks();
     this.aura.clear();
     this.scene.tweens.add({ targets, alpha: 0, y: '+=60', duration: 900 });
   }

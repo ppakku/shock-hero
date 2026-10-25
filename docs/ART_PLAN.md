@@ -25,6 +25,7 @@
 
 ### 2. 보스
 - [x] 파쇄자 몸통, 포레스트 와처
+- [x] 보스 몸통과 팔을 잇는 줄: 파쇄자 녹슨 쇠 파이프, 킹 돌연변이 근육 줄 (`boss_link_pipe.png`, `boss_link_muscle.png`, 가로로 이어 붙는 띠)
 - [x] 2-1 파쇄자의 쇠팔과 주먹 (`shredder_arm.png`, `shredder_fist.png`, `tools/make_shredder_arm.py` 로 한 장에서 두 장 만듦)
 - [x] 2-2 혹한의 아스트라 날갯짓 8장 (`frost_astra.png`, 머리가 오른쪽이라 `faces: 'right'`)
 - [x] 2-3 킹 돌연변이 앉은 모습 8장, 일어선 모습 8장, 왕좌, 팔과 주먹 (`king_seated.png`, `king_stand.png`, `king_throne.png`, `king_arm.png`, `king_fist.png`, Gemini 웹, 그림이 오른쪽을 봄)
@@ -32,11 +33,13 @@
 
 ### 3. 일반 몬스터 (각각 4x2 걷기나 떠다니기 8장)
 - [x] 초록 몬스터, 빨강 날쌘돌이, 파랑 뚱보, 보라 뜀뛰기 (`monster_green/red/blue/purple.png`, Gemini 웹, `tools/make_sheet.py`)
-- [ ] 침뱉기, 방패병, 프로스(아들 디자인), 골드해파리 GX(아들 디자인)
+- [x] 방패병 걷기 8장, 방패 깨진 모습 8장, 날아가는 방패 조각 (`monster_shield.png`, `monster_shield_broken.png`, `monster_shield_piece.png`)
+- [ ] 침뱉기, 프로스(아들 디자인), 골드해파리 GX(아들 디자인)
 - [ ] 가시복어, 피라냐, 꽃게
 
 ### 4. 아이템과 아이콘
-- [ ] 보물 상자(닫힘, 열림), 하트, 체크포인트 깃발(꺼짐, 켜짐)
+- [x] 보물 상자 닫힘, 열림 (`chest.png`, `chest_open.png`, `tools/split_parts.py`)
+- [ ] 하트, 체크포인트 깃발(꺼짐, 켜짐)
 - [ ] 특별한 힘 아이콘 5개, 레벨 업 카드 아이콘 4개
 - [ ] 로봇 볼트 (떠다니기 4장)
 

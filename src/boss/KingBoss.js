@@ -218,6 +218,7 @@ export class KingBoss extends ArmBoss {
     }
     this.t += dt;
     this.links.clear();
+    this.hideLinks();
     this.warn.clear();
     this.fxG.clear();
     this.hideLabels();
