@@ -1,16 +1,17 @@
 import Phaser from 'phaser';
 import { sfx } from '../audio/sfx.js';
-import { makeText, formatTime, FONT } from '../ui/text.js';
+import { makeText, FONT } from '../ui/text.js';
 import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
+import { stageStars, totalStars, STAR_KINDS } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO } from '../logic/controls.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeTitleTextures, photoTexture, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { cardLayout, tokenizeControlLine, photoKind, cardTilt, CARD_W, CARD_H } from '../ui/titleLayout.js';
 
-// 타이틀: 스테이지 고르기 + 설정(난이도, 조작, 레벨 초기화)
+// 타이틀: 스테이지 고르기 + 설정(난이도, 조작, 상점, 레벨 초기화)
 // ↑ ↓ 로 줄을 옮기고, ← → 로 고르고, Enter 로 시작하거나 바꾼다. 마우스로 눌러도 된다.
 // 그림은 흑백 만화 느낌 (회색 하늘, 연기, 불타는 도시, 옥상 위 주인공). 그림 그리는 코드는 src/ui/titleArt.js
 
@@ -24,7 +25,7 @@ function fontSample() {
   const names = [...Object.values(DIFFICULTY_INFO), ...Object.values(CONTROL_INFO), TOUCH_INFO].map((d) => d.name);
   return [
     '쇼크 히어로 몬스터 브레이커 스테이지 0123456789 보물 / : 잠김 Enter 시작 체크포인트부터 이어하기 ↑ 키 고르기로 돌아가기 ▶',
-    '난이도 조작 레벨 초기화 ( ) + ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    '난이도 조작 상점 보석 레벨 초기화 ( ) + ★☆ ABCDEFGHIJKLMNOPQRSTUVWXYZ',
     ...names,
   ].join(' ');
 }
@@ -90,7 +91,7 @@ export class TitleScene extends Phaser.Scene {
     this.ready = false;
     this.selected = 0;
     this.row = 0; // 0: 스테이지 줄, 1: 설정 줄
-    this.option = 0; // 설정 줄에서 고른 버튼 (0 난이도, 1 조작, 2 초기화)
+    this.option = 0; // 설정 줄에서 고른 버튼 (0 난이도, 1 조작, 2 상점, 3 초기화)
     this.cameras.main.setBackgroundColor('#30353d');
     if (fontReady === null) waitTitleFont().then(() => this.sys.isActive() && !this.ready && this.build());
     else this.build();
@@ -108,6 +109,7 @@ export class TitleScene extends Phaser.Scene {
       if (this.confirming) this.closeConfirm();
       else if (this.row === 0) this.begin(false);
     });
+    kb.on('keydown-B', () => this.ready && !this.confirming && this.openShop());
     kb.on('keydown-Y', () => this.confirming && this.doReset());
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
   }
@@ -146,11 +148,13 @@ export class TitleScene extends Phaser.Scene {
     const specs = [
       { text: `난이도: ${d.name}`, tex: 'tt-btn-paint', color: '#ffffff', angle: -2 },
       { text: `조작: ${this.touch ? TOUCH_INFO.name : c.name}`, tex: 'tt-btn-tape', color: '#ffffff', angle: 1 },
-      { text: '레벨 초기화', tex: 'tt-btn-steel', color: '#ffb0a4', angle: -1 },
+      { text: `상점 (보석 ${save.gems})`, tex: 'tt-btn-tape', color: '#7af0ff', angle: -1 },
+      { text: '레벨 초기화', tex: 'tt-btn-steel', color: '#ffb0a4', angle: 1 },
     ];
-    const xs = [width / 2 - 285, width / 2, width / 2 + 285];
+    const BTN_SCALE = 0.86; // 버튼 4개가 한 줄에 들어가게
+    const xs = [-339, -113, 113, 339].map((dx) => width / 2 + dx);
     this.buttons = specs.map((s, i) => {
-      const box = this.add.container(xs[i], 459).setDepth(20).setAngle(s.angle);
+      const box = this.add.container(xs[i], 459).setDepth(20).setAngle(s.angle).setScale(BTN_SCALE);
       const ring = this.add.graphics();
       ring.lineStyle(4, 0xffe14a, 1).strokeRoundedRect(-128, -22, 256, 44, 8);
       const img = this.add.image(0, 0, s.tex);
@@ -163,7 +167,7 @@ export class TitleScene extends Phaser.Scene {
         this.option = i;
         this.press(i);
       });
-      return { box, ring };
+      return { box, ring, baseScale: BTN_SCALE };
     });
     this.optionHelp = makeText(this, width / 2, 492, '', 14, '#dddddd').setOrigin(0.5).setDepth(20);
 
@@ -188,7 +192,13 @@ export class TitleScene extends Phaser.Scene {
     }
 
     const u = save.upgrades;
-    const info = [`레벨 ${save.level}`, `보물 ${save.treasures.length}/${totalTreasures}`, `공격 ${u.attack}  방어 ${u.defense}  속도 ${u.speed}  볼트 ${u.robot}`];
+    const info = [
+      `레벨 ${save.level}`,
+      `보물 ${save.treasures.length}/${totalTreasures}`,
+      `별 ${totalStars(save, stages)}/${stages.length * 3}`,
+      `보석 ${save.gems}`,
+      `공격 ${u.attack}  방어 ${u.defense}  속도 ${u.speed}  볼트 ${u.robot}`,
+    ];
     if (save.picksPending > 0) info.push(`고를 카드 ${save.picksPending}장`);
     if (save.bestTimes[stages.length]) info.push('모든 스테이지 클리어!');
     makeText(this, width / 2, 521, info.join('   '), 16, '#dddddd').setOrigin(0.5).setDepth(20);
@@ -198,7 +208,7 @@ export class TitleScene extends Phaser.Scene {
     const bg = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.75).setInteractive();
     const plate = this.add.image(480, 262, 'tt-plate').setDisplaySize(660, 200);
     const msg = this.add
-      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록이 모두 지워져요.', {
+      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록, 별, 보석, 상점이 모두 지워져요.', {
         fontFamily: FONT,
         fontStyle: 'bold',
         fontSize: '21px',
@@ -351,7 +361,7 @@ export class TitleScene extends Phaser.Scene {
     const { x, y } = layout.positions[i];
     const locked = n > save.unlocked;
     const found = st.treasures.filter((t) => save.treasures.includes(t.id)).length;
-    const best = save.bestTimes[n];
+    const stars = stageStars(save, st, n);
     const box = this.add.container(x, y).setDepth(15).setAngle(cardTilt(i)).setScale(layout.scale);
     const glow = this.add.image(0, 0, 'tt-card-glow');
     const paper = this.add.image(0, 0, 'tt-card-paper');
@@ -368,15 +378,22 @@ export class TitleScene extends Phaser.Scene {
       .text(-1, 22, st.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '11px', color: '#ffffff' })
       .setOrigin(0.5);
     const pin = this.add.image(42, -28, 'tt-pin');
-    const treasure = brushText(this, 0, 41, `보물 ${found}/${st.treasures.length}${best ? `  ${formatTime(best)}` : ''}`, 14, '#1b1b1b', {
+    const treasure = brushText(this, 26, 41, `보물 ${found}/${st.treasures.length}`, 14, '#1b1b1b', {
       strokeThickness: 0,
     }).setOrigin(0.5);
-    const parts = [glow, paper, green, frame, photo, caption, name, pin, title, treasure];
+    // 별 3개 (금색): 깨기, 보물 전부, 안 쓰러지고 깨기
+    const starMarks = STAR_KINDS.map((k, j) =>
+      this.add
+        .text(-48 + j * 17, 41, '★', { fontFamily: FONT, fontSize: '19px', color: stars[k] ? '#ffc21f' : '#8a8a8a', stroke: '#2a2a2a', strokeThickness: 3 })
+        .setOrigin(0.5),
+    );
+    const parts = [glow, paper, green, frame, photo, caption, name, pin, title, treasure, ...starMarks];
     if (locked) {
       photo.setTint(0x555555);
       caption.setVisible(false);
       name.setVisible(false);
       treasure.setVisible(false);
+      starMarks.forEach((m) => m.setVisible(false));
       const shade = this.add.rectangle(0, 0, CARD_W - 6, CARD_H - 6, 0x000000, 0.5);
       const lockG = this.add.graphics();
       lockG.lineStyle(4, 0xcfcfcf, 1).strokeCircle(0, 2, 8);
@@ -413,7 +430,7 @@ export class TitleScene extends Phaser.Scene {
     if (this.confirming || !this.ready) return;
     if (this.row === 0) this.select(this.selected + dir);
     else {
-      this.option = Phaser.Math.Clamp(this.option + dir, 0, 2);
+      this.option = Phaser.Math.Clamp(this.option + dir, 0, this.buttons.length - 1);
       this.refresh();
     }
   }
@@ -433,7 +450,8 @@ export class TitleScene extends Phaser.Scene {
   // 설정 버튼 누르기: 난이도와 조작은 다음 것으로 바뀌고, 초기화는 확인 창을 띄운다
   press(i) {
     const s = this.save.settings;
-    if (i === 2) {
+    if (i === 2) return this.openShop();
+    if (i === 3) {
       this.confirming = true;
       this.confirmBox.setVisible(true);
       return;
@@ -449,6 +467,22 @@ export class TitleScene extends Phaser.Scene {
     sfx.unlock();
     sfx.muted = s.muted;
     sfx.play('beep');
+    this.build();
+  }
+
+  // 상점은 타이틀 위에 따로 열린다 (src/scenes/ShopScene.js). 닫으면 closeShop 을 부른다.
+  openShop() {
+    if (this.started || !this.ready) return;
+    this.confirming = true; // 상점이 열려 있는 동안 타이틀 키는 쉰다
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.launch('Shop');
+    this.scene.bringToTop('Shop');
+  }
+
+  closeShop() {
+    this.confirming = false;
     this.build();
   }
 
@@ -488,11 +522,12 @@ export class TitleScene extends Phaser.Scene {
     this.buttons.forEach((b, i) => {
       const on = this.row === 1 && this.option === i;
       b.ring.setVisible(on);
-      b.box.setScale(on ? 1.06 : 1);
+      b.box.setScale(b.baseScale * (on ? 1.06 : 1));
     });
     const helps = [
       DIFFICULTY_INFO[this.save.settings.difficulty].desc,
       '키보드 조작 방식을 바꿔요. 위의 조작법 설명도 바로 바뀌어요.',
+      '보석으로 영구 강화를 사요. 보석은 보물과 별로 모아요. (B 키)',
       '레벨과 보물을 모두 지우고 처음부터 다시 쌓아요.',
     ];
     if (this.touch) {
@@ -503,7 +538,7 @@ export class TitleScene extends Phaser.Scene {
       this.subText.setText(this.canContinue ? '여기를 누르면 처음부터' : '');
       return;
     }
-    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 레벨 초기화를 고를 수 있어요');
+    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 상점, 레벨 초기화를 고를 수 있어요');
     this.startText.setText(this.canContinue ? `Enter: 스테이지 ${n} 체크포인트부터 이어하기` : `Enter: 스테이지 ${n} 시작`);
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();

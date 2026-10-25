@@ -484,6 +484,24 @@ export const balance = {
     rapid: { time: 10, shotDamageMultiplier: 0.5 }, // 에너지 연사: 펀치할 때마다 파란 에너지탄이 나가요 (에너지탄 피해의 절반)
   },
 
+  // ---------- 보석 (보물과 별로 모아서 상점에서 써요) ----------
+  gems: {
+    treasure: 2, // 보물을 처음 찾으면
+    clear: 1, // 스테이지를 깰 때마다 (다시 깨도)
+    star: 3, // 별을 처음 받으면 (별 하나마다)
+  },
+
+  // ---------- 상점 (보석으로 사는 영구 강화) ----------
+  // prices: 단계마다 값 (개수 = 살 수 있는 단계 수)
+  shop: {
+    hp: { perRank: 20, prices: [8, 14, 20] }, // 튼튼한 몸: 최대 체력 +20
+    heart: { chancePerRank: 0.1, healPerRank: 5, prices: [6, 12] }, // 하트 행운: 하트가 더 자주, 더 많이 채움
+    powerTime: { perRank: 0.25, prices: [8, 14] }, // 오래가는 힘: 보물 힘 시간 +25%
+    startShield: { prices: [12] }, // 출발 방패: 스테이지를 시작할 때 강철 몸
+    ultStart: { gauge: 0.5, prices: [15] }, // 궁극기 반 충전: 궁극기 게이지 절반을 채우고 시작
+    tripleJump: { prices: [25] }, // 트리플 점프: 공중에서 한 번 더 (모두 세 번 점프)
+  },
+
   // ---------- 세상 ----------
   world: {
     gravity: 1500, // 중력 (클수록 빨리 떨어짐)

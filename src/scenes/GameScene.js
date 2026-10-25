@@ -9,6 +9,8 @@ import { HeroSkills } from '../player/skills.js';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { clearStagePatch } from '../logic/save.js';
+import { shopBonuses, scalePowerTimes } from '../logic/shop.js';
+import { treasureReward, clearReward, STAR_INFO } from '../logic/rewards.js';
 import { parseMonsterSpot } from '../logic/monsters.js';
 import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
 import { placeTreasures } from '../logic/treasures.js';
@@ -70,11 +72,14 @@ export class GameScene extends Phaser.Scene {
     this.foreground = new Foreground(this);
 
     const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
-    this.powers = new PowerSet(cfg.powers); // 보물 상자의 특별한 힘 (스테이지마다 새로)
+    this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
+    this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
     this.player = new Player(this, startX, st.groundY - 40, cfg, {
-      maxHealth: maxHealthFor(this.save.level, cfg.player.maxHealth, cfg.level),
+      maxHealth: this.maxHealthAt(this.save.level),
       powers: this.powers,
     });
+    this.player.bonusAirJumps = this.bonus.airJumps; // 트리플 점프
+    this.player.ultGauge = this.bonus.ultStart; // 궁극기 반 충전
     this.physics.add.collider(this.player, this.solids);
     this.physics.add.collider(this.player, this.oneWays);
     // 수중 스테이지면 헤엄치기 (src/player/swim.js)
@@ -106,6 +111,9 @@ export class GameScene extends Phaser.Scene {
     if (this.save.picksPending > left) this.save = saveStore.update({ picksPending: left });
     this.chargeG = this.add.graphics().setDepth(12);
     this.maxLabel = makeText(this, 0, 0, 'MAX!', 14, '#ffd23f').setOrigin(0.5).setDepth(13).setVisible(false);
+
+    // 출발 방패: 스테이지 이름이 지나간 뒤 강철 몸
+    if (this.bonus.startShield) this.time.delayedCall(this.fromCheckpoint ? 400 : 1700, () => !this.ended && this.givePower('shield'));
 
     if (this.fromCheckpoint) {
       for (const t of st.talks) if (t.x < st.checkpointX) this.firedTalks.add(t);
@@ -524,17 +532,20 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf(img);
     img.setTexture('chest_open').setY(tr.y);
     this.tweens.add({ targets: img, y: tr.y - 40, alpha: 0, scale: img.scale * 1.3, delay: 150, duration: 500, onComplete: () => img.destroy() });
-    this.save = saveStore.update({ treasures: [...this.save.treasures, tr.id] });
+    const reward = treasureReward(saveStore.load(), this.stage, this.stageNum, tr.id, cfg.gems);
+    this.save = saveStore.update(reward.patch);
     this.sparks.explode(24, tr.x, tr.y - 20);
     const found = this.stage.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
     floatText(this, tr.x, tr.y - 50, `보물 발견! (${found}/${this.stage.treasures.length})`, '#ffd23f', 24);
+    if (reward.gems > 0) this.time.delayedCall(350, () => floatText(this, tr.x, tr.y - 80, `보석 +${reward.gems}`, '#7af0ff', 20));
     this.sfxPlay('coin');
     // 보물은 경험치 대신 잠깐 동안 특별한 힘을 준다
     const id = treasurePower(tr);
     this.givePower(id);
     const info = POWER_INFO[id];
     const all = found === this.stage.treasures.length;
-    this.robot.say([`${info.name}! ${info.desc}`, ...(all ? ['이 스테이지 보물을 전부 찾았어! 대단해!'] : [])], true);
+    const starLine = reward.newStars.includes('treasures') ? ['이 스테이지 보물을 전부 찾았어! 별 하나 획득!'] : all ? ['이 스테이지 보물은 전부 찾았어!'] : [];
+    this.robot.say([`${info.name}! ${info.desc}`, ...starLine], true);
   }
 
   // ---------- 보물 상자의 특별한 힘 ----------
@@ -552,7 +563,7 @@ export class GameScene extends Phaser.Scene {
   // 화면 가운데 커다란 이름
   showPowerPopup(id) {
     const info = POWER_INFO[id];
-    const c = cfg.powers[id];
+    const c = this.powers.cfg[id];
     this.powerPopup?.destroy();
     const box = this.add.container(480, 190).setScrollFactor(0).setDepth(70);
     const icon = this.add.image(0, -62, info.icon).setScale(1.4);
@@ -944,7 +955,7 @@ export class GameScene extends Phaser.Scene {
   onMonsterKilled(monster) {
     this.greenGoo.explode(16, monster.x, monster.y);
     this.gainXp(monster.m.xp, monster.x, monster.y - 40);
-    if (Math.random() < cfg.monster.heartDropChance) this.dropHeart(monster.x, monster.y - 10);
+    if (Math.random() < cfg.monster.heartDropChance + this.bonus.heartChance) this.dropHeart(monster.x, monster.y - 10);
   }
 
   // 하트: 먹으면 체력이 찬다. 10초 뒤 사라진다.
@@ -956,7 +967,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, h, () => {
       const ph = this.player.health;
       if (!h.active || this.player.dead || ph.current >= ph.max) return;
-      const healed = ph.heal(cfg.monster.heartHeal);
+      const healed = ph.heal(cfg.monster.heartHeal + this.bonus.heartHeal);
       floatText(this, h.x, h.y - 20, `+${Math.round(healed)} 체력`, '#ff8aa0', 18);
       this.sfxPlay('coin');
       h.destroy();
@@ -976,7 +987,7 @@ export class GameScene extends Phaser.Scene {
     floatText(this, x, y, `+${amount} XP`, '#9fe8ff', 16);
     if (r.levelsGained > 0) {
       const p = this.player;
-      p.health.setMax(maxHealthFor(r.level, cfg.player.maxHealth, cfg.level));
+      p.health.setMax(this.maxHealthAt(r.level));
       p.health.heal(cfg.level.healthPerLevel * r.levelsGained);
       this.levelUpWait = Math.max(this.levelUpWait || 0, 0.7); // 레벨 업 글자를 잠깐 보여 준 뒤 카드
       this.time.delayedCall(250, () => {
@@ -1027,8 +1038,11 @@ export class GameScene extends Phaser.Scene {
 
   finishVictory() {
     const time = this.registry.get('runTime');
-    const { patch, isRecord, best } = clearStagePatch(saveStore.load(), this.stageNum, time);
-    this.save = saveStore.update(patch);
+    const before = saveStore.load();
+    // 별 3: 체크포인트에서 다시 시작하지 않고 한 번에 깼을 때
+    const reward = clearReward(before, this.stage, this.stageNum, { flawless: !this.fromCheckpoint }, cfg.gems);
+    const { patch, isRecord, best } = clearStagePatch(before, this.stageNum, time);
+    this.save = saveStore.update({ ...patch, ...reward.patch });
     this.sfxPlay('victory');
     this.robot.queue = [];
     this.robot.bubble.setVisible(false);
@@ -1041,10 +1055,19 @@ export class GameScene extends Phaser.Scene {
       isRecord,
       level: this.save.level,
       treasures: `${found}/${this.stage.treasures.length}`,
+      stars: reward.stars,
+      newStars: reward.newStars.map((k) => STAR_INFO[k]),
+      gems: reward.gems,
+      totalGems: this.save.gems,
     });
   }
 
   // ---------- 도우미 ----------
+
+  // 레벨과 상점 '튼튼한 몸' 을 더한 최대 체력
+  maxHealthAt(level) {
+    return maxHealthFor(level, cfg.player.maxHealth, cfg.level) + (this.bonus?.maxHealth || 0);
+  }
 
   shake(intensity, duration) {
     if (!cfg.effects.screenShake || !saveStore.load().settings.shake) return;
