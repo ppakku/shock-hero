@@ -129,7 +129,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const onGround = this.body.blocked.down || this.body.touching.down;
     this.coyote = onGround ? 0.1 : Math.max(0, this.coyote - dt);
-    if (onGround) this.airJumpsLeft = this.cfg.player.airJumps || 0;
+    if (onGround) this.airJumpsLeft = (this.cfg.player.airJumps || 0) + (this.bonusAirJumps || 0); // 상점 트리플 점프면 +1
     this.jumpBuffer = input.jumpPressed ? 0.12 : Math.max(0, this.jumpBuffer - dt);
 
     const blinking = this.hurtInvuln > 0 && Math.floor(this.hurtInvuln * 16) % 2 === 0;

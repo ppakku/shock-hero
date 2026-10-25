@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { starText } from '../logic/rewards.js';
 import { cfg } from '../config/index.js';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
@@ -230,7 +231,7 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.setVisible(true);
   }
 
-  showVictory({ stage, last, time, best, isRecord, level, treasures }) {
+  showVictory({ stage, last, time, best, isRecord, level, treasures, stars, newStars = [], gems = 0, totalGems = 0 }) {
     this.mode = 'victory';
     this.victoryStage = stage;
     this.victoryLast = last;
@@ -239,8 +240,9 @@ export class HUDScene extends Phaser.Scene {
       [
         `걸린 시간 ${formatTime(time)}${isRecord ? '  (최고 기록!)' : ''}`,
         `최고 기록 ${formatTime(best)}    레벨 ${level}    보물 ${treasures}`,
-        '',
-        last ? '심해의 왕까지 쓰러뜨리고 도시와 바다를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
+        `별 ${stars ? starText(stars) : ''}    보석 +${gems} (모두 ${totalGems}개)`,
+        newStars.length ? `새 별: ${newStars.join(', ')}!` : '',
+        last ? '마지막 보스까지 쓰러뜨리고 모두를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
         this.touch ? '' : last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
       ].join('\n'),
     );

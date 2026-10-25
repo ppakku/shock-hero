@@ -24,6 +24,7 @@ function sanitizeValue(value, p, warn) {
     }
     return value;
   }
+  if (Array.isArray(value)) return value.map((v, i) => sanitizeValue(v, `${p}[${i}]`, warn));
   if (value && typeof value === 'object') return sanitizeNumbers(value, warn, p);
   return value;
 }
