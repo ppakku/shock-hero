@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { ArmBoss } from './ArmBoss.js';
+import { customArt } from '../config/art.js';
 import { make } from '../fx/textures.js';
 import { Health } from '../logic/health.js';
 import { flash, floatText } from '../fx/effects.js';
 import { coreDamage, rockTargets, pickPattern, canSummon, summonSpots } from '../logic/boss.js';
+import { sheetFacesRight } from '../fx/spriteSheets.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -11,6 +13,7 @@ const lerp = Phaser.Math.Linear;
 const WAVE_H = 44;
 const STAND_W = 160;
 const STAND_H = 240;
+const SHEET_ORIGIN_Y = 0.98; // 스프라이트 시트(art.js) 칸 아래 빈 공간만큼 기준점을 올려 발이 땅에 닿게
 
 const TIPS = {
   summon: '부하를 불렀어! 보라색 구멍에서 나와. 먼저 잡아도 되고 피해도 돼!',
@@ -25,7 +28,9 @@ export class KingBoss extends ArmBoss {
     super(scene, cfg, stage, skin);
     this.kc = cfg.kingBoss;
     this.coreHealth = new Health(Math.round(this.c.coreHealth * this.hpScale * (this.kc.coreMultiplier || 1)));
-    this.throne = scene.add.image(this.bodyX + 20, this.groundY, `boss_throne_${skin}`).setOrigin(0.5, 1).setDepth(1.5).setDisplaySize(300, 360);
+    this.throne = scene.add.image(this.bodyX + 20, this.groundY, `boss_throne_${skin}`).setOrigin(0.5, 1).setDepth(1.5);
+    // 그린 왕좌는 비율을 지켜 높이만 맞춘다
+    this.throne.setDisplaySize(customArt[`boss_throne_${skin}`] ? Math.round((360 * this.throne.width) / this.throne.height) : 300, 360);
     this.minions = [];
     this.standing = false;
     this.standStage = null;
@@ -250,7 +255,7 @@ export class KingBoss extends ArmBoss {
         this.standT = 0;
         this.blocker.body.enable = false;
         this.throne.setTint(0x777777);
-        this.body.setTexture(`boss_king_stand_${this.skin}`).setDisplaySize(STAND_W, STAND_H);
+        this.setStandTexture();
         if (this.raging) this.body.setTint(0xff6a6a);
         this.jumpFrom = this.bodyX;
         this.jumpTo = (this.minX + this.maxX) / 2 + 120;
@@ -277,9 +282,23 @@ export class KingBoss extends ArmBoss {
     }
   }
 
+  // 일어선 모습: art.js 에 스프라이트 시트가 있으면 걷기 애니메이션, 없으면 코드로 그린 한 장
+  setStandTexture() {
+    const key = `boss_king_stand_${this.skin}`;
+    this.body.stop().setTexture(key);
+    this.standRight = sheetFacesRight(this.scene, key);
+    if (this.scene.anims.exists(`${key}_anim`)) {
+      const h = STAND_H * 1.15;
+      this.body.setOrigin(0.5, SHEET_ORIGIN_Y).setDisplaySize(Math.round((h * this.body.width) / this.body.height), h).play(`${key}_anim`);
+    } else {
+      this.body.setOrigin(0.5, 1).setDisplaySize(STAND_W, STAND_H);
+    }
+  }
+
   placeStanding() {
     this.bodyX = this.kx;
-    this.body.setPosition(this.kx, this.ky).setFlipX(this.face > 0);
+    // 그림이 오른쪽을 보면 왼쪽을 볼 때 뒤집는다
+    this.body.setPosition(this.kx, this.ky).setFlipX(this.standRight ? this.face < 0 : this.face > 0);
     this.corePos = { x: this.kx + this.face * 10, y: this.ky - 95 };
     this.core.setPosition(this.corePos.x, this.corePos.y);
     const s = 1 + Math.sin(this.t * 8) * 0.08;

@@ -18,6 +18,7 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `remove_checker_bg.py`: AI 그림에 체크무늬가 그려진 스프라이트 시트에서 체크무늬, 칸 글자, 점선을 지워 진짜 투명 PNG로 만드는 도구 (4x2 칸, 절반 크기로 저장)
 - `make_ground_tile.py`: AI 바닥 그림을 반복 바닥 타일로 (체크무늬 지우기, 위아래 자르기, 좌우 이음새 섞기)
 - `make_shredder_arm.py`: 파쇄자 쇠팔과 주먹이 나란히 그려진 그림 한 장을 팔(주먹이 아래)과 날아가는 주먹(왼쪽을 봄) 두 장으로 나눔 (체크무늬 지우기, 주먹 돌리기)
+- `make_arm_fist.py`: 흰 배경에 팔(왼쪽, 주먹이 아래)과 주먹(오른쪽, 왼쪽을 봄)이 나란히 있는 그림을 팔 280x840, 주먹 384x266 두 장으로 나누고 art.js 에 적을 armCut(금 팔찌 윗선)을 알려 줌 (킹 돌연변이)
 - `clean_gemini_bg.py`: Gemini 배경 그림의 오른쪽 아래 별 표시를 양옆 색으로 메워 지우고 높이 720 JPG 로 저장
 - `make_platform.py`: 흰 배경에 그린 발판 그림의 배경(철골 틈 포함)과 별 자국을 지우고 높이를 맞춤
 - `make_ground_strip.py`: 흰 배경 위 바닥 띠 그림을 좌우로 이어지는 바닥 타일로 (윗면 위 작은 돌은 남김, surface 값 출력)

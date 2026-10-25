@@ -27,7 +27,7 @@
 - [x] 파쇄자 몸통, 포레스트 와처
 - [x] 2-1 파쇄자의 쇠팔과 주먹 (`shredder_arm.png`, `shredder_fist.png`, `tools/make_shredder_arm.py` 로 한 장에서 두 장 만듦)
 - [x] 2-2 혹한의 아스트라 날갯짓 8장 (`frost_astra.png`, 머리가 오른쪽이라 `faces: 'right'`)
-- [ ] 2-3 킹 돌연변이 앉은 모습 8장, 일어선 모습 8장, 왕좌
+- [x] 2-3 킹 돌연변이 앉은 모습 8장, 일어선 모습 8장, 왕좌, 팔과 주먹 (`king_seated.png`, `king_stand.png`, `king_throne.png`, `king_arm.png`, `king_fist.png`, Gemini 웹, 그림이 오른쪽을 봄)
 - [ ] 2-4 수중 보스 (아들 디자인 기다리는 중)
 
 ### 3. 일반 몬스터 (각각 4x2 걷기나 떠다니기 8장)

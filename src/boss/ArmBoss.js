@@ -111,7 +111,7 @@ export class ArmBoss extends BossBase {
     this.sheet = scene.anims.exists(`boss_body_${skin}_anim`);
     if (this.sheet) {
       const sheetH = lay.bodyH * 1.18;
-      this.body.setOrigin(0.5, SHEET_ORIGIN_Y).setDisplaySize(Math.round((sheetH * 344) / 384), sheetH);
+      this.body.setOrigin(0.5, SHEET_ORIGIN_Y).setDisplaySize(Math.round((sheetH * this.body.width) / this.body.height), sheetH);
       this.body.setFlipX(sheetFacesRight(scene, `boss_body_${skin}`)).play(`boss_body_${skin}_anim`);
     }
     this.blocker = scene.add.zone(this.bodyX, this.groundY - lay.bodyH / 2, lay.bodyW - 20, lay.bodyH);

@@ -90,7 +90,7 @@ export const stage5 = {
     speedScale: 0.85, // 공격 속도 (작을수록 빠름)
     rockBonus: 2, // 돌 떨구기 때 더 떨어지는 돌
     shockwaves: 2, // 충격파 개수
-    colors: { main: 0x5a1a2a, light: 0x8a2a3a, dark: 0x30101a, arm: 0x7a2a3a },
+    colors: { main: 0x5a1a2a, light: 0x5c2a5a, dark: 0x30101a, arm: 0x4a2148 }, // light, arm: 팔을 잇는 줄 색 (Gemini 팔 그림의 보라색에 맞춤)
     minions: ['basic', 'fast', 'jumper'], // 부를 수 있는 부하 종류
     // [팔 다 있을 때, 팔 1개 부순 뒤, 팔 2개 부순 뒤] 앉아서 쓰는 공격
     phases: [
