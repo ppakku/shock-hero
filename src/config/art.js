@@ -17,8 +17,10 @@ export const customArt = {
   // monster_fros_aim: 'monster_fros_aim.png', // 프로스가 배를 앞으로 구부려 독을 쏘기 직전 (같은 크기로)
   // monster_venom: 'monster_venom.png', // 프로스의 맹독 (오른쪽으로 날아가는 모양)
   // monster_poison_puff: 'monster_poison_puff.png', // 독구름 한 덩이 (여러 개를 겹쳐 구름이 돼요)
-  // monster_spitter: 'monster_spitter.png', // 청록 침뱉기
-  // monster_spit: 'monster_spit.png', // 침뱉기의 침 (오른쪽으로 날아가는 모양)
+  monster_spitter: { file: 'monster_spitter.png', cols: 4, rows: 2, frameRate: 6 }, // 청록 침뱉기 두꺼비 (Gemini 그림, 8장 숨쉬기, 오른쪽을 봄)
+  monster_spitter_aim: 'monster_spitter_aim.png', // 침뱉기가 볼을 부풀려 조준 (걷기 시트 한 칸과 같은 크기)
+  monster_spitter_spit: 'monster_spitter_spit.png', // 침뱉기가 침을 뱉는 순간 (걷기 시트 한 칸과 같은 크기)
+  monster_spit: 'monster_spit.png', // 침뱉기의 침 (Gemini 그림, 오른쪽으로 날아가는 모양)
   monster_shield: { file: 'monster_shield.png', cols: 4, rows: 2, frameRate: 7 }, // 방패병 (Gemini 그림, 8장 걷기, 오른쪽을 봄, 방패가 오른쪽 앞)
   monster_shield_broken: { file: 'monster_shield_broken.png', cols: 4, rows: 2, frameRate: 12 }, // 방패가 깨진 방패병 (Gemini 그림, 8장 허둥지둥)
   monster_shield_piece: 'monster_shield_piece.png', // 날아가는 깨진 방패 (Gemini 그림)

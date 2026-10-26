@@ -24,3 +24,4 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `make_platform.py`: 흰 배경에 그린 발판 그림의 배경(철골 틈 포함)과 별 자국을 지우고 높이를 맞춤
 - `make_ground_strip.py`: 흰 배경 위 바닥 띠 그림을 좌우로 이어지는 바닥 타일로 (윗면 위 작은 돌은 남김, surface 값 출력)
 - `make_sheet.py`: 흰 배경 4x2 동작 그림(8장)을 칸마다 배경 지우고, 칸 크기와 발 위치를 맞춘 스프라이트 시트로 (몬스터 걷기)
+- `make_pose_sheets.py`: 4x2 그림에서 원하는 칸만 골라 걷기 시트와 한 장짜리 자세 그림을 같은 칸 크기로 만들고, 날아가는 조각(침 등)을 따로 잘라 낸다 (몸에서 떨어진 조각은 자세 그림에서 지움). 예: 침뱉기 `python3 -I tools/make_pose_sheets.py spitter_raw.png 128 public/art/monster_spitter.png=1,7,8,2,2,8,7,1@4x2 public/art/monster_spitter_aim.png=3 public/art/monster_spitter_spit.png=5 public/art/monster_spit.png=box:600,930,820,1090#1@64`
