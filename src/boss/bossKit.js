@@ -76,16 +76,20 @@ export class Puddles {
       g.fillStyle(this.edge, 0.8 * fade).fillCircle(p.x - p.w * 0.2, groundY - 6 - ((t * 30 + p.x) % 14), 3);
       g.fillStyle(this.edge, 0.8 * fade).fillCircle(p.x + p.w * 0.25, groundY - 4 - ((t * 24 + p.x * 3) % 12), 2.5);
     }
-    const pl = this.scene.player;
-    if (pl.dead || this.tick > 0 || pl.dashInvuln > 0) return;
-    const onGround = pl.body.blocked.down || pl.body.touching.down;
-    const hit = standingInPuddle(this.list, pl.x, 12, onGround && pl.y > groundY - 60);
-    if (!hit) return;
-    this.tick = this.tickTime;
-    if (pl.hurt(this.damage, hit.x, 120) === 'hit' && !this.warned) {
-      this.warned = true;
-      floatText(this.scene, pl.x, pl.y - 70, `${this.name}! 빨리 나와!`, '#ffb0b0', 18);
+    if (this.tick > 0) return;
+    let stung = false;
+    for (const pl of this.scene.players) {
+      if (pl.dead || pl.dashInvuln > 0) continue;
+      const onGround = pl.body.blocked.down || pl.body.touching.down;
+      const hit = standingInPuddle(this.list, pl.x, 12, onGround && pl.y > groundY - 60);
+      if (!hit) continue;
+      stung = true;
+      if (pl.hurt(this.damage, hit.x, 120) === 'hit' && !this.warned) {
+        this.warned = true;
+        floatText(this.scene, pl.x, pl.y - 70, `${this.name}! 빨리 나와!`, '#ffb0b0', 18);
+      }
     }
+    if (stung) this.tick = this.tickTime;
   }
 }
 
@@ -102,7 +106,7 @@ export class GroundWaves {
   }
 
   spawn(x, dir, maxDist) {
-    this.list.push({ x, dir, left: maxDist, hasHit: false });
+    this.list.push({ x, dir, left: maxDist, hits: new Set() }); // hits: 이미 맞은 주인공
   }
 
   clear() {
@@ -111,7 +115,6 @@ export class GroundWaves {
 
   // 그리기는 fxG 에 (보스가 프레임마다 지운다)
   update(dt, groundY, minX, maxX) {
-    const p = this.scene.player;
     for (const w of this.list) {
       const step = this.speed * dt;
       w.x += w.dir * step;
@@ -121,9 +124,7 @@ export class GroundWaves {
       this.g.fillStyle(this.color, 0.85).fillTriangle(w.x - 26, groundY, w.x, groundY - h, w.x + 26, groundY);
       this.g.fillStyle(this.light, 0.9).fillTriangle(w.x - 12, groundY, w.x, groundY - h * 0.6, w.x + 12, groundY);
       if (Math.random() < 0.4) this.scene.dustAt(w.x, groundY, 1);
-      if (!w.hasHit && intersects(new Rect(w.x - 18, groundY - h, 36, h), p.getBounds())) {
-        if (p.hurt(this.damage, w.x - w.dir * 40) !== 'ignored') w.hasHit = true;
-      }
+      this.scene.hurtPlayersIn(new Rect(w.x - 18, groundY - h, 36, h), this.damage, w.x - w.dir * 40, undefined, w.hits);
     }
     this.list = this.list.filter((w) => w.left > 0 && w.x > minX - 40 && w.x < maxX + 40);
   }

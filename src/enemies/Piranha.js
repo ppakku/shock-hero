@@ -3,7 +3,6 @@ import { SwimMonster } from './SwimMonster.js';
 import { dartVector } from '../logic/swim.js';
 
 const Rect = Phaser.Geom.Rectangle;
-const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
 // balance.js 에서 숫자를 지워 버려도 돌아가게 쓰는 기본값
 const DEFAULTS = { swimY: 330, dartWindup: 0.75, dartSpeed: 520, dartTime: 0.5, dartCooldown: 2.0, dartRange: 320, recoverTime: 0.9 };
@@ -21,7 +20,7 @@ export class Piranha extends SwimMonster {
   }
 
   think(dt) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y); // 함께하기: 가까운 사람을 노린다
     const dx = p.x - this.x;
     const dist = Math.hypot(dx, p.y - this.y);
     this.dartCd -= dt;
@@ -71,8 +70,9 @@ export class Piranha extends SwimMonster {
         this.body.velocity.x = this.dart.dir.x * this.m.dartSpeed;
         this.body.velocity.y = this.dart.dir.y * this.m.dartSpeed;
         if (Math.random() < 0.5) this.trailBubble();
-        if (!this.hasHit && !p.dead && intersects(this.biteRect(), p.getBounds())) {
-          if (p.hurt(this.m.damage, this.x, this.m.heroKnockback) !== 'ignored') this.hasHit = true;
+        if (!this.hasHit) {
+          const r = this.scene.hurtPlayersIn(this.biteRect(), this.m.damage, this.x, this.m.heroKnockback);
+          if (r !== 'ignored' && r !== 'miss') this.hasHit = true;
         }
         if (this.stateTime >= this.m.dartTime) {
           this.dartCd = this.m.dartCooldown;
@@ -92,7 +92,7 @@ export class Piranha extends SwimMonster {
   }
 
   startWindup() {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y);
     this.dart = { dir: dartVector(this.x, this.y, p.x, p.y - 4), x: this.x, y: this.y };
     this.scene.sfxPlay('warn');
     this.changeState('windup');

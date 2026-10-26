@@ -22,6 +22,11 @@
 - 쓰러뜨리면 `defeat()` → `scene.onBossDefeated(this)`
 
 ## scene 에서 쓸 수 있는 것
-`scene.player` (`hurt(damage, fromX, knockback)`, `x`, `y`, `getBounds()`), `scene.sfxPlay(name)`, `scene.shake(i, ms)`,
+함께하기(친구와 둘이서)면 주인공이 둘이다. 그래서 `scene.player` 를 직접 쓰지 말고:
+- 노릴 사람: `this.target` (BossBase, 보스에게서 가장 가까운 살아 있는 주인공. `x`, `y`, `body`)
+- 피해 주기: `this.hurtPlayer(rect, damage, fromX, knockback, hits)` (rect 에 닿은 사람 모두. `hits` Set 을 주면 한 사람을 한 번만 때린다)
+- 그 밖: `scene.players` (주인공 목록), `scene.playersIn(rect)`, `scene.anyAlive`
+
+`scene.sfxPlay(name)`, `scene.shake(i, ms)`,
 `scene.dustAt/gooAt/greenGooAt(x, y, n)`, `scene.robot.say(text, urgent)`, `scene.bossTips`(Set), `scene.gainXp(n, x, y)`,
 `scene.spawnMonster(spot)` (부하 소환, spot = `{ x, y, type }`), `scene.monsters`.

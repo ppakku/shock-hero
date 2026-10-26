@@ -296,7 +296,7 @@ export class DragonBoss extends BossBase {
   }
 
   facePlayer() {
-    const p = this.scene.player;
+    const p = this.target;
     if (Math.abs(p.x - this.x) > 30) this.facing = p.x < this.x ? -1 : 1;
   }
 
@@ -371,7 +371,7 @@ export class DragonBoss extends BossBase {
     if (!this.action) {
       this.timer -= dt;
       this.walk(dt);
-      if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
     } else {
       const a = this.action;
       a.t += dt;
@@ -405,7 +405,7 @@ export class DragonBoss extends BossBase {
   }
 
   walk(dt) {
-    const p = this.scene.player;
+    const p = this.target;
     this.facePlayer();
     if (this.tail.lift > 0) this.tail.lift = Math.max(0, this.tail.lift - 300 * dt);
     const side = this.x >= p.x ? 1 : -1;
@@ -466,7 +466,7 @@ export class DragonBoss extends BossBase {
     const k = this.k;
     const a = { type, phase: 'aim', t: 0 };
     this.facePlayer();
-    const p = this.scene.player;
+    const p = this.target;
     if (type === 'breath') {
       a.count = this.raging ? 3 : 2;
       a.spawned = 0;
@@ -475,7 +475,7 @@ export class DragonBoss extends BossBase {
       a.push = gustVelocity(p.x, this.x, k.gustStrength);
     } else if (type === 'tail') {
       this.facing = p.x < this.x ? 1 : -1; // 등을 돌려 꼬리를 플레이어 쪽으로
-      a.hasHit = false;
+      a.hits = new Set();
     } else if (type === 'fly') {
       a.phase = 'takeoff';
       a.lx = flyLandingX(this.x, this.leftStop, this.rightStop);
@@ -487,7 +487,7 @@ export class DragonBoss extends BossBase {
       const list = this.raging ? [w0, w1, w0] : [w0, w1];
       const warn = k.pillarWarningTime * this.speed;
       const step = warn + k.pillarWaveGap;
-      a.waves = list.map((xs, i) => ({ xs, start: i * step, warn, hasHit: false, burst: false }));
+      a.waves = list.map((xs, i) => ({ xs, start: i * step, warn, hits: new Set(), burst: false }));
       a.end = (list.length - 1) * step + warn + 0.5;
     }
     this.action = a;
@@ -495,7 +495,7 @@ export class DragonBoss extends BossBase {
     this.tip(type, TIPS[type]);
     if (!this.side) {
       const sideType = pickSideAttack(SIDE_ATTACKS, type, this.diff.bossCombo);
-      if (sideType) this.side = { type: sideType, t: 0, phase: 'wait', delay: 0.5 * this.speed, hasHit: false };
+      if (sideType) this.side = { type: sideType, t: 0, phase: 'wait', delay: 0.5 * this.speed, hits: new Set() };
     }
   }
 
@@ -572,7 +572,6 @@ export class DragonBoss extends BossBase {
     const a = this.action;
     const k = this.k;
     const m = this.speed;
-    const p = this.scene.player;
     const markPillars = (q) => {
       for (const x of a.pillars) {
         this.fire.warnGlow(x, this.groundY - 6, 46, this.t, q);
@@ -596,7 +595,11 @@ export class DragonBoss extends BossBase {
     if (a.phase === 'gust') {
       this.lift = Math.abs(Math.sin(this.t * 14)) * 16;
       markPillars(1);
-      if (!p.dead && !p.dashing) p.x = Phaser.Math.Clamp(p.x + a.push * dt, this.arenaStart + 20, this.arenaEnd - 20);
+      // 함께하기: 바람은 둘 다 밀어낸다 (각자 용에게서 먼 쪽으로)
+      for (const p of this.scene.players) {
+        const push = gustVelocity(p.x, this.x, k.gustStrength);
+        if (!p.dead && !p.dashing) p.x = Phaser.Math.Clamp(p.x + push * dt, this.arenaStart + 20, this.arenaEnd - 20);
+      }
       // 바람 줄
       for (let i = 0; i < 6; i++) {
         const y = this.groundY - 30 - i * 40;
@@ -634,7 +637,6 @@ export class DragonBoss extends BossBase {
   }
 
   drawPillar(x, grow, holder) {
-    const p = this.scene.player;
     const h = PILLAR_H * grow;
     const wob = Math.sin(this.t * 40 + x) * 6;
     const sheet = this.fire.hasPillar; // 아이들 불기둥 그림이 몸통을 그린다
@@ -643,9 +645,8 @@ export class DragonBoss extends BossBase {
       this.fxG.fillStyle(0xffe08a, 0.65).fillRect(x - PILLAR_W / 4, this.groundY - h, PILLAR_W / 2, h);
     }
     this.fire.column(x, this.groundY, h, PILLAR_W, this.dt, this.t, `col${Math.round(x)}`, sheet);
-    if (!holder.hasHit && intersects(new Rect(x - PILLAR_W / 2 + 6, this.groundY - h, PILLAR_W - 12, h), p.getBounds())) {
-      if (p.hurt(this.k.pillarDamage, x, 300) !== 'ignored') holder.hasHit = true;
-    }
+    holder.hits ??= new Set(); // 한 불기둥 묶음은 한 사람을 한 번만 때린다
+    this.hurtPlayer(new Rect(x - PILLAR_W / 2 + 6, this.groundY - h, PILLAR_W - 12, h), this.k.pillarDamage, x, 300, holder.hits);
   }
 
   // ---------- 꼬리 휘두르기 (땅에 떨어진 꼬리는 때릴 기회) ----------
@@ -681,10 +682,8 @@ export class DragonBoss extends BossBase {
         this.fxG.lineStyle(10 - i * 3, 0xfff0d0, 0.45 * fade).lineBetween(reach0, y, reach1 + f * i * 20, y + 4);
       }
       this.fire.gust(reach1, this.groundY - 40, this.groundY - 6, -f, dt);
-      if (!a.hasHit) {
-        const r = this.hurtPlayer(new Rect(Math.min(reach0, reach1), this.groundY - TAIL_H, Math.abs(reach1 - reach0), TAIL_H), k.tailDamage, this.x, 380);
-        if (r === 'hit' || r === 'dodged') a.hasHit = true;
-      }
+      // 맞거나 피한 사람은 다시 맞지 않는다
+      this.hurtPlayer(new Rect(Math.min(reach0, reach1), this.groundY - TAIL_H, Math.abs(reach1 - reach0), TAIL_H), k.tailDamage, this.x, 380, a.hits);
       if (a.t >= 0.18) {
         a.phase = 'stuck';
         a.t = 0;
@@ -793,7 +792,6 @@ export class DragonBoss extends BossBase {
   }
 
   updateBalls(dt) {
-    const p = this.scene.player;
     this.balls.forEach((b, i) => {
       b.vy += 1400 * dt;
       b.y += b.vy * dt;
@@ -888,7 +886,7 @@ export class DragonBoss extends BossBase {
     const sd = this.side;
     const k = this.k;
     const m = this.speed;
-    const p = this.scene.player;
+    const p = this.target;
     sd.t += dt;
     if (sd.phase === 'wait') {
       if (sd.t < sd.delay) return;

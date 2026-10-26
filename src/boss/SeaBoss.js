@@ -423,7 +423,7 @@ export class SeaBoss extends BossBase {
     if (!fighting) {
       if (this.state === 'intro') this.moveTo(this.maxX - 180, 260, dt, 120);
       else this.y = 260 + Math.sin(this.t * 1.5) * 10;
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       this.pose(dt);
       return;
     }
@@ -436,7 +436,7 @@ export class SeaBoss extends BossBase {
     if (!this.action) {
       this.idle(dt);
       this.timer -= dt;
-      if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
     } else {
       this.runAction(dt);
     }
@@ -446,7 +446,7 @@ export class SeaBoss extends BossBase {
 
   // 공격 사이: 주인공에게서 조금 떨어진 곳을 천천히 맴돈다
   idle(dt) {
-    const p = this.scene.player;
+    const p = this.target;
     const tx = Phaser.Math.Clamp(p.x + (this.x > p.x ? 280 : -280), this.minX + 80, this.maxX - 80);
     const ty = this.clampY(220 + Math.sin(this.t * 1.2) * 40);
     this.moveTo(tx, ty, dt, this.sc.swimSpeed * 0.5);
@@ -491,9 +491,9 @@ export class SeaBoss extends BossBase {
       }
     }
     this.lastType = type;
-    const p = this.scene.player;
+    const p = this.target;
     const mid = (this.minX + this.maxX) / 2;
-    const a = { type, phase: 'aim', t: 0, hasHit: false };
+    const a = { type, phase: 'aim', t: 0, hits: new Set() }; // hits: 이번 공격에 이미 맞은 주인공
     if (type === 'charge') {
       a.dir = p.x < mid ? -1 : 1; // 이 방향으로 돌진
       a.startX = a.dir < 0 ? this.maxX - 40 : this.minX + 40;
@@ -562,7 +562,6 @@ export class SeaBoss extends BossBase {
 
   runCharge(dt) {
     const a = this.action;
-    const p = this.scene.player;
     const band = 64; // 띠 반 높이
     if (a.phase === 'aim') {
       const there = this.moveTo(a.startX, a.y, dt, this.sc.swimSpeed * 1.6);
@@ -587,9 +586,7 @@ export class SeaBoss extends BossBase {
       this.x += a.dir * this.sc.chargeSpeed * dt;
       if (Math.random() < 0.6) this.scene.dustAt(this.x - a.dir * 110, this.y + Phaser.Math.Between(-40, 40), 1);
       const danger = new Rect(this.x - 110, a.y - band + 10, 220, band * 2 - 20);
-      if (!a.hasHit && intersects(danger, p.getBounds())) {
-        if (p.hurt(this.sc.chargeDamage, this.x - a.dir * 80, 420) !== 'ignored') a.hasHit = true;
-      }
+      this.hurtPlayer(danger, this.sc.chargeDamage, this.x - a.dir * 80, 420, a.hits);
       const done = a.dir < 0 ? this.x <= a.endX : this.x >= a.endX;
       if (done) {
         this.x = a.endX;
@@ -653,15 +650,15 @@ export class SeaBoss extends BossBase {
   updateBubbles(dt) {
     this.bubbleG.clear();
     if (!this.bubbles.length) return;
-    const p = this.scene.player;
     for (const b of this.bubbles) {
       b.t += dt;
       b.y -= this.sc.bubbleRiseSpeed * dt;
       b.x = b.x0 + Math.sin(b.t * 3) * 10;
       b.img.setPosition(b.x, b.y);
-      if (!b.done && !p.dead && intersects(new Rect(b.x - 18, b.y - 18, 36, 36), p.getBounds())) {
+      const touched = b.done ? [] : this.scene.playersIn(new Rect(b.x - 18, b.y - 18, 36, 36));
+      if (touched.length) {
         this.popBubble(b, true);
-        p.hurt(this.sc.bubbleDamage, b.x, 260);
+        for (const p of touched) p.hurt(this.sc.bubbleDamage, b.x, 260);
       } else if (!b.done && b.y < 70) this.popBubble(b, false);
     }
     this.bubbles = this.bubbles.filter((b) => !b.done);
@@ -685,7 +682,7 @@ export class SeaBoss extends BossBase {
 
   runWhirl(dt) {
     const a = this.action;
-    const p = this.scene.player;
+    const p = this.target;
     const m = this.mouth;
     const pullDir = this.face; // 입이 보는 쪽에서 끌어옴
     if (a.phase === 'aim') {
@@ -705,13 +702,17 @@ export class SeaBoss extends BossBase {
       drawSwirl(this.fxG, m.x, m.y, this.t, 1, pullDir);
       this.fxG.fillStyle(0x0a1420, 0.6).fillCircle(m.x, m.y, 26);
       this.label(0, pullDir < 0 ? '버텨! ◀ 반대로 헤엄쳐!' : '버텨! 반대로 헤엄쳐! ▶', (this.minX + this.maxX) / 2, 90, 24);
-      if (!p.dead && !p.ultActive && p.dashInvuln <= 0) {
-        const np = whirlPullStep(p.x, p.y, m.x, m.y, this.sc.whirlPull, dt);
-        p.x = np.x;
-        p.y = np.y;
+      // 함께하기: 둘 다 끌려온다. 먼저 입에 닿은 사람이 깨물린다
+      for (const q of this.scene.players) {
+        if (q.dead || q.ultActive || q.dashInvuln > 0) continue;
+        const np = whirlPullStep(q.x, q.y, m.x, m.y, this.sc.whirlPull, dt);
+        q.x = np.x;
+        q.y = np.y;
       }
-      if (!a.hasHit && !p.dead && Math.hypot(p.x - m.x, p.y - m.y) < 60) {
-        a.hasHit = true;
+      const bitten = a.hits.size ? null : this.scene.players.find((q) => !q.dead && Math.hypot(q.x - m.x, q.y - m.y) < 60);
+      if (bitten) {
+        const p = bitten;
+        a.hits.add(p);
         if (this.jaw.alive) {
           this.scene.sfxPlay('bite');
           floatText(this.scene, m.x, m.y - 50, '앙!', '#ff5555', 30);
@@ -755,10 +756,10 @@ export class SeaBoss extends BossBase {
     if (this.inkLeft <= 0) return;
     this.inkLeft -= dt;
     const cam = this.scene.cameras.main;
-    const p = this.scene.player;
     this.dark.clear().fillStyle(0x020812, 0.88).fillRect(0, 0, 960, 540);
     const mg = this.darkMaskG.clear().fillStyle(0xffffff);
-    mg.fillCircle(p.x - cam.scrollX, p.y - cam.scrollY, 90);
+    // 주인공 둘레만 보인다 (함께하기면 두 사람 모두)
+    for (const p of this.scene.players) if (!p.dead) mg.fillCircle(p.x - cam.scrollX, p.y - cam.scrollY, 90);
     if (this.lure.alive && !this.defeated) {
       const lp = this.lurePos;
       mg.fillCircle(lp.x - cam.scrollX, lp.y - cam.scrollY, 70);
@@ -775,7 +776,6 @@ export class SeaBoss extends BossBase {
 
   runSweep(dt) {
     const a = this.action;
-    const p = this.scene.player;
     const h = this.sc.sweepHeight;
     if (a.phase === 'aim') {
       const there = this.moveTo(a.startX, this.restY, dt, this.sc.swimSpeed * 1.6);
@@ -798,9 +798,7 @@ export class SeaBoss extends BossBase {
       // 모래 물결
       this.fxG.fillStyle(0xbfae8a, 0.6).fillEllipse(this.x - a.dir * 60, this.groundY - h / 2, 200, h);
       const danger = new Rect(this.x - 120, this.groundY - h, 240, h);
-      if (!a.hasHit && intersects(danger, p.getBounds())) {
-        if (p.hurt(this.sc.sweepDamage, this.x - a.dir * 80, 360) !== 'ignored') a.hasHit = true;
-      }
+      this.hurtPlayer(danger, this.sc.sweepDamage, this.x - a.dir * 80, 360, a.hits);
       const done = a.dir < 0 ? this.x <= a.endX : this.x >= a.endX;
       if (done) this.next(a, 'after');
       return;
@@ -815,7 +813,7 @@ export class SeaBoss extends BossBase {
   runRest(dt) {
     const a = this.action;
     if (a.phase === 'descend') {
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       this.warn.fillStyle(0x9dff6a, 0.2).fillEllipse(a.tx, this.groundY, 200, 20);
       const there = this.moveTo(a.tx, this.restY, dt, this.sc.swimSpeed * 1.2);
       if (there) {
@@ -828,7 +826,7 @@ export class SeaBoss extends BossBase {
       return;
     }
     if (a.phase === 'rest') {
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       this.y = this.restY + Math.sin(this.t * 4) * 2;
       this.label(0, '지쳤다! 지금 때려!', this.x, this.y - 120, 22, '#ffd23f');
       if (Math.random() < 0.08) {

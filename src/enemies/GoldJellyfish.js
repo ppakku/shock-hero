@@ -31,7 +31,7 @@ export class GoldJellyfish extends SwimMonster {
   }
 
   think(dt) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y); // 함께하기: 가까운 사람을 노린다
     const dx = p.x - this.x;
     const dist = Math.hypot(dx, p.y - this.y);
     this.boltCd -= dt;
@@ -97,7 +97,7 @@ export class GoldJellyfish extends SwimMonster {
   }
 
   startAim() {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y);
     this.aim = { x: p.x, y: p.y - 6 };
     this.scene.sfxPlay('jellyCharge');
     this.changeState('windup');

@@ -105,11 +105,15 @@ export class BossBase {
     this.scene.robot.say(text, true);
   }
 
-  // 플레이어에게 피해 (대시 무적이면 'dodged')
-  hurtPlayer(rect, damage, fromX, knockback) {
-    const p = this.scene.player;
-    if (!Phaser.Geom.Intersects.RectangleToRectangle(rect, p.getBounds())) return 'miss';
-    return p.hurt(damage, fromX, knockback);
+  // 노릴 주인공: 함께하기면 보스 몸에서 가장 가까운 살아 있는 사람 (혼자면 늘 1P)
+  get target() {
+    return this.scene.nearestPlayer(this.bodyX);
+  }
+
+  // rect 에 닿은 주인공 모두에게 피해 (대시 무적이면 'dodged', 아무도 안 닿으면 'miss')
+  // hits (Set) 를 주면 이미 맞은 사람은 건너뛴다 (한 번만 때리는 공격)
+  hurtPlayer(rect, damage, fromX, knockback, hits = null) {
+    return this.scene.hurtPlayersIn(rect, damage, fromX, knockback, hits);
   }
 
   defeat() {

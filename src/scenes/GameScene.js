@@ -17,6 +17,7 @@ import { placeTreasures } from '../logic/treasures.js';
 import { CONTROL_KEYS, keyText } from '../logic/controls.js';
 import { addXp, maxHealthFor } from '../logic/progression.js';
 import { normalizeHero, heroStats } from '../logic/heroes.js';
+import { nearestPlayer, strongerResult, partyCenter, clampSpread } from '../logic/coop.js';
 import {
   PowerSet, POWER_INFO, treasurePower, UPGRADE_INFO, attackMultiplier, damageTakenMultiplier, speedMultiplier,
   dashCooldownMultiplier, robotStats, normalizeUpgrades, ranksLeft, applyPick, autoPickTrack,
@@ -82,17 +83,19 @@ export class GameScene extends Phaser.Scene {
     const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
     this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
     this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
-    this.player = new Player(this, startX, st.groundY - 40, cfg, {
-      maxHealth: this.maxHealthAt(this.save.level),
-      powers: this.powers,
-      hero: this.hero,
-    });
-    this.player.bonusAirJumps = this.bonus.airJumps; // 트리플 점프
-    this.player.ultGauge = this.bonus.ultStart; // 궁극기 반 충전
-    this.physics.add.collider(this.player, this.solids);
-    this.physics.add.collider(this.player, this.oneWays);
-    // 수중 스테이지면 헤엄치기 (src/player/swim.js)
-    if (st.swim) this.player.swim = new SwimController(this.player, cfg.swim, cfg.world.gravity);
+    this.player = this.makePlayer(startX, this.hero);
+    // 함께하기: 친구 주인공 (data.partner = { hero }). 친구가 누른 키는 this.partnerInput 에 들어온다.
+    // 주소에 ?duo 를 붙이면 시험용으로 친구가 나온다 (window.__p2 에 키를 넣어 움직인다).
+    const partner = data.partner || (new URLSearchParams(window.location.search).has('duo') ? { hero: 'gunner' } : null);
+    this.partner = partner ? this.makePlayer(startX - 50, normalizeHero(partner.hero)) : null;
+    this.partnerInput = null;
+    this.players = [this.player, this.partner].filter(Boolean);
+    this.coop = this.players.length > 1;
+    if (this.coop) {
+      this.player.tag = makeText(this, 0, 0, '1P', 14, '#7af0ff').setOrigin(0.5).setDepth(13);
+      this.partner.tag = makeText(this, 0, 0, '2P', 14, '#ffd23f').setOrigin(0.5).setDepth(13);
+      this.reviveLabels = new Map();
+    }
 
     this.monsters = [];
     if (!this.fromCheckpoint) {
@@ -104,8 +107,9 @@ export class GameScene extends Phaser.Scene {
     this.buildGate();
 
     this.boss = createBoss(this, this.cfg, st, st.boss.skin || this.stageNum);
-    if (this.boss.blocker) this.physics.add.collider(this.player, this.boss.blocker);
-    this.skills = new HeroSkills(this);
+    if (this.boss.blocker) this.physics.add.collider(this.players, this.boss.blocker);
+    for (const p of this.players) p.skills = new HeroSkills(this, p);
+    this.skills = this.player.skills; // 1P 의 기술 (예전 코드와 HUD 가 읽는다)
 
     this.robot = new Robot(this, this.player);
     this.shadows = new Shadows(this);
@@ -131,8 +135,10 @@ export class GameScene extends Phaser.Scene {
       this.showStageBanner();
     }
 
-    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-    this.cameras.main.setDeadzone(120, 80);
+    // 함께하기면 두 사람의 가운데를 따라간다
+    this.camTarget = this.coop ? { ...partyCenter(this.players) } : this.player;
+    this.cameras.main.startFollow(this.camTarget, true, 0.12, 0.12);
+    if (!this.coop) this.cameras.main.setDeadzone(120, 80); // 함께하기는 가운데를 바로 따라가야 둘 다 화면 안에 있다
     this.cameras.main.fadeIn(300);
 
     // 조작 방식(타이틀에서 고름)에 맞는 키들
@@ -149,6 +155,91 @@ export class GameScene extends Phaser.Scene {
 
     // 자동 확인용 (브라우저 콘솔에서 window.__shock 으로 접근)
     window.__shock = { game: this.game, scene: this };
+  }
+
+  // 주인공 하나 만들기 (레벨, 상점 강화, 땅 충돌, 수중 헤엄까지)
+  makePlayer(x, hero) {
+    const p = new Player(this, x, this.stage.groundY - 40, cfg, {
+      maxHealth: this.maxHealthAt(this.save.level, hero),
+      powers: this.powers,
+      hero,
+    });
+    p.bonusAirJumps = this.bonus.airJumps; // 트리플 점프
+    p.ultGauge = this.bonus.ultStart; // 궁극기 반 충전
+    this.physics.add.collider(p, this.solids);
+    this.physics.add.collider(p, this.oneWays);
+    // 수중 스테이지면 헤엄치기 (src/player/swim.js)
+    if (this.stage.swim) p.swim = new SwimController(p, cfg.swim, cfg.world.gravity);
+    return p;
+  }
+
+  // ---------- 함께하기 ----------
+
+  // 살아 있는 주인공이 하나라도 있는지
+  get anyAlive() {
+    return this.players.some((p) => !p.dead);
+  }
+
+  // (x, y) 에서 가장 가까운 살아 있는 주인공 (몬스터와 보스가 노릴 사람). 다 쓰러졌으면 1P
+  nearestPlayer(x, y = null) {
+    return nearestPlayer(this.players, x, y);
+  }
+
+  // rect 에 닿은 주인공 모두에게 피해. 가장 센 결과를 돌려준다 ('hit' > 'dodged' > 'ignored' > 'miss').
+  // hits (Set) 를 주면 이미 맞은 사람은 건너뛰고, 새로 맞은 사람을 넣는다 (한 번만 때리는 충격파 같은 것).
+  hurtPlayersIn(rect, damage, fromX, knockback, hits = null) {
+    let result = 'miss';
+    for (const p of this.players) {
+      if (p.dead || hits?.has(p) || !intersects(rect, p.getBounds())) continue;
+      const r = knockback === undefined ? p.hurt(damage, fromX) : p.hurt(damage, fromX, knockback);
+      if (hits && r !== 'ignored') hits.add(p);
+      result = strongerResult(result, r);
+    }
+    return result;
+  }
+
+  // rect 에 닿은 살아 있는 주인공들
+  playersIn(rect) {
+    return this.players.filter((p) => !p.dead && intersects(rect, p.getBounds()));
+  }
+
+  // 카메라는 두 사람의 가운데를 따라가고, 두 사람이 화면 밖으로 멀어지지 않게 붙잡는다
+  updateParty() {
+    if (!this.coop) return;
+    const xs = clampSpread(this.players, cfg.coop.maxSpread, this.prevXs);
+    this.players.forEach((p, i) => {
+      if (xs[i] !== p.x) {
+        p.x = xs[i];
+        p.body.x = p.x - p.body.halfWidth;
+        p.setVelocityX(0);
+      }
+      // 두 사람이 겹쳐 서 있으면 2P 글자를 조금 위로 올려 '1P2P' 처럼 붙지 않게
+      const close = i > 0 && Math.abs(p.x - this.players[0].x) < 36;
+      p.tag?.setPosition(p.x, p.getBounds().y - (close ? 30 : 14)).setVisible(!p.dead);
+    });
+    this.prevXs = this.players.map((p) => p.x);
+    Object.assign(this.camTarget, partyCenter(this.players));
+    for (const [p, label] of this.reviveLabels) {
+      const left = Math.ceil((p.reviveAt - this.time.now) / 1000);
+      label.setPosition(p.x, p.y - 60).setText(`${p === this.player ? '1P' : '2P'} ${Math.max(0, left)}초 뒤 부활`);
+    }
+  }
+
+  // 한 명이 쓰러졌을 때: 친구가 살아 있으면 잠시 뒤 친구 옆에서 다시 일어난다
+  scheduleRevive(player) {
+    player.reviveAt = this.time.now + cfg.coop.reviveTime * 1000;
+    const label = makeText(this, player.x, player.y - 60, '', 16, '#ffffff').setOrigin(0.5).setDepth(13);
+    this.reviveLabels.set(player, label);
+    this.time.delayedCall(cfg.coop.reviveTime * 1000, () => {
+      label.destroy();
+      this.reviveLabels.delete(player);
+      const friend = this.players.find((p) => p !== player && !p.dead);
+      if (this.ended || !friend) return; // 그 사이 둘 다 쓰러졌으면 실패 화면이 나온다
+      player.revive(friend.x - friend.facing * 30, friend.y - 20, player.health.max * cfg.coop.reviveHealth);
+      ring(this, player.x, player.y, 0x3ff07a, 70, 400, 5);
+      floatText(this, player.x, player.y - 60, '다시 일어났다!', '#3ff07a', 22);
+      this.sfxPlay('powerup');
+    });
   }
 
   // ---------- 맵 ----------
@@ -358,7 +449,7 @@ export class GameScene extends Phaser.Scene {
     const x = st.gateX;
     this.gateWall = this.add.rectangle(x, 270, 24, 540, 0xff3040, 0);
     this.physics.add.existing(this.gateWall, true);
-    this.physics.add.collider(this.player, this.gateWall);
+    this.physics.add.collider(this.players, this.gateWall);
     this.physics.add.collider(this.monsters, this.gateWall);
     this.gateG = this.add.graphics().setDepth(3);
     this.gateLabel = makeText(this, x, st.groundY - 300, '', 18, '#ffffff', { backgroundColor: '#5a0010cc', padding: { x: 8, y: 4 } })
@@ -382,8 +473,7 @@ export class GameScene extends Phaser.Scene {
     g.lineStyle(3, 0xff6070, 1).lineBetween(x - 12, 0, x - 12, st.groundY).lineBetween(x + 12, 0, x + 12, st.groundY);
     this.gateLabel.setText(`몬스터 ${left}마리 남음`);
 
-    const p = this.player;
-    if (!p.dead && p.x > x - 50 && this.time.now / 1000 - this.gateNagAt > 5) {
+    if (this.players.some((p) => !p.dead && p.x > x - 50) && this.time.now / 1000 - this.gateNagAt > 5) {
       this.gateNagAt = this.time.now / 1000;
       this.sfxPlay('locked');
       this.robot.say(`문이 잠겼어! 몬스터가 ${left}마리 남았어. 뒤로 가서 다 잡자!`, true);
@@ -429,21 +519,24 @@ export class GameScene extends Phaser.Scene {
     const dt = (Math.min(deltaMs, 50) / 1000) * this.time.timeScale;
     const input = this.readInput();
     this.player.update(dt, input);
-    this.player.swim?.update(dt); // 수중 스테이지: 천장 막기, 거품, 헤엄 자세
+    this.partner?.update(dt, this.readPartnerInput());
+    for (const p of this.players) p.swim?.update(dt); // 수중 스테이지: 천장 막기, 거품, 헤엄 자세
+    this.updateParty();
     for (const m of this.monsters) m.update(dt);
     this.monsters = this.monsters.filter((m) => !m.dead);
     this.updateGate();
     this.boss.update(dt);
-    this.skills.update(dt);
+    for (const p of this.players) p.skills.update(dt);
     this.robot.update(dt);
-    this.drawCharge();
+    this.chargeG.clear();
+    for (const p of this.players) this.drawCharge(p);
     this.updatePowers(dt);
     this.checkTriggers();
     this.checkLevelUp(dt);
     this.shadows.update();
     this.foreground.update();
 
-    if (!this.ended && !this.player.dead) this.registry.set('runTime', this.registry.get('runTime') + dt);
+    if (!this.ended && this.anyAlive) this.registry.set('runTime', this.registry.get('runTime') + dt);
 
     if (!this.lowHealthWarned && !this.player.dead && this.player.health.ratio < 0.3) {
       this.lowHealthWarned = true;
@@ -472,11 +565,21 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  drawCharge() {
-    const p = this.player;
-    this.chargeG.clear();
+  // 친구가 누른 키 (인터넷 함께하기가 this.partnerInput 을 채운다. 시험용 ?duo 는 window.__p2)
+  readPartnerInput() {
+    const i = this.partnerInput || window.__p2 || {};
+    const off = this.ended;
+    const keys = ['left', 'right', 'jumpDown', 'jumpPressed', 'attackDown', 'dashPressed', 'upDown', 'ultPressed'];
+    const out = Object.fromEntries(keys.map((k) => [k, !off && Boolean(i[k])]));
+    // 한 번 누른 키는 한 프레임만 쓴다
+    for (const k of ['jumpPressed', 'dashPressed', 'ultPressed']) if (i[k]) i[k] = false;
+    return out;
+  }
+
+  drawCharge(p) {
+    p.maxLabel ??= p === this.player ? this.maxLabel : makeText(this, 0, 0, 'MAX!', 14, '#ffd23f').setOrigin(0.5).setDepth(13).setVisible(false);
     if (!p.isCharging || p.dead) {
-      this.maxLabel.setVisible(false);
+      p.maxLabel.setVisible(false);
       return;
     }
     const r = p.chargeRatio;
@@ -492,7 +595,7 @@ export class GameScene extends Phaser.Scene {
     this.chargeG.arc(p.x, p.y, 40 * pulse, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, r), false);
     this.chargeG.strokePath();
     // 파랗게 빛나는 주먹
-    const f = this.skills.fistOffset(p.texture.key.replace(/^[a-z]+_/, ''));
+    const f = p.skills.fistOffset(p.texture.key.replace(/^[a-z]+_/, ''));
     const fx = p.x + f.x * p.facing;
     const fy = p.y + f.y;
     const glow = (8 + 14 * r) * pulse;
@@ -504,14 +607,16 @@ export class GameScene extends Phaser.Scene {
       const d = glow * (0.9 + 0.5 * Math.sin(t / 70 + i));
       this.chargeG.lineStyle(2, bright, 0.8).lineBetween(fx, fy, fx + Math.cos(a) * d, fy + Math.sin(a) * d);
     }
-    this.maxLabel.setColor(`#${bright.toString(16).padStart(6, '0')}`).setPosition(p.x, p.y - 52).setVisible(full);
+    p.maxLabel.setColor(`#${bright.toString(16).padStart(6, '0')}`).setPosition(p.x, p.y - 52).setVisible(full);
     p.setTint(full && Math.floor(t / 80) % 2 === 0 ? 0xbfe6ff : 0xffffff);
   }
 
   checkTriggers() {
-    const p = this.player;
     const st = this.stage;
-    if (p.dead) return;
+    const live = this.players.filter((q) => !q.dead);
+    if (!live.length) return;
+    // 가장 앞선 사람 기준 (안내 대사, 체크포인트, 보스전)
+    const p = live.reduce((a, b) => (b.x > a.x ? b : a));
 
     for (const t of st.talks) {
       if (!this.firedTalks.has(t) && p.x >= t.x) {
@@ -523,7 +628,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.flagActive && p.x >= st.checkpointX - 10) {
       this.flagActive = true;
       this.flag.setTexture('flag_on');
-      p.health.healFull();
+      for (const q of live) q.health.healFull();
       this.save = saveStore.update({ checkpoint: this.stageNum });
       floatText(this, st.checkpointX, st.groundY - 110, '체크포인트! 체력 회복', '#3ff07a', 22);
       this.sfxPlay('coin');
@@ -531,8 +636,9 @@ export class GameScene extends Phaser.Scene {
 
     for (const c of this.chests) {
       const tr = c.tr;
-      if (c.taken || Math.abs(p.x - tr.x) >= 34 || Math.abs(p.y - (tr.y - 20)) >= 50) continue;
-      this.takeTreasure(c);
+      const finder = live.find((q) => Math.abs(q.x - tr.x) < 34 && Math.abs(q.y - (tr.y - 20)) < 50);
+      if (c.taken || !finder) continue;
+      this.takeTreasure(c, finder);
     }
     this.chests = this.chests.filter((c) => !c.taken);
 
@@ -540,7 +646,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // 보물을 먹으면 상자가 열리고 위로 떠오르며 사라진다
-  takeTreasure(c) {
+  takeTreasure(c, finder = this.player) {
     const { tr, img } = c;
     c.taken = true;
     this.tweens.killTweensOf(img);
@@ -555,7 +661,7 @@ export class GameScene extends Phaser.Scene {
     this.sfxPlay('coin');
     // 보물은 경험치 대신 잠깐 동안 특별한 힘을 준다
     const id = treasurePower(tr);
-    this.givePower(id);
+    this.givePower(id, finder);
     const info = POWER_INFO[id];
     const all = found === this.stage.treasures.length;
     const starLine = reward.newStars.includes('treasures') ? ['이 스테이지 보물을 전부 찾았어! 별 하나 획득!'] : all ? ['이 스테이지 보물은 전부 찾았어!'] : [];
@@ -564,9 +670,10 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- 보물 상자의 특별한 힘 ----------
 
-  givePower(id) {
+  // 보물 힘은 둘이 함께 쓴다 (who: 상자를 연 사람, 그 자리에서 번쩍)
+  givePower(id, who = this.player) {
     if (!this.powers.add(id)) return;
-    const p = this.player;
+    const p = who;
     const info = POWER_INFO[id];
     this.sfxPlay('powerup');
     ring(this, p.x, p.y, info.tint, 90, 450, 6);
@@ -592,22 +699,30 @@ export class GameScene extends Phaser.Scene {
 
   // 시간 흐르기, 끝난 힘 알리기, 주인공 몸의 효과
   updatePowers(dt) {
-    const p = this.player;
     const ended = this.ended ? [] : this.powers.update(dt);
     for (const id of ended) {
+      const p = this.players.find((q) => !q.dead) || this.player;
       floatText(this, p.x, p.y - 60, `${POWER_INFO[id].name} 끝!`, '#bfc7d5', 18);
       this.sfxPlay('powerEnd');
-      if (id === 'star') p.setTint(0xffffff);
+      if (id === 'star') for (const q of this.players) q.setTint(0xffffff);
     }
-    const g = this.powerG.clear();
+    this.powerG.clear();
+    this.powerFxTimer -= dt;
+    const tick = this.powerFxTimer <= 0;
+    if (tick) this.powerFxTimer = 0.05;
+    this.starTouchTimer -= dt;
+    const starTick = this.powers.has('star') && this.starTouchTimer <= 0 && !this.ended;
+    if (starTick) this.starTouchTimer = cfg.powers.star.touchEvery;
+    for (const p of this.players) this.drawPowers(p, tick, starTick);
+  }
+
+  // 한 주인공 몸에 보물 힘 효과를 그린다 (둘이 같은 힘을 함께 쓴다)
+  drawPowers(p, tick, starTick) {
+    const g = this.powerG;
     if (p.dead) return;
     const t = this.time.now;
     // 끝나기 2초 전부터 깜빡깜빡
     const showing = (id) => this.powers.has(id) && (this.powers.remaining(id) > 2 || Math.floor(t / 120) % 2 === 0);
-
-    this.powerFxTimer -= dt;
-    const tick = this.powerFxTimer <= 0;
-    if (tick) this.powerFxTimer = 0.05;
 
     if (showing('speed') && tick && Math.abs(p.body.velocity.x) > 40) this.spawnGhost(p, 0xffe066);
     if (showing('shield')) {
@@ -616,7 +731,7 @@ export class GameScene extends Phaser.Scene {
       g.lineStyle(3, 0xdff0ff, 0.5 + 0.4 * r).strokeCircle(p.x, p.y, 42 + Math.sin(t / 150) * 2);
     }
     if (showing('power') || showing('rapid')) {
-      const f = this.skills.fistOffset(p.texture.key.replace(/^[a-z]+_/, ''));
+      const f = p.skills.fistOffset(p.texture.key.replace(/^[a-z]+_/, ''));
       const fx = p.x + f.x * p.facing;
       const fy = p.y + f.y;
       if (showing('power')) {
@@ -643,17 +758,12 @@ export class GameScene extends Phaser.Scene {
         g.lineStyle(4, Phaser.Display.Color.HSVToRGB((hue + 0.5) % 1, 0.8, 1).color, 0.8).strokeCircle(p.x, p.y, 40);
       } else p.setTint(0xffffff);
       if (tick) this.sparks.emitParticleAt(p.x + Phaser.Math.Between(-18, 18), p.y + Phaser.Math.Between(-28, 28), 1);
-      this.starTouchTimer -= dt;
-      if (this.starTouchTimer <= 0 && !this.ended) {
-        this.starTouchTimer = cfg.powers.star.touchEvery;
-        this.starTouch();
-      }
+      if (starTick) this.starTouch(p);
     }
   }
 
   // 무적 별: 몸에 닿은 몬스터와 보스에게 피해
-  starTouch() {
-    const p = this.player;
+  starTouch(p = this.player) {
     const c = cfg.powers.star;
     const b = p.getBounds();
     const rect = new Phaser.Geom.Rectangle(b.x - 8, b.y - 4, b.width + 16, b.height + 8);
@@ -682,18 +792,19 @@ export class GameScene extends Phaser.Scene {
   applyUpgrades() {
     const up = cfg.upgrades;
     const u = normalizeUpgrades(this.save.upgrades, up.maxRank);
-    const p = this.player;
-    p.baseDamageMultiplier = attackMultiplier(u, up);
-    p.damageTakenMultiplier = damageTakenMultiplier(u, up);
-    p.speedMultiplier = speedMultiplier(u, up);
-    p.dashCooldownMultiplier = dashCooldownMultiplier(u, up);
+    for (const p of this.players) {
+      p.baseDamageMultiplier = attackMultiplier(u, up);
+      p.damageTakenMultiplier = damageTakenMultiplier(u, up);
+      p.speedMultiplier = speedMultiplier(u, up);
+      p.dashCooldownMultiplier = dashCooldownMultiplier(u, up);
+    }
     this.robot.setStats(robotStats(u.robot, cfg.robot));
   }
 
   // 싸움 한가운데(슬로모션, 궁극기, 승리 연출, 쓰러짐)에는 카드를 띄우지 않고 기다린다
   canShowLevelUp() {
-    const p = this.player;
-    return !this.ended && !p.dead && !p.ultActive && !this.skills.ult && this.time.timeScale === 1 && !this.levelUpOpen;
+    const busy = this.players.some((p) => p.ultActive || p.skills.ult);
+    return !this.ended && !this.player.dead && !busy && this.time.timeScale === 1 && !this.levelUpOpen;
   }
 
   checkLevelUp(dt) {
@@ -790,7 +901,13 @@ export class GameScene extends Phaser.Scene {
     this.bossStarted = true;
     const wall = this.add.rectangle(a.startX - 10, 270, 20, 540, 0x8a8f99, 0.0);
     this.physics.add.existing(wall, true);
-    this.physics.add.collider(this.player, wall);
+    this.physics.add.collider(this.players, wall);
+    // 함께하기: 문 밖에 남은 친구는 보스 방 안으로 데려온다
+    for (const p of this.players) {
+      if (p.x >= a.startX + 10) continue;
+      if (p.dead) p.setX(a.startX + 30);
+      else p.setPosition(a.startX + 30, Math.min(p.y, this.stage.groundY - 40)).setVelocity(0, 0);
+    }
     const gate = this.add.graphics().setDepth(3);
     gate.fillStyle(0xff4040, 0.35).fillRect(a.startX - 12, 0, 12, this.stage.groundY);
 
@@ -823,11 +940,11 @@ export class GameScene extends Phaser.Scene {
     if (this.powers.has('rapid') && !attack.full) this.fireRapidShot(player, attack.up);
     // 번개 사수와 강철 거인은 기술 담당(src/player/skills.js)이 따로 처리한다
     if (attack.style) {
-      this.skills.heroAttack(player, attack);
+      player.skills.heroAttack(player, attack);
       return;
     }
     if (attack.up) {
-      this.skills.upperAttack(player, attack); // 위쪽 공격(어퍼컷)
+      player.skills.upperAttack(player, attack); // 위쪽 공격(어퍼컷)
       return;
     }
     const rect = player.attackRect(attack.range);
@@ -850,24 +967,25 @@ export class GameScene extends Phaser.Scene {
       if (attack.full) {
         ring(this, cx, cy, 0x9fe8ff, 90, 320);
         this.shake(0.01, 160);
-        this.skills.fireShotFrom(player, false);
+        player.skills.fireShotFrom(player, false);
       }
     }
 
     const hitAny = this.hitArea(rect, attack, dir);
     if (hitAny) {
       this.sfxPlay('hit');
-      this.skills.onDealtDamage(attack.damage);
+      player.skills.onDealtDamage(attack.damage);
       if (attack.kind === 'charged') this.shake(0.004 + 0.008 * attack.ratio, 120);
       if (attack.full) this.impact.chargedHit(dir); // 최대 충전 펀치: 멈칫 + 확대 + 번쩍
     }
   }
 
   fireRapidShot(player, up) {
-    const before = this.skills.shots.length;
-    this.skills.fireShotFrom(player, up);
+    const sk = player.skills;
+    const before = sk.shots.length;
+    sk.fireShotFrom(player, up);
     const k = cfg.powers.rapid.shotDamageMultiplier;
-    for (const s of this.skills.shots.slice(before)) s.attack = { ...s.attack, damage: Math.max(1, Math.round(s.attack.damage * k)) };
+    for (const s of sk.shots.slice(before)) s.attack = { ...s.attack, damage: Math.max(1, Math.round(s.attack.damage * k)) };
   }
 
   // 안내 글의 {punch} 같은 표시를 지금 조작 방식의 키 이름으로
@@ -948,12 +1066,17 @@ export class GameScene extends Phaser.Scene {
     player.setTint(0xffffff);
     floatText(this, player.x, player.y - 40, `-${damage}`, '#ff5555', 20);
     this.shake(0.008, 150);
-    this.skills.onHurt(damage);
+    player.skills.onHurt(damage);
   }
 
-  onPlayerDied() {
-    this.chargeG.clear();
-    this.maxLabel.setVisible(false);
+  onPlayerDied(player = this.player) {
+    player.maxLabel?.setVisible(false);
+    player.tag?.setVisible(false);
+    if (this.coop && this.anyAlive) {
+      this.robot.say(player === this.player ? '1P 가 쓰러졌어! 2P, 조금만 버텨!' : '2P 가 쓰러졌어! 1P, 조금만 버텨!', true);
+      this.scheduleRevive(player);
+      return;
+    }
     this.robot.say('히어로! 일어나! 체크포인트로 돌아가자.', true);
     this.time.delayedCall(1300, () => this.scene.get('HUD')?.showGameOver(this.save.checkpoint === this.stageNum));
   }
@@ -984,9 +1107,9 @@ export class GameScene extends Phaser.Scene {
     h.body.setSize(h.width, h.height); // 몸통은 그림 크기에 맞춤 (보이는 크기 = 그림 크기 x 배율)
     this.physics.add.collider(h, this.solids);
     this.physics.add.collider(h, this.oneWays);
-    this.physics.add.overlap(this.player, h, () => {
-      const ph = this.player.health;
-      if (!h.active || this.player.dead || ph.current >= ph.max) return;
+    this.physics.add.overlap(this.players, h, (who) => {
+      const ph = who.health;
+      if (!h.active || who.dead || ph.current >= ph.max) return;
       const healed = ph.heal(cfg.monster.heartHeal + this.bonus.heartHeal);
       floatText(this, h.x, h.y - 20, `+${Math.round(healed)} 체력`, '#ff8aa0', 18);
       this.sfxPlay('coin');
@@ -1007,8 +1130,10 @@ export class GameScene extends Phaser.Scene {
     floatText(this, x, y, `+${amount} XP`, '#9fe8ff', 16);
     if (r.levelsGained > 0) {
       const p = this.player;
-      p.health.setMax(this.maxHealthAt(r.level));
-      p.health.heal(cfg.level.healthPerLevel * r.levelsGained);
+      for (const q of this.players) {
+        q.health.setMax(this.maxHealthAt(r.level, q.hero));
+        q.health.heal(cfg.level.healthPerLevel * r.levelsGained);
+      }
       this.levelUpWait = Math.max(this.levelUpWait || 0, 0.7); // 레벨 업 글자를 잠깐 보여 준 뒤 카드
       this.time.delayedCall(250, () => {
         floatText(this, p.x, p.y - 70, `레벨 업! Lv ${r.level}`, '#ffd23f', 26);
@@ -1085,9 +1210,9 @@ export class GameScene extends Phaser.Scene {
   // ---------- 도우미 ----------
 
   // 레벨과 상점 '튼튼한 몸' 을 더한 최대 체력
-  maxHealthAt(level) {
+  maxHealthAt(level, hero = this.hero) {
     const base = maxHealthFor(level, cfg.player.maxHealth, cfg.level) + (this.bonus?.maxHealth || 0);
-    return Math.round(base * heroStats(this.hero, cfg).health); // 번개 사수는 적게, 강철 거인은 많게
+    return Math.round(base * heroStats(hero, cfg).health); // 번개 사수는 적게, 강철 거인은 많게
   }
 
   shake(intensity, duration) {

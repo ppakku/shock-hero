@@ -4,7 +4,6 @@ import { floatText, ring } from '../fx/effects.js';
 import { pufferResult } from '../logic/swim.js';
 
 const Rect = Phaser.Geom.Rectangle;
-const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
 // balance.js 에서 숫자를 지워 버려도 돌아가게 쓰는 기본값
 const DEFAULTS = {
@@ -30,7 +29,7 @@ export class Pufferfish extends SwimMonster {
   }
 
   think(dt) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y); // 함께하기: 가까운 사람을 노린다
     const dx = p.x - this.x;
     const dist = Math.hypot(dx, p.y - this.y);
     this.puffCd -= dt;
@@ -73,8 +72,9 @@ export class Pufferfish extends SwimMonster {
         // 가시 공: 천천히 주인공 쪽으로 굴러옴. 닿으면 아픔
         this.facing = Math.sign(dx) || this.facing;
         this.steer(p.x, p.y, this.m.moveSpeed * 0.55, dt, 1.5);
-        if (!this.hasHit && !p.dead && intersects(this.spikeRect(), p.getBounds())) {
-          if (p.hurt(this.m.bumpDamage, this.x, this.m.heroKnockback) !== 'ignored') this.hasHit = true;
+        if (!this.hasHit) {
+          const r = this.scene.hurtPlayersIn(this.spikeRect(), this.m.bumpDamage, this.x, this.m.heroKnockback);
+          if (r !== 'ignored' && r !== 'miss') this.hasHit = true;
         }
         if (this.stateTime >= this.m.spikyTime) this.deflate();
         break;
@@ -139,7 +139,7 @@ export class Pufferfish extends SwimMonster {
       const r = pufferResult(attack.kind, true);
       if (r === 'thorns') {
         // 가시에 찔림: 주인공이 아프고 복어는 멀쩡
-        const p = this.scene.player;
+        const p = this.scene.nearestPlayer(this.x, this.y); // 때린 사람 (가장 가까운 사람)
         floatText(this.scene, this.x, this.y - 50, '따끔!', '#ff8a5a', 22);
         this.scene.sfxPlay('tink');
         p.hurt(this.m.thornDamage, this.x, 180);

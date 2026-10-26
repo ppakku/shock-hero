@@ -217,7 +217,7 @@ export class WatcherBoss extends BossBase {
   }
 
   facePlayer() {
-    const p = this.scene.player;
+    const p = this.target;
     if (Math.abs(p.x - this.x) > 20) this.facing = p.x < this.x ? -1 : 1;
   }
 
@@ -293,7 +293,7 @@ export class WatcherBoss extends BossBase {
     if (!this.action) {
       this.timer -= dt;
       this.facePlayer();
-      if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
     } else {
       const a = this.action;
       a.t += dt;
@@ -363,7 +363,7 @@ export class WatcherBoss extends BossBase {
       a.len = Math.min(k.clawLength, Math.abs(wall - this.shoulder.x));
       a.tipX = this.shoulder.x;
       a.armY = this.groundY - ARM_UP;
-      a.hasHit = false;
+      a.hits = new Set(); // 이번 할퀴기에 이미 맞은 주인공
     } else if (type === 'burrow') {
       a.phase = 'sink';
     } else if (type === 'spit') {
@@ -376,7 +376,7 @@ export class WatcherBoss extends BossBase {
       a.plan = crawlPlan(this.x, this.arenaStart + 20, this.arenaEnd - 20);
       a.phase = 'run';
       const count = Math.max(1, Math.round(k.dripCount + (this.raging ? 1 : 0)));
-      a.drops = spreadTargets(this.scene.player.x, count, this.arenaStart + 60, this.arenaEnd - 60).map((x) => ({ x, done: false }));
+      a.drops = spreadTargets(this.target.x, count, this.arenaStart + 60, this.arenaEnd - 60).map((x) => ({ x, done: false }));
     }
     this.action = a;
     this.scene.sfxPlay('warn');
@@ -439,10 +439,7 @@ export class WatcherBoss extends BossBase {
         a.t = 0;
       }
       drawArm(a.armY);
-      if (!a.hasHit) {
-        const r = this.hurtPlayer(this.armRect(a), k.clawDamage, sh.x, 300);
-        if (r !== 'miss' && r !== 'ignored') a.hasHit = true;
-      }
+      this.hurtPlayer(this.armRect(a), k.clawDamage, sh.x, 300, a.hits);
       return;
     }
     if (a.phase === 'drop') {
@@ -490,7 +487,7 @@ export class WatcherBoss extends BossBase {
       if (q >= 1) {
         a.phase = 'hidden';
         a.t = 0;
-        a.tx = popUpX(this.scene.player.x, this.leftWall - HALF, this.rightWall + HALF, HALF);
+        a.tx = popUpX(this.target.x, this.leftWall - HALF, this.rightWall + HALF, HALF);
       }
       return;
     }
@@ -557,7 +554,7 @@ export class WatcherBoss extends BossBase {
   }
 
   spitAtPlayer() {
-    const p = this.scene.player;
+    const p = this.target;
     const tx = Phaser.Math.Clamp(p.x + p.body.velocity.x * 0.35, this.arenaStart + 40, this.arenaEnd - 40);
     this.launchGlob(this.mouthX, this.mouthY, tx, Math.max(0.3, this.k.spitFlightTime), 'arc');
     this.scene.sfxPlay('spit');
@@ -597,7 +594,7 @@ export class WatcherBoss extends BossBase {
 
   addVines(count) {
     const k = this.k;
-    const xs = spreadTargets(this.scene.player.x, count, this.arenaStart + 50, this.arenaEnd - 50, Math.random, 150);
+    const xs = spreadTargets(this.target.x, count, this.arenaStart + 50, this.arenaEnd - 50, Math.random, 150);
     for (const x of xs) this.vines.push({ x, t: 0, warn: k.vineWarningTime * this.speed, hit: false });
   }
 
@@ -610,7 +607,6 @@ export class WatcherBoss extends BossBase {
 
   updateVines(dt) {
     const k = this.k;
-    const p = this.scene.player;
     for (const v of this.vines) {
       v.t += dt;
       if (v.t < v.warn) {
@@ -633,10 +629,11 @@ export class WatcherBoss extends BossBase {
         this.vineG.strokePath();
         this.vineG.fillStyle(0x7ad01a, 1).fillEllipse(bx + 8, this.groundY - h * 0.6, 14, 8);
       }
-      if (!v.hit && !this.grab && grow >= 1 && intersects(new Rect(v.x - 34, this.groundY - h, 68, h), p.getBounds())) {
+      const p = !v.hit && !this.grab && grow >= 1 ? this.scene.playersIn(new Rect(v.x - 34, this.groundY - h, 68, h))[0] : null;
+      if (p) {
         v.hit = true;
         const r = p.hurt(k.vineDamage, v.x, 0);
-        if (r === 'hit') this.grab = { t: 0, x: p.x, tick: 0.7 };
+        if (r === 'hit') this.grab = { t: 0, x: p.x, tick: 0.7, who: p }; // who: 잡힌 사람
       }
     }
     this.vines = this.vines.filter((v) => v.t < v.warn + 0.7);
@@ -646,7 +643,7 @@ export class WatcherBoss extends BossBase {
   updateGrab(dt) {
     const g = this.grab;
     if (!g) return;
-    const p = this.scene.player;
+    const p = g.who;
     g.t += dt;
     g.tick -= dt;
     if (p.dead || p.dashing || g.t >= this.k.vineHoldTime) {
