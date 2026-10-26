@@ -12,6 +12,10 @@ export const stage7 = {
   checkpointX: 4720,
 
   theme: {
+    bgImage: { key: 'city_bg', file: 'city_bg.jpg' }, // 스테이지 1 그림을 같이 씀
+    arenaImage: { key: 'city_arena', file: 'city_arena.jpg' },
+    groundImage: { key: 'city_ground', file: 'city_ground.png', surface: 2 },
+    platformImage: { key: 'city_platform', file: 'city_platform.png', left: 90, right: 90, surface: 12, scale: 0.45 },
     sky: [0x1a1c22, 0x6a5a4a], // 매연 낀 하늘
     sun: 0xffb060,
     far: 0x30343c, // 먼 굴뚝과 공장

@@ -12,6 +12,10 @@ export const stage9 = {
 
   theme: {
     scenery: 'mountains',
+    bgImage: { key: 'ice_bg', file: 'ice_bg.jpg' }, // 스테이지 4 그림을 같이 씀
+    arenaImage: { key: 'ice_arena', file: 'ice_arena.jpg' },
+    groundImage: { key: 'ice_ground', file: 'ice_ground.png', surface: 4 },
+    platformImage: { key: 'ice_platform', file: 'ice_platform.png', left: 70, right: 70, surface: 7, scale: 0.45 },
     sky: [0x0a1430, 0x5a88b8], // 스테이지 4 보다 어두운 눈보라 하늘
     sun: 0xd8ecff,
     far: 0x34507a,

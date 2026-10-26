@@ -13,6 +13,10 @@ export const stage10 = {
 
   theme: {
     scenery: 'castle',
+    bgImage: { key: 'castle_bg', file: 'castle_bg.jpg' }, // 스테이지 5 그림을 같이 씀
+    arenaImage: { key: 'castle_arena', file: 'castle_arena.jpg' },
+    groundImage: { key: 'castle_ground', file: 'castle_ground.png', surface: 6 },
+    platformImage: { key: 'castle_platform', file: 'castle_platform.png', left: 100, right: 100, surface: 5, scale: 0.45 },
     sky: [0x020106, 0x2a0a3a], // 스테이지 5 보다 더 깜깜한 밤
     sun: 0xff4a6a, // 붉은 달
     far: 0x180a22,
