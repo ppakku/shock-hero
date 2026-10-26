@@ -54,6 +54,7 @@ export class GameScene extends Phaser.Scene {
     this.bossTips = new Set();
     this.gateNagAt = -10;
     this.fromCheckpoint = data.fromCheckpoint && this.save.checkpoint === this.stageNum;
+    if (this.save.lastStage !== this.stageNum) this.save = saveStore.update({ lastStage: this.stageNum }); // 지도를 다시 열면 여기서 시작
     if (!this.registry.has('runTime')) this.registry.set('runTime', 0);
 
     // 슬로모션이 남아 있을 수 있으니 시간 속도를 되돌린다

@@ -17,6 +17,7 @@ export function defaultSave() {
     checkpoint: null, // null 이면 처음부터, 숫자면 그 스테이지의 보스 앞 체크포인트
     bestTimes: {}, // 스테이지별 가장 빨리 깬 시간(초). 예: { 1: 95.2 }
     flawless: [], // 한 번도 안 쓰러지고 깬 스테이지 번호 (별 3)
+    lastStage: null, // 마지막으로 들어간 스테이지 (지도를 열면 여기서 시작)
     gems: 0, // 상점에서 쓰는 보석
     shop: emptyShop(), // 상점에서 산 단계 { hp, heart, ... }
     // lowFx: 효과 줄이기 (빛 번짐, 멈칫, 확대, 번쩍임을 끄고 불꽃 수를 줄인다)
@@ -50,6 +51,7 @@ function normalize(data) {
     d.bestTimes[1] = data.bestTime;
     d.unlocked = Math.max(d.unlocked, 2);
   }
+  if (validStage(data.lastStage)) d.lastStage = data.lastStage;
   if (Array.isArray(data.flawless)) d.flawless = [...new Set(data.flawless.filter(validStage))];
   if (Number.isInteger(data.gems) && data.gems >= 0) d.gems = data.gems;
   d.shop = normalizeShop(data.shop);

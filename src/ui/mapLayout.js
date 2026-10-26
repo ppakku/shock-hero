@@ -49,5 +49,12 @@ export function locateStage(chapters, n) {
   return { chapterIndex: 0, index: 0 };
 }
 
+// 지도를 열 때 고를 스테이지: 따로 정한 스테이지(깨고 돌아왔을 때 다음 스테이지) > 체크포인트 > 마지막으로 들어간 스테이지 > 1
+// 처음 하거나 초기화했으면 1 번부터. 잠긴 스테이지도 골라서 볼 수는 있다(출발만 안 됨).
+export function mapStartStage(save, wanted, total) {
+  const n = wanted || save.checkpoint || save.lastStage || 1;
+  return Math.min(total, Math.max(1, n));
+}
+
 // 그 장을 열 수 있는지: 장의 첫 스테이지가 열려 있으면
 export const chapterUnlocked = (chapter, unlocked) => chapter.stages[0] <= unlocked;

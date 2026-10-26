@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nodePosition, roadPoints, locateStage, chapterUnlocked } from '../src/ui/mapLayout.js';
+import { nodePosition, roadPoints, locateStage, chapterUnlocked, mapStartStage } from '../src/ui/mapLayout.js';
 import { chapters, stages } from '../src/stage/index.js';
 
 describe('모험 지도', () => {
@@ -35,5 +35,23 @@ describe('모험 지도', () => {
     expect(chapterUnlocked(chapters[1], 10)).toBe(false);
     expect(chapterUnlocked(chapters[1], 11)).toBe(true);
     expect(chapters.flatMap((c) => c.stages)).toEqual(stages.map((_, i) => i + 1));
+  });
+});
+
+describe('지도를 열 때 고르는 스테이지', () => {
+  const base = { checkpoint: null, lastStage: null, unlocked: 1 };
+
+  it('처음이거나 초기화했으면 1 번', () => {
+    expect(mapStartStage(base, undefined, 20)).toBe(1);
+  });
+
+  it('해 본 적이 있으면 마지막으로 들어간 스테이지', () => {
+    expect(mapStartStage({ ...base, lastStage: 3, unlocked: 6 }, undefined, 20)).toBe(3);
+  });
+
+  it('체크포인트가 있으면 그 스테이지, 깨고 돌아오면 정해 준 스테이지', () => {
+    expect(mapStartStage({ ...base, lastStage: 3, checkpoint: 5, unlocked: 6 }, undefined, 20)).toBe(5);
+    expect(mapStartStage({ ...base, lastStage: 3, unlocked: 6 }, 4, 20)).toBe(4);
+    expect(mapStartStage(base, 99, 20)).toBe(20);
   });
 });

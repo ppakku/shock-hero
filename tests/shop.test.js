@@ -117,3 +117,14 @@ describe('별과 보석', () => {
     expect(store.load().gems).toBe(1);
   });
 });
+
+describe('마지막으로 들어간 스테이지 저장', () => {
+  it('저장되고, 이상한 값은 버리고, 초기화하면 지워진다', () => {
+    const store = createSaveStore(memory());
+    store.update({ lastStage: 7 });
+    expect(store.load().lastStage).toBe(7);
+    store.update({ lastStage: 999 });
+    expect(store.load().lastStage).toBeNull();
+    expect(resetProgress({ ...store.load(), lastStage: 4 }).lastStage).toBeNull();
+  });
+});

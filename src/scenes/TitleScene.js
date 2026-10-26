@@ -426,7 +426,7 @@ export class TitleScene extends Phaser.Scene {
     sfx.unlock();
     sfx.muted = this.save.settings.muted;
     sfx.play('beep');
-    this.scene.start('Map', { stage: this.save.checkpoint || this.save.unlocked });
+    this.scene.start('Map'); // 고를 스테이지는 지도가 정한다 (처음이면 1, 아니면 마지막으로 들어간 스테이지)
   }
 
   // 상점은 타이틀 위에 따로 열린다 (src/scenes/ShopScene.js). 닫으면 closeShop 을 부른다.
