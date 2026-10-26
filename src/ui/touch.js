@@ -132,3 +132,36 @@ export const touchPad = new TouchPad();
 export function touchPoints(scene) {
   return scene.input.manager.pointers.filter((p) => p.isDown && p.wasTouch).map((p) => ({ id: p.id, x: p.x, y: p.y }));
 }
+
+// 화면 버튼과 조이스틱 그리기 (HUD 와 함께하기 친구 화면이 같이 쓴다).
+// g: Phaser Graphics, labels: 버튼 글자들 (TOUCH_BUTTONS 순서), pad: 지금 상태의 TouchPad, ultReady: 궁극기 준비됨
+export function drawTouchButtons(g, labels, pad, ultReady = false) {
+  // 버튼은 게임이 잘 보이게 흐릿하게, 누르는 동안만 또렷하게
+  TOUCH_BUTTONS.forEach((b, i) => {
+    const down = !!pad.down[b.id];
+    const glow = b.id === 'ult' && ultReady;
+    g.fillStyle(down ? 0xffffff : glow ? 0x3fd0ff : 0x000000, down ? 0.35 : glow ? 0.3 : 0.14).fillCircle(b.x, b.y, b.r);
+    g.lineStyle(3, glow ? 0x9fe8ff : 0xffffff, down ? 0.8 : glow ? 0.6 : 0.32).strokeCircle(b.x, b.y, b.r);
+    labels[i]?.setAlpha(down ? 0.95 : glow ? 0.8 : 0.5);
+  });
+  // 왼쪽 조이스틱: 엄지를 댄 자리에 받침, 엄지 쪽에 손잡이. 안 댔으면 왼쪽 아래에 흐리게.
+  const st = pad.stick;
+  const r = STICK.radius;
+  if (!st) {
+    const h = STICK.hint;
+    g.fillStyle(0x000000, 0.1).fillCircle(h.x, h.y, r + 12);
+    g.lineStyle(3, 0xffffff, 0.22).strokeCircle(h.x, h.y, r + 12);
+    g.fillStyle(0xffffff, 0.18).fillCircle(h.x, h.y, 24);
+    return;
+  }
+  g.fillStyle(0x000000, 0.16).fillCircle(st.ax, st.ay, r + 12);
+  g.lineStyle(3, 0xffffff, 0.4).strokeCircle(st.ax, st.ay, r + 12);
+  let dx = st.x - st.ax;
+  let dy = st.y - st.ay;
+  const d = Math.hypot(dx, dy);
+  if (d > r) {
+    dx = (dx / d) * r;
+    dy = (dy / d) * r;
+  }
+  g.fillStyle(0xffffff, 0.45).fillCircle(st.ax + dx, st.ay + dy, 26);
+}

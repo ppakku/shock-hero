@@ -10,8 +10,9 @@ import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO, controlLines } from '../logi
 import { isTouchDevice } from '../ui/touch.js';
 import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { tokenizeControlLine } from '../ui/titleLayout.js';
+import { coop } from '../net/coop.js';
 
-// 타이틀: 모험 지도 열기 + 설정(난이도, 조작, 상점, 레벨 초기화). 스테이지는 지도(src/scenes/MapScene.js)에서 고른다.
+// 타이틀: 모험 지도 열기 + 설정(난이도, 조작, 상점, 레벨 초기화, 함께하기). 스테이지는 지도(src/scenes/MapScene.js)에서 고른다.
 // ↑ ↓ 로 줄을 옮기고, ← → 로 고르고, Enter 로 시작하거나 바꾼다. 마우스로 눌러도 된다.
 // 그림은 흑백 만화 느낌 (회색 하늘, 연기, 불타는 도시, 옥상 위 주인공). 그림 그리는 코드는 src/ui/titleArt.js
 
@@ -90,7 +91,7 @@ export class TitleScene extends Phaser.Scene {
     this.ready = false;
     this.selected = 0;
     this.row = 0; // 0: 스테이지 줄, 1: 설정 줄
-    this.option = 0; // 설정 줄에서 고른 버튼 (0 난이도, 1 조작, 2 상점, 3 초기화)
+    this.option = 0; // 설정 줄에서 고른 버튼 (0 난이도, 1 조작, 2 상점, 3 초기화, 4 함께하기)
     this.cameras.main.setBackgroundColor('#30353d');
     if (fontReady === null) waitTitleFont().then(() => this.sys.isActive() && !this.ready && this.build());
     else this.build();
@@ -104,6 +105,7 @@ export class TitleScene extends Phaser.Scene {
     on(['ENTER', 'SPACE'], () => this.activate());
     kb.on('keydown-N', () => this.ready && this.confirming && this.closeConfirm());
     kb.on('keydown-B', () => this.ready && !this.confirming && this.openShop());
+    kb.on('keydown-C', () => this.ready && !this.confirming && this.openRoom());
     kb.on('keydown-Y', () => this.confirming && this.doReset());
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
   }
@@ -163,9 +165,10 @@ export class TitleScene extends Phaser.Scene {
       { text: `조작: ${this.touch ? TOUCH_INFO.name : c.name}`, tex: 'tt-btn-tape', color: '#ffffff', angle: 1 },
       { text: `상점 (보석 ${save.gems})`, tex: 'tt-btn-tape', color: '#7af0ff', angle: -1 },
       { text: '레벨 초기화', tex: 'tt-btn-steel', color: '#ffb0a4', angle: 1 },
+      { text: coop.hostConnected ? '함께하기: 친구 있음' : '함께하기', tex: 'tt-btn-paint', color: '#ffe14a', angle: -1 },
     ];
-    const BTN_SCALE = 0.86; // 버튼 4개가 한 줄에 들어가게
-    const xs = [-339, -113, 113, 339].map((dx) => width / 2 + dx);
+    const BTN_SCALE = 0.7; // 버튼 5개가 한 줄에 들어가게
+    const xs = [-368, -184, 0, 184, 368].map((dx) => width / 2 + dx);
     this.buttons = specs.map((s, i) => {
       const box = this.add.container(xs[i], 459).setDepth(20).setAngle(s.angle).setScale(BTN_SCALE);
       const ring = this.add.graphics();
@@ -399,6 +402,7 @@ export class TitleScene extends Phaser.Scene {
   press(i) {
     const s = this.save.settings;
     if (i === 2) return this.openShop();
+    if (i === 4) return this.openRoom();
     if (i === 3) {
       this.confirming = true;
       this.confirmBox.setVisible(true);
@@ -439,6 +443,27 @@ export class TitleScene extends Phaser.Scene {
     this.scene.bringToTop('Shop');
   }
 
+  // 함께하기 방도 타이틀 위에 따로 열린다 (src/scenes/RoomScene.js). 닫으면 closeRoom 을 부른다.
+  // 방 코드를 치는 동안 타이틀 단축키(Y: 초기화 같은 것)가 움직이지 않게 키보드를 쉬게 한다.
+  openRoom() {
+    if (this.started || !this.ready) return;
+    this.confirming = true;
+    this.input.keyboard.enabled = false;
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.launch('Room');
+    this.scene.bringToTop('Room');
+  }
+
+  // goMap: 방장이 친구를 맞이하고 '모험 지도 열기' 를 눌렀으면 true
+  closeRoom(goMap) {
+    this.confirming = false;
+    this.input.keyboard.enabled = true;
+    if (goMap) return this.openMap();
+    this.build();
+  }
+
   closeShop() {
     this.confirming = false;
     this.build();
@@ -475,6 +500,7 @@ export class TitleScene extends Phaser.Scene {
       '키보드 조작 방식을 바꿔요. 위의 조작법 설명도 바로 바뀌어요.',
       '보석으로 영구 강화를 사요. 보석은 보물과 별로 모아요. (B 키)',
       '레벨과 보물을 모두 지우고 처음부터 다시 쌓아요.',
+      '친구와 인터넷으로 같이 해요. 방을 만들거나 코드로 들어가요. (C 키)',
     ];
     if (this.touch) {
       helps[1] = '태블릿에서는 화면 버튼으로 해요. 위의 조작법을 보세요.';
@@ -484,7 +510,7 @@ export class TitleScene extends Phaser.Scene {
       this.subText.setText(this.save.checkpoint ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요` : '');
       return;
     }
-    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 상점, 레벨 초기화를 고를 수 있어요');
+    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 상점, 레벨 초기화, 함께하기를 고를 수 있어요');
     this.startText.setText('Enter: 모험 지도 열기');
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();
