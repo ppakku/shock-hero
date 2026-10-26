@@ -55,6 +55,7 @@ class Sfx {
   }
 
   play(name) {
+    this.onPlay?.(name); // 함께하기: 방장이 낸 소리를 친구에게도 보낸다 (src/net/coop.js)
     if (this.muted || !this.ctx) return;
     switch (name) {
       case 'punch':

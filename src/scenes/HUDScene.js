@@ -7,7 +7,7 @@ import { xpToNext } from '../logic/progression.js';
 import { DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/growth.js';
 import { makeText, formatTime } from '../ui/text.js';
-import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, STICK } from '../ui/touch.js';
+import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons } from '../ui/touch.js';
 import { attackButtonLabel } from '../logic/controls.js';
 import { normalizeHero } from '../logic/heroes.js';
 
@@ -105,39 +105,7 @@ export class HUDScene extends Phaser.Scene {
     this.pauseBtn.setVisible(this.mode === 'play' || this.mode === 'paused');
     if (!show) return;
     const ultReady = typeof p.ultGauge === 'number' && p.ultGauge >= 1;
-    // 버튼은 게임이 잘 보이게 흐릿하게, 누르는 동안만 또렷하게
-    TOUCH_BUTTONS.forEach((b, i) => {
-      const down = !!touchPad.down[b.id];
-      const glow = b.id === 'ult' && ultReady;
-      this.padG.fillStyle(down ? 0xffffff : glow ? 0x3fd0ff : 0x000000, down ? 0.35 : glow ? 0.3 : 0.14).fillCircle(b.x, b.y, b.r);
-      this.padG.lineStyle(3, glow ? 0x9fe8ff : 0xffffff, down ? 0.8 : glow ? 0.6 : 0.32).strokeCircle(b.x, b.y, b.r);
-      this.padLabels[i].setAlpha(down ? 0.95 : glow ? 0.8 : 0.5);
-    });
-    this.drawStick();
-  }
-
-  // 왼쪽 조이스틱: 엄지를 댄 자리에 받침, 엄지 쪽에 손잡이. 안 댔으면 왼쪽 아래에 흐리게.
-  drawStick() {
-    const g = this.padG;
-    const st = touchPad.stick;
-    const r = STICK.radius;
-    if (!st) {
-      const h = STICK.hint;
-      g.fillStyle(0x000000, 0.1).fillCircle(h.x, h.y, r + 12);
-      g.lineStyle(3, 0xffffff, 0.22).strokeCircle(h.x, h.y, r + 12);
-      g.fillStyle(0xffffff, 0.18).fillCircle(h.x, h.y, 24);
-      return;
-    }
-    g.fillStyle(0x000000, 0.16).fillCircle(st.ax, st.ay, r + 12);
-    g.lineStyle(3, 0xffffff, 0.4).strokeCircle(st.ax, st.ay, r + 12);
-    let dx = st.x - st.ax;
-    let dy = st.y - st.ay;
-    const d = Math.hypot(dx, dy);
-    if (d > r) {
-      dx = (dx / d) * r;
-      dy = (dy / d) * r;
-    }
-    g.fillStyle(0xffffff, 0.45).fillCircle(st.ax + dx, st.ay + dy, 26);
+    drawTouchButtons(this.padG, this.padLabels, touchPad, ultReady);
   }
 
   // 결과 화면과 일시정지 화면에서 손가락으로 누르는 버튼 (태블릿에서만)

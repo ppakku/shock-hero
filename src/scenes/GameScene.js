@@ -18,6 +18,8 @@ import { CONTROL_KEYS, keyText } from '../logic/controls.js';
 import { addXp, maxHealthFor } from '../logic/progression.js';
 import { normalizeHero, heroStats } from '../logic/heroes.js';
 import { nearestPlayer, strongerResult, partyCenter, clampSpread } from '../logic/coop.js';
+import { coop } from '../net/coop.js';
+import { HELD_KEYS, TAP_KEYS } from '../logic/room.js';
 import {
   PowerSet, POWER_INFO, treasurePower, UPGRADE_INFO, attackMultiplier, damageTakenMultiplier, speedMultiplier,
   dashCooldownMultiplier, robotStats, normalizeUpgrades, ranksLeft, applyPick, autoPickTrack,
@@ -84,11 +86,17 @@ export class GameScene extends Phaser.Scene {
     this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
     this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
     this.player = this.makePlayer(startX, this.hero);
-    // 함께하기: 친구 주인공 (data.partner = { hero }). 친구가 누른 키는 this.partnerInput 에 들어온다.
+    // 함께하기: 친구 주인공. 인터넷으로 친구가 들어와 있으면(src/net/coop.js) 친구가 고른 주인공이 나온다.
+    // 친구가 누른 키는 this.partnerInput() 이 돌려준다.
     // 주소에 ?duo 를 붙이면 시험용으로 친구가 나온다 (window.__p2 에 키를 넣어 움직인다).
-    const partner = data.partner || (new URLSearchParams(window.location.search).has('duo') ? { hero: 'gunner' } : null);
+    const duo = new URLSearchParams(window.location.search).has('duo') ? { hero: 'gunner' } : null;
+    const partner = data.partner || (coop.hostConnected ? coop.partner : duo);
     this.partner = partner ? this.makePlayer(startX - 50, normalizeHero(partner.hero)) : null;
-    this.partnerInput = null;
+    this.partnerInput = coop.hostConnected ? () => coop.takeInput() : null;
+    if (this.partnerInput) {
+      const off = coop.on((e) => e === 'lost' && this.robot?.say('2P 친구와 연결이 끊겼어요. 친구가 같은 코드로 다시 들어오면 다음 스테이지부터 같이 해요.', true));
+      this.events.once('shutdown', off);
+    }
     this.players = [this.player, this.partner].filter(Boolean);
     this.coop = this.players.length > 1;
     if (this.coop) {
@@ -565,15 +573,17 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  // 친구가 누른 키 (인터넷 함께하기가 this.partnerInput 을 채운다. 시험용 ?duo 는 window.__p2)
+  // 친구가 누른 키 (인터넷 함께하기는 this.partnerInput(), 시험용 ?duo 는 window.__p2)
   readPartnerInput() {
-    const i = this.partnerInput || window.__p2 || {};
+    let i = this.partnerInput?.();
+    if (!i) {
+      i = window.__p2 || {};
+      const copy = { ...i };
+      for (const k of TAP_KEYS) if (i[k]) i[k] = false; // 한 번 누른 키는 한 프레임만 쓴다
+      i = copy;
+    }
     const off = this.ended;
-    const keys = ['left', 'right', 'jumpDown', 'jumpPressed', 'attackDown', 'dashPressed', 'upDown', 'ultPressed'];
-    const out = Object.fromEntries(keys.map((k) => [k, !off && Boolean(i[k])]));
-    // 한 번 누른 키는 한 프레임만 쓴다
-    for (const k of ['jumpPressed', 'dashPressed', 'ultPressed']) if (i[k]) i[k] = false;
-    return out;
+    return Object.fromEntries([...HELD_KEYS, ...TAP_KEYS].map((k) => [k, !off && Boolean(i[k])]));
   }
 
   drawCharge(p) {
