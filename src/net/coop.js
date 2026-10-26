@@ -14,7 +14,8 @@ import { cleanProfile } from '../logic/coopRewards.js';
 //
 // 주고받는 쪽지 (JSON):
 //   친구 → 방장: { t: 'hello', hero, level, xp, upgrades, shop }, { t: 'in', left, right, jumpDown, jumpPressed, ... }
-//   방장 → 친구: { t: 'sfx', name }, { t: 'info', text }, { t: 'reward', kind, ... } (친구 기기에 저장할 보상)
+//   방장 → 친구: { t: 'sfx', name }, { t: 'info', text }, { t: 'reward', kind, ... } (친구 기기에 저장할 보상),
+//               { t: 'stage', n, name } (스테이지 시작: 친구 화면에 친구 조작법을 보여 준다)
 class Coop {
   constructor() {
     this.reset();
@@ -94,6 +95,11 @@ class Coop {
   // 효과음을 친구에게 (방장 기기에서 소리를 껐어도 친구는 듣는다)
   sendSfx(name) {
     if (this.role === 'host' && this.status === 'connected') this.send({ t: 'sfx', name });
+  }
+
+  // 스테이지가 시작됐다고 친구에게
+  sendStage(n, name) {
+    if (this.hostConnected) this.send({ t: 'stage', n, name });
   }
 
   // 친구 기기에 저장할 보상 (보물, 경험치, 클리어). 친구가 받아서 자기 저장에 넣는다

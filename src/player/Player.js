@@ -298,7 +298,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   // 결과: 'hit' 맞음(방패가 다 막아도 'hit'), 'dodged' 대시로 피함, 'ignored' 무적 중이라 무시
   hurt(damage, fromX, knockback = this.cfg.player.hurtKnockback) {
-    if (this.dead || this.ultActive) return 'ignored';
+    if (this.dead || this.ultActive || this.picking) return 'ignored'; // picking: 함께하기에서 레벨 업 카드를 고르는 중
     if (this.invincible) return 'ignored'; // 무적 별
     if (this.dashInvuln > 0) {
       this.scene.onDodge(this);
@@ -334,7 +334,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // 지속 피해(독구름 같은 것): 밀려나지 않고 체력만 깎인다. 실제로 깎인 체력을 돌려준다.
   // 무적 별이면 0, 방어력 카드만큼 덜 아프고, 강철 몸 방패가 먼저 받는다. (볼트 방패는 아끼느라 안 씀)
   tickDamage(damage) {
-    if (this.dead || this.invincible || !(damage > 0)) return 0;
+    if (this.dead || this.invincible || this.picking || !(damage > 0)) return 0;
     let left = Math.max(1, Math.round(damage * this.damageTakenMultiplier));
     if (this.powers) {
       const r = this.powers.absorb(left);

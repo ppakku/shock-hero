@@ -95,6 +95,7 @@ export class GameScene extends Phaser.Scene {
     this.partner = partner ? this.makePlayer(startX - 50, normalizeHero(partner.hero), partner.level ? partner : null) : null;
     this.partnerInput = coop.hostConnected ? () => coop.takeInput() : null;
     if (this.partnerInput) {
+      coop.sendStage(this.stageNum, this.stage.name);
       const off = coop.on((e) => e === 'lost' && this.robot?.say('2P 친구와 연결이 끊겼어요. 친구가 같은 코드로 다시 들어오면 다음 스테이지부터 같이 해요.', true));
       this.events.once('shutdown', off);
     }
@@ -229,6 +230,7 @@ export class GameScene extends Phaser.Scene {
       // 두 사람이 겹쳐 서 있으면 2P 글자를 조금 위로 올려 '1P2P' 처럼 붙지 않게
       const close = i > 0 && Math.abs(p.x - this.players[0].x) < 36;
       p.tag?.setPosition(p.x, p.getBounds().y - (close ? 30 : 14)).setVisible(!p.dead);
+      p.tag?.setText(p.picking ? '1P 카드 고르는 중' : p === this.player ? '1P' : '2P');
     });
     this.prevXs = this.players.map((p) => p.x);
     Object.assign(this.camTarget, partyCenter(this.players));
@@ -530,7 +532,7 @@ export class GameScene extends Phaser.Scene {
     // 멈칫(히트 스톱) 중이면 이번 프레임은 멈춰 있는다
     if (this.impact.tick(deltaMs)) return;
     const dt = (Math.min(deltaMs, 50) / 1000) * this.time.timeScale;
-    const input = this.readInput();
+    const input = this.player.picking ? {} : this.readInput(); // 카드 고르는 중에는 1P 가 가만히
     this.player.update(dt, input);
     this.partner?.update(dt, this.readPartnerInput());
     for (const p of this.players) p.swim?.update(dt); // 수중 스테이지: 천장 막기, 거품, 헤엄 자세
@@ -737,6 +739,7 @@ export class GameScene extends Phaser.Scene {
     const g = this.powerG;
     if (p.dead) return;
     const t = this.time.now;
+    if (p.picking) g.lineStyle(3, 0xffd23f, 0.6 + 0.3 * Math.sin(t / 120)).strokeCircle(p.x, p.y, 44); // 카드 고르는 중: 무적 방울
     // 끝나기 2초 전부터 깜빡깜빡
     const showing = (id) => this.powers.has(id) && (this.powers.remaining(id) > 2 || Math.floor(t / 120) % 2 === 0);
 
@@ -849,7 +852,9 @@ export class GameScene extends Phaser.Scene {
     this.sfxPlay('levelup');
     this.scene.launch('LevelUp');
     this.scene.bringToTop('LevelUp');
-    this.scene.pause();
+    // 함께하기: 친구는 계속 싸우고, 1P 는 카드를 고르는 동안 멈춘 채 무적
+    if (this.coop) this.player.picking = true;
+    else this.scene.pause();
   }
 
   // 카드 하나 고르기. 고를 수 있었으면 true
@@ -872,6 +877,7 @@ export class GameScene extends Phaser.Scene {
     this.levelUpOpen = false;
     this.levelUpWait = 0.4;
     this.pickCount = 0;
+    this.player.picking = false;
     this.scene.stop('LevelUp');
     this.scene.resume();
     if (this.robotJustUnlocked) {
