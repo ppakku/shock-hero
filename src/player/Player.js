@@ -3,15 +3,22 @@ import { Health } from '../logic/health.js';
 import { Cooldown } from '../logic/cooldown.js';
 import { jumpKind } from '../logic/jump.js';
 import { chargeRatio, resolveAttack, upperRect } from '../logic/combat.js';
-import { HERO_FRAME, HERO_ORIGIN_Y } from '../fx/heroTextures.js';
+import { HERO_FRAME, HERO_ORIGIN_Y, HERO_LOOKS } from '../fx/heroTextures.js';
+import { normalizeHero, heroStats, gunnerAttack, giantAttack } from '../logic/heroes.js';
 
 // 주인공: 이동, 점프, 대시, 충전 펀치, 위쪽 공격, 궁극기, 피격.
 // 공격 판정과 효과는 scene.onPlayerAttack 이, 에너지탄과 궁극기는 scene.skills 가 맡는다.
+// hero 로 주인공을 고른다 (src/logic/heroes.js): shock 주먹, gunner 번개 사수, giant 강철 거인.
 export class Player extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, cfg, { maxHealth, damageMultiplier = 1, powers = null }) {
-    // customArt 로 player 그림을 넣었으면 그 한 장을 모든 동작에 쓴다
-    const customArt = Boolean(scene.registry.get('heroCustomArt'));
-    super(scene, x, y, customArt ? 'player' : 'hero_idle0');
+  constructor(scene, x, y, cfg, { maxHealth, damageMultiplier = 1, powers = null, hero = 'shock' }) {
+    hero = normalizeHero(hero);
+    const look = HERO_LOOKS[hero];
+    // customArt 로 player 그림을 넣었으면 쇼크 히어로는 그 한 장을 모든 동작에 쓴다
+    const customArt = hero === 'shock' && Boolean(scene.registry.get('heroCustomArt'));
+    super(scene, x, y, customArt ? 'player' : `${look.prefix}_idle0`);
+    this.hero = hero;
+    this.prefix = look.prefix;
+    this.stats = heroStats(hero, cfg);
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.customArt = customArt;
@@ -21,7 +28,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     } else {
       // 그림은 2배로 촘촘하게 그렸으니 절반 크기로 보여 준다. 몸통 판정은 30 x 56
       const k = this.width / HERO_FRAME.w;
-      this.setScale(1 / k);
+      this.setScale(this.stats.scale / k); // 강철 거인은 몸이 더 크다
       this.setOrigin(0.5, HERO_ORIGIN_Y);
       this.body.setSize(30 * k, 56 * k, false);
       this.body.setOffset((this.width - 30 * k) / 2, HERO_FRAME.feetY * k - 56 * k);
@@ -60,6 +67,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.poseName = null; // 잠깐 보여 줄 공격 자세
     this.poseTime = 0;
     this.lastMoving = false;
+    this.spinLeft = 0; // 강철 거인 회오리가 남은 시간
+    this.spinFlip = 0;
     this.swim = null; // 수중 스테이지면 GameScene 이 SwimController 를 붙인다 (src/player/swim.js)
   }
 
@@ -75,7 +84,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   get moveSpeed() {
     const boots = this.powers?.has('speed') ? this.cfg.powers.speed.moveMultiplier : 1;
-    return this.cfg.player.moveSpeed * this.speedMultiplier * boots;
+    return this.cfg.player.moveSpeed * this.speedMultiplier * boots * this.stats.move;
   }
 
   get invincible() {
@@ -116,6 +125,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashCd.remaining = Math.min(this.dashCd.remaining, this.dashCd.duration);
     this.dashCd.update(dt);
     this.attackCd.update(dt);
+    if (this.spinLeft > 0) {
+      this.spinLeft = Math.max(0, this.spinLeft - dt);
+      if (this.spinLeft <= 0) this.scene.skills?.endSpin(this);
+    }
     this.dashInvuln = Math.max(0, this.dashInvuln - dt);
     this.hurtInvuln = Math.max(0, this.hurtInvuln - dt);
     this.hurtLock = Math.max(0, this.hurtLock - dt);
@@ -155,7 +168,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
 
-    if (attackPressed && !this.charging && this.attackCd.ready && this.hurtLock <= 0) {
+    if (attackPressed && !this.charging && this.spinLeft <= 0 && this.attackCd.ready && this.hurtLock <= 0) {
       this.charging = true;
       this.chargeHeld = 0;
     }
@@ -174,19 +187,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     let speed = this.moveSpeed;
     if (this.isCharging) speed *= this.cfg.charge.moveSpeedMultiplier;
+    if (this.spinLeft > 0) speed *= this.cfg.heroes.giant.spinMoveMultiplier;
     this.setVelocityX(dir * speed);
     if (dir !== 0) this.facing = dir;
-    this.setFlipX(this.facing < 0);
+    if (this.spinLeft > 0) {
+      // 회오리: 빙글빙글 도는 것처럼 좌우를 빠르게 바꿔 보여 준다
+      this.spinFlip += dt;
+      this.setFlipX(Math.floor(this.spinFlip / 0.07) % 2 === 0);
+    } else {
+      this.setFlipX(this.facing < 0);
+    }
 
     const kind = jumpKind({ jumpPressed: input.jumpPressed, jumpBuffer: this.jumpBuffer, coyote: this.coyote, airJumpsLeft: this.airJumpsLeft });
     if (kind === 'ground') {
-      this.setVelocityY(-this.cfg.player.jumpSpeed);
+      this.setVelocityY(-this.cfg.player.jumpSpeed * this.stats.jump);
       this.jumpBuffer = 0;
       this.coyote = 0;
       this.scene.onPlayerJump();
     } else if (kind === 'air') {
       // 더블 점프: 공중에서 한 번 더 (떨어지는 중이어도 위로 다시 뜀)
-      this.setVelocityY(-this.cfg.player.doubleJumpSpeed);
+      this.setVelocityY(-this.cfg.player.doubleJumpSpeed * this.stats.jump);
       this.jumpBuffer = 0;
       this.airJumpsLeft -= 1;
       this.scene.tweens.add({ targets: this, angle: { from: 0, to: 360 * this.facing }, duration: 320, onComplete: () => !this.dead && this.setAngle(0) });
@@ -198,6 +218,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   startDash(input) {
     this.cancelCharge();
+    if (this.spinLeft > 0) {
+      this.spinLeft = 0;
+      this.scene.skills?.endSpin(this);
+    }
+    if (this.hero === 'gunner' && !this.swim) return this.startBackstep();
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0) || this.facing;
     this.facing = dir;
     this.setFlipX(dir < 0);
@@ -207,6 +232,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.allowGravity = false;
     this.setVelocity(dir * this.cfg.dash.speed, 0);
     this.swim?.onDash(dir, input); // 수중 스테이지: 헤엄 돌진
+    this.rushHits = this.hero === 'giant' ? new Set() : null; // 강철 거인: 몸통 박치기로 이미 친 적
+    this.scene.onDash(this);
+  }
+
+  // 번개 사수의 대시: 앞을 본 채로 뒤로 폴짝 빠진다
+  startBackstep() {
+    const g = this.cfg.heroes.gunner;
+    this.dashTime = this.cfg.dash.duration * 1.3;
+    this.dashInvuln = this.cfg.dash.invincibleTime;
+    this.dashCd.trigger();
+    this.body.allowGravity = true;
+    this.setFlipX(this.facing < 0);
+    this.setVelocity(-this.facing * g.backstepSpeed, -g.backstepHop);
+    this.rushHits = null;
     this.scene.onDash(this);
   }
 
@@ -217,14 +256,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   releaseAttack(input = {}) {
-    const attack = resolveAttack(this.chargeHeld, this.cfg, this.damageMultiplier, { up: Boolean(input.upDown) });
+    const up = Boolean(input.upDown);
+    const resolve = this.hero === 'gunner' ? gunnerAttack : this.hero === 'giant' ? giantAttack : resolveAttack;
+    const attack = resolve(this.chargeHeld, this.cfg, this.damageMultiplier, { up });
     this.lastMoving = Boolean(input.left || input.right);
-    const glow = attack.kind === 'charged';
+    const glow = attack.kind === 'charged' && attack.style !== 'smash';
     this.poseName = attack.up ? (glow ? 'upperGlow' : 'upper') : glow ? 'punchGlow' : 'punch';
     this.poseTime = glow ? 0.26 : 0.16;
+    if (attack.style === 'smash') {
+      this.poseName = 'smash';
+      this.poseTime = 0.28;
+    }
     this.charging = false;
     this.chargeHeld = 0;
+    // 주인공마다 다음 공격까지 기다리는 시간이 다르다 (번개탄은 빠르게, 망치는 느리게)
+    const h = this.cfg.heroes;
+    this.attackCd.duration =
+      attack.style === 'bolt' ? h.gunner.boltCooldown : attack.style === 'smash' ? h.giant.smashCooldown : this.cfg.punch.cooldown;
     this.attackCd.trigger();
+    if (attack.style === 'spin') {
+      this.spinLeft = attack.time;
+      this.spinFlip = 0;
+    }
     this.scene.onPlayerAttack(this, attack);
   }
 
@@ -294,6 +347,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   die() {
     this.dead = true;
+    this.spinLeft = 0;
     this.charging = false;
     this.body.allowGravity = true;
     this.setAlpha(1);
@@ -306,22 +360,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // 동작에 맞는 그림(애니메이션)으로 바꾼다
   updateAnim() {
     if (this.customArt) return;
+    if (this.spinLeft > 0 && !this.dead && this.hurtLock <= 0) return this.play(`${this.prefix}-spin`, true);
     const onGround = this.body.blocked.down || this.body.touching.down;
     let a;
     if (this.dead || this.hurtLock > 0) a = 'hurt';
     else if (this.ultActive) a = this.ultPose || 'slam';
-    else if (this.dashing) a = 'dash';
+    else if (this.dashing) a = this.hero === 'gunner' && !this.swim ? 'jump' : 'dash'; // 백스텝은 폴짝 뛰는 자세
     else if (this.poseTime > 0 && this.poseName) a = this.poseName;
     else if (this.isCharging) a = 'charge';
     else if (!onGround) a = this.body.velocity.y < 0 ? 'jump' : 'fall';
     else if (Math.abs(this.body.velocity.x) > 30) a = 'run';
     else a = 'idle';
-    this.play(`hero-${a}`, true);
+    this.play(`${this.prefix}-${a}`, true);
   }
 
   // 위쪽 공격(어퍼컷)이 닿는 키 큰 사각형
-  upperRect(reach) {
-    const r = upperRect(this.x, this.y, this.facing, reach, this.cfg.skills.upperWidth);
+  upperRect(reach, width = this.cfg.skills.upperWidth) {
+    const r = upperRect(this.x, this.y, this.facing, reach, width);
     return new Phaser.Geom.Rectangle(r.x, r.y, r.w, r.h);
   }
 

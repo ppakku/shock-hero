@@ -2,6 +2,7 @@ import { normalizeDifficulty } from './difficulty.js';
 import { normalizeControls } from './controls.js';
 import { emptyUpgrades, normalizeUpgrades, UPGRADE_TRACKS } from './growth.js';
 import { emptyShop, normalizeShop } from './shop.js';
+import { normalizeHero } from './heroes.js';
 
 const KEY = 'shock-hero-save-v1';
 export const STAGE_COUNT = 20; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
@@ -20,8 +21,9 @@ export function defaultSave() {
     lastStage: null, // 마지막으로 들어간 스테이지 (지도를 열면 여기서 시작)
     gems: 0, // 상점에서 쓰는 보석
     shop: emptyShop(), // 상점에서 산 단계 { hp, heart, ... }
+    // hero: 고른 주인공 (src/logic/heroes.js)
     // lowFx: 효과 줄이기 (빛 번짐, 멈칫, 확대, 번쩍임을 끄고 불꽃 수를 줄인다)
-    settings: { shake: true, muted: false, difficulty: 'normal', controls: 'classic', lowFx: false },
+    settings: { shake: true, muted: false, difficulty: 'normal', controls: 'classic', lowFx: false, hero: 'shock' },
   };
 }
 
@@ -61,6 +63,7 @@ function normalize(data) {
     if (typeof data.settings.lowFx === 'boolean') d.settings.lowFx = data.settings.lowFx;
     d.settings.difficulty = normalizeDifficulty(data.settings.difficulty);
     d.settings.controls = normalizeControls(data.settings.controls);
+    d.settings.hero = normalizeHero(data.settings.hero);
   }
   return d;
 }

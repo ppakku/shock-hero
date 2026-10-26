@@ -6,11 +6,14 @@ import { stageStars, totalStars, STAR_KINDS, STAR_INFO } from '../logic/rewards.
 import { nodePosition, roadPoints, locateStage, chapterUnlocked, mapStartStage } from '../ui/mapLayout.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText, formatTime, FONT } from '../ui/text.js';
+import { HERO_IDS, HERO_INFO, normalizeHero, cycleHero } from '../logic/heroes.js';
+import { HERO_LOOKS } from '../fx/heroTextures.js';
 
 // 모험 지도: 냥코대전쟁처럼 길 위의 스테이지 점을 골라서 들어간다.
 // ← → 로 스테이지 고르기 (장 끝에서 넘어가면 다음 장), Q / E 로 장 넘기기, Enter 로 시작, Esc 로 타이틀.
 // 잠긴 스테이지도 골라서 이름과 보스를 볼 수 있지만 출발은 못 한다.
 // 점을 한 번 누르면 고르고, 한 번 더 누르면 시작한다.
+// 오른쪽 위에서 주인공을 고른다 (카드를 누르거나 H 키). 고른 주인공은 저장된다.
 
 // 스테이지 배경 종류 → 지도 장식 그림
 const SCENERY_KIND = { forest: 'forest', volcano: 'lava', mountains: 'ice', castle: 'castle', underwater: 'water' };
@@ -31,6 +34,7 @@ export class MapScene extends Phaser.Scene {
     this.touch = isTouchDevice();
     this.started = false;
     this.save = saveStore.load();
+    this.hero = normalizeHero(this.save.settings.hero);
     if (new URLSearchParams(window.location.search).has('all')) this.save.unlocked = stages.length; // 테스트용: 모든 스테이지 열기
     this.selected = mapStartStage(this.save, data.stage, stages.length);
     this.chapterIndex = locateStage(chapters, this.selected).chapterIndex;
@@ -45,6 +49,7 @@ export class MapScene extends Phaser.Scene {
     on(['ENTER', 'SPACE'], () => this.begin(this.canContinue));
     on(['N'], () => this.begin(false));
     on(['ESC', 'BACKSPACE'], () => this.back());
+    on(['H'], () => this.pickHero(cycleHero(this.hero, 1)));
     this.cameras.main.fadeIn(200);
   }
 
@@ -100,9 +105,9 @@ export class MapScene extends Phaser.Scene {
     this.nodes = ch.stages.map((n, i) => this.makeNode(n, i));
 
     // 주인공 표시 (고른 점 위에서 통통)
-    const heroKey = this.textures.exists('hero_idle0') ? 'hero_idle0' : 'player';
-    this.hero = this.add.image(0, 0, heroKey).setOrigin(0.5, 1).setDepth(30);
-    if (this.hero.height) this.hero.setScale(56 / this.hero.height);
+    this.heroIcon = this.add.image(0, 0, this.heroTexture(this.hero)).setOrigin(0.5, 1).setDepth(30);
+    if (this.heroIcon.height) this.heroIcon.setScale(56 / this.heroIcon.height);
+    this.drawHeroPicker();
 
     // 위: 장 이름, 장 넘기기 화살표, 별과 보석
     makeText(this, 480, 40, ch.name, 34, look.title, { strokeThickness: 7, fontStyle: 'bold' }).setOrigin(0.5).setDepth(40);
@@ -215,6 +220,54 @@ export class MapScene extends Phaser.Scene {
     }
   }
 
+  heroTexture(id) {
+    const key = `${HERO_LOOKS[id].prefix}_idle0`;
+    if (id === 'shock' && this.registry.get('heroCustomArt')) return 'player';
+    return this.textures.exists(key) ? key : 'player';
+  }
+
+  // 오른쪽 위: 주인공 카드 3장. 누르면 그 주인공으로 바뀐다.
+  drawHeroPicker() {
+    const xs = [796, 858, 920];
+    makeText(this, 858, 52, this.touch ? '주인공 고르기' : '주인공 고르기 (H)', 13, '#ffffff').setOrigin(0.5).setDepth(40);
+    this.heroCards = HERO_IDS.map((id, i) => {
+      const c = this.add.container(xs[i], 98).setDepth(40);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x0c0e14, 0.85).fillRoundedRect(-28, -32, 56, 64, 10);
+      const ring = this.add.graphics();
+      const img = this.add.image(0, 28, this.heroTexture(id)).setOrigin(0.5, 1);
+      if (img.height) img.setScale(58 / img.height);
+      c.add([bg, img, ring]);
+      c.setSize(56, 64).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.pickHero(id));
+      return { id, c, ring };
+    });
+    this.heroName = makeText(this, 944, 146, '', 14, '#ffffff', { align: 'right' }).setOrigin(1, 0.5).setDepth(40);
+    this.refreshHero();
+  }
+
+  refreshHero() {
+    const info = HERO_INFO[this.hero];
+    for (const card of this.heroCards) {
+      const on = card.id === this.hero;
+      card.ring.clear();
+      card.ring.lineStyle(on ? 4 : 2, on ? Phaser.Display.Color.HexStringToColor(HERO_INFO[card.id].color).color : 0x555a66, 1).strokeRoundedRect(-28, -32, 56, 64, 10);
+      card.c.setScale(on ? 1.08 : 0.92).setAlpha(on ? 1 : 0.75);
+    }
+    this.heroName.setText(`${info.name}: ${info.short}`).setColor(info.color);
+  }
+
+  pickHero(id) {
+    if (this.started || id === this.hero) return;
+    this.hero = id;
+    const save = saveStore.load();
+    saveStore.update({ settings: { ...save.settings, hero: id } });
+    this.save.settings.hero = id;
+    sfx.play('cardMove');
+    this.heroIcon.setTexture(this.heroTexture(id));
+    if (this.heroIcon.height) this.heroIcon.setScale(56 / this.heroIcon.height);
+    this.refreshHero();
+  }
+
   arrow(x, y, label, enabled, fn) {
     if (!label) return;
     const t = makeText(this, x, y, label, 26, enabled ? '#ffffff' : '#666666', { strokeThickness: 5 }).setOrigin(0.5).setDepth(40);
@@ -231,13 +284,13 @@ export class MapScene extends Phaser.Scene {
       node.c.setScale(on ? 1.12 : 1);
     }
     const here = this.nodes.find((node) => node.n === n);
-    this.tweens.killTweensOf(this.hero);
+    this.tweens.killTweensOf(this.heroIcon);
     if (here) {
       const top = here.c.y - here.r - (here.n === this.chapter.stages[this.chapter.stages.length - 1] ? 24 : 6);
-      this.hero.setVisible(true).setPosition(here.c.x, top);
-      this.tweens.add({ targets: this.hero, y: top - 8, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.heroIcon.setVisible(true).setPosition(here.c.x, top);
+      this.tweens.add({ targets: this.heroIcon, y: top - 8, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     } else {
-      this.hero.setVisible(false); // 고른 스테이지가 다른 장에 있음
+      this.heroIcon.setVisible(false); // 고른 스테이지가 다른 장에 있음
     }
 
     const inChapter = this.chapter.stages.includes(n);

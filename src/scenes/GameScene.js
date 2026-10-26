@@ -16,6 +16,7 @@ import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
 import { placeTreasures } from '../logic/treasures.js';
 import { CONTROL_KEYS, keyText } from '../logic/controls.js';
 import { addXp, maxHealthFor } from '../logic/progression.js';
+import { normalizeHero, heroStats } from '../logic/heroes.js';
 import {
   PowerSet, POWER_INFO, treasurePower, UPGRADE_INFO, attackMultiplier, damageTakenMultiplier, speedMultiplier,
   dashCooldownMultiplier, robotStats, normalizeUpgrades, ranksLeft, applyPick, autoPickTrack,
@@ -32,6 +33,11 @@ import { Shadows } from '../fx/shadows.js';
 import { Foreground } from '../fx/foreground.js';
 
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
+const CHARGE_COLORS = {
+  shock: [0x3f8cff, 0x6fc0ff, 0x9fe8ff, 0xe8f7ff],
+  gunner: [0xe0a800, 0xffd23f, 0xfff08a, 0xffffff],
+  giant: [0xd0601a, 0xff8a2a, 0xffc080, 0xfff0d8],
+};
 const KEY = Phaser.Input.Keyboard.KeyCodes;
 
 export class GameScene extends Phaser.Scene {
@@ -73,11 +79,13 @@ export class GameScene extends Phaser.Scene {
     this.foreground = new Foreground(this);
 
     const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
+    this.hero = normalizeHero(this.save.settings.hero); // 모험 지도에서 고른 주인공
     this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
     this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
     this.player = new Player(this, startX, st.groundY - 40, cfg, {
       maxHealth: this.maxHealthAt(this.save.level),
       powers: this.powers,
+      hero: this.hero,
     });
     this.player.bonusAirJumps = this.bonus.airJumps; // 트리플 점프
     this.player.ultGauge = this.bonus.ultStart; // 궁극기 반 충전
@@ -475,26 +483,28 @@ export class GameScene extends Phaser.Scene {
     const full = r >= 1;
     const t = this.time.now;
     const pulse = full ? 1 + Math.sin(t / 60) * 0.12 : 1;
+    // 주인공마다 에너지 색: 쇼크 히어로 파랑, 번개 사수 노랑, 강철 거인 주황 [진한, 중간, 밝은, 가운데]
+    const [deep, mid, bright, core] = CHARGE_COLORS[p.hero] || CHARGE_COLORS.shock;
     // 충전 링 (파란 에너지)
     this.chargeG.lineStyle(4, 0x000000, 0.35).strokeCircle(p.x, p.y, 40);
-    this.chargeG.lineStyle(full ? 6 : 4, full ? 0x9fe8ff : 0x3f8cff, 1);
+    this.chargeG.lineStyle(full ? 6 : 4, full ? bright : deep, 1);
     this.chargeG.beginPath();
     this.chargeG.arc(p.x, p.y, 40 * pulse, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, r), false);
     this.chargeG.strokePath();
     // 파랗게 빛나는 주먹
-    const f = this.skills.fistOffset(p.texture.key.replace('hero_', ''));
+    const f = this.skills.fistOffset(p.texture.key.replace(/^[a-z]+_/, ''));
     const fx = p.x + f.x * p.facing;
     const fy = p.y + f.y;
     const glow = (8 + 14 * r) * pulse;
-    this.chargeG.fillStyle(0x3f8cff, 0.1 + 0.08 * r).fillCircle(fx, fy, glow * 1.5);
-    this.chargeG.fillStyle(0x6fc0ff, 0.22 + 0.15 * r).fillCircle(fx, fy, glow * 0.8);
-    this.chargeG.fillStyle(0xe8f7ff, 0.8).fillCircle(fx, fy, 3 + 3 * r);
+    this.chargeG.fillStyle(deep, 0.1 + 0.08 * r).fillCircle(fx, fy, glow * 1.5);
+    this.chargeG.fillStyle(mid, 0.22 + 0.15 * r).fillCircle(fx, fy, glow * 0.8);
+    this.chargeG.fillStyle(core, 0.8).fillCircle(fx, fy, 3 + 3 * r);
     for (let i = 0; i < 3; i++) {
       const a = t / 90 + i * 2.1;
       const d = glow * (0.9 + 0.5 * Math.sin(t / 70 + i));
-      this.chargeG.lineStyle(2, 0x9fe8ff, 0.8).lineBetween(fx, fy, fx + Math.cos(a) * d, fy + Math.sin(a) * d);
+      this.chargeG.lineStyle(2, bright, 0.8).lineBetween(fx, fy, fx + Math.cos(a) * d, fy + Math.sin(a) * d);
     }
-    this.maxLabel.setColor('#9fe8ff').setPosition(p.x, p.y - 52).setVisible(full);
+    this.maxLabel.setColor(`#${bright.toString(16).padStart(6, '0')}`).setPosition(p.x, p.y - 52).setVisible(full);
     p.setTint(full && Math.floor(t / 80) % 2 === 0 ? 0xbfe6ff : 0xffffff);
   }
 
@@ -606,7 +616,7 @@ export class GameScene extends Phaser.Scene {
       g.lineStyle(3, 0xdff0ff, 0.5 + 0.4 * r).strokeCircle(p.x, p.y, 42 + Math.sin(t / 150) * 2);
     }
     if (showing('power') || showing('rapid')) {
-      const f = this.skills.fistOffset(p.texture.key.replace('hero_', ''));
+      const f = this.skills.fistOffset(p.texture.key.replace(/^[a-z]+_/, ''));
       const fx = p.x + f.x * p.facing;
       const fy = p.y + f.y;
       if (showing('power')) {
@@ -811,6 +821,11 @@ export class GameScene extends Phaser.Scene {
     const dir = player.facing;
     // 에너지 연사: 펀치마다 에너지탄 (최대 충전은 원래 쏘니까 빼고)
     if (this.powers.has('rapid') && !attack.full) this.fireRapidShot(player, attack.up);
+    // 번개 사수와 강철 거인은 기술 담당(src/player/skills.js)이 따로 처리한다
+    if (attack.style) {
+      this.skills.heroAttack(player, attack);
+      return;
+    }
     if (attack.up) {
       this.skills.upperAttack(player, attack); // 위쪽 공격(어퍼컷)
       return;
@@ -1071,7 +1086,8 @@ export class GameScene extends Phaser.Scene {
 
   // 레벨과 상점 '튼튼한 몸' 을 더한 최대 체력
   maxHealthAt(level) {
-    return maxHealthFor(level, cfg.player.maxHealth, cfg.level) + (this.bonus?.maxHealth || 0);
+    const base = maxHealthFor(level, cfg.player.maxHealth, cfg.level) + (this.bonus?.maxHealth || 0);
+    return Math.round(base * heroStats(this.hero, cfg).health); // 번개 사수는 적게, 강철 거인은 많게
   }
 
   shake(intensity, duration) {

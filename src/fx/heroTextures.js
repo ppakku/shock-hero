@@ -11,7 +11,8 @@ const CX = 36;
 // 스프라이트 기준점: 몸 한가운데 (발에서 31 위)
 export const HERO_ORIGIN_Y = (HERO_FRAME.feetY - 31) / HERO_FRAME.h;
 
-const C = {
+// 쇼크 히어로 색
+const SHOCK = {
   suit: 0x2b2b31,
   suitBack: 0x1d1d22,
   shade: 0x202025,
@@ -28,6 +29,40 @@ const C = {
   blue: 0x3f8cff,
   blueLight: 0x9fd8ff,
 };
+
+// 고를 수 있는 주인공마다 색과 손에 든 것 (src/logic/heroes.js)
+// prefix 는 그림 이름 앞머리: hero_idle0, gunner_idle0, giant_idle0 ...
+export const HERO_LOOKS = {
+  shock: { prefix: 'hero', colors: SHOCK, prop: null },
+  // 번개 사수: 남색 슈트 + 노란 번개 무늬, 금발, 손에 번개총
+  gunner: {
+    prefix: 'gunner',
+    prop: 'blaster',
+    colors: {
+      ...SHOCK,
+      suit: 0x24407a, suitBack: 0x172b54, shade: 0x1b3263, light: 0x3a5c9e,
+      gold: 0xffe14a, goldBack: 0xc9a92a, shorts: 0x14203d, glove: 0xf2f2f2,
+      hair: 0xe8c45a, hairDark: 0xb8902e, mask: 0x1a2240, lens: 0xfff6c0, lensRing: 0xd0b040,
+      blue: 0xffd23f, blueLight: 0xfff4a8,
+    },
+  },
+  // 강철 거인: 회색 강철 갑옷 + 주황 무늬, 빨간 머리, 손에 큰 망치
+  giant: {
+    prefix: 'giant',
+    prop: 'hammer',
+    colors: {
+      ...SHOCK,
+      suit: 0x5d6673, suitBack: 0x434a55, shade: 0x4a525e, light: 0x7d8796,
+      gold: 0xff8a2a, goldBack: 0xc0621a, shorts: 0x2e333b, glove: 0x2a2d33,
+      hair: 0xa8381e, hairDark: 0x6e2412, mask: 0x30343c, lens: 0xffd0a0, lensRing: 0x8a5a3a,
+      blue: 0xff7a1a, blueLight: 0xffd08a,
+    },
+  },
+};
+
+// 지금 그리는 주인공의 색과 손에 든 것 (makeHeroTextures 가 주인공마다 바꿔 끼운다)
+let C = SHOCK;
+let PROP = null;
 
 const rad = (d) => (d * Math.PI) / 180;
 // 각도 약속: 0 = 아래로, + = 앞쪽(오른쪽)으로 돌아감, 180 = 위로
@@ -80,6 +115,7 @@ function arm(g, sh, [upper, fore], back, glow) {
   g.fillStyle(gold).fillCircle(sh.x, sh.y + 0.5, 3.6);
   g.fillStyle(suit).fillCircle(sh.x - 0.8, sh.y + 2.2, 2.2);
   const fist = endOf(elbow.x, elbow.y, fore, 11.5);
+  if (!back && PROP) drawProp(g, wrist, fore);
   if (glow) {
     const big = glow === 2;
     g.fillStyle(C.blue, 0.18).fillCircle(fist.x, fist.y, big ? 13 : 10);
@@ -93,6 +129,29 @@ function arm(g, sh, [upper, fore], back, glow) {
     g.fillStyle(0x34343a).fillCircle(fist.x + 0.8, fist.y - 1, 1.1);
   }
   return fist;
+}
+
+// 앞손에 든 것. 팔뚝 방향(fore)으로 손목에서 뻗어 나간다.
+function drawProp(g, wrist, fore) {
+  g.save();
+  g.translateCanvas(wrist.x, wrist.y);
+  g.rotateCanvas(-rad(fore));
+  if (PROP === 'blaster') {
+    // 번개총: 회색 몸통, 노란 총구, 손잡이
+    g.fillStyle(0x3a3f4a).fillRoundedRect(-3.2, -1, 6.4, 15, 2);
+    g.fillStyle(0x5a6070).fillRect(-2.2, 0, 1.4, 13);
+    g.fillStyle(C.gold).fillRoundedRect(-3.6, 13, 7.2, 4, 1.5);
+    g.fillStyle(0xffffff).fillCircle(0, 16.5, 1.4);
+    g.fillStyle(0x2a2d35).fillRoundedRect(-1.5, 2, 3, -6, 1);
+  } else if (PROP === 'hammer') {
+    // 큰 망치: 나무 손잡이 끝에 강철 머리
+    g.fillStyle(0x6a4424).fillRoundedRect(-1.6, -4, 3.2, 26, 1.2);
+    g.fillStyle(0x8a5a30).fillRect(-0.6, -3, 1, 24);
+    g.fillStyle(0x3d434d).fillRoundedRect(-10, 18, 20, 11, 2.5);
+    g.fillStyle(0x6c7482).fillRoundedRect(-9, 19, 18, 4, 1.5);
+    g.fillStyle(C.gold).fillRect(-10, 23.5, 20, 1.6);
+  }
+  g.restore();
 }
 
 function torso(g, hip, lean, breath) {
@@ -236,6 +295,9 @@ export const HERO_POSES = {
   upper: { lean: -6, hipY: -1, frontLeg: [14, 2], backLeg: [-16, -28], frontArm: [165, 172], backArm: [-35, 40], headTilt: -15 },
   upperGlow: { lean: -6, hipY: -1, frontLeg: [14, 2], backLeg: [-16, -28], frontArm: [165, 172], backArm: [-35, 40], headTilt: -15, glow: 'front', glowSize: 2 },
   hurt: { lean: -16, frontLeg: [15, 25], backLeg: [-22, -8], frontArm: [-60, -100], backArm: [50, 10], headTilt: -15 },
+  // 강철 거인: 망치 내려찍기, 회오리 (양팔 벌림)
+  smash: { lean: 26, hipY: 3, frontLeg: [44, 6], backLeg: [-40, -30], frontArm: [70, 30], backArm: [-30, 40] },
+  spin: { lean: 0, hipY: 1, frontLeg: [20, 6], backLeg: [-20, -6], frontArm: [92, 92], backArm: [-92, -92] },
   slam: { lean: 30, hipY: 8, frontLeg: [72, -8, 0], backLeg: [-25, -95, -90], frontArm: [35, 10], backArm: [-60, -30], glow: 'front', glowSize: 2 },
 };
 
@@ -253,6 +315,8 @@ const ANIMS = {
   upperGlow: { frames: ['upperGlow'] },
   hurt: { frames: ['hurt'] },
   slam: { frames: ['slam'] },
+  smash: { frames: ['smash'] },
+  spin: { frames: ['spin'] },
 };
 export const HERO_ANIMS = Object.keys(ANIMS);
 
@@ -273,26 +337,31 @@ function drawFrame(scene, key, pose) {
 }
 
 export function makeHeroTextures(scene) {
-  // customArt 로 player 그림을 불러왔으면 그 그림 한 장을 모든 동작에 쓴다
+  // customArt 로 player 그림을 불러왔으면 쇼크 히어로는 그 그림 한 장을 모든 동작에 쓴다
   const custom = scene.textures.exists('player');
   scene.registry.set('heroCustomArt', custom);
 
-  for (const [name, pose] of Object.entries(HERO_POSES)) {
-    const fist = drawFrame(scene, `hero_${name}`, pose);
-    if (fist) fistAt[name] = { x: fist.x - CX, y: fist.y - HERO_ORIGIN_Y * HERO_FRAME.h };
+  for (const look of Object.values(HERO_LOOKS)) {
+    C = look.colors;
+    PROP = look.prop;
+    for (const [name, pose] of Object.entries(HERO_POSES)) {
+      const fist = drawFrame(scene, `${look.prefix}_${name}`, pose);
+      if (fist && look.prefix === 'hero') fistAt[name] = { x: fist.x - CX, y: fist.y - HERO_ORIGIN_Y * HERO_FRAME.h };
+    }
+    for (const [name, a] of Object.entries(ANIMS)) {
+      const key = `${look.prefix}-${name}`;
+      if (scene.anims.exists(key)) continue;
+      scene.anims.create({
+        key,
+        frames: a.frames.map((f) => ({ key: `${look.prefix}_${f}` })),
+        frameRate: a.rate || 1,
+        repeat: a.repeat ?? 0,
+      });
+    }
   }
+  C = SHOCK;
+  PROP = null;
   if (!custom) drawFrame(scene, 'player', HERO_POSES.idle0);
-
-  for (const [name, a] of Object.entries(ANIMS)) {
-    const key = `hero-${name}`;
-    if (scene.anims.exists(key)) continue;
-    scene.anims.create({
-      key,
-      frames: a.frames.map((f) => ({ key: `hero_${f}` })),
-      frameRate: a.rate || 1,
-      repeat: a.repeat ?? 0,
-    });
-  }
 
   // 파란 에너지탄
   make(scene, 'hero_ball', 48, 48, (g) => {
@@ -301,5 +370,15 @@ export function makeHeroTextures(scene) {
     g.fillStyle(0x5aa8ff).fillCircle(24, 24, 13);
     g.fillStyle(C.blueLight).fillCircle(25, 22, 8);
     g.fillStyle(0xffffff).fillCircle(26, 21, 4);
+  });
+
+  // 번개 사수의 노란 번개탄 (가로로 긴 번개 모양)
+  make(scene, 'gunner_bolt', 48, 24, (g) => {
+    g.fillStyle(0xffd23f, 0.25).fillEllipse(24, 12, 48, 22);
+    g.fillStyle(0xffe14a, 0.9).fillPoints(
+      [{ x: 4, y: 12 }, { x: 18, y: 5 }, { x: 22, y: 10 }, { x: 34, y: 4 }, { x: 46, y: 12 }, { x: 30, y: 19 }, { x: 26, y: 14 }, { x: 14, y: 20 }],
+      true,
+    );
+    g.fillStyle(0xffffff).fillEllipse(30, 11, 16, 5);
   });
 }

@@ -74,6 +74,57 @@ export const balance = {
     shotSize: 44, // 에너지탄 크기
   },
 
+  // ---------- 고를 수 있는 주인공 (모험 지도에서 고름) ----------
+  // 쇼크 히어로는 위의 펀치, 충전, 대시, 궁극기 숫자를 그대로 쓴다.
+  heroes: {
+    // 번개 사수: 멀리서 쏘는 원거리형
+    gunner: {
+      healthMultiplier: 0.8, // 체력 배수 (0.8 = 쇼크 히어로의 80%)
+      moveMultiplier: 1.05, // 걷는 속도 배수
+      boltDamage: 5, // 번개탄 피해량 (짧게 눌렀다 떼기)
+      boltKnockback: 90, // 번개탄이 미는 힘
+      boltSpeed: 900, // 번개탄 속도
+      boltDistance: 520, // 번개탄이 날아가는 거리
+      boltSize: 24, // 번개탄 크기
+      boltCooldown: 0.14, // 다음 번개탄까지 기다리는 시간 (작을수록 빠른 연사)
+      beamMinDamage: 14, // 살짝 충전한 레이저 피해량
+      beamMaxDamage: 34, // 최대 충전 레이저 피해량
+      beamMinKnockback: 200, // 살짝 충전한 레이저가 미는 힘
+      beamMaxKnockback: 520, // 최대 충전 레이저가 미는 힘
+      beamLength: 640, // 레이저 길이
+      beamMinWidth: 16, // 살짝 충전한 레이저 굵기
+      beamMaxWidth: 48, // 최대 충전 레이저 굵기
+      backstepSpeed: 600, // 백스텝(대시) 속도
+      backstepHop: 240, // 백스텝 때 살짝 뜨는 힘
+      rainStrikes: 9, // 궁극기 번개비 줄기 수 (적이 더 많으면 적마다 하나씩)
+    },
+    // 강철 거인: 느리지만 세고 넓게 때리는 힘센형
+    giant: {
+      healthMultiplier: 1.5, // 체력 배수
+      moveMultiplier: 0.82, // 걷는 속도 배수
+      jumpMultiplier: 0.93, // 점프 힘 배수
+      scale: 1.25, // 몸 크기 배수
+      smashDamage: 16, // 망치 내려찍기 피해량 (방패도 깸)
+      smashKnockback: 340, // 망치가 미는 힘
+      smashRange: 92, // 망치가 닿는 거리
+      smashHeight: 120, // 망치가 닿는 높이
+      smashCooldown: 0.48, // 다음 망치까지 기다리는 시간
+      upperDamage: 14, // 망치 올려치기 (위 + 공격) 피해량
+      upperKnockback: 200, // 올려치기가 미는 힘
+      upperWidth: 110, // 올려치기가 닿는 폭
+      spinMinTime: 0.6, // 살짝 충전한 회오리가 도는 시간
+      spinMaxTime: 1.6, // 최대 충전 회오리가 도는 시간
+      spinTick: 0.16, // 회오리가 때리는 간격
+      spinDamage: 6, // 회오리 한 번 피해량
+      spinKnockback: 20, // 회오리가 미는 힘 (약해야 적이 회오리 안에 머물며 여러 번 맞음)
+      spinRadius: 95, // 회오리 크기
+      spinMoveMultiplier: 0.9, // 회오리 중 걷는 속도
+      rushDamage: 14, // 몸통 박치기(대시) 피해량
+      rushKnockback: 560, // 몸통 박치기가 미는 힘
+      quakeShocks: 3, // 궁극기 대지진 흔들림 횟수 (첫 번째가 가장 셈)
+    },
+  },
+
   // ---------- 초록 몬스터 ----------
   monster: {
     maxHealth: 30, // 체력
