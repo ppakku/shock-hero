@@ -3,7 +3,6 @@ import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { stages, chapters } from '../stage/index.js';
 import { stageStars, totalStars, STAR_KINDS, STAR_INFO } from '../logic/rewards.js';
-import { photoKind } from '../ui/titleLayout.js';
 import { nodePosition, roadPoints, locateStage, chapterUnlocked } from '../ui/mapLayout.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText, formatTime, FONT } from '../ui/text.js';
@@ -11,6 +10,10 @@ import { makeText, formatTime, FONT } from '../ui/text.js';
 // 모험 지도: 냥코대전쟁처럼 길 위의 스테이지 점을 골라서 들어간다.
 // ← → 로 스테이지 고르기 (장 끝에서 넘어가면 다음 장), Q / E 로 장 넘기기, Enter 로 시작, Esc 로 타이틀.
 // 점을 한 번 누르면 고르고, 한 번 더 누르면 시작한다.
+
+// 스테이지 배경 종류 → 지도 장식 그림
+const SCENERY_KIND = { forest: 'forest', volcano: 'lava', mountains: 'ice', castle: 'castle', underwater: 'water' };
+const sceneryKind = (st) => SCENERY_KIND[st.theme?.scenery] || 'city';
 
 // 장마다 지도 색 [바다, 땅, 땅 테두리]
 const CHAPTER_LOOK = {
@@ -79,7 +82,7 @@ export class MapScene extends Phaser.Scene {
       const st = stages[n - 1];
       const p = nodePosition(i);
       g.fillStyle(st.theme.sky?.[1] ?? 0x888888, 0.45).fillEllipse(p.x, p.y + 4, 120, 70);
-      this.drawScenery(g, photoKind(st, n - 1), p.x + (i % 2 ? 46 : -46), p.y - 30);
+      this.drawScenery(g, sceneryKind(st), p.x + (i % 2 ? 46 : -46), p.y - 30);
     });
 
     // 길 (열린 곳까지는 밝게, 아직 못 가는 곳은 흐리게)

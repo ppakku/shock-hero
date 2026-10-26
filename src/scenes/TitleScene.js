@@ -465,7 +465,6 @@ export class TitleScene extends Phaser.Scene {
   }
 
   refresh() {
-    const n = this.selected;
     this.mapRing?.setVisible(this.row === 0);
     this.buttons.forEach((b, i) => {
       const on = this.row === 1 && this.option === i;
