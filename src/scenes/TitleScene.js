@@ -7,7 +7,7 @@ import { stages, totalTreasures } from '../stage/index.js';
 import { totalStars } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO, controlLines } from '../logic/controls.js';
-import { isTouchDevice } from '../ui/touch.js';
+import { isTouchDevice, isPhone } from '../ui/touch.js';
 import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { tokenizeControlLine } from '../ui/titleLayout.js';
 import { coop } from '../net/coop.js';
@@ -174,7 +174,7 @@ export class TitleScene extends Phaser.Scene {
       const ring = this.add.graphics();
       ring.lineStyle(4, 0xffe14a, 1).strokeRoundedRect(-128, -22, 256, 44, 8);
       const img = this.add.image(0, 0, s.tex);
-      const label = brushText(this, 0, 0, s.text, 18, s.color).setOrigin(0.5);
+      const label = brushText(this, 0, 0, s.text, isPhone() ? 23 : 18, s.color).setOrigin(0.5); // 휴대폰은 작게 보여서 크게
       if (label.width > 220) label.setScale(220 / label.width);
       box.add([ring, img, label]);
       box.setSize(250, 44).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
@@ -236,7 +236,54 @@ export class TitleScene extends Phaser.Scene {
     no.on('pointerdown', () => this.closeConfirm());
     this.confirmBox.add([bg, plate, msg, yes, no]);
 
+    if (this.touch) this.buildFullscreen();
     this.refresh();
+  }
+
+  // 휴대폰, 태블릿: 왼쪽 위 전체 화면 버튼 (주소창 없이 꽉 차게).
+  // 아이폰 사파리는 전체 화면을 못 해서, 대신 홈 화면에 추가하는 방법을 알려 준다.
+  buildFullscreen() {
+    const standalone = window.navigator.standalone || window.matchMedia?.('(display-mode: fullscreen), (display-mode: standalone)').matches;
+    if (standalone) return; // 홈 화면 앱으로 열었으면 이미 꽉 찬 화면
+    const canFull = this.scale.fullscreen.available;
+    if (!canFull && !isPhone()) return; // 아이패드는 사파리 화면도 충분히 크다
+    const btn = makeText(this, 14, 16, '⛶ 전체 화면', 16, '#ffffff', {
+      backgroundColor: '#000000aa',
+      padding: { x: 10, y: 7 },
+    })
+      .setDepth(30)
+      .setInteractive({ useHandCursor: true });
+    const paint = () => btn.setVisible(!this.scale.isFullscreen);
+    this.scale.on('enterfullscreen', paint);
+    this.scale.on('leavefullscreen', paint);
+    this.events.once('shutdown', () => {
+      this.scale.off('enterfullscreen', paint);
+      this.scale.off('leavefullscreen', paint);
+    });
+    paint();
+    // 전체 화면은 손을 뗄 때 불러야 브라우저가 허락한다
+    btn.on('pointerup', () => {
+      if (!canFull) return this.showHomeScreenTip();
+      this.scale.startFullscreen();
+      window.screen?.orientation?.lock?.('landscape').catch(() => {}); // 안드로이드: 가로로 고정
+    });
+  }
+
+  showHomeScreenTip() {
+    this.homeTip?.destroy();
+    const tip = makeText(
+      this,
+      480,
+      300,
+      '사파리 아래쪽 공유 버튼을 누르고 "홈 화면에 추가"를 고르세요.\n홈 화면에 생긴 쇼크 히어로로 열면 주소창 없이 꽉 찬 화면이 돼요.',
+      19,
+      '#ffffff',
+      { backgroundColor: '#000000dd', padding: { x: 16, y: 12 }, lineSpacing: 8 },
+    )
+      .setOrigin(0.5)
+      .setDepth(60);
+    this.homeTip = tip;
+    this.tweens.add({ targets: tip, alpha: 0, delay: 6000, duration: 400, onComplete: () => tip.destroy() });
   }
 
   // 배경: 하늘과 도시(한 장 그림), 흘러가는 연기, 일렁이는 불꽃, 불티, 옥상 위 주인공

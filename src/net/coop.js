@@ -114,6 +114,14 @@ class Coop {
     return i;
   }
 
+  // 내가 다른 앱으로 넘어갔을 때(on) 와 돌아왔을 때 (main.js).
+  // 방장: 게임이 멈추니 친구 화면에 이유를 알려 준다. 친구: 누르던 키를 다 뗀 걸로 보낸다 (2P 가 혼자 계속 걸어가지 않게).
+  away(on) {
+    if (this.status !== 'connected') return;
+    if (this.role === 'host') this.send({ t: 'info', text: on ? '방장이 잠깐 다른 앱을 보고 있어요. 돌아올 때까지 기다려 주세요' : '' });
+    else if (on) this.send({ t: 'in' });
+  }
+
   // ---------- 친구 ----------
 
   // 방 참여. profile: 내 주인공과 성장 정보 (guestProfile)

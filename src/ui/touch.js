@@ -24,6 +24,24 @@ export const STICK = {
   hint: { x: 130, y: 440 }, // 손가락을 안 댔을 때 흐리게 보여 주는 자리
 };
 
+// 휴대폰은 게임 화면이 원래의 60 ~ 70% 로 줄어서 버튼을 크게, 화면 가장자리 쪽으로 둔다.
+// 가장 작은 버튼도 실제 화면에서 지름 44px (손가락으로 누르기 좋은 크기) 이상이 되게 맞췄다.
+export const PHONE_BUTTONS = {
+  jump: { x: 772, y: 494, r: 40 },
+  attack: { x: 894, y: 478, r: 52 },
+  dash: { x: 782, y: 398, r: 36 },
+  ult: { x: 900, y: 366, r: 36 },
+};
+export const PHONE_PAUSE = { x: 916, y: 100, r: 26 };
+export const PHONE_STICK = { radius: 58, hint: { x: 140, y: 430 } };
+
+// 휴대폰 크기로 바꾼다 (main.js 가 게임을 만들기 전에 한 번 부른다). 모든 장면이 같은 값을 보게 그 자리에서 고친다.
+export function usePhoneLayout() {
+  for (const b of TOUCH_BUTTONS) Object.assign(b, PHONE_BUTTONS[b.id]);
+  Object.assign(PAUSE_BUTTON, PHONE_PAUSE);
+  Object.assign(STICK, PHONE_STICK);
+}
+
 // 손가락이 버튼 테두리 조금 밖을 눌러도 눌린 걸로 친다 (아이 손가락은 자주 빗나간다)
 const SLACK = 1.25;
 
@@ -67,6 +85,17 @@ export function isTouchDevice(win = globalThis.window) {
   const points = win.navigator?.maxTouchPoints || 0;
   const coarse = !!win.matchMedia?.('(pointer: coarse)')?.matches;
   return points > 0 && coarse;
+}
+
+// 휴대폰인가 (태블릿보다 화면이 작아서 버튼과 글자를 키운다). 화면의 짧은 쪽이 600 보다 작으면 휴대폰으로 본다.
+// 주소에 ?phone 을 붙이면 컴퓨터에서도 휴대폰처럼 (확인용), ?nophone 이면 끈다.
+export function isPhone(win = globalThis.window) {
+  if (!win) return false;
+  const q = new URLSearchParams(win.location?.search || '');
+  if (q.has('phone')) return true;
+  if (q.has('nophone')) return false;
+  const sc = win.screen || {};
+  return isTouchDevice(win) && Math.min(sc.width || 0, sc.height || 0) > 0 && Math.min(sc.width, sc.height) < 600;
 }
 
 // 매 프레임 손가락들을 받아서 어떤 동작이 눌려 있는지(down), 이번에 막 눌렸는지(pressed) 알려 준다.
