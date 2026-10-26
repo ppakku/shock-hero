@@ -3,7 +3,7 @@ import { cfg } from '../config/index.js';
 import { sfx } from '../audio/sfx.js';
 import { UPGRADE_TRACKS, upgradeCard, normalizeUpgrades } from '../logic/growth.js';
 import { isTouchDevice } from '../ui/touch.js';
-import { makeText } from '../ui/text.js';
+import { makeText, textSize } from '../ui/text.js';
 
 // 레벨 업 카드 고르기. 게임 장면을 멈추고 그 위에 카드 4장을 보여 준다.
 // 함께하기 중에는 게임을 멈추지 않고 화면 위쪽에 작은 카드 줄로 보여 준다 (친구는 계속 싸우고, 고르는 동안 1P 는 무적).
@@ -66,7 +66,8 @@ export class LevelUpScene extends Phaser.Scene {
     const icon = this.add.image(0, -68, `up_${track}`).setDisplaySize(60, 60);
     const name = makeText(this, 0, -12, '', 20, '#ffffff').setOrigin(0.5);
     const rank = makeText(this, 0, 18, '', 17, '#ffd23f').setOrigin(0.5);
-    const lines = makeText(this, 0, 50, '', 15, '#ffffff', { lineSpacing: 6, wordWrap: { width: CARD_W - 20, useAdvancedWrap: true } }).setOrigin(0.5, 0);
+    const big = textSize(15) > 15; // 휴대폰은 글자가 커서 조금 위에서 촘촘하게 (아래 동그라미와 안 겹치게)
+    const lines = makeText(this, 0, big ? 44 : 50, '', 15, '#ffffff', { lineSpacing: big ? 2 : 6, wordWrap: { width: CARD_W - 20, useAdvancedWrap: true } }).setOrigin(0.5, 0);
     const pips = this.add.graphics();
     c.add([bg, icon, num, name, rank, lines, pips]);
     c.setSize(CARD_W, CARD_H);

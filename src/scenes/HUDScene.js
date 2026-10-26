@@ -151,6 +151,11 @@ export class HUDScene extends Phaser.Scene {
     }
   }
 
+  // 다른 앱으로 넘어갔을 때 (main.js). 하던 중일 때만 멈춘다 (결과 화면이나 이미 멈춘 때는 그대로)
+  autoPause() {
+    if (this.mode === 'play' && this.game_?.scene.isActive() && !this.game_.ended) this.togglePause();
+  }
+
   showPauseText() {
     const s = saveStore.load().settings;
     this.overlayTitle.setText('일시정지').setColor('#ffffff');
