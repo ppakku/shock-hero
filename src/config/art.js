@@ -54,6 +54,12 @@ export const customArt = {
   boss_arm_5: { file: 'king_arm.png', armCut: 139 }, // 킹 돌연변이 팔 (Gemini 그림, 주먹이 아래로). armCut: 금 팔찌 윗선, 이 아래가 주먹
   boss_fist_5: 'king_fist.png', // 킹 돌연변이가 날리는 주먹 (Gemini 그림, 왼쪽을 봄)
   boss_link_5: 'boss_link_muscle.png', // 킹 돌연변이 몸통과 팔을 잇는 근육 줄 (Gemini 그림, 가로로 이어 붙는 띠)
+  boss_body_10: { file: 'emperor_seated.png', cols: 4, rows: 2, frameRate: 6, faces: 'right' }, // 그림자 황제 앉은 모습 (Gemini 그림, 8장 숨쉬기, 오른쪽을 봄)
+  boss_king_stand_10: { file: 'emperor_stand.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 그림자 황제 일어선 모습 (Gemini 그림, 8장 쿵쿵 걷기, 오른쪽을 봄)
+  boss_throne_10: 'emperor_throne.png', // 그림자 황제 왕좌 (Gemini 그림, 검은 돌과 은빛 가시)
+  boss_arm_10: { file: 'emperor_arm.png', armCut: 150 }, // 그림자 황제 팔 (Gemini 그림, 주먹이 아래로). armCut: 은 팔찌 윗선, 이 아래가 주먹
+  boss_fist_10: 'emperor_fist.png', // 그림자 황제가 날리는 주먹 (Gemini 그림, 왼쪽을 봄)
+  boss_link_10: 'boss_link_shadow.png', // 그림자 황제 몸통과 팔을 잇는 그림자 촉수 줄 (Gemini 그림, 가로로 이어 붙는 띠)
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
   // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
   // fireball: 'fireball.png', // 용의 불덩이
