@@ -71,8 +71,9 @@ export class HUDScene extends Phaser.Scene {
   pauseToTitle() {
     this.mode = 'play';
     this.overlay.setVisible(false);
+    const stage = this.game_?.stageNum;
     this.scene.stop('Game');
-    this.scene.start('Title');
+    this.scene.start('Map', { stage });
   }
 
   // ---------- 태블릿 화면 버튼 ----------
@@ -182,10 +183,10 @@ export class HUDScene extends Phaser.Scene {
     this.overlayTitle.setText('일시정지').setColor('#ffffff');
     this.overlayBody.setText(
       (this.touch
-        ? ['타이틀로 가면 지금 진행은 체크포인트까지만 남아요']
+        ? ['지도로 가면 지금 진행은 체크포인트까지만 남아요']
         : [
             'Esc: 계속하기',
-            'T: 타이틀로 (지금 진행은 체크포인트까지만 남아요)',
+            'T: 지도로 (지금 진행은 체크포인트까지만 남아요)',
             `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
             `F: 효과 줄이기 ${s.lowFx ? '켜짐' : '꺼짐'}`,
             `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
@@ -194,7 +195,7 @@ export class HUDScene extends Phaser.Scene {
     );
     this.setOverlayButtons([
       { text: '계속하기', fn: () => this.togglePause() },
-      { text: '타이틀로', fn: () => this.pauseToTitle() },
+      { text: '지도로', fn: () => this.pauseToTitle() },
       { text: `소리 ${s.muted ? '꺼짐' : '켜짐'}`, fn: () => this.toggleSetting('muted') },
       { text: `흔들림 ${s.shake ? '켜짐' : '꺼짐'}`, fn: () => this.toggleSetting('shake') },
       { text: `효과 ${s.lowFx ? '줄임' : '보통'}`, fn: () => this.toggleSetting('lowFx') },
@@ -219,14 +220,14 @@ export class HUDScene extends Phaser.Scene {
         ? ['레벨과 경험치, 보물은 그대로 남아 있어요']
         : [
             hasCheckpoint ? 'R 또는 클릭: 체크포인트에서 다시' : 'R 또는 클릭: 처음부터 다시',
-            'T: 타이틀로',
+            'T: 지도로',
             '레벨과 경험치, 보물은 그대로 남아 있어요',
           ]
       ).join('\n'),
     );
     this.setOverlayButtons([
       { text: hasCheckpoint ? '체크포인트에서 다시' : '처음부터 다시', fn: () => this.restartFromOverlay('retry') },
-      { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+      { text: '지도로', fn: () => this.restartFromOverlay('title') },
     ]);
     this.overlay.setVisible(true);
   }
@@ -243,29 +244,30 @@ export class HUDScene extends Phaser.Scene {
         `별 ${stars ? starText(stars) : ''}    보석 +${gems} (모두 ${totalGems}개)`,
         newStars.length ? `새 별: ${newStars.join(', ')}!` : '',
         last ? '마지막 보스까지 쓰러뜨리고 모두를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
-        this.touch ? '' : last ? 'Enter 또는 클릭: 타이틀로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 타이틀로',
+        this.touch ? '' : last ? 'Enter 또는 클릭: 지도로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 지도로',
       ].join('\n'),
     );
     this.setOverlayButtons(
       last
         ? [
-            { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+            { text: '지도로', fn: () => this.restartFromOverlay('title') },
             { text: '이 스테이지 다시', fn: () => this.restartFromOverlay('retry') },
           ]
         : [
             { text: `스테이지 ${stage + 1}로!`, fn: () => this.restartFromOverlay('next') },
             { text: '이 스테이지 다시', fn: () => this.restartFromOverlay('retry') },
-            { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+            { text: '지도로', fn: () => this.restartFromOverlay('title') },
           ],
     );
     this.overlay.setVisible(true);
   }
 
-  // retry: 다시 하기, next: 다음으로(게임 오버면 다시 하기), title: 타이틀로
+  // retry: 다시 하기, next: 다음으로(게임 오버면 다시 하기), title: 지도로
   restartFromOverlay(kind) {
     if (this.mode !== 'gameover' && this.mode !== 'victory') return;
     const gs = this.game_;
     const stage = gs.stageNum;
+    const won = this.mode === 'victory' && !this.victoryLast;
     let target = { stage, fromCheckpoint: false };
     if (this.mode === 'gameover') {
       if (kind === 'title') target = null;
@@ -279,7 +281,7 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.setVisible(false);
     if (!target) {
       this.scene.stop('Game');
-      this.scene.start('Title');
+      this.scene.start('Map', { stage: won ? stage + 1 : stage }); // 깼으면 다음 스테이지를 골라 둔다
       return;
     }
     if (!target.fromCheckpoint) this.registry.set('runTime', 0);

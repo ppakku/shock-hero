@@ -4,7 +4,7 @@ import { emptyUpgrades, normalizeUpgrades, UPGRADE_TRACKS } from './growth.js';
 import { emptyShop, normalizeShop } from './shop.js';
 
 const KEY = 'shock-hero-save-v1';
-export const STAGE_COUNT = 10; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
+export const STAGE_COUNT = 20; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
 
 export function defaultSave() {
   return {

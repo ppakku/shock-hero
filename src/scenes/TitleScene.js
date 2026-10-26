@@ -4,14 +4,14 @@ import { makeText, FONT } from '../ui/text.js';
 import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
-import { stageStars, totalStars, STAR_KINDS } from '../logic/rewards.js';
+import { totalStars } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO } from '../logic/controls.js';
 import { isTouchDevice } from '../ui/touch.js';
-import { makeTitleTextures, photoTexture, drawCape, TITLE_FONT } from '../ui/titleArt.js';
-import { cardLayout, tokenizeControlLine, photoKind, cardTilt, CARD_W, CARD_H } from '../ui/titleLayout.js';
+import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
+import { tokenizeControlLine } from '../ui/titleLayout.js';
 
-// 타이틀: 스테이지 고르기 + 설정(난이도, 조작, 상점, 레벨 초기화)
+// 타이틀: 모험 지도 열기 + 설정(난이도, 조작, 상점, 레벨 초기화). 스테이지는 지도(src/scenes/MapScene.js)에서 고른다.
 // ↑ ↓ 로 줄을 옮기고, ← → 로 고르고, Enter 로 시작하거나 바꾼다. 마우스로 눌러도 된다.
 // 그림은 흑백 만화 느낌 (회색 하늘, 연기, 불타는 도시, 옥상 위 주인공). 그림 그리는 코드는 src/ui/titleArt.js
 
@@ -19,7 +19,6 @@ import { cardLayout, tokenizeControlLine, photoKind, cardTilt, CARD_W, CARD_H } 
 // 2.5초 안에 못 받으면 기본 글꼴로 그린다.
 let fontReady = null; // true / false (다 기다렸을 때)
 let fontWait = null;
-const NUM_KEYS = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'ZERO']; // 10번째는 0 키
 
 function fontSample() {
   const names = [...Object.values(DIFFICULTY_INFO), ...Object.values(CONTROL_INFO), TOUCH_INFO].map((d) => d.name);
@@ -102,13 +101,8 @@ export class TitleScene extends Phaser.Scene {
     on(['RIGHT', 'D'], () => this.move(1));
     on(['UP', 'W'], () => this.setRow(0));
     on(['DOWN', 'S'], () => this.setRow(1));
-    NUM_KEYS.slice(0, stages.length).forEach((k, i) => kb.on(`keydown-${k}`, () => !this.confirming && this.select(i + 1)));
     on(['ENTER', 'SPACE'], () => this.activate());
-    kb.on('keydown-N', () => {
-      if (!this.ready) return;
-      if (this.confirming) this.closeConfirm();
-      else if (this.row === 0) this.begin(false);
-    });
+    kb.on('keydown-N', () => this.ready && this.confirming && this.closeConfirm());
     kb.on('keydown-B', () => this.ready && !this.confirming && this.openShop());
     kb.on('keydown-Y', () => this.confirming && this.doReset());
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
@@ -138,9 +132,29 @@ export class TitleScene extends Phaser.Scene {
     const scheme = this.touch ? TOUCH_INFO : CONTROL_INFO[save.settings.controls] || CONTROL_INFO.classic;
     this.drawControls(scheme.lines);
 
-    // 스테이지 카드
-    const layout = cardLayout(stages.length, { top: 254, margin: 28 });
-    this.cards = stages.map((st, i) => this.makeCard(st, i, layout));
+    // 모험 지도 열기 (예전 스테이지 카드 자리)
+    this.mapBtn = this.add.container(width / 2, 300).setDepth(15).setAngle(-1.5);
+    const mapPlate = this.add.graphics();
+    mapPlate.fillStyle(0x000000, 0.45).fillRoundedRect(-196, -38, 400, 84, 14);
+    mapPlate.fillStyle(0xe8d8a8, 1).fillRoundedRect(-200, -44, 400, 84, 14);
+    mapPlate.lineStyle(4, 0x6a5030, 1).strokeRoundedRect(-200, -44, 400, 84, 14);
+    // 작은 길과 점 (지도 느낌)
+    mapPlate.lineStyle(4, 0x8a6a40, 0.8).beginPath().moveTo(-170, 22).lineTo(-120, 4).lineTo(-80, 18).lineTo(-40, 0).strokePath();
+    for (const [x, y] of [[-170, 22], [-120, 4], [-80, 18], [-40, 0]]) mapPlate.fillStyle(0xd04a2a, 1).fillCircle(x, y, 6);
+    const mapLabel = brushText(this, 60, -14, '모험 지도', 32, '#ffe14a', { strokeThickness: 6 }).setOrigin(0.5);
+    const mapStars = makeText(this, 60, 22, `★ 별 ${totalStars(save, stages)}/${stages.length * 3}   스테이지 ${Math.min(save.unlocked, stages.length)}/${stages.length}`, 15, '#3a2a10', {
+      strokeThickness: 0,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.mapRing = this.add.graphics();
+    this.mapRing.lineStyle(5, 0xffe14a, 1).strokeRoundedRect(-206, -50, 412, 96, 16);
+    this.mapBtn.add([this.mapRing, mapPlate, mapLabel, mapStars]);
+    this.mapBtn.setSize(400, 84).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.confirming) return;
+      this.row = 0;
+      this.openMap();
+    });
+    this.tweens.add({ targets: this.mapBtn, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // 설정 버튼 줄 (빨간 낙서, 파란 테이프, 회색 철판)
     const d = DIFFICULTY_INFO[save.settings.difficulty];
@@ -184,10 +198,7 @@ export class TitleScene extends Phaser.Scene {
       this.startText.setInteractive().on('pointerdown', () => {
         if (this.confirming || !this.ready) return;
         this.row = 0;
-        this.begin(this.canContinue);
-      });
-      this.subText.setInteractive().on('pointerdown', () => {
-        if (!this.confirming && this.ready && this.canContinue) this.begin(false);
+        this.openMap();
       });
     }
 
@@ -354,68 +365,6 @@ export class TitleScene extends Phaser.Scene {
     });
   }
 
-  // 스테이지 카드 한 장: 종이에 핀으로 꽂은 흑백 사진
-  makeCard(st, i, layout) {
-    const n = i + 1;
-    const save = this.save;
-    const { x, y } = layout.positions[i];
-    const locked = n > save.unlocked;
-    const found = st.treasures.filter((t) => save.treasures.includes(t.id)).length;
-    const stars = stageStars(save, st, n);
-    const box = this.add.container(x, y).setDepth(15).setAngle(cardTilt(i)).setScale(layout.scale);
-    const glow = this.add.image(0, 0, 'tt-card-glow');
-    const paper = this.add.image(0, 0, 'tt-card-paper');
-    const green = this.add.image(0, 0, 'tt-card-green').setVisible(false);
-    const title = brushText(this, 0, -40, `스테이지 ${n}`, 17, '#1b1b1b', { strokeThickness: 0 }).setOrigin(0.5);
-    // 사진 (하얀 테두리, 그림자)
-    const frame = this.add.graphics();
-    frame.fillStyle(0x000000, 0.35).fillRect(-52, -26, 108, 60);
-    frame.fillStyle(0xf4f2ec, 1).fillRect(-55, -29, 108, 60);
-    frame.lineStyle(1, 0x555555, 1).strokeRect(-55, -29, 108, 60);
-    const photo = this.add.image(-1, 1, photoTexture(this, photoKind(st, i))).setDisplaySize(100, 55);
-    const caption = this.add.rectangle(-1, 22, 100, 13, 0x000000, 0.55);
-    const name = this.add
-      .text(-1, 22, st.name, { fontFamily: FONT, fontStyle: 'bold', fontSize: '11px', color: '#ffffff' })
-      .setOrigin(0.5);
-    const pin = this.add.image(42, -28, 'tt-pin');
-    const treasure = brushText(this, 26, 41, `보물 ${found}/${st.treasures.length}`, 14, '#1b1b1b', {
-      strokeThickness: 0,
-    }).setOrigin(0.5);
-    // 별 3개 (금색): 깨기, 보물 전부, 안 쓰러지고 깨기
-    const starMarks = STAR_KINDS.map((k, j) =>
-      this.add
-        .text(-48 + j * 17, 41, '★', { fontFamily: FONT, fontSize: '19px', color: stars[k] ? '#ffc21f' : '#8a8a8a', stroke: '#2a2a2a', strokeThickness: 3 })
-        .setOrigin(0.5),
-    );
-    const parts = [glow, paper, green, frame, photo, caption, name, pin, title, treasure, ...starMarks];
-    if (locked) {
-      photo.setTint(0x555555);
-      caption.setVisible(false);
-      name.setVisible(false);
-      treasure.setVisible(false);
-      starMarks.forEach((m) => m.setVisible(false));
-      const shade = this.add.rectangle(0, 0, CARD_W - 6, CARD_H - 6, 0x000000, 0.5);
-      const lockG = this.add.graphics();
-      lockG.lineStyle(4, 0xcfcfcf, 1).strokeCircle(0, 2, 8);
-      lockG.fillStyle(0xcfcfcf, 1).fillRoundedRect(-12, 4, 24, 18, 3);
-      lockG.fillStyle(0x333333, 1).fillCircle(0, 12, 3);
-      const stamp = brushText(this, 0, 40, '잠김', 18, '#d4d4d4').setOrigin(0.5);
-      title.setColor('#b8b8b8');
-      parts.push(shade, lockG, stamp);
-      parts.splice(parts.indexOf(title), 1);
-      parts.push(title);
-    }
-    box.add(parts);
-    box.setSize(CARD_W, CARD_H).setInteractive({ useHandCursor: !locked }).on('pointerdown', () => {
-      if (locked || this.confirming) return;
-      this.row = 0;
-      if (this.selected === n) this.begin(this.canContinue);
-      else this.select(n);
-    });
-    glow.setVisible(false);
-    return { box, locked, glow, paper, green, title, treasure, caption, baseScale: layout.scale };
-  }
-
   get canContinue() {
     return this.save.checkpoint === this.selected;
   }
@@ -443,7 +392,7 @@ export class TitleScene extends Phaser.Scene {
 
   activate() {
     if (this.confirming || !this.ready) return;
-    if (this.row === 0) this.begin(this.canContinue);
+    if (this.row === 0) this.openMap();
     else this.press(this.option);
   }
 
@@ -468,6 +417,16 @@ export class TitleScene extends Phaser.Scene {
     sfx.muted = s.muted;
     sfx.play('beep');
     this.build();
+  }
+
+  // 모험 지도로 (이어할 체크포인트가 있으면 그 스테이지를 골라 둔다)
+  openMap() {
+    if (this.started || this.confirming || !this.ready) return;
+    this.started = true;
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.start('Map', { stage: this.save.checkpoint || this.save.unlocked });
   }
 
   // 상점은 타이틀 위에 따로 열린다 (src/scenes/ShopScene.js). 닫으면 closeShop 을 부른다.
@@ -506,19 +465,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   refresh() {
-    const n = this.selected;
-    this.cards.forEach((c, i) => {
-      const picked = i + 1 === n;
-      const on = this.row === 0 && picked;
-      c.green.setVisible(picked);
-      c.paper.setVisible(!picked);
-      c.glow.setVisible(on);
-      if (!c.locked) {
-        c.title.setColor(picked ? '#ffe14a' : '#1b1b1b').setStroke('#000000', picked ? 4 : 0);
-        c.treasure.setColor(picked ? '#ffffff' : '#1b1b1b').setStroke('#000000', picked ? 4 : 0);
-      }
-      c.box.setScale(c.baseScale * (picked ? 1.07 : 1)).setDepth(picked ? 16 : 15);
-    });
+    this.mapRing?.setVisible(this.row === 0);
     this.buttons.forEach((b, i) => {
       const on = this.row === 1 && this.option === i;
       b.ring.setVisible(on);
@@ -533,19 +480,21 @@ export class TitleScene extends Phaser.Scene {
     if (this.touch) {
       helps[1] = '태블릿에서는 화면 버튼으로 해요. 위의 조작법을 보세요.';
       this.optionHelp.setText(this.row === 1 ? helps[this.option] : '카드를 한 번 누르면 고르고, 한 번 더 누르면 시작해요');
-      this.startText.setText(this.canContinue ? `▶ 스테이지 ${n} 이어하기` : `▶ 스테이지 ${n} 시작`);
+      this.startText.setText('▶ 모험 지도 열기');
       this.paintStartText();
-      this.subText.setText(this.canContinue ? '여기를 누르면 처음부터' : '');
+      this.subText.setText(this.save.checkpoint ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요` : '');
       return;
     }
     this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 상점, 레벨 초기화를 고를 수 있어요');
-    this.startText.setText(this.canContinue ? `Enter: 스테이지 ${n} 체크포인트부터 이어하기` : `Enter: 스테이지 ${n} 시작`);
+    this.startText.setText('Enter: 모험 지도 열기');
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();
     this.subText.setText(
       this.row === 1
         ? ''
-        : [this.save.unlocked > 1 ? '← → 또는 숫자로 스테이지 고르기' : '', this.canContinue ? 'N: 처음부터' : ''].filter(Boolean).join('    '),
+        : this.save.checkpoint
+          ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요`
+          : '',
     );
   }
 
