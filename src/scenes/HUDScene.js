@@ -34,7 +34,7 @@ export class HUDScene extends Phaser.Scene {
     this.upgradeText = makeText(this, 24, 126, '', 12, '#ffd23f').setOrigin(0, 0.5);
     // 켜진 특별한 힘: 아이콘 + 남은 초
     this.powerIcons = POWER_IDS.map(() => ({
-      img: this.add.image(0, 0, 'pw_speed').setVisible(false).setScale(0.8),
+      img: this.add.image(0, 0, 'pw_speed').setVisible(false).setDisplaySize(32, 32),
       text: makeText(this, 0, 0, '', 12).setOrigin(0.5).setVisible(false),
     }));
 

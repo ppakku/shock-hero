@@ -12,10 +12,10 @@ export const stage7 = {
   checkpointX: 4720,
 
   theme: {
-    bgImage: { key: 'city_bg', file: 'city_bg.jpg' }, // 스테이지 1 그림을 같이 씀
-    arenaImage: { key: 'city_arena', file: 'city_arena.jpg' },
-    groundImage: { key: 'city_ground', file: 'city_ground.png', surface: 2 },
-    platformImage: { key: 'city_platform', file: 'city_platform.png', left: 90, right: 90, surface: 12, scale: 0.45 },
+    bgImage: { key: 'factory_bg', file: 'factory_bg.jpg' }, // 고철 공장 파노라마 (Gemini 그림)
+    arenaImage: { key: 'factory_arena', file: 'factory_arena.jpg' }, // 파쇄 작업장 보스전 배경 (Gemini 그림)
+    groundImage: { key: 'factory_ground', file: 'factory_ground.png', surface: 8 }, // 녹슨 철판 바닥 (Gemini 그림)
+    platformImage: { key: 'factory_platform', file: 'factory_platform.png', left: 40, right: 40, surface: 4, scale: 0.42 }, // 쇠 트러스 발판 (Gemini 그림)
     sky: [0x1a1c22, 0x6a5a4a], // 매연 낀 하늘
     sun: 0xffb060,
     far: 0x30343c, // 먼 굴뚝과 공장

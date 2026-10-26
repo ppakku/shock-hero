@@ -55,7 +55,7 @@ export class LevelUpScene extends Phaser.Scene {
     const c = this.add.container(x, y);
     const bg = this.add.graphics();
     const num = makeText(this, -CARD_W / 2 + 18, -CARD_H / 2 + 18, String(i + 1), 18, '#ffffff').setOrigin(0.5);
-    const icon = this.add.image(0, -68, `up_${track}`).setScale(1.5);
+    const icon = this.add.image(0, -68, `up_${track}`).setDisplaySize(60, 60);
     const name = makeText(this, 0, -12, '', 20, '#ffffff').setOrigin(0.5);
     const rank = makeText(this, 0, 18, '', 17, '#ffd23f').setOrigin(0.5);
     const lines = makeText(this, 0, 50, '', 15, '#ffffff', { lineSpacing: 6, wordWrap: { width: CARD_W - 20, useAdvancedWrap: true } }).setOrigin(0.5, 0);

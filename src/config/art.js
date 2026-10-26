@@ -70,10 +70,10 @@ export const customArt = {
   // monster_jelly_b: 'monster_jelly_b.png', // 골드해파리 촉수가 흔들린 두 번째 그림 (없으면 첫 그림과 같게 넣기)
   // monster_jelly_ball: 'monster_jelly_ball.png', // 순간 경화: 촉수를 말고 빛나는 공
   // monster_jelly_bolt: 'monster_jelly_bolt.png', // 골드해파리가 쏘는 전기 독 (오른쪽으로 날아가는 모양)
-  // monster_puffer: 'monster_puffer.png', // 가시복어 평소 모습 (오른쪽을 보는 모습)
-  // monster_puffer_big: 'monster_puffer_big.png', // 가시복어 부푼 모습 (가시 공)
-  // monster_piranha: 'monster_piranha.png', // 이빨 피라냐 (오른쪽을 보는 모습)
-  // monster_crab: 'monster_crab.png', // 집게 꽃게 (오른쪽을 보는 모습)
+  monster_puffer: 'monster_puffer.png', // 가시복어 평소 모습 (Gemini 그림, 오른쪽을 봄)
+  monster_puffer_big: 'monster_puffer_big.png', // 가시복어 부푼 모습 (Gemini 그림, 가시 공)
+  monster_piranha: 'monster_piranha.png', // 이빨 피라냐 (Gemini 그림, 오른쪽을 봄)
+  monster_crab: 'monster_crab.png', // 집게 꽃게 (Gemini 그림, 오른쪽을 봄)
   // boss_sea_body_6: 'boss_sea_body_6.png', // 스테이지 6 보스 몸통 (왼쪽을 보는 모습, 아래턱 없이)
   // boss_sea_jaw_6: 'boss_sea_jaw_6.png', // 스테이지 6 보스 아래턱 (이빨이 위로, 붙는 곳이 오른쪽)
   // boss_sea_lure: 'boss_sea_lure.png', // 스테이지 6 보스 머리 위 초롱불
@@ -81,6 +81,16 @@ export const customArt = {
   // boss_sea_bubble: 'boss_sea_bubble.png', // 스테이지 6 보스 거품 폭탄
   // rock: 'rock.png', // 떨어지는 돌
   // glob: 'glob.png', // 독침
+  // 특별한 힘 아이콘 5개와 레벨 업 카드 아이콘 4개 (Gemini 그림, 80x80 정사각형)
+  pw_speed: 'icon_pw_speed.png', // 번개 신발
+  pw_shield: 'icon_pw_shield.png', // 강철 몸
+  pw_power: 'icon_pw_power.png', // 파워 장갑
+  pw_star: 'icon_pw_star.png', // 무적 별
+  pw_rapid: 'icon_pw_rapid.png', // 에너지 연사
+  up_attack: 'icon_up_attack.png', // 레벨 업 카드: 공격력
+  up_defense: 'icon_up_defense.png', // 레벨 업 카드: 방어력
+  up_speed: 'icon_up_speed.png', // 레벨 업 카드: 속도
+  up_robot: 'icon_up_robot.png', // 레벨 업 카드: 로봇 볼트
   heart: 'heart.png', // 체력 하트 (Gemini 그림)
   flag: 'flag.png', // 체크포인트 깃발, 꺼짐 (Gemini 그림, 깃대가 왼쪽에서 0.2 쯤)
   flag_on: 'flag_on.png', // 체크포인트 깃발, 켜짐 (Gemini 그림, flag 와 같은 크기, 깃대 자리도 같게)

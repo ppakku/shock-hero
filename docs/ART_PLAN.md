@@ -34,14 +34,15 @@
 ### 3. 일반 몬스터 (각각 4x2 걷기나 떠다니기 8장)
 - [x] 초록 몬스터, 빨강 날쌘돌이, 파랑 뚱보, 보라 뜀뛰기 (`monster_green/red/blue/purple.png`, Gemini 웹, `tools/make_sheet.py`)
 - [x] 방패병 걷기 8장, 방패 깨진 모습 8장, 날아가는 방패 조각 (`monster_shield.png`, `monster_shield_broken.png`, `monster_shield_piece.png`)
-- [ ] 침뱉기, 프로스(아들 디자인), 골드해파리 GX(아들 디자인)
-- [ ] 가시복어, 피라냐, 꽃게
+- [x] 침뱉기 (`monster_spitter.png` 걷기 8장, 조준, 뱉기, 침)
+- [ ] 프로스, 골드해파리 GX (아들 디자인 기다리는 중, 주문서에 있음)
+- [x] 가시복어 평소와 부푼 모습, 피라냐, 꽃게 (`monster_puffer.png`, `monster_puffer_big.png`, `monster_piranha.png`, `monster_crab.png`, Gemini 웹 한 장을 `tools/split_parts.py` 로 나눔)
 
 ### 4. 아이템과 아이콘
 - [x] 보물 상자 닫힘, 열림 (`chest.png`, `chest_open.png`, `tools/split_parts.py`)
-- [ ] 하트, 체크포인트 깃발(꺼짐, 켜짐)
-- [ ] 특별한 힘 아이콘 5개, 레벨 업 카드 아이콘 4개
-- [ ] 로봇 볼트 (떠다니기 4장)
+- [x] 하트, 체크포인트 깃발(꺼짐, 켜짐) (`heart.png`, `flag.png`, `flag_on.png`)
+- [x] 특별한 힘 아이콘 5개, 레벨 업 카드 아이콘 4개 (`icon_pw_*.png`, `icon_up_*.png`, 80x80)
+- [x] 로봇 볼트 (`robot.png`, 한 장)
 
 ### 5. 나머지 스테이지 (배경 파노라마, 보스전 배경, 바닥, 발판, 효과)
 - [x] 스테이지 1 파괴된 도시 (`city_bg.jpg`, `city_arena.jpg`, `city_ground.png`, `city_platform.png`, Gemini 웹에서 만듦)
@@ -49,3 +50,5 @@
 - [x] 스테이지 4 얼음 산 (`ice_bg.jpg`, `ice_arena.jpg`, `ice_ground.png`, `ice_platform.png`)
 - [x] 스테이지 5 괴물 성 (`castle_bg.jpg`, `castle_arena.jpg`, `castle_ground.png`, `castle_platform.png`, 배경은 Gemini 원본 다운로드 오류로 화면 크기 그림을 키움)
 - [x] 스테이지 6 수중 던전 (아들 배경 + `sea_ground.png`, `sea_platform.png`)
+- [x] 스테이지 7 고철 공장 (`factory_bg.jpg`, `factory_arena.jpg`, `factory_ground.png`, `factory_platform.png`)
+- [ ] 새 주인공 번개 사수, 강철 거인 (아들 디자인 기다리는 중, 지금은 쇼크 히어로 몸에 색만 바꾼 임시 그림)

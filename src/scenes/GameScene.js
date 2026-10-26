@@ -580,7 +580,7 @@ export class GameScene extends Phaser.Scene {
     const c = this.powers.cfg[id];
     this.powerPopup?.destroy();
     const box = this.add.container(480, 190).setScrollFactor(0).setDepth(70);
-    const icon = this.add.image(0, -62, info.icon).setScale(1.4);
+    const icon = this.add.image(0, -62, info.icon).setDisplaySize(56, 56);
     const name = makeText(this, 0, 0, `${info.name}!`, 52, info.color, { strokeThickness: 9 }).setOrigin(0.5);
     const desc = makeText(this, 0, 50, `${info.desc}  (${c.time}초)`, 20, '#ffffff', { strokeThickness: 5 }).setOrigin(0.5);
     box.add([icon, name, desc]);

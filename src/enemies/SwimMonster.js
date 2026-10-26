@@ -4,6 +4,7 @@ import { flash, floatText } from '../fx/effects.js';
 import { pushedKnockback } from '../logic/monsters.js';
 import { swimmerY, swimmerXRange, swimmerYRange } from '../logic/swim.js';
 import { makeSeaMonsterTextures } from './seaTextures.js';
+import { customArt } from '../config/art.js';
 
 // 물속을 헤엄치는 몬스터의 공통 부분 (골드해파리, 가시복어, 피라냐).
 // 중력이 없고 땅과 발판에 걸리지 않는다. 대신 주인공이 닿는 물속 범위(y 170 ~ 땅 위)와
@@ -13,7 +14,13 @@ export class SwimMonster extends Monster {
     makeSeaMonsterTextures(scene);
     super(scene, spot, cfg);
     this.setTexture(texture);
-    this.setDisplaySize(w * this.m.size, h * this.m.size);
+    if (customArt[texture]) {
+      // 내가 넣은 그림은 비율을 지키고, 넓이만 원래 크기(w x h)와 같게 맞춘다
+      const k = Math.sqrt((w * h) / (this.frame.width * this.frame.height));
+      this.setDisplaySize(this.frame.width * k * this.m.size, this.frame.height * k * this.m.size);
+    } else {
+      this.setDisplaySize(w * this.m.size, h * this.m.size);
+    }
     this.body.setSize(this.width * 0.8, this.height * 0.8, true);
     this.flying = true;
     this.body.setAllowGravity(false);
