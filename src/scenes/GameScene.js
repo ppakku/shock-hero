@@ -327,7 +327,9 @@ export class GameScene extends Phaser.Scene {
 
     // 체크포인트 깃발
     this.flagActive = this.fromCheckpoint;
+    // 그림 크기와 상관없이 높이 90 으로 맞춘다 (flag 와 flag_on 은 같은 크기라 바꿔 끼워도 그대로)
     this.flag = this.add.image(st.checkpointX, st.groundY, this.flagActive ? 'flag_on' : 'flag').setOrigin(0.2, 1).setDepth(2);
+    this.flag.setScale(90 / this.flag.height);
 
     // 보물 상자: 들어올 때마다 자리가 바뀐다. 이미 찾은 보물은 나오지 않는다
     this.chests = [];
@@ -963,7 +965,8 @@ export class GameScene extends Phaser.Scene {
   // 하트: 먹으면 체력이 찬다. 10초 뒤 사라진다.
   dropHeart(x, y) {
     const h = this.physics.add.image(x, y, 'heart').setDepth(6).setBounce(0.3).setVelocity(Phaser.Math.Between(-60, 60), -320);
-    h.body.setSize(24, 22);
+    h.setScale(26 / h.height); // 그림 크기와 상관없이 높이 26 으로, 비율은 그대로
+    h.body.setSize(h.width, h.height); // 몸통은 그림 크기에 맞춤 (보이는 크기 = 그림 크기 x 배율)
     this.physics.add.collider(h, this.solids);
     this.physics.add.collider(h, this.oneWays);
     this.physics.add.overlap(this.player, h, () => {

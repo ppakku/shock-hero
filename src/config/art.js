@@ -22,7 +22,7 @@ export const customArt = {
   monster_shield: { file: 'monster_shield.png', cols: 4, rows: 2, frameRate: 7 }, // 방패병 (Gemini 그림, 8장 걷기, 오른쪽을 봄, 방패가 오른쪽 앞)
   monster_shield_broken: { file: 'monster_shield_broken.png', cols: 4, rows: 2, frameRate: 12 }, // 방패가 깨진 방패병 (Gemini 그림, 8장 허둥지둥)
   monster_shield_piece: 'monster_shield_piece.png', // 날아가는 깨진 방패 (Gemini 그림)
-  // robot: 'robot.png', // 로봇 조수 볼트
+  robot: 'robot.png', // 로봇 조수 볼트 (Gemini 그림, 앞을 봄)
   // boss_body_1: 'boss_body_1.png', // 스테이지 1 보스 몸통 (왼쪽을 보는 모습). 2~5 도 같은 식
   // boss_arm_1: 'boss_arm_1.png', // 스테이지 1 보스 팔 (주먹이 아래로). 2~5 도 같은 식
   // boss_fist_1: 'boss_fist_1.png', // 스테이지 1 보스가 날리는 주먹 (왼쪽을 보는 모습). 5 도 같은 식
@@ -55,8 +55,8 @@ export const customArt = {
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
   // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
   // fireball: 'fireball.png', // 용의 불덩이
-  // boss_core: 'boss_core.png', // 보스 약점(코어)
-  // boss_armor: 'boss_armor.png', // 코어를 덮은 장갑
+  boss_core: 'boss_core.png', // 보스 약점(코어) (Gemini 그림)
+  boss_armor: 'boss_armor.png', // 코어를 덮은 장갑 (Gemini 그림)
   // ----- 수중 던전 (스테이지 6) -----
   // monster_jelly: 'monster_jelly.png', // 골드해파리 GX (오른쪽을 보는 모습, 촉수가 아래로)
   // monster_jelly_b: 'monster_jelly_b.png', // 골드해파리 촉수가 흔들린 두 번째 그림 (없으면 첫 그림과 같게 넣기)
@@ -73,6 +73,9 @@ export const customArt = {
   // boss_sea_bubble: 'boss_sea_bubble.png', // 스테이지 6 보스 거품 폭탄
   // rock: 'rock.png', // 떨어지는 돌
   // glob: 'glob.png', // 독침
+  heart: 'heart.png', // 체력 하트 (Gemini 그림)
+  flag: 'flag.png', // 체크포인트 깃발, 꺼짐 (Gemini 그림, 깃대가 왼쪽에서 0.2 쯤)
+  flag_on: 'flag_on.png', // 체크포인트 깃발, 켜짐 (Gemini 그림, flag 와 같은 크기, 깃대 자리도 같게)
   chest: 'chest.png', // 보물 상자 (Gemini 그림)
   chest_open: 'chest_open.png', // 열린 보물 상자 (Gemini 그림, 금화와 보석)
 };

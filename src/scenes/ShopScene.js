@@ -14,6 +14,11 @@ const ROW_W = 720;
 const ROW_H = 54;
 const TOP = 132;
 
+// 아이콘을 34 칸 안에 비율 그대로 맞춘다 (하트처럼 정사각형이 아닌 그림도 찌그러지지 않게)
+function fitIcon(icon) {
+  return icon.setScale(34 / Math.max(icon.width, icon.height));
+}
+
 export class ShopScene extends Phaser.Scene {
   constructor() {
     super('Shop');
@@ -55,7 +60,7 @@ export class ShopScene extends Phaser.Scene {
     const y = TOP + i * (ROW_H + 6);
     const c = this.add.container(480, y);
     const bg = this.add.graphics();
-    const icon = this.add.image(-ROW_W / 2 + 34, 0, 'heart').setDisplaySize(34, 34);
+    const icon = fitIcon(this.add.image(-ROW_W / 2 + 34, 0, 'heart'));
     const name = makeText(this, -ROW_W / 2 + 64, -11, '', 19, '#ffffff', { align: 'left' }).setOrigin(0, 0.5);
     const desc = makeText(this, -ROW_W / 2 + 64, 13, '', 14, '#dddddd', { align: 'left' }).setOrigin(0, 0.5);
     const rank = makeText(this, 150, 0, '', 16, '#ffd23f').setOrigin(0.5);
@@ -79,7 +84,7 @@ export class ShopScene extends Phaser.Scene {
       r.bg.clear();
       r.bg.fillStyle(on ? 0x24405a : 0x1c2028, 0.95).fillRoundedRect(-ROW_W / 2, -ROW_H / 2, ROW_W, ROW_H, 10);
       r.bg.lineStyle(on ? 4 : 2, on ? 0xffe14a : 0x4a5060, 1).strokeRoundedRect(-ROW_W / 2, -ROW_H / 2, ROW_W, ROW_H, 10);
-      if (this.textures.exists(e.icon)) r.icon.setTexture(e.icon).setDisplaySize(34, 34);
+      if (this.textures.exists(e.icon)) fitIcon(r.icon.setTexture(e.icon));
       r.name.setText(e.name).setColor(e.color);
       r.desc.setText(e.desc);
       r.rank.setText(e.maxRank > 1 ? `${'●'.repeat(e.rank)}${'○'.repeat(e.maxRank - e.rank)}` : e.rank ? '●' : '○');

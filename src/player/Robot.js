@@ -8,7 +8,8 @@ export class Robot {
   constructor(scene, target) {
     this.scene = scene;
     this.target = target;
-    this.sprite = scene.add.image(target.x - 45, target.y - 55, 'robot').setDepth(15).setDisplaySize(30, 34);
+    this.sprite = scene.add.image(target.x - 45, target.y - 55, 'robot').setDepth(15);
+    this.sprite.setScale(34 / this.sprite.height); // 높이 34, 비율은 그대로 (그림이 앞을 봐서 뒤집지 않음)
     this.bubble = scene.add
       .text(0, 0, '', {
         fontFamily: FONT,
