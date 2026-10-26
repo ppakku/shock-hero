@@ -4,6 +4,7 @@ import { saveStore } from '../save.js';
 import { coop } from '../net/coop.js';
 import { cleanCode, isRoomCode, CODE_LENGTH } from '../logic/room.js';
 import { HERO_INFO, normalizeHero } from '../logic/heroes.js';
+import { guestProfile } from '../logic/coopRewards.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText, FONT } from '../ui/text.js';
 
@@ -190,7 +191,7 @@ export class RoomScene extends Phaser.Scene {
     sfx.play('beep');
     this.mode = 'connecting';
     this.say('방장에게 연결하는 중...', '#ffffff');
-    coop.join(code, this.hero);
+    coop.join(code, guestProfile(saveStore.load()));
   }
 
   // ---------- 연결 소식 ----------

@@ -1,6 +1,8 @@
 import Peer from 'peerjs';
 import { makeRoomCode, peerIdFor, mergeInput } from '../logic/room.js';
 import { sfx } from '../audio/sfx.js';
+import { cfg } from '../config/index.js';
+import { cleanProfile } from '../logic/coopRewards.js';
 
 // 인터넷 함께하기 연결 (PeerJS). 화면과 상관없이 연결 상태만 들고 있다. 게임 전체에서 하나만 쓴다.
 //
@@ -11,8 +13,8 @@ import { sfx } from '../audio/sfx.js';
 // 친구(guest): 방 코드로 방장에게 붙고, 누른 키를 보내고, 받은 영상을 보여 준다.
 //
 // 주고받는 쪽지 (JSON):
-//   친구 → 방장: { t: 'hello', hero }, { t: 'in', left, right, jumpDown, jumpPressed, ... }
-//   방장 → 친구: { t: 'sfx', name }, { t: 'info', text }
+//   친구 → 방장: { t: 'hello', hero, level, xp, upgrades, shop }, { t: 'in', left, right, jumpDown, jumpPressed, ... }
+//   방장 → 친구: { t: 'sfx', name }, { t: 'info', text }, { t: 'reward', kind, ... } (친구 기기에 저장할 보상)
 class Coop {
   constructor() {
     this.reset();
@@ -24,7 +26,7 @@ class Coop {
     this.call = null;
     this.role = null; // 'host' | 'guest' | null
     this.code = null;
-    this.partner = null; // 방장 쪽: 친구 정보 { hero }
+    this.partner = null; // 방장 쪽: 친구 정보 { hero, level, xp, upgrades, shop } (src/logic/coopRewards.js)
     this.input = {}; // 방장 쪽: 친구가 누르고 있는 키
     this.stream = null; // 친구 쪽: 받은 게임 화면 영상
     this.status = 'idle'; // 'idle' | 'waiting' | 'connecting' | 'connected' | 'closed'
@@ -94,6 +96,11 @@ class Coop {
     if (this.role === 'host' && this.status === 'connected') this.send({ t: 'sfx', name });
   }
 
+  // 친구 기기에 저장할 보상 (보물, 경험치, 클리어). 친구가 받아서 자기 저장에 넣는다
+  sendReward(msg) {
+    if (this.hostConnected) this.send({ t: 'reward', ...msg });
+  }
+
   // 방장이 읽은 뒤 한 번 누른 키를 지운다 (GameScene.readPartnerInput 이 부른다)
   takeInput() {
     const i = this.input;
@@ -103,8 +110,8 @@ class Coop {
 
   // ---------- 친구 ----------
 
-  // 방 참여. hero: 내가 고른 주인공
-  join(code, hero) {
+  // 방 참여. profile: 내 주인공과 성장 정보 (guestProfile)
+  join(code, profile) {
     this.close();
     this.role = 'guest';
     this.status = 'connecting';
@@ -113,7 +120,7 @@ class Coop {
     this.peer = peer;
     peer.on('open', () => {
       const conn = peer.connect(peerIdFor(code), { reliable: true });
-      this.useConn(conn, () => conn.send({ t: 'hello', hero }));
+      this.useConn(conn, () => conn.send({ t: 'hello', ...profile }));
     });
     peer.on('call', (call) => {
       this.call = call;
@@ -151,7 +158,7 @@ class Coop {
     if (!msg || typeof msg !== 'object') return;
     if (this.role === 'host') {
       if (msg.t === 'hello') {
-        this.partner = { hero: typeof msg.hero === 'string' ? msg.hero : 'shock' };
+        this.partner = cleanProfile(msg, cfg.upgrades.maxRank);
         this.status = 'connected';
         this.emit('connected', this.partner);
         this.sendScreen();
