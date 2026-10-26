@@ -18,7 +18,7 @@ export function normalizeDifficulty(level) {
   return DIFFICULTIES.includes(level) ? level : 'normal';
 }
 
-// 스테이지가 하나 넘어갈 때마다 조금씩 어려워지는 양 (스테이지 1 은 그대로, 10 이면 9번 쌓임)
+// 스테이지가 하나 넘어갈 때마다 조금씩 어려워지는 양 (스테이지 1 은 그대로, 10 이면 9번 쌓임, 20 이면 13.5번)
 export const STAGE_RAMP = {
   monsterDamage: 0.03, // 몬스터 피해 +3%
   monsterSpeed: 0.015, // 몬스터 빠르기 +1.5%
@@ -29,8 +29,10 @@ export const STAGE_RAMP = {
 };
 
 // 스테이지 번호에 맞춘 배수. 난이도(쉬움, 보통, 어려움) 값에 곱한다(겹쳐 쓰기는 더한다).
+// 스테이지 11 부터(2장)는 반씩만 쌓인다. 너무 가파르지 않게.
 export function stageRamp(stageNum = 1) {
-  const n = Math.max(0, (Number.isFinite(stageNum) ? Math.floor(stageNum) : 1) - 1);
+  const raw = Math.max(0, (Number.isFinite(stageNum) ? Math.floor(stageNum) : 1) - 1);
+  const n = Math.min(raw, 9) + Math.max(0, raw - 9) * 0.5;
   const out = {};
   for (const [k, step] of Object.entries(STAGE_RAMP)) out[k] = k === 'bossCombo' ? step * n : 1 + step * n;
   return out;
