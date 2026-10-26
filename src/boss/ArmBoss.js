@@ -1013,7 +1013,7 @@ export class ArmBoss extends BossBase {
       duration: 800,
       ease: 'Quad.easeIn',
     });
-    this.scene.robot.say(['장갑이 떨어졌다! 코어가 보여!', '충전 펀치로 끝내 버려!'], true);
+    this.scene.robot.say(['장갑이 떨어졌다! 코어가 보여!', '{strong}(으)로 끝내 버려!'], true);
     if (!this.action) this.timer = 1.2;
   }
 

@@ -28,7 +28,7 @@ const TIPS = {
   vines: '덩굴이 솟아! 잎사귀 표시에서 비켜! 잡히면 대시로 빠져나와!',
   crawl: '벽을 타고 천장으로 간다! 떨어지는 독 방울 표시를 피해!',
   tired: '와처가 지쳐서 엎드렸어! 지금! 등의 초록 독혹을 때려!',
-  head: '엎드린 와처의 머리가 보여! 충전 펀치로 때려!',
+  head: '엎드린 와처의 머리가 보여! {strong}(으)로 때려!',
 };
 
 // 겹치기 공격: 큰 공격을 하는 동안 같이 쓸 수 있는 작은 공격 (난이도의 bossCombo 확률)
@@ -873,7 +873,7 @@ export class WatcherBoss extends BossBase {
     }
     if (!this.arm.alive && !this.back.alive) {
       this.headOpen = true;
-      this.scene.robot.say(['긴 팔도 독혹도 끝났어!', '이제 지쳐서 엎드리면 머리가 낮게 내려와. 충전 펀치로 끝내!'], true);
+      this.scene.robot.say(['긴 팔도 독혹도 끝났어!', '이제 지쳐서 엎드리면 머리가 낮게 내려와. {strong}(으)로 끝내!'], true);
       if (this.tired) this.startTired(0.8);
     } else {
       this.scene.robot.say(`${part.label} 끝! 이제 ${this.arm.alive ? '긴 팔' : '등 독혹'}만 남았어!`, true);

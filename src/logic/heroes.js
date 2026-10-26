@@ -172,3 +172,99 @@ export function rainStrikeXs(targets, viewLeft, viewWidth, count) {
   for (let i = 0; i < extra; i++) xs.push(viewLeft + ((i + 0.5) * viewWidth) / extra);
   return xs;
 }
+
+// ---------- 주인공별 안내 글 ----------
+// 안내판, 로봇 대사, 조작법 글에서 {atk} 같은 표시를 고른 주인공의 말로 바꾼다 (controls.js 의 keyText).
+// 짧은 이름: atk 기본 공격, hold 꾹 눌렀다 떼는 공격, strong 약점을 가장 세게 치는 공격 (충전 공격이라 보스 약점에 더 셈),
+//           upAtk 위쪽 공격, upName 조작법 글의 위쪽 공격 이름, dashName 대시 이름.
+// 문장: 주인공마다 뜻이 달라지는 조언 (방패, 단단한 해파리, 가시복어 등).
+// 문장 안의 {punch} 같은 키 표시와 (으)로 같은 조사 표시는 keyText 가 이어서 바꾼다.
+// 근거: 방패는 'charged' 만 깸 (shieldResult), 해파리는 반 충전 이상 'charged' 만 뚫음 (jellyBlocks),
+//       가시복어는 'punch', 'upper' 만 찔림 (pufferResult). 거인 회오리는 'punch', 올려치기는 'upper'.
+export const HERO_WORDS = {
+  shock: {
+    atk: '펀치',
+    hold: '충전 펀치',
+    strong: '충전 펀치',
+    upAtk: '어퍼컷',
+    upName: '어퍼컷',
+    dashName: '대시',
+    holdTip: '꾹 눌렀다 떼면 충전 펀치! 오래 누를수록 멀리 날아가.',
+    dashSign: '{dash} 로 대시해서 피하기',
+    shieldTip: '충전 펀치로 방패를 깨거나 뒤로 돌아가서 때려!',
+    shieldSign: '충전 펀치로 방패 깨기, 아니면 뒤에서!',
+    jellyTip: '펀치는 튕겨 나가. {punch} 를 꾹 눌러 충전 펀치로 깨뜨려!',
+    jellyTalk: '가까이 가면 단단한 공이 돼. 그땐 {punch} 를 꾹 눌러 충전 펀치!',
+    pufferTip: '맨손 펀치랑 어퍼컷은 따끔해. 충전 펀치로 치거나, 바람이 빠지면 때려!',
+    pufferSign: '맨손 펀치 금지!',
+    pufferTalk: '가시복어가 부르르 떨면 곧 부풀어. 맨손 펀치는 따끔해!',
+    dashThrough: '돌진이다! 빨간 길을 대시로 뚫고 지나가!',
+  },
+  gunner: {
+    atk: '번개탄',
+    hold: '레이저',
+    strong: '레이저',
+    upAtk: '위로 쏘는 번개탄',
+    upName: '위로 쏘기',
+    dashName: '백스텝',
+    holdTip: '꾹 눌렀다 떼면 레이저! 오래 누를수록 굵고 세져.',
+    dashSign: '{dash} 로 뒤로 폴짝 피하기',
+    shieldTip: '번개탄은 방패에 막혀! 레이저로 방패를 깨거나 뒤로 돌아가서 쏴!',
+    shieldSign: '레이저로 방패 깨기, 아니면 뒤에서!',
+    jellyTip: '번개탄은 튕겨 나가. {punch} 를 꾹 눌러 레이저로 깨뜨려!',
+    jellyTalk: '가까이 가면 단단한 공이 돼. 그땐 {punch} 를 꾹 눌러 레이저!',
+    pufferTip: '번개탄이랑 레이저는 가시를 뚫어! 가까이 가지 말고 멀리서 쏴!',
+    pufferSign: '가시복어가 부풀어도\n멀리서 쏘면 OK!',
+    pufferTalk: '가시복어가 부르르 떨면 곧 부풀어. 번개탄은 가시를 뚫으니까 멀리서 쏴!',
+    dashThrough: '돌진이다! 왕을 등지고 대시하면 뒤로 폴짝 뛰어서 빨간 길을 지나가!',
+  },
+  giant: {
+    atk: '망치',
+    hold: '회오리',
+    strong: '망치',
+    upAtk: '망치 올려치기',
+    upName: '올려치기',
+    dashName: '몸통 박치기',
+    holdTip: '꾹 눌렀다 떼면 회오리! 오래 누를수록 오래 돌아.',
+    dashSign: '{dash} 로 몸통 박치기해서 피하기',
+    shieldTip: '회오리는 방패에 막혀! 망치로 내려찍거나 몸통 박치기로 방패를 깨!',
+    shieldSign: '망치로 방패 깨기!\n회오리는 막혀요',
+    jellyTip: '회오리랑 올려치기는 튕겨 나가. 망치로 내려찍어서 깨뜨려!',
+    jellyTalk: '가까이 가면 단단한 공이 돼. 그땐 망치로 내려찍어!',
+    pufferTip: '회오리랑 올려치기는 따끔해. 망치로 내려찍거나 몸통 박치기로 쳐!',
+    pufferSign: '회오리 금지!\n망치로 내려찍기!',
+    pufferTalk: '가시복어가 부르르 떨면 곧 부풀어. 회오리랑 올려치기는 따끔해! 망치로 내려찍어!',
+    dashThrough: '돌진이다! 빨간 길을 몸통 박치기로 뚫고 지나가!',
+  },
+};
+
+// 고른 주인공의 안내 말 (모르는 이름은 쇼크 히어로)
+export const heroWords = (id) => HERO_WORDS[normalizeHero(id)];
+
+// 받침 번호 (0 이면 받침 없음, 8 이면 ㄹ 받침). 한글 글자가 아니면 null.
+export function batchim(ch) {
+  const code = ch ? ch.charCodeAt(0) - 0xac00 : -1;
+  if (code < 0 || code > 11171) return null;
+  return code % 28;
+}
+
+// '망치(으)로', '번개탄(을)를' 처럼 쓴 조사를 앞 글자 받침에 맞게 고른다.
+// 예: '번개탄(으)로' → '번개탄으로', '망치(으)로' → '망치로', '레이저(이)가' → '레이저가'
+// 한글이 아닌 글자 뒤에서는 받침 없는 쪽을 쓴다.
+const JOSA = {
+  '(이)가': ['이', '가'],
+  '(을)를': ['을', '를'],
+  '(은)는': ['은', '는'],
+  '(과)와': ['과', '와'],
+  '(이)나': ['이나', '나'],
+  '(이)랑': ['이랑', '랑'],
+};
+export function fixJosa(str) {
+  // 괄호를 닫은 바로 뒤면 괄호 앞 글자를 본다: '어퍼컷(W 누른 채 펀치 버튼)(으)로' → '...버튼)으로'
+  return String(str).replace(/([^\s(])(\)?)(\((?:이|을|은|과|으)\)(?:가|를|는|와|나|랑|로))/g, (m, ch, close, josa) => {
+    const b = batchim(ch);
+    if (josa === '(으)로') return ch + close + (b && b !== 8 ? '으로' : '로'); // ㄹ 받침은 '로'
+    const pair = JOSA[josa];
+    return pair ? ch + close + (b ? pair[0] : pair[1]) : m;
+  });
+}

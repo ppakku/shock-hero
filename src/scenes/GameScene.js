@@ -47,6 +47,7 @@ export class GameScene extends Phaser.Scene {
 
   create(data = {}) {
     this.save = saveStore.load();
+    this.hero = normalizeHero(this.save.settings.hero); // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
     this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)
     this.difficulty = this.save.settings.difficulty;
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
@@ -79,7 +80,6 @@ export class GameScene extends Phaser.Scene {
     this.foreground = new Foreground(this);
 
     const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
-    this.hero = normalizeHero(this.save.settings.hero); // 모험 지도에서 고른 주인공
     this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
     this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
     this.player = new Player(this, startX, st.groundY - 40, cfg, {
@@ -872,7 +872,7 @@ export class GameScene extends Phaser.Scene {
 
   // 안내 글의 {punch} 같은 표시를 지금 조작 방식의 키 이름으로
   keyText(str) {
-    return keyText(str, this.touch ? 'touch' : this.save.settings.controls);
+    return keyText(str, this.touch ? 'touch' : this.save.settings.controls, this.hero);
   }
 
   // 공격 사각형에 닿은 몬스터와 보스에게 피해를 준다. 하나라도 맞았으면 true.

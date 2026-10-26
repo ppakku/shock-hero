@@ -110,7 +110,7 @@ export class Pufferfish extends SwimMonster {
     this.changeState('spiky');
     if (!this.scene.pufferTipSaid) {
       this.scene.pufferTipSaid = true;
-      this.scene.robot.say('가시복어가 부풀었어! 맨손으로 때리면 따끔해. 피해 있다가 바람이 빠지면 때려!', true);
+      this.scene.robot.say('가시복어가 부풀었어! {pufferTip}', true);
     }
   }
 

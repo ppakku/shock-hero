@@ -130,7 +130,7 @@ export const POWER_INFO = {
   shield: { name: '강철 몸', desc: '체력바 위에 방패가 생겨요!', icon: 'pw_shield', color: '#bfe0ff', tint: 0x9fd0ff },
   power: { name: '파워 장갑', desc: '모든 공격이 엄청 아파요!', icon: 'pw_power', color: '#ff7a5c', tint: 0xff7a5c },
   star: { name: '무적 별', desc: '아무것도 안 아파요! 몸으로 부딪혀!', icon: 'pw_star', color: '#ffd23f', tint: 0xffd23f },
-  rapid: { name: '에너지 연사', desc: '펀치마다 에너지탄이 나가요!', icon: 'pw_rapid', color: '#6fc0ff', tint: 0x6fc0ff },
+  rapid: { name: '에너지 연사', desc: '공격할 때마다 에너지탄이 나가요!', icon: 'pw_rapid', color: '#6fc0ff', tint: 0x6fc0ff },
 };
 
 // 보물에 적힌 힘. 없거나 모르는 이름이면 무작위.

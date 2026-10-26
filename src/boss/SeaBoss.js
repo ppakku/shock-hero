@@ -30,7 +30,7 @@ const LOOK = {
 
 const TIPS = {
   charge: '빨간 띠를 따라 돌진해 와! 위나 아래로 헤엄쳐서 띠 밖으로 피하거나 대시로 뚫어!',
-  bubbles: '바닥에서 거품 폭탄이 올라와! 점선 밖으로 비켜. 펀치로 터뜨려도 돼!',
+  bubbles: '바닥에서 거품 폭탄이 올라와! 점선 밖으로 비켜. {atk}(으)로 터뜨려도 돼!',
   whirlpool: '소용돌이로 빨아들인다! 반대쪽으로 계속 헤엄쳐!',
   ink: '먹물이다! 깜깜해도 초롱불 빛을 잘 봐. 빨간 띠가 보이면 피해!',
   sweep: '꼬리로 바닥을 휩쓴다! {jump} 를 꾹 눌러 위로 헤엄쳐!',
@@ -916,7 +916,7 @@ export class SeaBoss extends BossBase {
     }
     if (this.heartOpen) {
       this.heart.setVisible(true);
-      this.scene.time.delayedCall(400, () => s.robot.say(['부위를 다 부쉈어! 배에서 심장이 쿵쾅거려!', '심장을 때려! 충전 펀치가 제일 세!'], true));
+      this.scene.time.delayedCall(400, () => s.robot.say(['부위를 다 부쉈어! 배에서 심장이 쿵쾅거려!', '심장을 때려! {strong}(이)가 제일 세!'], true));
     }
   }
 

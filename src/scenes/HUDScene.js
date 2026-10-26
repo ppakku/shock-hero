@@ -8,6 +8,8 @@ import { DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/growth.js';
 import { makeText, formatTime } from '../ui/text.js';
 import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, STICK } from '../ui/touch.js';
+import { attackButtonLabel } from '../logic/controls.js';
+import { normalizeHero } from '../logic/heroes.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -79,11 +81,13 @@ export class HUDScene extends Phaser.Scene {
   // ---------- 태블릿 화면 버튼 ----------
   buildTouchPad() {
     this.padG = this.add.graphics().setDepth(90);
-    this.padLabels = TOUCH_BUTTONS.map((b) =>
-      makeText(this, b.x, b.y, b.label, b.label.length > 1 ? Math.max(14, Math.round(b.r * 0.46)) : Math.round(b.r * 0.6), '#ffffff')
+    const hero = normalizeHero(this.game_?.hero ?? saveStore.load().settings.hero);
+    this.padLabels = TOUCH_BUTTONS.map((b) => {
+      const label = b.id === 'attack' ? attackButtonLabel(hero) : b.label; // 공격 버튼은 주인공의 공격 이름 (펀치, 번개탄, 망치)
+      return makeText(this, b.x, b.y, label, label.length > 1 ? Math.max(14, Math.round(b.r * 0.46)) : Math.round(b.r * 0.6), '#ffffff')
         .setOrigin(0.5)
-        .setDepth(91),
-    );
+        .setDepth(91);
+    });
     const pb = PAUSE_BUTTON;
     this.pauseBtn = this.add.container(pb.x, pb.y).setDepth(92);
     const pg = this.add.graphics();

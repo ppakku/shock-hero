@@ -34,7 +34,7 @@ const TIPS = {
   fly: '날아올랐다! 불덩이 표시를 피하고, 내려앉는 빨간 칸에서 비켜!',
   pillars: '용암 갈라짐에서 불기둥이 솟아! 빛나지 않는 곳으로 옮겨!',
   tired: '날개가 축 처졌어! 지금! 날개를 때려!',
-  belly: '용이 헉헉거려! 크림색 배를 충전 펀치로 때려!',
+  belly: '용이 헉헉거려! 크림색 배를 {strong}(으)로 때려!',
 };
 
 // 겹치기 공격: 큰 공격을 하는 동안 같이 쓸 수 있는 작은 공격 (난이도의 bossCombo 확률)
@@ -1025,7 +1025,7 @@ export class DragonBoss extends BossBase {
     this.scene.gainXp(this.k.partXp, x, this.groundY - 120);
     if (!this.tailPart.alive && !this.wing.alive) {
       this.bellyOpen = true;
-      this.scene.robot.say(['꼬리도 날개도 끝났어!', '이제 공격이 끝나면 헉헉거려. 크림색 배를 충전 펀치로!'], true);
+      this.scene.robot.say(['꼬리도 날개도 끝났어!', '이제 공격이 끝나면 헉헉거려. 크림색 배를 {strong}(으)로!'], true);
       if (this.action?.type === 'tail') this.afterAttack();
     } else {
       this.scene.robot.say(`${part.label} 끝! 이제 ${this.tailPart.alive ? '꼬리' : '날개'}만 남았어!`, true);

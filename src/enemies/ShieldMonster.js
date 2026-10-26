@@ -60,7 +60,7 @@ export class ShieldMonster extends Monster {
     this.setVelocityX(dir * 90);
     if (!s.shieldTipShown) {
       s.shieldTipShown = true;
-      s.robot?.say('방패에 막혔어! 충전 펀치로 방패를 깨거나 뒤로 돌아가서 때려!', true);
+      s.robot?.say('방패에 막혔어! {shieldTip}', true);
     }
   }
 

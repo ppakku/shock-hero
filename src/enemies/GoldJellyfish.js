@@ -168,7 +168,7 @@ export class GoldJellyfish extends SwimMonster {
     this.changeState('hard');
     if (!this.scene.jellyTipSaid) {
       this.scene.jellyTipSaid = true;
-      this.scene.robot.say(this.scene.keyText('골드해파리가 단단해졌어! 펀치는 튕겨 나가. {punch} 를 꾹 눌러 충전 펀치로 깨뜨려!'), true);
+      this.scene.robot.say('골드해파리가 단단해졌어! {jellyTip}', true);
     }
   }
 

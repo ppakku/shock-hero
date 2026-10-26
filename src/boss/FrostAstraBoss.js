@@ -54,7 +54,7 @@ const TIPS = {
   avalanche: ['빙천지락! 바닥이 빛나는 곳에서 얼음 가시가 솟아!', '빛나지 않는 틈에 서 있다가, 다음 빛이 오면 옆 틈으로 옮겨!'],
   hop: '뛰어올랐다! 그림자 밖으로 도망쳐!',
   land: '지쳐서 내려왔어! 지금이야, 날개를 마구 때려!',
-  hover: '낮게 떠 있어! 밑에서 점프 펀치나 위쪽 공격!',
+  hover: '낮게 떠 있어! 밑에서 점프 {atk}(이)나 {upAtk}!',
 };
 
 // 혹한의 아스트라 (아들 디자인): 수정처럼 빛나는 파란 비늘의 얼음 용.
@@ -750,7 +750,7 @@ export class FrostAstraBoss extends BossBase {
       // 낮게 떠서 숨 고르기 (맞는 곳 아래쪽 y 약 305)
       this.y = LOW_Y + Math.sin(this.t * 5) * 5;
       this.faceTo(p.x);
-      this.label(0, '지금! 점프 펀치!', this.x, this.y - 110, 22, '#ffd23f');
+      this.label(0, this.scene.keyText('지금! 점프 {atk}!'), this.x, this.y - 110, 22, '#ffd23f');
       this.label(1, '▲', this.x, this.y + 85, 22, '#ffd23f');
       if (a.t >= this.ic.hoverTime) this.endAction();
     }
@@ -1172,7 +1172,7 @@ export class FrostAstraBoss extends BossBase {
     this.combo.clear();
     this.mode = 'grounded';
     this.action = { type: 'crash', phase: 'aim', t: 0 };
-    this.scene.robot.say(['날개가 다 부서졌어! 이제 못 날아!', '가슴의 얼음 심장을 때려! 충전 펀치가 제일 세!'], true);
+    this.scene.robot.say(['날개가 다 부서졌어! 이제 못 날아!', '가슴의 얼음 심장을 때려! {strong}(이)가 제일 세!'], true);
   }
 
   hudParts() {

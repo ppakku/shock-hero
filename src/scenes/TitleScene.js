@@ -6,7 +6,7 @@ import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
 import { totalStars } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
-import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO } from '../logic/controls.js';
+import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO, controlLines } from '../logic/controls.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { tokenizeControlLine } from '../ui/titleLayout.js';
@@ -128,9 +128,8 @@ export class TitleScene extends Phaser.Scene {
     this.add.image(300, 60, 'tt-title').setDepth(10);
     this.add.image(330, 122, 'tt-sub').setDepth(11).setAngle(-2);
 
-    // 조작법 철판
-    const scheme = this.touch ? TOUCH_INFO : CONTROL_INFO[save.settings.controls] || CONTROL_INFO.classic;
-    this.drawControls(scheme.lines);
+    // 조작법 철판 (고른 주인공의 공격 이름으로)
+    this.drawControls(controlLines(this.touch ? 'touch' : save.settings.controls, save.settings.hero));
 
     // 모험 지도 열기 (예전 스테이지 카드 자리)
     this.mapBtn = this.add.container(width / 2, 300).setDepth(15).setAngle(-1.5);
