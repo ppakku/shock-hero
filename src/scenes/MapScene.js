@@ -3,12 +3,13 @@ import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { stages, chapters } from '../stage/index.js';
 import { stageStars, totalStars, STAR_KINDS, STAR_INFO } from '../logic/rewards.js';
-import { nodePosition, roadPoints, locateStage, chapterUnlocked } from '../ui/mapLayout.js';
+import { nodePosition, roadPoints, locateStage, chapterUnlocked, mapStartStage } from '../ui/mapLayout.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText, formatTime, FONT } from '../ui/text.js';
 
 // 모험 지도: 냥코대전쟁처럼 길 위의 스테이지 점을 골라서 들어간다.
 // ← → 로 스테이지 고르기 (장 끝에서 넘어가면 다음 장), Q / E 로 장 넘기기, Enter 로 시작, Esc 로 타이틀.
+// 잠긴 스테이지도 골라서 이름과 보스를 볼 수 있지만 출발은 못 한다.
 // 점을 한 번 누르면 고르고, 한 번 더 누르면 시작한다.
 
 // 스테이지 배경 종류 → 지도 장식 그림
@@ -31,8 +32,7 @@ export class MapScene extends Phaser.Scene {
     this.started = false;
     this.save = saveStore.load();
     if (new URLSearchParams(window.location.search).has('all')) this.save.unlocked = stages.length; // 테스트용: 모든 스테이지 열기
-    const want = data.stage || this.save.checkpoint || this.save.unlocked;
-    this.selected = Phaser.Math.Clamp(want, 1, this.save.unlocked);
+    this.selected = mapStartStage(this.save, data.stage, stages.length);
     this.chapterIndex = locateStage(chapters, this.selected).chapterIndex;
     this.draw();
 
@@ -110,7 +110,7 @@ export class MapScene extends Phaser.Scene {
     const next = chapters[this.chapterIndex + 1];
     const nextOk = next && chapterUnlocked(next, unlocked);
     this.arrow(250, 40, '◀', prevOk, () => this.turnChapter(-1));
-    this.arrow(710, 40, next ? (nextOk ? '▶' : '▶ 🔒') : '', nextOk, () => this.turnChapter(1));
+    this.arrow(710, 40, next ? (nextOk ? '▶' : '▶ 🔒') : '', Boolean(next), () => this.turnChapter(1));
     makeText(this, 940, 22, `★ ${totalStars(this.save, stages)}/${stages.length * 3}   💎 ${this.save.gems}`, 16, '#ffffff').setOrigin(1, 0.5).setDepth(40);
     const back = makeText(this, 20, 22, '◀ 타이틀', 16, '#ffffff', { backgroundColor: '#00000088', padding: { x: 8, y: 4 } })
       .setOrigin(0, 0.5)
@@ -170,9 +170,8 @@ export class MapScene extends Phaser.Scene {
       });
     }
     c.add(parts);
-    c.setSize(r * 2 + 10, r * 2 + 10).setInteractive({ useHandCursor: !locked });
+    c.setSize(r * 2 + 10, r * 2 + 10).setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => {
-      if (locked) return this.flashLocked();
       if (this.selected === n) this.begin(this.canContinue);
       else this.select(n);
     });
@@ -250,6 +249,14 @@ export class MapScene extends Phaser.Scene {
       this.restartBtn.setText('');
       return;
     }
+    if (n > this.save.unlocked) {
+      this.infoTitle.setText(`스테이지 ${n}  ${st.name}  🔒`);
+      this.infoStars.setText(`스테이지 ${n - 1} 을(를) 깨면 열려요`);
+      this.infoMore.setText(`보스: ${st.boss.name}`);
+      this.startBtn.setVisible(false);
+      this.restartBtn.setText(this.touch ? '' : `← 로 돌아가면 스테이지 ${this.save.unlocked} 를 할 수 있어요`);
+      return;
+    }
     const stars = stageStars(this.save, st, n);
     const found = st.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
     const best = this.save.bestTimes[n];
@@ -261,7 +268,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   select(n) {
-    if (n < 1 || n > stages.length || n > this.save.unlocked) return false;
+    if (n < 1 || n > stages.length) return false;
     this.selected = n;
     const { chapterIndex } = locateStage(chapters, n);
     sfx.play('cardMove');
@@ -282,8 +289,10 @@ export class MapScene extends Phaser.Scene {
   turnChapter(dir) {
     if (this.started) return;
     const next = chapters[this.chapterIndex + dir];
-    if (!next || !chapterUnlocked(next, this.save.unlocked)) return this.flashLocked();
-    const pick = Math.max(...next.stages.filter((n) => n <= this.save.unlocked));
+    if (!next) return this.flashLocked();
+    // 열린 곳 중 가장 뒤, 아직 못 여는 장이면 그 장의 첫 스테이지 (보기만)
+    const open = next.stages.filter((n) => n <= this.save.unlocked);
+    const pick = open.length ? Math.max(...open) : next.stages[0];
     this.selected = pick;
     this.chapterIndex += dir;
     sfx.play('cardMove');
@@ -303,6 +312,7 @@ export class MapScene extends Phaser.Scene {
 
   begin(fromCheckpoint) {
     if (this.started || !this.chapter.stages.includes(this.selected)) return;
+    if (this.selected > this.save.unlocked) return this.flashLocked(); // 잠긴 스테이지는 출발 못 함
     this.started = true;
     sfx.unlock();
     sfx.muted = this.save.settings.muted;
