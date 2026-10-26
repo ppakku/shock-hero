@@ -27,6 +27,7 @@ import {
 import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
 import { isTouchDevice, touchPad, touchPoints } from '../ui/touch.js';
+import { drawSignboard, signStyleFor } from '../ui/signboard.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
@@ -426,18 +427,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    for (const s of st.signs) {
-      const t = this.add
-        .text(s.x, st.groundY - 120, this.keyText(s.text), {
-          fontFamily: FONT, fontSize: '16px', color: '#1b1b1b', align: 'center',
-          backgroundColor: '#f2e6c9', padding: { x: 10, y: 8 },
-        })
-        .setOrigin(0.5, 1)
-        .setDepth(1);
-      const post = this.add.graphics().setDepth(0.5);
-      post.fillStyle(0x6b4a2b, 1).fillRect(s.x - 4, st.groundY - 120, 8, 120);
-      t.setStroke('#6b4a2b', 0);
-    }
+    const signStyle = signStyleFor(st.theme);
+    // 볼트 말풍선이 안내판 글자를 가리지 않게 판 자리를 기억해 둔다
+    this.signBoards = st.signs.map((s) => drawSignboard(this, s.x, st.groundY, this.keyText(s.text), signStyle));
 
     // 체크포인트 깃발
     this.flagActive = this.fromCheckpoint;

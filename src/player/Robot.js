@@ -10,19 +10,22 @@ export class Robot {
     this.target = target;
     this.sprite = scene.add.image(target.x - 45, target.y - 55, 'robot').setDepth(15);
     this.sprite.setScale(34 / this.sprite.height); // 높이 34, 비율은 그대로 (그림이 앞을 봐서 뒤집지 않음)
-    this.bubble = scene.add
-      .text(0, 0, '', {
-        fontFamily: FONT,
-        fontSize: '16px',
-        color: '#111111',
-        backgroundColor: '#ffffffee',
-        padding: { x: 10, y: 6 },
-        wordWrap: { width: 280, useAdvancedWrap: true },
-        align: 'left',
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(50)
-      .setVisible(false);
+    // 말풍선: 굵은 테두리의 만화 말풍선 + 하늘색 이름표, 꼬리는 볼트 쪽을 가리킨다
+    this.bubbleText = scene.add.text(0, 0, '', {
+      fontFamily: FONT,
+      fontSize: '16px',
+      color: '#16202a',
+      wordWrap: { width: 280, useAdvancedWrap: true },
+      align: 'left',
+      lineSpacing: 2,
+    });
+    this.bubbleName = scene.add
+      .text(0, 0, '볼트', { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: '#06222a' })
+      .setOrigin(0, 0.5);
+    this.bubbleG = scene.add.graphics();
+    this.bubble = scene.add.container(0, 0, [this.bubbleG, this.bubbleName, this.bubbleText]).setDepth(50).setVisible(false);
+    this.bubbleW = 0;
+    this.bubbleH = 0;
     this.queue = [];
     this.timer = 0;
     this.t = 0;
@@ -154,9 +157,15 @@ export class Robot {
 
     if (this.bubble.visible) {
       const cam = this.scene.cameras.main;
-      const half = this.bubble.width / 2 + 8;
+      const half = this.bubbleW / 2 + 8;
       const x = Phaser.Math.Clamp(this.sprite.x, cam.scrollX + half, cam.scrollX + cam.width - half);
-      this.bubble.setPosition(x, Math.max(this.sprite.y - 22, this.bubble.height + 8));
+      let y = Math.max(this.sprite.y - 30, cam.scrollY + this.bubbleH + 16);
+      // 안내판과 겹치면 판 위로 올린다
+      for (const b of this.scene.signBoards || []) {
+        if (x + half > b.left && x - half < b.right && y > b.top - 6 && y - this.bubbleH < b.bottom + 6) y = b.top - 12;
+      }
+      this.bubble.setPosition(x, y);
+      this.drawBubble(this.sprite.x - x);
       this.timer -= dt;
       if (this.timer <= 0) this.next();
     }
@@ -181,7 +190,33 @@ export class Robot {
       this.bubble.setVisible(false);
       return;
     }
-    this.bubble.setText(`볼트: ${line}`).setVisible(true);
+    this.bubbleText.setText(line);
+    this.bubbleW = Math.max(this.bubbleText.width, this.bubbleName.width + 20) + 28;
+    this.bubbleH = this.bubbleText.height + 30;
+    this.bubbleText.setPosition(-this.bubbleW / 2 + 14, -this.bubbleH + 20);
+    this.bubbleName.setPosition(-this.bubbleW / 2 + 18, -this.bubbleH);
+    this.bubble.setVisible(true);
     this.timer = Phaser.Math.Clamp(1.4 + line.length * 0.07, 2.2, 5);
+  }
+
+  // 말풍선 모양. 아래쪽 가운데가 (0, 0), tailX 는 볼트가 있는 쪽 (말풍선이 화면 끝에 밀려도 꼬리는 볼트를 가리킨다)
+  drawBubble(tailX) {
+    const g = this.bubbleG.clear();
+    const w = this.bubbleW, h = this.bubbleH, l = -w / 2, t = -h;
+    const tx = Phaser.Math.Clamp(tailX, l + 18, l + w - 18);
+    const nameW = this.bubbleName.width + 16;
+    // 그림자
+    g.fillStyle(0x000000, 0.3).fillRoundedRect(l + 4, t + 5, w, h, 12);
+    g.fillTriangle(tx - 6 + 4, -1 + 5, tx + 8 + 4, -1 + 5, tx + 4, 14 + 5);
+    // 테두리
+    g.fillStyle(0x10161c, 1).fillRoundedRect(l - 3, t - 3, w + 6, h + 6, 14);
+    g.fillTriangle(tx - 10, 0, tx + 12, 0, tx, 18);
+    // 바탕
+    g.fillStyle(0xfdfaf0, 1).fillRoundedRect(l, t, w, h, 11);
+    g.fillTriangle(tx - 6, -2, tx + 8, -2, tx, 13);
+    g.fillStyle(0xe6e0cc, 1).fillRoundedRect(l, t + h - 6, w, 6, { tl: 0, tr: 0, bl: 11, br: 11 });
+    // 이름표
+    g.fillStyle(0x10161c, 1).fillRoundedRect(l + 8, t - 12, nameW + 6, 22, 11);
+    g.fillStyle(0x3ff0ff, 1).fillRoundedRect(l + 11, t - 9, nameW, 16, 8);
   }
 }
