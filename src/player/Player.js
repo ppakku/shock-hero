@@ -222,7 +222,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.spinLeft = 0;
       this.scene.skills?.endSpin(this);
     }
-    if (this.hero === 'gunner' && !this.swim) return this.startBackstep();
+    if (this.hero === 'gunner') return this.startBackstep(input);
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0) || this.facing;
     this.facing = dir;
     this.setFlipX(dir < 0);
@@ -236,15 +236,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.onDash(this);
   }
 
-  // 번개 사수의 대시: 앞을 본 채로 뒤로 폴짝 빠진다
-  startBackstep() {
+  // 번개 사수의 대시: 앞을 본 채로 뒤로 폴짝 빠진다 (물속에서는 뒤로 쑥 헤엄쳐 빠진다)
+  startBackstep(input = {}) {
     const g = this.cfg.heroes.gunner;
     this.dashTime = this.cfg.dash.duration * 1.3;
     this.dashInvuln = this.cfg.dash.invincibleTime;
     this.dashCd.trigger();
-    this.body.allowGravity = true;
     this.setFlipX(this.facing < 0);
-    this.setVelocity(-this.facing * g.backstepSpeed, -g.backstepHop);
+    if (this.swim) {
+      this.body.allowGravity = false;
+      this.swim.onBackstep(this.facing, g.backstepSpeed, input);
+    } else {
+      this.body.allowGravity = true;
+      this.setVelocity(-this.facing * g.backstepSpeed, -g.backstepHop);
+    }
     this.rushHits = null;
     this.scene.onDash(this);
   }
