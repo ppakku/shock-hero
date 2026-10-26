@@ -91,7 +91,8 @@ export class GameScene extends Phaser.Scene {
     // 주소에 ?duo 를 붙이면 시험용으로 친구가 나온다 (window.__p2 에 키를 넣어 움직인다).
     const duo = new URLSearchParams(window.location.search).has('duo') ? { hero: 'gunner' } : null;
     const partner = data.partner || (coop.hostConnected ? coop.partner : duo);
-    this.partner = partner ? this.makePlayer(startX - 50, normalizeHero(partner.hero)) : null;
+    // 인터넷 친구는 자기 레벨, 강화 카드, 상점 강화로 나온다 (partner.level 이 없으면 방장 것)
+    this.partner = partner ? this.makePlayer(startX - 50, normalizeHero(partner.hero), partner.level ? partner : null) : null;
     this.partnerInput = coop.hostConnected ? () => coop.takeInput() : null;
     if (this.partnerInput) {
       const off = coop.on((e) => e === 'lost' && this.robot?.say('2P 친구와 연결이 끊겼어요. 친구가 같은 코드로 다시 들어오면 다음 스테이지부터 같이 해요.', true));
@@ -165,15 +166,19 @@ export class GameScene extends Phaser.Scene {
     window.__shock = { game: this.game, scene: this };
   }
 
-  // 주인공 하나 만들기 (레벨, 상점 강화, 땅 충돌, 수중 헤엄까지)
-  makePlayer(x, hero) {
+  // 주인공 하나 만들기 (레벨, 상점 강화, 땅 충돌, 수중 헤엄까지).
+  // profile: 함께하기 친구의 { level, upgrades, shop } (없으면 이 기기의 저장)
+  makePlayer(x, hero, profile = null) {
+    const bonus = profile ? shopBonuses(profile.shop, cfg.shop) : this.bonus;
     const p = new Player(this, x, this.stage.groundY - 40, cfg, {
-      maxHealth: this.maxHealthAt(this.save.level, hero),
+      maxHealth: this.maxHealthAt(profile ? profile.level : this.save.level, hero, bonus),
       powers: this.powers,
       hero,
     });
-    p.bonusAirJumps = this.bonus.airJumps; // 트리플 점프
-    p.ultGauge = this.bonus.ultStart; // 궁극기 반 충전
+    p.profile = profile;
+    p.bonus = bonus;
+    p.bonusAirJumps = bonus.airJumps; // 트리플 점프
+    p.ultGauge = bonus.ultStart; // 궁극기 반 충전
     this.physics.add.collider(p, this.solids);
     this.physics.add.collider(p, this.oneWays);
     // 수중 스테이지면 헤엄치기 (src/player/swim.js)
@@ -663,6 +668,7 @@ export class GameScene extends Phaser.Scene {
     img.setTexture('chest_open').setY(tr.y);
     this.tweens.add({ targets: img, y: tr.y - 40, alpha: 0, scale: img.scale * 1.3, delay: 150, duration: 500, onComplete: () => img.destroy() });
     const reward = treasureReward(saveStore.load(), this.stage, this.stageNum, tr.id, cfg.gems);
+    coop.sendReward({ kind: 'treasure', stage: this.stageNum, id: tr.id }); // 함께하기 친구도 자기 기기에 보물을 적는다
     this.save = saveStore.update(reward.patch);
     this.sparks.explode(24, tr.x, tr.y - 20);
     const found = this.stage.treasures.filter((t) => this.save.treasures.includes(t.id)).length;
@@ -801,14 +807,14 @@ export class GameScene extends Phaser.Scene {
   // 저장된 카드 레벨을 주인공과 볼트에게 적용
   applyUpgrades() {
     const up = cfg.upgrades;
-    const u = normalizeUpgrades(this.save.upgrades, up.maxRank);
     for (const p of this.players) {
+      const u = normalizeUpgrades(p.profile ? p.profile.upgrades : this.save.upgrades, up.maxRank); // 친구는 자기 카드
       p.baseDamageMultiplier = attackMultiplier(u, up);
       p.damageTakenMultiplier = damageTakenMultiplier(u, up);
       p.speedMultiplier = speedMultiplier(u, up);
       p.dashCooldownMultiplier = dashCooldownMultiplier(u, up);
     }
-    this.robot.setStats(robotStats(u.robot, cfg.robot));
+    this.robot.setStats(robotStats(normalizeUpgrades(this.save.upgrades, up.maxRank).robot, cfg.robot));
   }
 
   // 싸움 한가운데(슬로모션, 궁극기, 승리 연출, 쓰러짐)에는 카드를 띄우지 않고 기다린다
@@ -1138,9 +1144,10 @@ export class GameScene extends Phaser.Scene {
     const picksPending = Math.min(left, (before.picksPending || 0) + r.levelsGained);
     this.save = saveStore.update({ level: r.level, xp: r.xp, picksPending });
     floatText(this, x, y, `+${amount} XP`, '#9fe8ff', 16);
+    this.partnerXp(amount);
     if (r.levelsGained > 0) {
       const p = this.player;
-      for (const q of this.players) {
+      for (const q of this.players.filter((pl) => !pl.profile)) {
         q.health.setMax(this.maxHealthAt(r.level, q.hero));
         q.health.heal(cfg.level.healthPerLevel * r.levelsGained);
       }
@@ -1151,6 +1158,21 @@ export class GameScene extends Phaser.Scene {
         this.sfxPlay('levelup');
       });
       this.robot.say(picksPending > 0 ? '레벨 업! 카드를 하나 골라 봐!' : '레벨 업! 근육이 0.1mm 커졌어!');
+    }
+  }
+
+  // 함께하기 친구도 같은 경험치를 받는다: 친구 기기에 보내고, 여기서도 친구 레벨을 따라 올려 체력을 늘린다
+  partnerXp(amount) {
+    coop.sendReward({ kind: 'xp', amount });
+    const q = this.partner;
+    if (!q?.profile) return;
+    const r = addXp(q.profile, amount, cfg.level);
+    q.profile.level = r.level;
+    q.profile.xp = r.xp;
+    if (r.levelsGained > 0) {
+      q.health.setMax(this.maxHealthAt(r.level, q.hero, q.bonus));
+      q.health.heal(cfg.level.healthPerLevel * r.levelsGained);
+      floatText(this, q.x, q.y - 70, `2P 레벨 업! Lv ${r.level}`, '#ffd23f', 22);
     }
   }
 
@@ -1196,6 +1218,7 @@ export class GameScene extends Phaser.Scene {
     const before = saveStore.load();
     // 별 3: 체크포인트에서 다시 시작하지 않고 한 번에 깼을 때
     const reward = clearReward(before, this.stage, this.stageNum, { flawless: !this.fromCheckpoint }, cfg.gems);
+    coop.sendReward({ kind: 'clear', stage: this.stageNum, time, flawless: !this.fromCheckpoint }); // 친구 기기에도 클리어
     const { patch, isRecord, best } = clearStagePatch(before, this.stageNum, time);
     this.save = saveStore.update({ ...patch, ...reward.patch });
     this.sfxPlay('victory');
@@ -1220,8 +1243,8 @@ export class GameScene extends Phaser.Scene {
   // ---------- 도우미 ----------
 
   // 레벨과 상점 '튼튼한 몸' 을 더한 최대 체력
-  maxHealthAt(level, hero = this.hero) {
-    const base = maxHealthFor(level, cfg.player.maxHealth, cfg.level) + (this.bonus?.maxHealth || 0);
+  maxHealthAt(level, hero = this.hero, bonus = this.bonus) {
+    const base = maxHealthFor(level, cfg.player.maxHealth, cfg.level) + (bonus?.maxHealth || 0);
     return Math.round(base * heroStats(hero, cfg).health); // 번개 사수는 적게, 강철 거인은 많게
   }
 
