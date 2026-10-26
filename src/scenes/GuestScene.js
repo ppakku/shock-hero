@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { coop } from '../net/coop.js';
-import { CONTROL_KEYS, attackButtonLabel } from '../logic/controls.js';
+import { CONTROL_KEYS, attackButtonLabel, controlLines } from '../logic/controls.js';
 import { normalizeHero } from '../logic/heroes.js';
 import { HELD_KEYS, TAP_KEYS } from '../logic/room.js';
 import { applyGuestReward } from '../logic/coopRewards.js';
@@ -34,17 +34,25 @@ export class GuestScene extends Phaser.Scene {
       lineSpacing: 10,
     }).setOrigin(0.5);
     this.note = makeText(this, 480, 300, '', 18, '#ff9a8a').setOrigin(0.5).setDepth(50);
-    const leave = makeText(this, 916, 134, '나가기', 16, '#ffffff', { backgroundColor: '#5a1020aa', padding: { x: 8, y: 4 } })
+    // 방장 화면 위쪽 체력은 방장 것이라, 내 체력이 어디인지 알려 준다
+    makeText(this, 936, 114, '▲ 내 체력 (2P)', 12, '#ffd23f').setOrigin(1, 0.5).setDepth(60);
+    // 친구 화면에는 일시정지가 없다 (Esc 는 방에서 나가기)
+    this.controls = controlLines(this.touch ? 'touch' : save.settings.controls, save.settings.hero).map((l) =>
+      l.replace('일시정지 Esc', '방에서 나가기 Esc 두 번').replace(/\s*일시정지 오른쪽 위 II/, ''),
+    );
+    this.leaveAskAt = -9999;
+    this.helpBox = null;
+    const leave = makeText(this, 916, 140, '나가기', 16, '#ffffff', { backgroundColor: '#5a1020aa', padding: { x: 8, y: 4 } })
       .setOrigin(0.5)
       .setDepth(60)
       .setInteractive({ useHandCursor: true });
-    leave.on('pointerdown', () => this.leave());
+    leave.on('pointerdown', () => this.askLeave());
 
     // 내 조작 방식 키 (방장 쪽 GameScene 과 같은 이름)
     const scheme = CONTROL_KEYS[save.settings.controls] || CONTROL_KEYS.classic;
     this.keys = {};
     for (const [action, names] of Object.entries(scheme)) this.keys[action] = names.map((n) => this.input.keyboard.addKey(KEY[n]));
-    this.input.keyboard.on('keydown-ESC', () => this.leave());
+    this.input.keyboard.on('keydown-ESC', () => this.askLeave());
     this.input.mouse?.disableContextMenu();
     touchPad.reset();
     if (this.touch) {
@@ -70,6 +78,7 @@ export class GuestScene extends Phaser.Scene {
     else if (event === 'sfx') sfx.play(data.name);
     else if (event === 'info') this.note.setText(data.text);
     else if (event === 'reward') this.takeReward(data);
+    else if (event === 'stage') this.showControls(data);
     else if (event === 'lost') this.showLost();
   }
 
@@ -82,6 +91,22 @@ export class GuestScene extends Phaser.Scene {
     this.video.loadMediaStream(stream, true);
     this.video.play();
     this.wait.setVisible(false);
+  }
+
+  // 스테이지가 시작되면 내 조작법을 잠깐 (안내판과 볼트 대사는 방장 키 이름으로 나오니까)
+  showControls(msg) {
+    this.helpBox?.destroy();
+    const title = `스테이지 ${Number(msg.n) || ''} 시작! 나는 2P, 내 조작법:`;
+    this.helpBox = makeText(this, 480, 400, [title, ...this.controls].join('\n'), 15, '#ffffff', {
+      align: 'center',
+      lineSpacing: 6,
+      backgroundColor: '#000000bb',
+      padding: { x: 14, y: 10 },
+    })
+      .setOrigin(0.5)
+      .setDepth(56);
+    const box = this.helpBox;
+    this.tweens.add({ targets: box, alpha: 0, delay: 7000, duration: 500, onComplete: () => box.destroy() });
   }
 
   // 보상을 내 저장에 넣고, 화면 아래에 잠깐 알려 준다
@@ -140,6 +165,15 @@ export class GuestScene extends Phaser.Scene {
       this.sentAt = time;
       coop.sendInput(input);
     }
+  }
+
+  // 실수로 나가지 않게: 2 초 안에 한 번 더 누르면 나간다 (연결이 끊겼으면 바로)
+  askLeave() {
+    if (coop.status !== 'connected' || this.time.now - this.leaveAskAt < 2000) return this.leave();
+    this.leaveAskAt = this.time.now;
+    sfx.play('beep');
+    this.note.setText('한 번 더 누르면 방에서 나가요');
+    this.time.delayedCall(2000, () => this.note.text === '한 번 더 누르면 방에서 나가요' && this.note.setText(''));
   }
 
   leave() {

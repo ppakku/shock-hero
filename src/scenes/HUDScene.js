@@ -296,7 +296,7 @@ export class HUDScene extends Phaser.Scene {
       g.fillStyle(0xdff0ff, 1).fillRoundedRect(23, 21, 230 * sr, 6, 3);
       g.lineStyle(2, 0x7ab8ff, 1).strokeRoundedRect(20, 18, 236, 22, 7);
     }
-    this.hpText.setText(`체력 ${Math.ceil(p.health.current)} / ${p.health.max}${shield > 0 ? `  방패 +${Math.ceil(shield)}` : ''}${low ? '  위험!' : ''}`);
+    this.hpText.setText(`${gs.coop ? '1P ' : ''}체력 ${Math.ceil(p.health.current)} / ${p.health.max}${shield > 0 ? `  방패 +${Math.ceil(shield)}` : ''}${low ? '  위험!' : ''}`);
     if (low && this.mode === 'play') {
       this.beepTimer -= deltaMs / 1000;
       if (this.beepTimer <= 0) {

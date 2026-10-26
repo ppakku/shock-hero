@@ -6,6 +6,7 @@ import { isTouchDevice } from '../ui/touch.js';
 import { makeText } from '../ui/text.js';
 
 // 레벨 업 카드 고르기. 게임 장면을 멈추고 그 위에 카드 4장을 보여 준다.
+// 함께하기 중에는 게임을 멈추지 않고 화면 위쪽에 작은 카드 줄로 보여 준다 (친구는 계속 싸우고, 고르는 동안 1P 는 무적).
 // ← → 로 고르고 Enter, 또는 숫자 1 ~ 4, 또는 마우스 클릭. 한꺼번에 여러 레벨이 오르면 한 장씩 여러 번 고른다.
 const CARD_W = 196;
 const CARD_H = 250;
@@ -24,14 +25,21 @@ export class LevelUpScene extends Phaser.Scene {
   create() {
     this.openedAt = this.time.now;
     this.busy = false;
-    this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
-    this.title = makeText(this, 480, 70, '', 44, '#ffd23f', { strokeThickness: 8 }).setOrigin(0.5);
-    this.sub = makeText(this, 480, 118, '', 18, '#ffffff').setOrigin(0.5);
+    this.compact = Boolean(this.game_?.coop); // 함께하기: 작은 카드 줄
+    const k = this.compact ? 0.5 : 1;
+    this.cardScale = k;
+    const cardY = this.compact ? 205 : 300;
+    if (this.compact) this.add.rectangle(480, 175, 960, 230, 0x000000, 0.55);
+    else this.add.rectangle(480, 270, 960, 540, 0x000000, 0.65);
+    this.title = makeText(this, 480, this.compact ? 82 : 70, '', this.compact ? 24 : 44, '#ffd23f', { strokeThickness: this.compact ? 5 : 8 }).setOrigin(0.5);
+    this.sub = makeText(this, 480, this.compact ? 110 : 118, '', this.compact ? 14 : 18, '#ffffff').setOrigin(0.5);
     const helpLine = isTouchDevice() ? '카드를 손가락으로 눌러서 골라요' : '← → 로 고르고 Enter    숫자 1 2 3 4    마우스로 클릭';
-    this.help = makeText(this, 480, 500, helpLine, 16, '#dddddd').setOrigin(0.5);
+    this.help = makeText(this, 480, this.compact ? 278 : 500, helpLine, this.compact ? 13 : 16, '#dddddd').setOrigin(0.5);
 
-    const x0 = 480 - (UPGRADE_TRACKS.length * CARD_W + (UPGRADE_TRACKS.length - 1) * GAP) / 2 + CARD_W / 2;
-    this.cards = UPGRADE_TRACKS.map((track, i) => this.makeCard(track, i, x0 + i * (CARD_W + GAP), 300));
+    const w = CARD_W * k;
+    const gap = GAP * k;
+    const x0 = 480 - (UPGRADE_TRACKS.length * w + (UPGRADE_TRACKS.length - 1) * gap) / 2 + w / 2;
+    this.cards = UPGRADE_TRACKS.map((track, i) => this.makeCard(track, i, x0 + i * (w + gap), cardY));
     this.refresh();
     this.select(this.firstOpen());
 
@@ -73,8 +81,9 @@ export class LevelUpScene extends Phaser.Scene {
     const gs = this.game_;
     const save = gs.save;
     const u = normalizeUpgrades(save.upgrades, cfg.upgrades.maxRank);
-    this.title.setText(`레벨 업! Lv ${save.level}`);
-    this.sub.setText(save.picksPending > 1 ? `카드를 하나 골라요 (남은 카드 ${save.picksPending}장)` : '카드를 하나 골라요');
+    this.title.setText(this.compact ? `1P 레벨 업! Lv ${save.level}` : `레벨 업! Lv ${save.level}`);
+    const left = save.picksPending > 1 ? ` (남은 카드 ${save.picksPending}장)` : '';
+    this.sub.setText(this.compact ? `1P 가 카드를 고르는 동안 1P 는 무적이에요${left}` : `카드를 하나 골라요${left}`);
     for (const v of this.cards) {
       const card = upgradeCard(v.track, u, cfg);
       v.card = card;
@@ -102,7 +111,7 @@ export class LevelUpScene extends Phaser.Scene {
       const g = v.bg.clear();
       g.fillStyle(on ? 0x2a3f6b : 0x1d2233, 0.97).fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 14);
       g.lineStyle(on ? 5 : 2, on ? 0xffd23f : 0x6b7590, 1).strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 14);
-      v.c.setScale(on ? 1.06 : 1);
+      v.c.setScale((on ? 1.06 : 1) * this.cardScale);
     });
   }
 
