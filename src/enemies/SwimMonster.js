@@ -85,7 +85,7 @@ export class SwimMonster extends Monster {
 
   // 주인공이 보이는지 (가까우면 높이와 상관없이)
   sees(range = this.m.sightRange) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y);
     return !p.dead && Math.hypot(p.x - this.x, p.y - this.y) < range;
   }
 
@@ -146,11 +146,11 @@ export function fireProjectile(scene, opts) {
       img.x += opts.vx * 0.016;
       img.y += opts.vy * 0.016;
       if (opts.trail && Math.random() < 0.5) opts.trail(img.x, img.y);
-      const p = scene.player;
       const hitBox = new Phaser.Geom.Rectangle(img.x - opts.w * 0.35, img.y - opts.h * 0.35, opts.w * 0.7, opts.h * 0.7);
       let end = st.t >= opts.life;
-      if (!end && !p.dead && Phaser.Geom.Intersects.RectangleToRectangle(hitBox, p.getBounds())) {
-        if (p.hurt(opts.damage, img.x, opts.knockback) !== 'ignored') end = true;
+      if (!end) {
+        const r = scene.hurtPlayersIn(hitBox, opts.damage, img.x, opts.knockback);
+        if (r !== 'ignored' && r !== 'miss') end = true;
       }
       if (end || !scene.sys.isActive()) {
         st.done = true;

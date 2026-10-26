@@ -14,7 +14,6 @@ import {
 } from '../logic/monsters.js';
 
 const Rect = Phaser.Geom.Rectangle;
-const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
 // balance.js 에서 숫자를 지워 버려도 돌아가게 쓰는 기본값
 const DEFAULTS = {
@@ -106,7 +105,7 @@ export class Fros extends Monster {
   }
 
   think(dt) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y); // 함께하기: 가까운 사람을 노린다
     const dx = p.x - this.x;
     const dist = Math.abs(dx);
     const ease = (target, rate) => target + (this.baseY - target) * Math.exp(-rate * dt);
@@ -182,7 +181,8 @@ export class Fros extends Monster {
 
   startAim() {
     this.aimLocked = false;
-    this.aimTarget = { x: this.scene.player.x, y: this.scene.player.y + 10 };
+    const p = this.scene.nearestPlayer(this.x, this.y);
+    this.aimTarget = { x: p.x, y: p.y + 10 };
     this.scene.sfxPlay('venomCharge');
     this.changeState('aim');
   }
@@ -323,19 +323,17 @@ function launchVenom(s, from, dir, land, m) {
       const drop = s.add.circle(ball.x - dir.x * 10, ball.y - dir.y * 10, 3, Math.random() < 0.3 ? 0x7dff4a : VENOM_PURPLE, 0.8).setDepth(7);
       s.tweens.add({ targets: drop, alpha: 0, scale: 0.3, y: drop.y + 10, duration: 300, onComplete: () => drop.destroy() });
     }
-    const p = s.player;
-    if (!dodged && !p.dead) {
-      const hitBox = new Rect(ball.x - 8, ball.y - 8, 16, 16);
-      if (intersects(hitBox, p.getBounds())) {
-        const r = p.hurt(m.venomDamage, ball.x, m.heroKnockback);
-        if (r === 'hit') {
-          ball.destroy();
-          const fy = floorBelowY(ball.x, p.y - 20, s.stage.platforms, s.stage.groundY);
-          splashCloud(s, ball.x, fy, m);
-          return true;
-        }
-        if (r === 'dodged') dodged = true; // 대시로 뚫고 지나감
+    const hitBox = new Rect(ball.x - 8, ball.y - 8, 16, 16);
+    const p = dodged ? null : s.playersIn(hitBox)[0]; // 함께하기: 먼저 닿은 사람
+    if (p) {
+      const r = p.hurt(m.venomDamage, ball.x, m.heroKnockback);
+      if (r === 'hit') {
+        ball.destroy();
+        const fy = floorBelowY(ball.x, p.y - 20, s.stage.platforms, s.stage.groundY);
+        splashCloud(s, ball.x, fy, m);
+        return true;
       }
+      if (r === 'dodged') dodged = true; // 대시로 뚫고 지나감
     }
     if (travelled >= total) {
       ball.destroy();
@@ -383,11 +381,11 @@ function splashCloud(s, x, floorY, m) {
       for (const pf of puffs) pf.img.destroy();
       return true;
     }
-    const p = s.player;
     const area = new Rect(x - w / 2, floorY - h, w, h);
-    if (tickCd <= 0 && !p.dead && intersects(area, p.getBounds())) {
+    const inside = tickCd <= 0 ? s.playersIn(area) : [];
+    if (inside.length) {
       tickCd = m.cloudTickTime;
-      poisonHero(s, p, m.cloudDamage);
+      for (const p of inside) poisonHero(s, p, m.cloudDamage);
     }
     return false;
   });
@@ -405,6 +403,6 @@ function poisonHero(s, p, damage) {
     if (p.active && !p.dead) p.clearTint();
   });
   s.greenGooAt(p.x, p.y - 10, 3);
-  s.skills?.onHurt?.(dealt);
+  (p.skills || s.skills)?.onHurt?.(dealt);
   if (p.health.isDead) p.die();
 }

@@ -27,8 +27,7 @@ export class Shadows {
     const sc = this.scene;
     const g = this.g.clear();
     const view = sc.cameras.main.worldView;
-    const p = sc.player;
-    if (p?.active && p.body) this.drop(p.x, p.body.bottom, 46, view);
+    for (const p of sc.players || [sc.player]) if (p?.active && p.body) this.drop(p.x, p.body.bottom, 46, view); // 함께하기면 두 사람
     for (const m of sc.monsters) {
       if (m.dead || !m.active || !m.visible) continue;
       const feet = m.body ? m.body.bottom : m.y;

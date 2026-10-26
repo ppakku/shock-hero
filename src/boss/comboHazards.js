@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { rockTargets, comboKind } from '../logic/boss.js';
 
 const Rect = Phaser.Geom.Rectangle;
-const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 const lerp = Phaser.Math.Linear;
 const WAVE_H = 44;
 
@@ -59,7 +58,7 @@ export class ComboHazards {
 
   begin(kind) {
     const b = this.boss;
-    const p = this.scene.player;
+    const p = b.target;
     if (kind === 'rocks') {
       const xs = rockTargets(p.x, 2, b.minX - 20, (this.opts.waveMaxX ?? b.maxX) + 20);
       this.job = { kind, phase: 'aim', t: 0, targets: xs };
@@ -67,7 +66,7 @@ export class ComboHazards {
       const mid = (b.minX + b.maxX) / 2;
       const right = Math.min(b.maxX + 40, this.opts.waveMaxX ?? b.maxX + 40);
       const fromRight = p.x < mid || this.opts.waveMaxX !== undefined;
-      this.job = { kind, phase: 'aim', t: 0, x: fromRight ? right : b.minX - 40, dir: fromRight ? -1 : 1, hasHit: false };
+      this.job = { kind, phase: 'aim', t: 0, x: fromRight ? right : b.minX - 40, dir: fromRight ? -1 : 1, hits: new Set() };
     }
     this.scene.sfxPlay('warn');
   }
@@ -95,14 +94,11 @@ export class ComboHazards {
       const k = Math.min(1, j.t / 0.35);
       for (const r of this.sprites) r.y = lerp(-60, b.groundY - 20, k * k);
       if (k >= 1) {
-        const p = this.scene.player;
-        let hit = false;
+        const hits = new Set(); // 바위 여러 개가 한 사람을 두 번 때리지 않게
         this.scene.sfxPlay('slam');
         for (const r of this.sprites) {
           this.scene.dustAt(r.x, b.groundY, 8);
-          if (!hit && intersects(new Rect(r.x - 28, b.groundY - 60, 56, 60), p.getBounds())) {
-            hit = p.hurt(this.opts.rockDamage ?? c.rockDamage, r.x) !== 'ignored';
-          }
+          this.scene.hurtPlayersIn(new Rect(r.x - 28, b.groundY - 60, 56, 60), this.opts.rockDamage ?? c.rockDamage, r.x, undefined, hits);
           r.destroy();
         }
         this.sprites = [];
@@ -137,10 +133,7 @@ export class ComboHazards {
     j.x += j.dir * c.shockwaveSpeed * dt;
     this.fx.fillStyle(0xffb030, 0.85).fillTriangle(j.x - 26, gy, j.x, gy - WAVE_H, j.x + 26, gy);
     this.fx.fillStyle(0xfff3a0, 0.9).fillTriangle(j.x - 12, gy, j.x, gy - WAVE_H * 0.6, j.x + 12, gy);
-    const p = this.scene.player;
-    if (!j.hasHit && intersects(new Rect(j.x - 18, gy - WAVE_H, 36, WAVE_H), p.getBounds())) {
-      if (p.hurt(c.shockwaveDamage, j.x - j.dir * 40) !== 'ignored') j.hasHit = true;
-    }
+    this.scene.hurtPlayersIn(new Rect(j.x - 18, gy - WAVE_H, 36, WAVE_H), c.shockwaveDamage, j.x - j.dir * 40, undefined, j.hits);
     if (j.x < b.arenaStart - 80 || j.x > b.arenaEnd + 80) this.job = null;
   }
 

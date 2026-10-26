@@ -326,7 +326,7 @@ export class ArmBoss extends BossBase {
       this.hideLabels();
       this.drawRage();
       this.timer -= dt;
-      if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
       this.combo.update(dt);
       return;
     }
@@ -394,7 +394,7 @@ export class ArmBoss extends BossBase {
   }
 
   startAction(forceType = null) {
-    const p = this.scene.player;
+    const p = this.target;
     const alive = this.armsAlive;
     const type = forceType || chooseBossAttack(this.def.phases, alive.length, this.totalArms, this.lastType);
     this.lastType = type;
@@ -442,7 +442,7 @@ export class ArmBoss extends BossBase {
   }
 
   makeJob(arm, kind, target, warnTime, repeats = 1) {
-    return { arm, kind, target, warnTime, repeats, phase: 'aim', t: 0, hasHit: false };
+    return { arm, kind, target, warnTime, repeats, phase: 'aim', t: 0, hits: new Set() };
   }
 
   endAction() {
@@ -528,7 +528,7 @@ export class ArmBoss extends BossBase {
         const k = Math.min(1, job.t / 0.25);
         s.y = lerp(this.groundY, RAISED_Y, Phaser.Math.Easing.Cubic.Out(k));
         if (k >= 1) {
-          job.target = Phaser.Math.Clamp(this.scene.player.x, this.minX, this.maxArmX);
+          job.target = Phaser.Math.Clamp(this.target.x, this.minX, this.maxArmX);
           job.phase = 'aim';
           job.t = 0;
         }
@@ -538,10 +538,7 @@ export class ArmBoss extends BossBase {
         const dur = Math.max(0.2, this.c.sweepTime);
         s.x = lerp(job.startX, job.endX, Math.min(1, job.t / dur));
         if (Math.random() < 0.5) this.scene.dustAt(s.x + 30, this.groundY, 2);
-        const p = this.scene.player;
-        if (!job.hasHit && intersects(arm.attackRect(), p.getBounds())) {
-          if (p.hurt(this.c.sweepDamage, s.x + 100) !== 'ignored') job.hasHit = true;
-        }
+        this.hurtPlayer(arm.attackRect(), this.c.sweepDamage, s.x + 100, undefined, job.hits);
         if (job.t >= dur) {
           job.phase = 'rest';
           job.t = 0;
@@ -580,8 +577,7 @@ export class ArmBoss extends BossBase {
     this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
     this.scene.sfxPlay('slam');
     this.scene.dustAt(s.x, this.groundY, 16);
-    const p = this.scene.player;
-    if (intersects(arm.attackRect(), p.getBounds())) p.hurt(damage, s.x, 320);
+    this.hurtPlayer(arm.attackRect(), damage, s.x, 320);
   }
 
   drawJobWarning(job, i) {
@@ -622,15 +618,12 @@ export class ArmBoss extends BossBase {
       const k = Math.min(1, a.t / 0.35);
       for (const r of this.rocks) r.y = lerp(-60, this.groundY - 20, k * k);
       if (k >= 1) {
-        const p = this.scene.player;
         this.scene.sfxPlay('slam');
         this.scene.shake(0.006, 150);
-        let hit = false;
+        const hits = new Set(); // 바위 여러 개가 한 사람을 두 번 때리지 않게
         for (const r of this.rocks) {
           this.scene.dustAt(r.x, this.groundY, 8);
-          if (!hit && intersects(new Rect(r.x - 28, this.groundY - 60, 56, 60), p.getBounds())) {
-            hit = p.hurt(this.c.rockDamage, r.x) !== 'ignored';
-          }
+          this.hurtPlayer(new Rect(r.x - 28, this.groundY - 60, 56, 60), this.c.rockDamage, r.x, undefined, hits);
           r.destroy();
         }
         this.rocks = [];
@@ -668,21 +661,18 @@ export class ArmBoss extends BossBase {
     if (a.spawned < a.count && a.t >= a.nextSpawn) {
       a.spawned += 1;
       a.nextSpawn = a.t + 0.7 * m;
-      this.waves.push({ x: startX, hasHit: false });
+      this.waves.push({ x: startX, hits: new Set() });
       this.scene.sfxPlay('slam');
       this.scene.shake(0.01, 200);
       this.scene.dustAt(startX, this.groundY, 12);
       this.scene.tweens.add({ targets: this.body, y: this.groundY - 14, duration: 90, yoyo: true });
     }
-    const p = this.scene.player;
     for (const w of this.waves) {
       w.x -= this.c.shockwaveSpeed * dt;
       this.fxG.fillStyle(0xffb030, 0.85).fillTriangle(w.x - 26, this.groundY, w.x, this.groundY - WAVE_H, w.x + 26, this.groundY);
       this.fxG.fillStyle(0xfff3a0, 0.9).fillTriangle(w.x - 12, this.groundY, w.x, this.groundY - WAVE_H * 0.6, w.x + 12, this.groundY);
       if (Math.random() < 0.4) this.scene.dustAt(w.x, this.groundY, 1);
-      if (!w.hasHit && intersects(new Rect(w.x - 18, this.groundY - WAVE_H, 36, WAVE_H), p.getBounds())) {
-        if (p.hurt(this.c.shockwaveDamage, w.x + 40) !== 'ignored') w.hasHit = true;
-      }
+      this.hurtPlayer(new Rect(w.x - 18, this.groundY - WAVE_H, 36, WAVE_H), this.c.shockwaveDamage, w.x + 40, undefined, w.hits);
     }
     this.waves = this.waves.filter((w) => w.x > this.minX - 120);
     if (a.spawned >= a.count && this.waves.length === 0) this.endAction();
@@ -709,13 +699,12 @@ export class ArmBoss extends BossBase {
     if (a.fired < a.count && a.t >= a.nextFire) {
       a.fired += 1;
       a.nextFire = a.t + 0.4 * m;
-      const p = this.scene.player;
+      const p = this.target;
       const tx = Phaser.Math.Clamp(p.x + p.body.velocity.x * 0.3, this.minX - 40, this.frontX - 40);
       const sprite = this.scene.add.image(this.mouth.x, this.mouth.y, 'glob').setDepth(8).setDisplaySize(24, 24);
       this.globs.push({ sprite, tx, t: 0, done: false });
       this.scene.sfxPlay('spit');
     }
-    const p = this.scene.player;
     for (const g of this.globs) {
       if (g.done) continue;
       g.t += dt;
@@ -726,12 +715,12 @@ export class ArmBoss extends BossBase {
       this.warn.fillStyle(0x3a8a1a, 0.3 + 0.4 * k).fillEllipse(g.tx, this.groundY, 30 + 30 * k, 10);
       this.warn.lineStyle(2, 0x7dff4a, 0.9).strokeEllipse(g.tx, this.groundY, 60, 16);
       const box = new Rect(g.sprite.x - 12, g.sprite.y - 12, 24, 24);
-      if (intersects(box, p.getBounds()) || k >= 1) {
+      if (this.scene.playersIn(box).length || k >= 1) {
         g.done = true;
         g.sprite.destroy();
         this.scene.greenGooAt(g.sprite.x, g.sprite.y, 10);
         const splash = new Rect(g.sprite.x - 30, g.sprite.y - 30, 60, 50);
-        if (intersects(splash, p.getBounds())) p.hurt(this.c.spitDamage, g.sprite.x);
+        this.hurtPlayer(splash, this.c.spitDamage, g.sprite.x);
       }
     }
     if (a.fired >= a.count && this.globs.every((g) => g.done)) {
@@ -760,7 +749,6 @@ export class ArmBoss extends BossBase {
     const launchX = this.maxArmX + 40;
     const { w: fistW, h: fistH } = this.fistSize;
     const wallX = this.arenaStart + fistW / 2 + 4;
-    const p = this.scene.player;
 
     if (a.phase === 'aim') {
       const dur = this.c.rocketPunchWarningTime * this.speed;
@@ -792,10 +780,8 @@ export class ArmBoss extends BossBase {
       this.warn.lineStyle(2, 0xff4444, 0.7).strokeRect(this.arenaStart, band.top, Math.max(0, fist.x - this.arenaStart), band.bottom - band.top);
       this.label(0, a.height === 'high' ? '가만히!' : '점프!', fist.x, band.top - 26, 24);
       if (Math.random() < 0.6) this.scene.dustAt(fist.x + fistW / 2, fist.y, 1);
-      if (!a.hasHit) {
-        const rect = new Rect(fist.x - fistW / 2, band.top, fistW, band.bottom - band.top);
-        if (intersects(rect, p.getBounds()) && p.hurt(this.c.rocketPunchDamage, fist.x + 100, 380) !== 'ignored') a.hasHit = true;
-      }
+      const rect = new Rect(fist.x - fistW / 2, band.top, fistW, band.bottom - band.top);
+      this.hurtPlayer(rect, this.c.rocketPunchDamage, fist.x + 100, 380, (a.hits ??= new Set()));
       if (fist.x <= wallX) {
         fist.x = wallX;
         a.phase = 'stuck';
@@ -869,7 +855,6 @@ export class ArmBoss extends BossBase {
   runInhale(dt) {
     const a = this.action;
     a.t += dt;
-    const p = this.scene.player;
     const m = this.mouthOpen;
     const dir = this.inhaleSide();
     if (a.phase === 'aim') {
@@ -891,8 +876,10 @@ export class ArmBoss extends BossBase {
       drawSwirl(this.fxG, m.x, m.y, this.t, 1, dir);
       this.label(0, '버텨! 반대쪽으로 달려!', this.arenaStart + 480, 120, 26);
       if (Math.random() < 0.3) this.scene.dustAt(m.x + dir * Phaser.Math.Between(150, 600), this.groundY, 1);
-      if (!p.dead) {
-        const target = this.biteTargetX();
+      // 함께하기: 둘 다 끌려온다. 먼저 입에 닿은 사람이 깨물린다
+      const target = this.biteTargetX();
+      for (const p of this.scene.players) {
+        if (p.dead) continue;
         p.x = inhaleStep(p.x, target, this.c.inhalePull, dt);
         if (Math.abs(p.x - target) < 2) {
           this.bite(p, dir);

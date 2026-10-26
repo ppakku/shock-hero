@@ -136,8 +136,13 @@ export class KingBoss extends ArmBoss {
     return pickPattern(list, this.lastType, Math.random, 'slam');
   }
 
+  // 노릴 주인공: 일어선 왕은 자기 자리(kx)에서 가까운 사람
+  get target() {
+    return this.scene.nearestPlayer(this.standing ? this.kx : this.bodyX);
+  }
+
   startSummon() {
-    const p = this.scene.player;
+    const p = this.target;
     const room = Math.max(0, Math.round(this.kc.summonMax) - this.liveMinions);
     const hi = this.standing ? this.maxX : this.maxArmX;
     const spots = summonSpots(p.x, Math.min(2, room), this.minX, hi);
@@ -231,11 +236,11 @@ export class KingBoss extends ArmBoss {
     this.mouthOpen = { x: this.kx + this.face * 30, y: this.groundY - 150 };
     if (!this.action) {
       this.ky = this.groundY;
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       // 숨 고르기: 이때 코어를 때릴 기회
       this.label(0, '지금! 코어를 때려!', this.kx, this.groundY - STAND_H - 40, 20, '#ffd23f');
       this.timer -= dt;
-      if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
     } else {
       this.runAction(dt);
     }
@@ -317,7 +322,7 @@ export class KingBoss extends ArmBoss {
 
   inhaleSide() {
     if (!this.standing) return -1;
-    return this.scene.player.x < this.kx ? -1 : 1;
+    return this.target.x < this.kx ? -1 : 1;
   }
 
   biteTargetX() {
@@ -328,7 +333,7 @@ export class KingBoss extends ArmBoss {
   // ---------- 일어선 왕의 공격 ----------
 
   startStandingAction(forceType = null) {
-    const p = this.scene.player;
+    const p = this.target;
     let type = forceType || pickPattern(this.def.finalPhase, this.lastType, Math.random, 'leap');
     if (type === 'summon' && !canSummon(this.liveMinions, this.kc.summonMax)) type = pickPattern(this.def.finalPhase.filter((x) => x !== 'summon'), this.lastType, Math.random, 'leap');
     if (type === 'summon') {
@@ -362,7 +367,6 @@ export class KingBoss extends ArmBoss {
 
   runLeap(dt) {
     const a = this.action;
-    const p = this.scene.player;
     a.t += dt;
     const zone = new Rect(a.tx - 95, this.groundY - 130, 190, 130);
     if (a.phase === 'aim') {
@@ -392,9 +396,9 @@ export class KingBoss extends ArmBoss {
         this.scene.shake(0.018, 300);
         this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.kx, this.groundY, 20);
-        if (intersects(zone, p.getBounds())) p.hurt(this.kc.leapDamage, this.kx, 380);
+        this.hurtPlayer(zone, this.kc.leapDamage, this.kx, 380);
         // 양쪽으로 충격파 (점프로 넘기)
-        this.kwaves.push({ x: this.kx - 100, dir: -1, hasHit: false }, { x: this.kx + 100, dir: 1, hasHit: false });
+        this.kwaves.push({ x: this.kx - 100, dir: -1, hits: new Set() }, { x: this.kx + 100, dir: 1, hits: new Set() });
         a.phase = 'after';
         a.t = 0;
       }
@@ -404,14 +408,11 @@ export class KingBoss extends ArmBoss {
   }
 
   updateWaves(dt) {
-    const p = this.scene.player;
     for (const w of this.kwaves) {
       w.x += w.dir * this.c.shockwaveSpeed * dt;
       this.fxG.fillStyle(0xffb030, 0.85).fillTriangle(w.x - 26, this.groundY, w.x, this.groundY - WAVE_H, w.x + 26, this.groundY);
       this.fxG.fillStyle(0xfff3a0, 0.9).fillTriangle(w.x - 12, this.groundY, w.x, this.groundY - WAVE_H * 0.6, w.x + 12, this.groundY);
-      if (!w.hasHit && intersects(new Rect(w.x - 18, this.groundY - WAVE_H, 36, WAVE_H), p.getBounds())) {
-        if (p.hurt(this.c.shockwaveDamage, w.x - w.dir * 40) !== 'ignored') w.hasHit = true;
-      }
+      this.hurtPlayer(new Rect(w.x - 18, this.groundY - WAVE_H, 36, WAVE_H), this.c.shockwaveDamage, w.x - w.dir * 40, undefined, w.hits);
     }
     this.kwaves = this.kwaves.filter((w) => w.x > this.arenaStart - 60 && w.x < this.arenaEnd + 60);
     if (this.kwaves.length) this.label(3, '점프!', this.kwaves[0].x, this.groundY - 80, 20);
@@ -419,7 +420,6 @@ export class KingBoss extends ArmBoss {
 
   runCharge(dt) {
     const a = this.action;
-    const p = this.scene.player;
     a.t += dt;
     if (a.phase === 'aim') {
       const dur = this.kc.chargeWarningTime * this.speed;
@@ -441,9 +441,7 @@ export class KingBoss extends ArmBoss {
     if (a.phase === 'run') {
       this.kx += a.dir * this.kc.chargeSpeed * dt;
       if (Math.random() < 0.6) this.scene.dustAt(this.kx - a.dir * 40, this.groundY, 2);
-      if (!a.hasHit && intersects(this.standRect(), p.getBounds())) {
-        if (p.hurt(this.kc.chargeDamage, this.kx - a.dir * 40, 420) !== 'ignored') a.hasHit = true;
-      }
+      this.hurtPlayer(this.standRect(), this.kc.chargeDamage, this.kx - a.dir * 40, 420, (a.hits ??= new Set()));
       const done = a.dir > 0 ? this.kx >= a.endX : this.kx <= a.endX;
       if (done) {
         this.kx = a.endX;

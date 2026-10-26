@@ -26,6 +26,7 @@ export class HUDScene extends Phaser.Scene {
     this.timeText = makeText(this, 936, 30, '', 18).setOrigin(1, 0.5);
     this.ultText = makeText(this, 24, 106, '', 13, '#9fe8ff').setOrigin(0, 0.5).setVisible(false);
     this.stageText = makeText(this, 936, 54, '', 13, '#dddddd').setOrigin(1, 0.5);
+    this.p2Text = makeText(this, 936, 96, '', 13, '#ffd23f').setOrigin(1, 0.5).setVisible(false); // 함께하기: 2P 체력
     this.monsterText = makeText(this, 600, 30, '', 18, '#ff8a8a').setOrigin(0.5);
     this.bossTitle = makeText(this, 600, 14, '', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
     this.bossLabels = [0, 1, 2, 3].map(() => makeText(this, 0, 0, '', 12).setOrigin(0.5).setVisible(false));
@@ -292,6 +293,19 @@ export class HUDScene extends Phaser.Scene {
     gs.scene.restart(target);
   }
 
+  // 함께하기: 오른쪽 위에 2P 체력 (쓰러졌으면 부활까지 남은 초)
+  drawPartner(gs) {
+    const q = gs.partner;
+    this.p2Text.setVisible(Boolean(q));
+    if (!q) return;
+    const g = this.g;
+    const ratio = q.dead ? 0 : q.health.ratio;
+    g.fillStyle(0x000000, 0.6).fillRoundedRect(756, 70, 180, 14, 5);
+    if (ratio > 0) g.fillStyle(ratio < 0.3 ? 0xff6a3d : 0xffd23f, 1).fillRoundedRect(759, 73, 174 * ratio, 8, 3);
+    const left = q.dead && q.reviveAt ? Math.max(0, Math.ceil((q.reviveAt - gs.time.now) / 1000)) : null;
+    this.p2Text.setText(q.dead ? `2P 쓰러짐${left != null ? `  ${left}초 뒤 부활` : ''}` : `2P 체력 ${Math.ceil(q.health.current)} / ${q.health.max}`);
+  }
+
   update(_t, deltaMs) {
     const gs = this.game_;
     const p = gs?.player;
@@ -377,6 +391,7 @@ export class HUDScene extends Phaser.Scene {
       g.arc(x, y, 19, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, a.ratio), false);
       g.strokePath();
     });
+    this.drawPartner(gs);
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
     this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}  (${DIFFICULTY_INFO[gs.difficulty]?.name ?? '보통'})`);
     this.monsterText.setText(gs.gateOpen || gs.bossStarted ? '' : `남은 몬스터 ${gs.monsters.length}`);

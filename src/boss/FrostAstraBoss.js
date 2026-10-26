@@ -327,9 +327,9 @@ export class FrostAstraBoss extends BossBase {
 
   // 주인공 몸통 판정 (그림 테두리 72x80 이 아니라 실제 몸 30x56).
   // 새 기술(냉기 브레스, 빙천지락)은 이걸로 맞혀서, 틈에 서 있으면 확실히 안 맞는다.
-  heroRect() {
-    const b = this.scene.player.body;
-    return b ? new Rect(b.x, b.y, b.width, b.height) : this.scene.player.getBounds();
+  heroRect(p = this.target) {
+    const b = p.body;
+    return b ? new Rect(b.x, b.y, b.width, b.height) : p.getBounds();
   }
 
   // 공격이 플레이어를 맞히는 곳 (급강하, 뛰어 내려찍기)
@@ -486,7 +486,7 @@ export class FrostAstraBoss extends BossBase {
     if (!this.action) {
       this.idle(dt);
       this.timer -= dt;
-      if (this.timer <= 0 && !this.scene.player.dead) this.startAction();
+      if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
     } else {
       this.runAction(dt);
     }
@@ -498,7 +498,7 @@ export class FrostAstraBoss extends BossBase {
 
   // 공격 사이: 날 때는 플레이어 위쪽 높은 곳을 맴돌고, 땅에서는 플레이어를 바라본다
   idle(dt) {
-    const p = this.scene.player;
+    const p = this.target;
     if (this.mode === 'fly') {
       const tx = Phaser.Math.Clamp(p.x + (this.x > p.x ? 220 : -220), this.minX + 40, this.maxX - 40);
       this.moveTo(tx, HIGH_Y + Math.sin(this.t * 2.5) * 10, dt, this.ic.flySpeed * 0.6);
@@ -557,7 +557,7 @@ export class FrostAstraBoss extends BossBase {
       }
     }
     this.lastType = type;
-    const p = this.scene.player;
+    const p = this.target;
     const a = { type, phase: 'aim', t: 0 };
     const mid = (this.minX + this.maxX) / 2;
     if (type === 'icicles') {
@@ -681,15 +681,12 @@ export class FrostAstraBoss extends BossBase {
       const k = Math.min(1, a.t / 0.35);
       for (const ic of this.icicles) ic.y = lerp(-70, this.groundY - 32, k * k);
       if (k >= 1) {
-        const p = this.scene.player;
-        let hit = false;
+        const hits = new Set(); // 고드름 여러 개가 한 사람을 두 번 때리지 않게
         this.scene.shake(0.006, 150);
         for (const ic of this.icicles) {
           this.scene.sparks?.explode(10, ic.x, this.groundY - 10);
           this.scene.dustAt(ic.x, this.groundY, 5);
-          if (!hit && intersects(new Rect(ic.x - 26, this.groundY - 64, 52, 64), p.getBounds())) {
-            hit = p.hurt(this.ic.icicleDamage, ic.x) !== 'ignored';
-          }
+          this.hurtPlayer(new Rect(ic.x - 26, this.groundY - 64, 52, 64), this.ic.icicleDamage, ic.x, undefined, hits);
           ic.destroy();
         }
         this.icicles = [];
@@ -716,7 +713,7 @@ export class FrostAstraBoss extends BossBase {
 
   runDive(dt) {
     const a = this.action;
-    const p = this.scene.player;
+    const p = this.target;
     if (a.phase === 'aim') {
       // 출발점으로 날아가며 경고
       const there = this.moveTo(a.startX, HIGH_Y, dt, this.ic.flySpeed * 1.5);
@@ -737,9 +734,7 @@ export class FrostAstraBoss extends BossBase {
       this.y = pt.y;
       this.trail.push({ x: this.x, y: this.y, life: 0.3 });
       if (u > 0.25 && u < 0.85 && Math.random() < 0.6) this.scene.dustAt(this.x, this.groundY, 2);
-      if (!a.hasHit && u > 0.1 && u < 0.85 && intersects(this.dangerRect(), p.getBounds())) {
-        if (p.hurt(this.ic.diveDamage, this.x - a.dir * 60, 420) !== 'ignored') a.hasHit = true;
-      }
+      if (u > 0.1 && u < 0.85) this.hurtPlayer(this.dangerRect(), this.ic.diveDamage, this.x - a.dir * 60, 420, (a.hits ??= new Set()));
       if (u >= 1) {
         this.next(a, 'hover');
         this.tip('hover');
@@ -794,7 +789,6 @@ export class FrostAstraBoss extends BossBase {
 
   runBreath(dt) {
     const a = this.action;
-    const p = this.scene.player;
     const gy = this.groundY;
     if (a.phase === 'aim') {
       if (this.mode === 'fly') {
@@ -860,8 +854,10 @@ export class FrostAstraBoss extends BossBase {
         }
         this.fxG.fillStyle(0xffffff, 0.9 * power).fillCircle(m.x, m.y, 16);
         const tri = this.breathTriangle(a);
-        if (!a.hasHit && a.t > 0.08 && Phaser.Geom.Intersects.RectangleToTriangle(this.heroRect(), tri)) {
-          if (p.hurt(this.ic.breathDamage, this.x, 260) !== 'ignored') a.hasHit = true;
+        a.hits ??= new Set(); // 브레스 한 번에 한 사람은 한 번만 맞는다 (부채꼴과 서리 벽을 합쳐서)
+        for (const q of this.scene.players) {
+          if (q.dead || a.hits.has(q) || a.t <= 0.08 || !Phaser.Geom.Intersects.RectangleToTriangle(this.heroRect(q), tri)) continue;
+          if (q.hurt(this.ic.breathDamage, this.x, 260) !== 'ignored') a.hits.add(q);
         }
       }
       for (const s of a.shards) {
@@ -886,9 +882,7 @@ export class FrostAstraBoss extends BossBase {
           this.fxG.fillStyle(0xffffff, 0.95).fillTriangle(sx + 4, gy, sx + 10, gy - h, sx + 16, gy);
         }
         if (Math.random() < 0.5) this.scene.dustAt(a.front, gy, 1);
-        if (!a.hasHit && grow >= 1 && intersects(new Rect(l, gy - BREATH_H, BREATH_LEN, BREATH_H), this.heroRect())) {
-          if (p.hurt(this.ic.breathDamage, a.front - a.dir * 40) !== 'ignored') a.hasHit = true;
-        }
+        if (grow >= 1) this.hurtPlayer(new Rect(l, gy - BREATH_H, BREATH_LEN, BREATH_H), this.ic.breathDamage, a.front - a.dir * 40, undefined, (a.hits ??= new Set()));
       }
       // 지나간 바닥은 살짝 얼어붙음 (아프지 않음)
       const s0 = Math.min(a.coneFar, tail);
@@ -914,7 +908,7 @@ export class FrostAstraBoss extends BossBase {
         this.y = this.groundBodyY - 14 * Math.min(1, a.t / 0.4);
         done = a.t >= 0.4;
       }
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       this.drawAvalancheGlow(a.waves[0], 0.3);
       if (done || a.t > 0.9) {
         this.next(a, 'roar');
@@ -962,14 +956,9 @@ export class FrostAstraBoss extends BossBase {
       const up = Math.min(1, a.t / 0.08);
       const down = a.t > 0.42 ? Math.max(0, 1 - (a.t - 0.42) / 0.13) : 1;
       for (const s of this.spikes) s.setDisplaySize(80, Math.max(4, (SPIKE_H + 10) * up * down));
-      const p = this.scene.player;
-      if (!a.hitWave[a.wave] && a.t > 0.03 && a.t < 0.4) {
-        for (const x of xs) {
-          if (intersects(new Rect(x - SPIKE_W / 2, gy - SPIKE_H, SPIKE_W, SPIKE_H), this.heroRect())) {
-            if (p.hurt(this.ic.avalancheDamage, x, 300) !== 'ignored') a.hitWave[a.wave] = true;
-            break;
-          }
-        }
+      if (a.t > 0.03 && a.t < 0.4) {
+        const hits = (a.hitWave[a.wave] ??= new Set()); // 한 줄의 가시는 한 사람을 한 번만 때린다
+        for (const x of xs) this.hurtPlayer(new Rect(x - SPIKE_W / 2, gy - SPIKE_H, SPIKE_W, SPIKE_H), this.ic.avalancheDamage, x, 300, hits);
       }
       if (a.t >= 0.55) {
         for (const s of this.spikes) s.destroy();
@@ -1002,7 +991,6 @@ export class FrostAstraBoss extends BossBase {
 
   runHop(dt) {
     const a = this.action;
-    const p = this.scene.player;
     const baseY = this.groundBodyY;
     if (a.phase === 'aim') {
       const dur = this.ic.hopWarningTime * this.speed;
@@ -1028,7 +1016,7 @@ export class FrostAstraBoss extends BossBase {
         this.scene.impact?.bossSlam(1); // 쿵: 잠깐 멈칫 + 화면 확대 (src/fx/impact.js)
         this.scene.dustAt(this.x, this.groundY, 18);
         this.scene.sparks?.explode(16, this.x, this.groundY - 10);
-        if (intersects(new Rect(a.tx - 95, this.groundY - 120, 190, 120), p.getBounds())) p.hurt(this.ic.hopDamage, this.x, 380);
+        this.hurtPlayer(new Rect(a.tx - 95, this.groundY - 120, 190, 120), this.ic.hopDamage, this.x, 380);
         this.next(a, 'after');
       }
       return;
@@ -1041,7 +1029,7 @@ export class FrostAstraBoss extends BossBase {
   runLand(dt) {
     const a = this.action;
     if (a.phase === 'descend') {
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       this.warn.fillStyle(0x3fd0ff, 0.25).fillEllipse(a.tx, this.groundY, 180, 20);
       const there = this.moveTo(a.tx, this.groundBodyY, dt, this.ic.flySpeed * 1.2);
       if (there) {
@@ -1055,7 +1043,7 @@ export class FrostAstraBoss extends BossBase {
       return;
     }
     if (a.phase === 'rest') {
-      this.faceTo(this.scene.player.x);
+      this.faceTo(this.target.x);
       this.y = this.groundBodyY + Math.sin(this.t * 6) * 2;
       this.label(0, '지쳤다! 지금 때려!', this.x, this.y - 115, 22, '#ffd23f');
       // 입김

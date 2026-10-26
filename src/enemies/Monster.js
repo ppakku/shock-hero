@@ -16,7 +16,6 @@ export const TEXTURE = {
 
 const SHEET_SIZE = 1.15; // 스프라이트 시트 그림은 칸에 꽉 차게 잘라서 코드 그림보다 조금 크게
 const Rect = Phaser.Geom.Rectangle;
-const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
 // 몬스터: 순찰 → 추격 → (빨개짐) 공격 준비 → 달려들기(뜀뛰기는 점프) → 멍하게 쉬기
 export class Monster extends Phaser.Physics.Arcade.Sprite {
@@ -103,7 +102,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
 
   // 종류마다 다르게 움직이는 부분 (기본: 순찰, 추격, 공격 준비, 달려들기, 쉬기)
   think(dt) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y); // 함께하기: 가까운 사람을 노린다
     const dx = p.x - this.x;
     const dist = Math.abs(dx);
     const playerReachable = !p.dead && Math.abs(p.y - this.y) < 90;
@@ -143,9 +142,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         break;
       }
       case 'attack': {
-        if (!this.hasHit && intersects(this.attackRect(), p.getBounds())) {
-          const result = p.hurt(this.m.damage, this.x, this.m.heroKnockback);
-          if (result !== 'ignored') this.hasHit = true;
+        if (!this.hasHit) {
+          const result = this.scene.hurtPlayersIn(this.attackRect(), this.m.damage, this.x, this.m.heroKnockback);
+          if (result !== 'ignored' && result !== 'miss') this.hasHit = true;
         }
         if (this.type === 'jumper') {
           // 뜀뛰기는 땅에 내려앉을 때까지 날아간다

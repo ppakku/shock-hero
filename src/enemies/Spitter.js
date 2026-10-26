@@ -48,7 +48,7 @@ export class Spitter extends Monster {
   }
 
   think(dt) {
-    const p = this.scene.player;
+    const p = this.scene.nearestPlayer(this.x, this.y); // 함께하기: 가까운 사람을 노린다
     const dx = p.x - this.x;
     const dist = Math.abs(dx);
     const sameFloor = !p.dead && Math.abs(p.y - this.y) < 90;
@@ -125,9 +125,9 @@ export class Spitter extends Monster {
       ball.destroy();
     };
     s.physics.add.collider(ball, s.solids, pop);
-    s.physics.add.overlap(s.player, ball, () => {
+    s.physics.add.overlap(s.players, ball, (who) => {
       if (!ball.active || ball.getData('dodged')) return;
-      const r = s.player.hurt(m.spitDamage, ball.x, m.heroKnockback);
+      const r = who.hurt(m.spitDamage, ball.x, m.heroKnockback);
       if (r === 'hit') pop();
       else if (r === 'dodged') ball.setData('dodged', true); // 대시로 뚫고 지나감
     });

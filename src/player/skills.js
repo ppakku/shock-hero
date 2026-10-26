@@ -9,10 +9,11 @@ const SHOCK_WAVE = [0x3f8cff, 0x6fc0ff, 0xe8f7ff, 0x9fd8ff];
 const GIANT_WAVE = [0xc0501a, 0xff8a2a, 0xfff0d0, 0xffb060];
 
 // 주인공 기술(궁극기, 에너지탄, 대공 공격 등)을 관리하는 곳.
-// GameScene 이 만들고 매 프레임 update 를 부른다. Player 는 scene.skills 로 접근한다.
+// GameScene 이 주인공마다 하나씩 만들고 매 프레임 update 를 부른다. Player 는 this.skills 로 접근한다.
 export class HeroSkills {
-  constructor(scene) {
+  constructor(scene, player) {
     this.scene = scene;
+    this.owner = player;
     this.cfg = scene.cfg;
     this.shots = [];
     this.waves = [];
@@ -28,7 +29,7 @@ export class HeroSkills {
   }
 
   get player() {
-    return this.scene.player;
+    return this.owner;
   }
 
   update(dt) {
@@ -69,7 +70,7 @@ export class HeroSkills {
     this.scene.sfxPlay('ultReady');
     floatText(this.scene, p.x, p.y - 60, '궁극기 준비!', '#3fd0ff', 22);
     ring(this.scene, p.x, p.y, 0x3fd0ff, 70, 400, 4);
-    if (!this.ultTipShown) {
+    if (!this.ultTipShown && p === this.scene.player) {
       this.ultTipShown = true;
       this.scene.robot.say('궁극기 준비! {ult} 키를 눌러!', true);
     }

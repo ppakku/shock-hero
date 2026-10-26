@@ -7,7 +7,7 @@ import { HERO_FRAME, HERO_ORIGIN_Y, HERO_LOOKS } from '../fx/heroTextures.js';
 import { normalizeHero, heroStats, gunnerAttack, giantAttack } from '../logic/heroes.js';
 
 // 주인공: 이동, 점프, 대시, 충전 펀치, 위쪽 공격, 궁극기, 피격.
-// 공격 판정과 효과는 scene.onPlayerAttack 이, 에너지탄과 궁극기는 scene.skills 가 맡는다.
+// 공격 판정과 효과는 scene.onPlayerAttack 이, 에너지탄과 궁극기는 this.skills (주인공마다 하나, GameScene 이 붙인다) 가 맡는다.
 // hero 로 주인공을 고른다 (src/logic/heroes.js): shock 주먹, gunner 번개 사수, giant 강철 거인.
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, cfg, { maxHealth, damageMultiplier = 1, powers = null, hero = 'shock' }) {
@@ -70,6 +70,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.spinLeft = 0; // 강철 거인 회오리가 남은 시간
     this.spinFlip = 0;
     this.swim = null; // 수중 스테이지면 GameScene 이 SwimController 를 붙인다 (src/player/swim.js)
+    this.skills = null; // 이 주인공의 기술 담당 (src/player/skills.js, GameScene 이 붙인다)
+    this.tag = null; // 함께하기: 머리 위 '1P', '2P' 글자
   }
 
   // 공격 피해 배수: 레벨 업 카드(공격력) x 파워 장갑
@@ -127,7 +129,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.attackCd.update(dt);
     if (this.spinLeft > 0) {
       this.spinLeft = Math.max(0, this.spinLeft - dt);
-      if (this.spinLeft <= 0) this.scene.skills?.endSpin(this);
+      if (this.spinLeft <= 0) this.skills?.endSpin(this);
     }
     this.dashInvuln = Math.max(0, this.dashInvuln - dt);
     this.hurtInvuln = Math.max(0, this.hurtInvuln - dt);
@@ -148,9 +150,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const blinking = this.hurtInvuln > 0 && Math.floor(this.hurtInvuln * 16) % 2 === 0;
     this.setAlpha(blinking ? 0.35 : 1);
 
-    // 궁극기 중에는 scene.skills 가 움직인다
+    // 궁극기 중에는 this.skills 가 움직인다
     if (this.ultActive) return;
-    if (input.ultPressed && this.hurtLock <= 0 && this.scene.skills?.startUltimate(this)) return;
+    if (input.ultPressed && this.hurtLock <= 0 && this.skills?.startUltimate(this)) return;
 
     if (this.dashing) {
       this.dashTime -= dt;
@@ -220,7 +222,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.cancelCharge();
     if (this.spinLeft > 0) {
       this.spinLeft = 0;
-      this.scene.skills?.endSpin(this);
+      this.skills?.endSpin(this);
     }
     if (this.hero === 'gunner') return this.startBackstep(input);
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0) || this.facing;
@@ -360,6 +362,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(0);
     this.scene.tweens.add({ targets: this, angle: -90 * this.facing, duration: 400 });
     this.scene.onPlayerDied(this);
+  }
+
+  // 함께하기: 쓰러진 뒤 (x, y) 에서 health 만큼 체력을 갖고 다시 일어난다
+  revive(x, y, health) {
+    this.dead = false;
+    this.health.current = Math.max(1, Math.min(this.health.max, Math.round(health)));
+    this.scene.tweens.killTweensOf(this);
+    this.setAngle(0).setAlpha(1).clearTint();
+    this.setPosition(x, y);
+    this.setVelocity(0, 0);
+    this.body.allowGravity = true;
+    this.hurtInvuln = this.cfg.player.hurtInvincibleTime * 2;
+    this.hurtLock = 0;
+    this.dashTime = 0;
+    this.ultActive = false;
+    this.ultPose = null;
   }
 
   // 동작에 맞는 그림(애니메이션)으로 바꾼다
