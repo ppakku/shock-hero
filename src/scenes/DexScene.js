@@ -8,6 +8,9 @@ import { isTouchDevice } from '../ui/touch.js';
 import { makeText, FONT } from '../ui/text.js';
 import { TITLE_FONT } from '../ui/titleArt.js';
 import { fitPortrait } from '../ui/portrait.js';
+import { customArt } from '../config/art.js';
+import { portraitArt } from '../logic/stageArt.js';
+import { queueArt, finishArt } from '../fx/artLoader.js';
 
 // 몬스터 도감. 타이틀 위에 열리고, 닫으면 타이틀을 다시 그린다.
 // 왼쪽은 칸(5 x 4), 오른쪽은 고른 칸의 자세한 설명. 아직 못 잡은 칸은 검은 그림자와 ??? 로 보인다.
@@ -39,7 +42,13 @@ export class DexScene extends Phaser.Scene {
     super('Dex');
   }
 
+  // 도감 그림을 받는다 (못 찾은 칸도 그림의 그림자로 보여 주니까 전부). 도감을 처음 열 때만 받고, 스테이지에서 받은 그림은 다시 안 받는다
+  preload() {
+    queueArt(this, portraitArt([...MONSTER_DEX.map((e) => e.id), ...bossDex(stages).map((b) => b.portrait)], customArt));
+  }
+
   create() {
+    finishArt(this);
     makeSeaMonsterTextures(this); // 해파리처럼 코드로 그리는 바다 몬스터 그림 (게임 중에만 만들어져서 여기서도 만든다)
     this.tab = 'monsters';
     this.selected = 0;
