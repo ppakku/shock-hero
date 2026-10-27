@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { coop } from '../net/coop.js';
+import { countStat } from '../net/stats.js';
 import { cleanCode, isRoomCode, CODE_LENGTH } from '../logic/room.js';
 import { HERO_INFO, normalizeHero } from '../logic/heroes.js';
 import { guestProfile } from '../logic/coopRewards.js';
@@ -85,6 +86,7 @@ export class RoomScene extends Phaser.Scene {
   startHost() {
     sfx.play('beep');
     coop.host(() => this.game.canvas);
+    countStat('coop-host');
     this.showHost();
   }
 
@@ -205,6 +207,7 @@ export class RoomScene extends Phaser.Scene {
         return;
       }
       if (event === 'connected' && coop.role === 'guest') {
+        countStat('coop-join');
         sfx.play('powerup');
         this.scene.stop('Title');
         this.scene.stop();
