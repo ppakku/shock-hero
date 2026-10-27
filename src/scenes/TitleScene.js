@@ -6,6 +6,8 @@ import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
 import { dexCounts } from '../logic/dex.js';
 import { rushCourses, courseUnlocked } from '../logic/rush.js';
+import { todayKey, doneToday } from '../logic/daily.js';
+import { cfg } from '../config/index.js';
 import { totalStars } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO, controlLines } from '../logic/controls.js';
@@ -111,6 +113,7 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-R', () => this.ready && !this.confirming && this.openRush());
     kb.on('keydown-M', () => this.ready && !this.confirming && this.openWorkshop());
     kb.on('keydown-C', () => this.ready && !this.confirming && this.openRoom());
+    kb.on('keydown-T', () => this.ready && !this.confirming && this.openDaily());
     kb.on('keydown-Y', () => this.confirming && this.confirmBox.visible && this.doReset()); // 도감이나 보스 러시가 열려 있을 때 Y 로 지워지지 않게
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
   }
@@ -216,6 +219,22 @@ export class TitleScene extends Phaser.Scene {
     this.rushBtn.setSize(176, 84).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       if (this.confirming) return;
       this.openRush();
+    });
+
+    // 오늘의 도전 (보스 러시 아래, 작은 쪽지 모양). 오늘 깼는지 보여 준다
+    const todayDone = doneToday(save, todayKey());
+    this.dailyBtn = this.add.container(width / 2 - 330, 392).setDepth(15).setAngle(1.5);
+    const note = this.add.graphics();
+    note.fillStyle(0x000000, 0.45).fillRoundedRect(-82, -22, 168, 50, 8);
+    note.fillStyle(0x10161c, 1).fillRoundedRect(-88, -27, 176, 54, 10);
+    note.fillStyle(todayDone ? 0x2a5a3a : 0x3a2f20, 1).fillRoundedRect(-84, -23, 168, 46, 7);
+    note.fillStyle(0xffc21f, 1).fillRect(-84, -23, 10, 46);
+    const dailyLabel = brushText(this, 5, -7, '오늘의 도전', 19, '#ffe14a', { strokeThickness: 5 }).setOrigin(0.5);
+    const dailyInfo = makeText(this, 5, 13, todayDone ? '오늘 깼어요!' : `보석 ${cfg.gems.daily}개`, 13, todayDone ? '#8af0a0' : '#ffffff').setOrigin(0.5);
+    this.dailyBtn.add([note, dailyLabel, dailyInfo]);
+    this.dailyBtn.setSize(176, 54).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.confirming) return;
+      this.openDaily();
     });
 
     // 설정 버튼 줄 (빨간 낙서, 파란 테이프, 회색 철판)
@@ -622,13 +641,7 @@ export class TitleScene extends Phaser.Scene {
 
   // 몬스터 공방 (src/scenes/WorkshopScene.js). 닫으면 closeWorkshop, '만나러 가기' 를 누르면 startWorkshopStage 를 부른다.
   openWorkshop() {
-    if (this.started || !this.ready) return;
-    this.confirming = true;
-    sfx.unlock();
-    sfx.muted = this.save.settings.muted;
-    sfx.play('beep');
-    this.scene.launch('Workshop');
-    this.scene.bringToTop('Workshop');
+    this.openOverlay('Workshop');
   }
 
   closeWorkshop() {
@@ -642,6 +655,38 @@ export class TitleScene extends Phaser.Scene {
     this.confirming = false;
     this.selected = Phaser.Math.Clamp(n, 1, this.save.unlocked);
     this.begin(false);
+  }
+
+  // 오늘의 도전 창 (src/scenes/DailyScene.js). 닫으면 closeDaily, 시작하면 startDaily 를 부른다.
+  openDaily() {
+    this.openOverlay('Daily');
+  }
+
+  closeDaily() {
+    this.confirming = false;
+    this.build();
+  }
+
+  // challenge: { date, stage, hero, rule, limit } (src/logic/daily.js). 체크포인트 없이 처음부터
+  startDaily(challenge) {
+    if (this.started) return;
+    this.started = true;
+    this.confirming = false;
+    this.registry.set('runTime', 0);
+    this.scene.stop('Daily');
+    this.scene.start('Game', { stage: challenge.stage, daily: { ...challenge, broken: false } });
+    this.scene.launch('HUD');
+  }
+
+  // 타이틀 위에 뜨는 창 열기 (공방, 오늘의 도전)
+  openOverlay(key) {
+    if (this.started || !this.ready) return;
+    this.confirming = true;
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.launch(key);
+    this.scene.bringToTop(key);
   }
 
   closeConfirm() {
@@ -685,7 +730,7 @@ export class TitleScene extends Phaser.Scene {
       this.subText.setText(this.save.checkpoint ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요` : '');
       return;
     }
-    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 난이도, 조작, 상점, 초기화, 함께하기    G: 몬스터 도감    R: 보스 러시    M: 몬스터 공방');
+    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 설정    G: 도감    R: 보스 러시    T: 오늘의 도전    M: 몬스터 공방');
     this.startText.setText('Enter: 모험 지도 열기');
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();

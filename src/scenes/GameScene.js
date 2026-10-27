@@ -37,6 +37,7 @@ import { finishRush, carryHealth, rushCourses } from '../logic/rush.js';
 import { workshopSpots, recordCatch } from '../logic/workshop.js';
 import { ensureWorkshopTexture } from '../fx/workshopTextures.js';
 import { artEntries } from '../logic/stageArt.js';
+import { ruleBroken, finishDaily } from '../logic/daily.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
@@ -69,7 +70,11 @@ export class GameScene extends Phaser.Scene {
   create(data = {}) {
     finishArt(this);
     this.save = saveStore.load();
-    this.hero = normalizeHero(this.save.settings.hero); // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
+    // 오늘의 도전: { date, stage, hero, rule, limit, broken } 이면 이 판만 정해진 주인공으로 (src/logic/daily.js)
+    this.daily = !data.rush && data.daily ? { ...data.daily } : null;
+    this.dailyCounts = { deaths: 0, ults: 0, dashes: 0 };
+    // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
+    this.hero = normalizeHero(this.daily ? this.daily.hero : this.save.settings.hero);
     this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)
     this.difficulty = this.save.settings.difficulty;
     // 보스 러시: { course, stages, index, player, carry } 이면 바로 보스 방에서 시작하고, 이기면 다음 보스로 (src/logic/rush.js)
@@ -575,6 +580,7 @@ export class GameScene extends Phaser.Scene {
     this.foreground.update();
 
     if (!this.ended && this.anyAlive) this.registry.set('runTime', this.registry.get('runTime') + dt);
+    if (this.daily) this.checkDaily();
 
     if (!this.lowHealthWarned && !this.player.dead && this.player.health.ratio < 0.3) {
       this.lowHealthWarned = true;
@@ -1087,6 +1093,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   onDash(player) {
+    if (player === this.player) this.dailyCounts.dashes++;
     this.sfxPlay('dash');
     this.dust.explode(5, player.x, player.y + 28);
     ring(this, player.x - player.facing * 10, player.y, 0x6fc0ff, 34, 180, 3);
@@ -1116,6 +1123,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   onPlayerDied(player = this.player) {
+    if (player === this.player) this.dailyCounts.deaths++;
     player.maxLabel?.setVisible(false);
     player.tag?.setVisible(false);
     if (this.coop && this.anyAlive) {
@@ -1293,6 +1301,17 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ---------- 오늘의 도전 ----------
+
+  // 규칙이 깨졌는지 매 프레임 본다. 처음 깨질 때 한 번만 알려 준다
+  checkDaily() {
+    if (this.player.ultActive) this.dailyCounts.ults++;
+    if (this.daily.broken || this.ended) return;
+    if (!ruleBroken(this.daily, { ...this.dailyCounts, time: this.registry.get('runTime') })) return;
+    this.daily.broken = true;
+    this.scene.get('HUD')?.flashDaily?.('도전 실패! 그래도 끝까지 가 봐요');
+  }
+
   // ---------- 보스 러시 ----------
 
   // 앞 보스전에서 남은 체력과 궁극기 게이지를 이어받는다
@@ -1363,6 +1382,14 @@ export class GameScene extends Phaser.Scene {
     coop.sendReward({ kind: 'clear', stage: this.stageNum, time, flawless: !this.fromCheckpoint }); // 친구 기기에도 클리어
     const { patch, isRecord, best } = clearStagePatch(before, this.stageNum, time);
     this.save = saveStore.update({ ...patch, ...reward.patch });
+    let daily = null;
+    if (this.daily) {
+      this.checkDaily();
+      const ok = !this.daily.broken;
+      const res = finishDaily(this.save, this.daily, ok, cfg.gems.daily, stages.length);
+      if (res.patch) this.save = saveStore.update(res.patch);
+      daily = { ok, gems: res.gems, already: ok && !res.first };
+    }
     this.sfxPlay('victory');
     this.robot.queue = [];
     this.robot.bubble.setVisible(false);
@@ -1379,6 +1406,7 @@ export class GameScene extends Phaser.Scene {
       newStars: reward.newStars.map((k) => STAR_INFO[k]),
       gems: reward.gems,
       totalGems: this.save.gems,
+      daily,
     });
   }
 

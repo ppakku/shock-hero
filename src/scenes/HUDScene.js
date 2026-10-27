@@ -10,6 +10,7 @@ import { makeText, formatTime } from '../ui/text.js';
 import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons } from '../ui/touch.js';
 import { attackButtonLabel } from '../logic/controls.js';
 import { normalizeHero, HERO_INFO } from '../logic/heroes.js';
+import { RULE_SHORT } from '../logic/daily.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -26,6 +27,7 @@ export class HUDScene extends Phaser.Scene {
     this.timeText = makeText(this, 936, 30, '', 18).setOrigin(1, 0.5);
     this.ultText = makeText(this, 24, 106, '', 13, '#9fe8ff').setOrigin(0, 0.5).setVisible(false);
     this.stageText = makeText(this, 936, 54, '', 13, '#dddddd').setOrigin(1, 0.5);
+    this.dailyText = makeText(this, 936, 76, '', 13, '#ffe14a').setOrigin(1, 0.5).setVisible(false); // 오늘의 도전 (혼자 할 때만이라 2P 줄과 안 겹친다)
     this.p2Text = makeText(this, 936, 96, '', 13, '#ffd23f').setOrigin(1, 0.5).setVisible(false); // 함께하기: 2P 체력
     this.monsterText = makeText(this, 600, 30, '', 18, '#ff8a8a').setOrigin(0.5);
     this.bossTitle = makeText(this, 600, 14, '', 16, '#ff9ad5').setOrigin(0.5).setVisible(false);
@@ -76,8 +78,9 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.setVisible(false);
     const stage = this.game_?.stageNum;
     const rush = this.game_?.rush;
+    const daily = this.game_?.daily;
     this.scene.stop('Game');
-    if (rush) this.scene.start('Title'); // 보스 러시는 타이틀에서 시작했으니 타이틀로
+    if (rush || daily) this.scene.start('Title'); // 보스 러시와 오늘의 도전은 타이틀에서 시작했으니 타이틀로
     else this.scene.start('Map', { stage });
   }
 
@@ -214,7 +217,21 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.setVisible(true);
   }
 
-  showVictory({ stage, last, time, best, isRecord, level, treasures, stars, newStars = [], gems = 0, totalGems = 0 }) {
+  // 오늘의 도전 규칙이 깨졌을 때 화면 위쪽에 잠깐
+  flashDaily(text) {
+    const t = makeText(this, 480, 150, text, 26, '#ffb0a4', { strokeThickness: 6 }).setOrigin(0.5).setDepth(80);
+    this.tweens.add({ targets: t, alpha: 0, delay: 1800, duration: 500, onComplete: () => t.destroy() });
+  }
+
+  // 오늘의 도전 결과 한 줄 (도전 판이 아니면 빈 줄)
+  dailyLine(daily) {
+    if (!daily) return '';
+    if (!daily.ok) return '오늘의 도전은 실패! 다시 도전해 봐요';
+    if (daily.already) return '오늘의 도전 성공! (보석은 오늘 이미 받았어요)';
+    return `오늘의 도전 성공! 보석 +${daily.gems}`;
+  }
+
+  showVictory({ stage, last, time, best, isRecord, level, treasures, stars, newStars = [], gems = 0, totalGems = 0, daily = null }) {
     this.mode = 'victory';
     this.victoryStage = stage;
     this.victoryLast = last;
@@ -225,6 +242,7 @@ export class HUDScene extends Phaser.Scene {
         `최고 기록 ${formatTime(best)}    레벨 ${level}    보물 ${treasures}`,
         `별 ${stars ? starText(stars) : ''}    보석 +${gems} (모두 ${totalGems}개)`,
         newStars.length ? `새 별: ${newStars.join(', ')}!` : '',
+        ...(daily ? [this.dailyLine(daily)] : []),
         last ? '마지막 보스까지 쓰러뜨리고 모두를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
         this.touch ? '' : last ? 'Enter 또는 클릭: 지도로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 지도로',
       ].join('\n'),
@@ -328,6 +346,8 @@ export class HUDScene extends Phaser.Scene {
       return;
     }
     if (!target.fromCheckpoint) this.registry.set('runTime', 0);
+    // 오늘의 도전: 다시 해도 도전 판으로. 쓰러져서 다시 하면 실패 표시는 그대로, 깬 뒤 다시 하면 새 도전
+    if (gs.daily && target.stage === stage) target.daily = { ...gs.daily, broken: target.fromCheckpoint ? gs.daily.broken : false }; // 쓰러졌을 때는 fromCheckpoint 가 true
     gs.scene.restart(target);
   }
 
@@ -434,6 +454,14 @@ export class HUDScene extends Phaser.Scene {
     // 보스 러시는 스테이지 이름 줄을 비운다 (몇 번째 보스인지는 보물 자리에 쓴다)
     const r = gs.rush;
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
+    const dl = gs.daily;
+    this.dailyText.setVisible(Boolean(dl));
+    if (dl) {
+      const left = dl.rule === 'time' ? Math.max(0, dl.limit - (this.registry.get('runTime') || 0)) : 0;
+      this.dailyText
+        .setText(dl.broken ? '오늘의 도전: 실패 (끝까지 가 봐요)' : `오늘의 도전: ${RULE_SHORT[dl.rule]}${dl.rule === 'time' ? `  남은 시간 ${formatTime(left)}` : ''}`)
+        .setColor(dl.broken ? '#aaaaaa' : '#ffe14a');
+    }
     this.stageText.setText(r ? '' : `스테이지 ${gs.stageNum} ${st.name}  (${DIFFICULTY_INFO[gs.difficulty]?.name ?? '보통'})`);
     this.monsterText.setText(gs.gateOpen || gs.bossStarted ? '' : `남은 몬스터 ${gs.monsters.length}`);
 
