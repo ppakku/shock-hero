@@ -11,6 +11,8 @@ export const stage8 = {
   checkpointX: 4920,
 
   theme: {
+    // 용암 지대에 어울리는 생김새 (움직임과 세기는 그대로). 빨강 날쌘돌이는 원래 불 도깨비라 그대로
+    monsterSkins: { basic: 'monster_lava_basic', tank: 'monster_lava_tank', jumper: 'monster_lava_jumper' },
     scenery: 'volcano',
     bgImage: { key: 'lava_bg', file: 'lava_bg.jpg' }, // 스테이지 3 그림을 같이 씀
     arenaImage: { key: 'lava_arena', file: 'lava_arena.jpg' },

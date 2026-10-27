@@ -11,6 +11,8 @@ export const stage4 = {
   checkpointX: 4140,
 
   theme: {
+    // 얼음 산에 어울리는 생김새 (움직임과 세기는 그대로)
+    monsterSkins: { basic: 'monster_ice_basic', fast: 'monster_ice_fast', tank: 'monster_ice_tank', jumper: 'monster_ice_jumper' },
     scenery: 'mountains', // 배경 모양
     sky: [0x1a2a50, 0x9ec8e8],
     sun: 0xf0f8ff,
@@ -67,13 +69,13 @@ export const stage4 = {
   ],
 
   signs: [
-    { x: 300, text: '스테이지 4: 얼음 산\n보라 몬스터는 점프해서 덮쳐!' },
+    { x: 300, text: '스테이지 4: 얼음 산\n얼음 뜀뛰기는 점프해서 덮쳐!' },
     { x: 2180, text: '방패병 주의!\n{shieldSign}' },
     { x: 4300, text: '보스 구역!\n혹한의 아스트라가 하늘에서 지켜보고 있어' },
   ],
 
   talks: [
-    { x: 0, lines: ['으슬으슬 추워... 내 회로가 얼겠어.', '보라 녀석은 점프해서 덮쳐. 대시로 밑으로 빠져나가!'] },
+    { x: 0, lines: ['으슬으슬 추워... 내 회로가 얼겠어.', '얼음 뜀뛰기는 점프해서 덮쳐. 대시로 밑으로 빠져나가!'] },
     { x: 2200, lines: ['방패를 든 녀석이야! 앞에서 그냥 치면 막혀.', '{shieldTip}'] },
     { x: 2950, lines: ['보물은 갈수록 높은 곳에 숨어 있어. 올라가 보자!'] },
     { x: 4140, lines: ['체크포인트!', '혹한의 아스트라는 하늘을 나는 얼음 용이야.', '냉기 브레스는 파란 부채꼴 밖으로, 빙천지락은 빛나는 바닥을 피해!', '지쳐서 내려오거나 낮게 뜨면 그때 때려!'] },

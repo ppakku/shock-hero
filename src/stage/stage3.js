@@ -11,6 +11,8 @@ export const stage3 = {
   checkpointX: 3940,
 
   theme: {
+    // 용암 지대에 어울리는 생김새 (움직임과 세기는 그대로). 빨강 날쌘돌이는 원래 불 도깨비라 그대로
+    monsterSkins: { basic: 'monster_lava_basic', tank: 'monster_lava_tank', jumper: 'monster_lava_jumper' },
     scenery: 'volcano', // 배경 모양 (그림을 못 불러오면 이걸 그림)
     bgImage: { key: 'lava_bg', file: 'lava_bg.jpg' }, // 걸어가는 동안 배경 (아들 그림)
     arenaImage: { key: 'lava_arena', file: 'lava_arena.jpg' }, // 보스전 배경 (아들 그림)
@@ -65,13 +67,13 @@ export const stage3 = {
   ],
 
   signs: [
-    { x: 300, text: '스테이지 3: 용암 지대\n파란 뚱보는 아주 튼튼해!' },
+    { x: 300, text: '스테이지 3: 용암 지대\n마그마 뚱보는 아주 튼튼해!' },
     { x: 1980, text: '침뱉기 주의!\n침은 점프로 넘거나 대시로 뚫기' },
     { x: 4100, text: '보스 구역!\n불길은 점프로 넘어!' },
   ],
 
   talks: [
-    { x: 0, lines: ['으, 뜨거워! 신발 녹는 거 아니야?', '파란 뚱보는 튼튼해. {strong}(을)를 여러 번 먹여!'] },
+    { x: 0, lines: ['으, 뜨거워! 신발 녹는 거 아니야?', '마그마 뚱보는 튼튼해. {strong}(을)를 여러 번 먹여!'] },
     { x: 1250, lines: ['저 높은 곳까지 올라갈 수 있겠어?'] },
     { x: 1950, lines: ['저기 청록 녀석은 멀리서 침을 뱉어.', '볼이 부풀고 초록으로 깜빡이면 침이 날아와. 점프로 넘거나 대시로 뚫고 가!', '가까이 붙으면 약해!'] },
     { x: 3940, lines: ['체크포인트!', '이번 보스는 붉은 용 아스트라노바X야!', '땅을 훑는 불길은 점프로 넘고, 날개 바람은 앞으로 걸어서 버텨!'] },

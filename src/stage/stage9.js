@@ -11,6 +11,8 @@ export const stage9 = {
   checkpointX: 5120,
 
   theme: {
+    // 얼음 산에 어울리는 생김새 (움직임과 세기는 그대로)
+    monsterSkins: { basic: 'monster_ice_basic', fast: 'monster_ice_fast', tank: 'monster_ice_tank', jumper: 'monster_ice_jumper' },
     scenery: 'mountains',
     bgImage: { key: 'ice_bg', file: 'ice_bg.jpg' }, // 스테이지 4 그림을 같이 씀
     arenaImage: { key: 'ice_arena', file: 'ice_arena.jpg' },

@@ -23,7 +23,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const m = monsterStats(cfg, spot.type);
     const x = spot.x;
     const y = spot.y - 30 * m.size;
-    const tex = TEXTURE[m.type];
+    // 스테이지마다 어울리는 생김새 (theme.monsterSkins, 예: 용암 지대의 초록 몬스터는 불꽃 슬라임). 움직임과 세기는 그대로
+    const skin = scene.stage?.theme?.monsterSkins?.[m.type];
+    const tex = skin && scene.textures.exists(skin) ? skin : TEXTURE[m.type];
     super(scene, x, y, tex);
     scene.add.existing(this);
     scene.physics.add.existing(this);
