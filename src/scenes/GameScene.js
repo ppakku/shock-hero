@@ -19,6 +19,7 @@ import { addXp, maxHealthFor } from '../logic/progression.js';
 import { normalizeHero, heroStats } from '../logic/heroes.js';
 import { nearestPlayer, strongerResult, partyCenter, clampSpread } from '../logic/coop.js';
 import { coop } from '../net/coop.js';
+import { countStat } from '../net/stats.js';
 import { customArt } from '../config/art.js';
 import { stageArt } from '../logic/stageArt.js';
 import { queueArt, finishArt } from '../fx/artLoader.js';
@@ -79,6 +80,8 @@ export class GameScene extends Phaser.Scene {
     this.bossTips = new Set();
     this.gateNagAt = -10;
     this.fromCheckpoint = !this.rush && data.fromCheckpoint && this.save.checkpoint === this.stageNum;
+    if (!this.rush) countStat('start', this.stageNum);
+    else if (!this.rush.index) countStat('rush-start', this.rush.course);
     if (!this.rush && this.save.lastStage !== this.stageNum) this.save = saveStore.update({ lastStage: this.stageNum }); // 지도를 다시 열면 여기서 시작
     if (!this.registry.has('runTime')) this.registry.set('runTime', 0);
 
@@ -1114,9 +1117,11 @@ export class GameScene extends Phaser.Scene {
     if (this.rush) {
       this.robot.say('아깝다! 다음엔 더 멀리 갈 수 있어.', true);
       const { index, stages: list } = this.rush;
+      countStat('rush-over', this.rush.course);
       this.time.delayedCall(1300, () => this.scene.get('HUD')?.showRushOver({ reached: index + 1, total: list.length, time: this.registry.get('runTime') }));
       return;
     }
+    countStat('fall', this.stageNum);
     this.robot.say('히어로! 일어나! 체크포인트로 돌아가자.', true);
     this.time.delayedCall(1300, () => this.scene.get('HUD')?.showGameOver(this.save.checkpoint === this.stageNum));
   }
@@ -1312,6 +1317,7 @@ export class GameScene extends Phaser.Scene {
     const time = this.registry.get('runTime');
     const entry = { name: r.player, hero: this.hero, time, duo: this.coop, at: Date.now() };
     const result = finishRush(saveStore.load(), r.course, entry, cfg.gems, rushCourses(stages.length).length);
+    countStat('rush-done', r.course);
     this.save = saveStore.update(result.patch);
     this.sfxPlay('victory');
     this.robot.queue = [];
@@ -1321,6 +1327,7 @@ export class GameScene extends Phaser.Scene {
 
   finishVictory() {
     const time = this.registry.get('runTime');
+    countStat('clear', this.stageNum);
     const before = saveStore.load();
     // 별 3: 체크포인트에서 다시 시작하지 않고 한 번에 깼을 때
     const reward = clearReward(before, this.stage, this.stageNum, { flawless: !this.fromCheckpoint }, cfg.gems);
