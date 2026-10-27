@@ -17,7 +17,7 @@ export function artFile(entry) {
 
 export function registerSheets(scene, customArt) {
   for (const [key, entry] of Object.entries(customArt)) {
-    if (!isSheet(entry) || !scene.textures.exists(key)) continue;
+    if (!isSheet(entry) || !scene.textures.exists(key) || scene.anims.exists(`${key}_anim`)) continue; // 아직 안 받았거나 이미 잘랐으면 건너뛴다
     const tex = scene.textures.get(key);
     const src = tex.getSourceImage();
     const fw = Math.floor(src.width / entry.cols);

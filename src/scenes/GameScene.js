@@ -19,6 +19,9 @@ import { addXp, maxHealthFor } from '../logic/progression.js';
 import { normalizeHero, heroStats } from '../logic/heroes.js';
 import { nearestPlayer, strongerResult, partyCenter, clampSpread } from '../logic/coop.js';
 import { coop } from '../net/coop.js';
+import { customArt } from '../config/art.js';
+import { stageArt } from '../logic/stageArt.js';
+import { queueArt, finishArt } from '../fx/artLoader.js';
 import { HELD_KEYS, TAP_KEYS } from '../logic/room.js';
 import {
   PowerSet, POWER_INFO, treasurePower, UPGRADE_INFO, attackMultiplier, damageTakenMultiplier, speedMultiplier,
@@ -51,7 +54,14 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
+  // 이 스테이지 그림만 받는다 (배경, 몬스터, 보스). 이미 받은 그림은 다시 안 받는다 (src/logic/stageArt.js)
+  preload() {
+    const n = Phaser.Math.Clamp(this.sys.settings.data?.stage || 1, 1, stages.length);
+    queueArt(this, stageArt(n, stages, customArt));
+  }
+
   create(data = {}) {
+    finishArt(this);
     this.save = saveStore.load();
     this.hero = normalizeHero(this.save.settings.hero); // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
     this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)

@@ -9,6 +9,9 @@ import { isTouchDevice } from '../ui/touch.js';
 import { makeText, FONT, formatTime } from '../ui/text.js';
 import { TITLE_FONT } from '../ui/titleArt.js';
 import { fitPortrait } from '../ui/portrait.js';
+import { customArt } from '../config/art.js';
+import { portraitArt } from '../logic/stageArt.js';
+import { queueArt, finishArt } from '../fx/artLoader.js';
 
 // 보스 러시 고르는 화면. 타이틀 위에 열리고, 닫으면 타이틀을 다시 그린다.
 // 위: 누가 하는지 고르기. 왼쪽: 코스 네 개 (스테이지 다섯 개씩, 다 깨면 열림). 오른쪽: 고른 코스의 가족 기록표.
@@ -26,7 +29,18 @@ export class RushScene extends Phaser.Scene {
     super('Rush');
   }
 
+  // 열린 코스의 보스 얼굴 그림만 받는다
+  preload() {
+    const save = saveStore.load();
+    const bosses = bossDex(stages);
+    const keys = rushCourses(stages.length)
+      .filter((c) => courseUnlocked(save, c))
+      .flatMap((c) => c.stages.map((n) => bosses[n - 1]?.portrait));
+    queueArt(this, portraitArt(keys, customArt));
+  }
+
   create() {
+    finishArt(this);
     const save = saveStore.load();
     this.courses = rushCourses(stages.length);
     this.bosses = bossDex(stages);
