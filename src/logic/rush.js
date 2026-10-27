@@ -2,14 +2,18 @@
 // 화면 없이 계산만 한다 (게임 장면은 src/scenes/GameScene.js, 고르는 화면은 src/scenes/RushScene.js).
 //
 // 저장: save.rush = {
-//   player: '형',                     지난번에 고른 사람
+//   player: '꿀곰이',                 지난번에 고른 사람
 //   records: { 1: [{ name, hero, time, duo, at }] },  코스별 기록 (빠른 순, 최대 RECORD_MAX 개)
 //   cleared: [1, 3],                  한 번이라도 끝까지 깬 코스 (처음 깨면 보석)
 // }
 
 export const COURSE_SIZE = 5;
 export const RECORD_MAX = 8;
-export const PLAYERS = ['아빠', '엄마', '형', '동생', '친구'];
+// 가족 별명 (아빠, 엄마, 형, 동생, 친구 순서)
+export const PLAYERS = ['쿨쿨대장', '불꼬리', '꿀곰이', '말랑베개', '꼬르륵'];
+// 처음 올렸을 때 쓰던 이름으로 남은 기록은 별명으로 바꿔 읽는다
+const OLD_NAMES = { 아빠: '쿨쿨대장', 엄마: '불꼬리', 형: '꿀곰이', 동생: '말랑베개', 친구: '꼬르륵' };
+const renamed = (name) => OLD_NAMES[name] || name;
 const COURSE_NAMES = ['처음 만난 보스들', '더 세진 보스들', '돌아온 보스들', '마지막 보스들'];
 
 // 스테이지 다섯 개씩 한 코스. [{ id, name, stages: [1..5] }]
@@ -37,14 +41,14 @@ const validTime = (t) => typeof t === 'number' && Number.isFinite(t) && t > 0 &&
 export function normalizeRush(data, courseCount) {
   const d = emptyRush();
   if (!data || typeof data !== 'object') return d;
-  if (PLAYERS.includes(data.player)) d.player = data.player;
+  if (PLAYERS.includes(renamed(data.player))) d.player = renamed(data.player);
   const validCourse = (n) => Number.isInteger(n) && n >= 1 && n <= courseCount;
   if (data.records && typeof data.records === 'object') {
     for (const [k, list] of Object.entries(data.records)) {
       if (!validCourse(Number(k)) || !Array.isArray(list)) continue;
       const ok = list
-        .filter((r) => r && PLAYERS.includes(r.name) && validTime(r.time))
-        .map((r) => ({ name: r.name, hero: typeof r.hero === 'string' ? r.hero : 'shock', time: r.time, duo: r.duo === true, at: Number.isFinite(r.at) ? r.at : 0 }));
+        .filter((r) => r && PLAYERS.includes(renamed(r.name)) && validTime(r.time))
+        .map((r) => ({ name: renamed(r.name), hero: typeof r.hero === 'string' ? r.hero : 'shock', time: r.time, duo: r.duo === true, at: Number.isFinite(r.at) ? r.at : 0 }));
       if (ok.length) d.records[Number(k)] = sortRecords(ok).slice(0, RECORD_MAX);
     }
   }
