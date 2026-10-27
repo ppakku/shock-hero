@@ -6,6 +6,7 @@ import { GameScene } from './scenes/GameScene.js';
 import { HUDScene } from './scenes/HUDScene.js';
 import { LevelUpScene } from './scenes/LevelUpScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
+import { DexScene } from './scenes/DexScene.js';
 import { MapScene } from './scenes/MapScene.js';
 import { RoomScene } from './scenes/RoomScene.js';
 import { GuestScene } from './scenes/GuestScene.js';
@@ -37,7 +38,7 @@ const game = new Phaser.Game({
     default: 'arcade',
     arcade: { gravity: { y: cfg.world.gravity }, debug: DEBUG },
   },
-  scene: [BootScene, TitleScene, GameScene, HUDScene, LevelUpScene, ShopScene, MapScene, RoomScene, GuestScene], // LevelUp 은 HUD 위에 그려진다
+  scene: [BootScene, TitleScene, GameScene, HUDScene, LevelUpScene, ShopScene, DexScene, MapScene, RoomScene, GuestScene], // LevelUp 은 HUD 위에 그려진다
 });
 
 // 다른 앱으로 넘어가거나(전화, 알림) 휴대폰을 세로로 돌리면 하던 스테이지를 일시정지한다.

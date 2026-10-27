@@ -9,6 +9,7 @@ export class Crab extends Monster {
     makeSeaMonsterTextures(scene);
     super(scene, spot, cfg);
     this.setTexture('monster_crab');
+    this.dexId = 'monster_crab';
     this.setDisplaySize(56 * this.m.size, 45 * this.m.size);
     this.body.setSize(this.width * 0.8, this.height * 0.8, true);
     this.baseScaleY = this.scaleY;

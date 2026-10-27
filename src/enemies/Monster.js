@@ -29,6 +29,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, tex);
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    this.dexId = tex; // 몬스터 도감 칸 (src/logic/dex.js)
     this.sizeToLook(tex, m.size);
     this.body.setSize(this.width * 0.8, this.height * 0.85, true);
     this.setCollideWorldBounds(true);

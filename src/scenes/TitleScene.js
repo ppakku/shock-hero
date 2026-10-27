@@ -4,6 +4,7 @@ import { makeText, FONT } from '../ui/text.js';
 import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
+import { dexCounts } from '../logic/dex.js';
 import { totalStars } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO, controlLines } from '../logic/controls.js';
@@ -105,6 +106,7 @@ export class TitleScene extends Phaser.Scene {
     on(['ENTER', 'SPACE'], () => this.activate());
     kb.on('keydown-N', () => this.ready && this.confirming && this.closeConfirm());
     kb.on('keydown-B', () => this.ready && !this.confirming && this.openShop());
+    kb.on('keydown-G', () => this.ready && !this.confirming && this.openDex());
     kb.on('keydown-C', () => this.ready && !this.confirming && this.openRoom());
     kb.on('keydown-Y', () => this.confirming && this.doReset());
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
@@ -156,6 +158,23 @@ export class TitleScene extends Phaser.Scene {
       this.openMap();
     });
     this.tweens.add({ targets: this.mapBtn, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // 몬스터 도감 (모험 지도 오른쪽, 낡은 책 모양)
+    const dc = dexCounts(save, stages.length);
+    this.dexBtn = this.add.container(width / 2 + 330, 302).setDepth(15).setAngle(2);
+    const book = this.add.graphics();
+    book.fillStyle(0x000000, 0.45).fillRoundedRect(-82, -36, 168, 80, 10);
+    book.fillStyle(0x10161c, 1).fillRoundedRect(-88, -42, 176, 84, 12);
+    book.fillStyle(0x7a2a1a, 1).fillRoundedRect(-84, -38, 168, 76, 9);
+    book.fillStyle(0x5a1c10, 1).fillRect(-84, -38, 16, 76);
+    book.lineStyle(2, 0xe8c070, 0.9).strokeRoundedRect(-62, -30, 138, 60, 6);
+    const dexLabel = brushText(this, 8, -10, '몬스터 도감', 22, '#ffe14a', { strokeThickness: 5 }).setOrigin(0.5);
+    const dexCount = makeText(this, 8, 18, `${dc.monsters + dc.bosses}/${dc.monsterTotal + dc.bossTotal}`, 15, '#ffffff').setOrigin(0.5);
+    this.dexBtn.add([book, dexLabel, dexCount]);
+    this.dexBtn.setSize(176, 84).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.confirming) return;
+      this.openDex();
+    });
 
     // 설정 버튼 줄 (빨간 낙서, 파란 테이프, 회색 철판)
     const d = DIFFICULTY_INFO[save.settings.difficulty];
@@ -221,7 +240,7 @@ export class TitleScene extends Phaser.Scene {
     const bg = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.75).setInteractive();
     const plate = this.add.image(480, 262, 'tt-plate').setDisplaySize(660, 200);
     const msg = this.add
-      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록, 별, 보석, 상점이 모두 지워져요.', {
+      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록, 별, 보석, 상점, 도감이 모두 지워져요.', {
         fontFamily: FONT,
         fontStyle: 'bold',
         fontSize: '21px',
@@ -516,6 +535,22 @@ export class TitleScene extends Phaser.Scene {
     this.build();
   }
 
+  // 몬스터 도감도 타이틀 위에 따로 열린다 (src/scenes/DexScene.js). 닫으면 closeDex 를 부른다.
+  openDex() {
+    if (this.started || !this.ready) return;
+    this.confirming = true;
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.launch('Dex');
+    this.scene.bringToTop('Dex');
+  }
+
+  closeDex() {
+    this.confirming = false;
+    this.build();
+  }
+
   closeConfirm() {
     this.confirming = false;
     this.confirmBox.setVisible(false);
@@ -557,7 +592,7 @@ export class TitleScene extends Phaser.Scene {
       this.subText.setText(this.save.checkpoint ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요` : '');
       return;
     }
-    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키를 누르면 난이도, 조작, 상점, 레벨 초기화, 함께하기를 고를 수 있어요');
+    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 난이도, 조작, 상점, 레벨 초기화, 함께하기    G 키: 몬스터 도감');
     this.startText.setText('Enter: 모험 지도 열기');
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();

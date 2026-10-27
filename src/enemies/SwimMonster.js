@@ -14,6 +14,7 @@ export class SwimMonster extends Monster {
     makeSeaMonsterTextures(scene);
     super(scene, spot, cfg);
     this.setTexture(texture);
+    this.dexId = texture;
     if (customArt[texture]) {
       // 내가 넣은 그림은 비율을 지키고, 넓이만 원래 크기(w x h)와 같게 맞춘다
       const k = Math.sqrt((w * h) / (this.frame.width * this.frame.height));

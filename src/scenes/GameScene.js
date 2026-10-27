@@ -28,6 +28,7 @@ import { floatText, ring } from '../fx/effects.js';
 import { makeText, FONT } from '../ui/text.js';
 import { isTouchDevice, touchPad, touchPoints } from '../ui/touch.js';
 import { drawSignboard, signStyleFor } from '../ui/signboard.js';
+import { dexReward, monsterName } from '../logic/dex.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
@@ -1111,6 +1112,7 @@ export class GameScene extends Phaser.Scene {
   onMonsterKilled(monster) {
     this.greenGoo.explode(16, monster.x, monster.y);
     this.gainXp(monster.m.xp, monster.x, monster.y - 40);
+    this.recordDex('monster', monster.dexId, monster.x, monster.y - 70);
     if (Math.random() < cfg.monster.heartDropChance + this.bonus.heartChance) this.dropHeart(monster.x, monster.y - 10);
   }
 
@@ -1174,7 +1176,24 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // 몬스터 도감에 적기. 처음 잡으면 "도감 등록!" 과 보석. 함께하기 친구 도감에도 적는다
+  recordDex(kind, key, x, y) {
+    if (!key) return;
+    coop.sendReward(kind === 'boss' ? { kind: 'dexBoss', stage: key } : { kind: 'dexMonster', id: key });
+    const r = dexReward(saveStore.load(), kind, key, cfg.gems);
+    if (!Object.keys(r.patch).length) return;
+    this.save = saveStore.update(r.patch);
+    if (!r.isNew) return;
+    const name = kind === 'boss' ? this.stage.boss.name : monsterName(key);
+    // 잠깐 머물렀다 사라지는 글자 (보통 떠오르는 글자보다 오래 보이게)
+    const t = makeText(this, x, y, `📖 도감 등록! ${name}${r.gems > 0 ? `  보석 +${r.gems}` : ''}`, 20, '#ffe14a').setOrigin(0.5).setDepth(45);
+    this.tweens.add({ targets: t, y: y - 30, duration: 400, ease: 'Back.out' });
+    this.tweens.add({ targets: t, alpha: 0, delay: 1800, duration: 400, onComplete: () => t.destroy() });
+    if (kind === 'monster') this.robot?.say(`새 몬스터! ${name}, 도감에 적어 뒀어.`);
+  }
+
   onBossDefeated(boss) {
+    this.recordDex('boss', this.stageNum, boss.bodyX, boss.groundY - 300);
     const fx = cfg.effects;
     const scale = Math.max(0.05, Math.min(1, fx.slowMotionScale));
     this.time.timeScale = scale;

@@ -5,6 +5,7 @@ import { normalizeShop } from './shop.js';
 import { addXp } from './progression.js';
 import { treasureReward, clearReward } from './rewards.js';
 import { clearStagePatch } from './save.js';
+import { dexReward, monsterName } from './dex.js';
 
 // 친구가 방에 들어올 때 보내는 내 정보 (저장에서 뽑는다)
 export function guestProfile(save) {
@@ -32,6 +33,7 @@ export function cleanProfile(p, maxRank = 5) {
 
 // 방장 게임에서 일어난 일을 친구 저장에 반영한다.
 // msg: { kind: 'treasure', stage, id } | { kind: 'xp', amount } | { kind: 'clear', stage, time, flawless }
+//      | { kind: 'dexMonster', id } | { kind: 'dexBoss', stage }
 // stage: msg.stage 의 스테이지 데이터. 돌려주는 값: { patch, gems, text } (text 는 친구 화면에 잠깐 보여 줄 글)
 export function applyGuestReward(save, msg, stage, cfg) {
   if (msg?.kind === 'treasure' && stage) {
@@ -49,6 +51,15 @@ export function applyGuestReward(save, msg, stage, cfg) {
     const reward = clearReward(save, stage, msg.stage, { flawless: Boolean(msg.flawless) }, cfg.gems);
     const { patch } = clearStagePatch(save, msg.stage, Number(msg.time) || 0);
     return { patch: { ...patch, ...reward.patch }, gems: reward.gems, text: `스테이지 ${msg.stage} 클리어! 보석 +${reward.gems}` };
+  }
+  // 도감: 방장 게임에서 잡은 몬스터와 보스를 친구 도감에도 적는다
+  if (msg?.kind === 'dexMonster' && typeof msg.id === 'string') {
+    const r = dexReward(save, 'monster', msg.id, cfg.gems);
+    return { patch: r.patch, gems: r.gems, text: r.isNew ? `도감 등록! ${monsterName(msg.id)}` : '' };
+  }
+  if (msg?.kind === 'dexBoss' && Number.isInteger(msg.stage)) {
+    const r = dexReward(save, 'boss', msg.stage, cfg.gems);
+    return { patch: r.patch, gems: r.gems, text: r.isNew ? `도감에 보스 등록! 보석 +${r.gems}` : '' };
   }
   return { patch: {}, gems: 0, text: '' };
 }
