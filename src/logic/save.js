@@ -73,7 +73,8 @@ function normalize(data) {
 
 // storage 는 localStorage 처럼 getItem/setItem 이 있는 것. 없거나 막혀 있어도 게임은 돈다.
 // gemsFor(save): 보석이 생기기 전 저장을 읽을 때 지금까지 한 만큼 보석을 정해 준다 (스테이지를 알아야 해서 밖에서 받음)
-export function createSaveStore(storage, { gemsFor } = {}) {
+// dexFor(save): 도감이 생기기 전 저장을 읽을 때 깬 스테이지로 도감을 채워 준다 (src/logic/dex.js 의 dexFromProgress)
+export function createSaveStore(storage, { gemsFor, dexFor } = {}) {
   function load() {
     try {
       const raw = storage?.getItem(KEY);
@@ -81,6 +82,7 @@ export function createSaveStore(storage, { gemsFor } = {}) {
       const data = JSON.parse(raw);
       const d = normalize(data);
       if (gemsFor && data && typeof data === 'object' && data.gems === undefined) d.gems = gemsFor(d);
+      if (dexFor && data && typeof data === 'object' && data.dex === undefined) d.dex = normalizeDex(dexFor(d), STAGE_COUNT);
       return d;
     } catch {
       return defaultSave();

@@ -119,3 +119,20 @@ export function dexReward(save, kind, key, gemCfg = {}) {
 export function monsterName(id) {
   return MONSTER_DEX.find((e) => e.id === id)?.name || '';
 }
+
+// 도감이 생기기 전 저장: 깬 스테이지의 몬스터와 보스를 채워 준다.
+// 보스 문은 몬스터를 다 잡아야 열리니까, 깬 스테이지의 몬스터는 모두 한 번 이상 잡은 것이다 (보석은 안 줌)
+export function dexFromProgress(save, stages) {
+  const dex = emptyDex();
+  const cleared = Object.keys(save.bestTimes || {}).map(Number).filter((n) => n >= 1 && n <= stages.length);
+  for (const n of cleared) {
+    const st = stages[n - 1];
+    for (const spot of st.monsters || []) {
+      const id = dexIdFor(st, parseMonsterSpot(spot, st.groundY || 480).type);
+      dex.monsters[id] = (dex.monsters[id] || 0) + 1;
+    }
+    dex.bosses.push(n);
+  }
+  dex.bosses.sort((a, b) => a - b);
+  return dex;
+}

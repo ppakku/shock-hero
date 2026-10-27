@@ -74,3 +74,26 @@ describe('함께하기 친구 도감', () => {
     expect(b.gems).toBe(cfg.gems.dexBoss);
   });
 });
+
+import { dexFromProgress } from '../src/logic/dex.js';
+import { createSaveStore } from '../src/logic/save.js';
+
+describe('도감 전 저장', () => {
+  it('깬 스테이지의 몬스터와 보스를 채운다', () => {
+    const d = dexFromProgress({ bestTimes: { 1: 90, 3: 120 } }, stages);
+    expect(d.bosses).toEqual([1, 3]);
+    expect(d.monsters.monster).toBeGreaterThan(0);
+    expect(d.monsters.monster_lava_basic).toBeGreaterThan(0);
+    expect(d.monsters.monster_ice_basic).toBeUndefined();
+  });
+
+  it('도감이 없는 예전 저장만 채우고, 이미 있으면 그대로', () => {
+    const mem = {};
+    const storage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => (mem[k] = v) };
+    const store = createSaveStore(storage, { dexFor: (s) => dexFromProgress(s, stages) });
+    mem['shock-hero-save-v1'] = JSON.stringify({ bestTimes: { 2: 80 }, unlocked: 3 });
+    expect(store.load().dex.bosses).toEqual([2]);
+    mem['shock-hero-save-v1'] = JSON.stringify({ bestTimes: { 2: 80 }, unlocked: 3, dex: { monsters: {}, bosses: [] } });
+    expect(store.load().dex.bosses).toEqual([]);
+  });
+});
