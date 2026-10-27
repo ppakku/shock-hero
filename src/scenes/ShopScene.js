@@ -33,7 +33,7 @@ export class ShopScene extends Phaser.Scene {
     this.msg = makeText(this, 480, 470, '', 18, '#ffd23f').setOrigin(0.5);
     const help = isTouchDevice() ? '줄을 누르면 사요' : '↑ ↓ 고르기    Enter 사기    Esc 닫기    (줄을 클릭해도 사요)';
     makeText(this, 480, 498, help, 15, '#cccccc').setOrigin(0.5);
-    makeText(this, 480, 522, '보석 얻기: 보물 처음 찾기 +2, 스테이지 깨기 +1, 새 별 +3, 도감 새 몬스터 +1, 새 보스 +3', 14, '#9fe8ff').setOrigin(0.5);
+    makeText(this, 480, 522, '보석 얻기: 보물 처음 찾기 +2, 스테이지 깨기 +1, 새 별 +3, 도감 새 몬스터 +1, 새 보스 +3, 보스 러시 첫 클리어 +5', 13, '#9fe8ff').setOrigin(0.5);
 
     const close = makeText(this, 900, 44, '닫기 ✕', 20, '#ffffff', { backgroundColor: '#5a1020', padding: { x: 10, y: 6 } })
       .setOrigin(0.5)

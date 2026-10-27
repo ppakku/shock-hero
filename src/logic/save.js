@@ -4,6 +4,7 @@ import { emptyUpgrades, normalizeUpgrades, UPGRADE_TRACKS } from './growth.js';
 import { emptyShop, normalizeShop } from './shop.js';
 import { normalizeHero } from './heroes.js';
 import { emptyDex, normalizeDex } from './dex.js';
+import { emptyRush, normalizeRush, COURSE_SIZE } from './rush.js';
 
 const KEY = 'shock-hero-save-v1';
 export const STAGE_COUNT = 20; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
@@ -22,6 +23,7 @@ export function defaultSave() {
     lastStage: null, // 마지막으로 들어간 스테이지 (지도를 열면 여기서 시작)
     gems: 0, // 상점에서 쓰는 보석
     shop: emptyShop(), // 상점에서 산 단계 { hp, heart, ... }
+    rush: emptyRush(), // 보스 러시 가족 기록표 (src/logic/rush.js)
     dex: emptyDex(), // 몬스터 도감 { monsters: { 그림 이름: 잡은 수 }, bosses: [스테이지 번호] } (src/logic/dex.js)
     // hero: 고른 주인공 (src/logic/heroes.js)
     // lowFx: 효과 줄이기 (빛 번짐, 멈칫, 확대, 번쩍임을 끄고 불꽃 수를 줄인다)
@@ -60,6 +62,7 @@ function normalize(data) {
   if (Number.isInteger(data.gems) && data.gems >= 0) d.gems = data.gems;
   d.shop = normalizeShop(data.shop);
   d.dex = normalizeDex(data.dex, STAGE_COUNT);
+  d.rush = normalizeRush(data.rush, Math.ceil(STAGE_COUNT / COURSE_SIZE));
   if (data.settings && typeof data.settings === 'object') {
     if (typeof data.settings.shake === 'boolean') d.settings.shake = data.settings.shake;
     if (typeof data.settings.muted === 'boolean') d.settings.muted = data.settings.muted;

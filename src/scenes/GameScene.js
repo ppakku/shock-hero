@@ -29,6 +29,7 @@ import { makeText, FONT } from '../ui/text.js';
 import { isTouchDevice, touchPad, touchPoints } from '../ui/touch.js';
 import { drawSignboard, signStyleFor } from '../ui/signboard.js';
 import { dexReward, monsterName } from '../logic/dex.js';
+import { finishRush, carryHealth, rushCourses } from '../logic/rush.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
@@ -55,6 +56,8 @@ export class GameScene extends Phaser.Scene {
     this.hero = normalizeHero(this.save.settings.hero); // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
     this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)
     this.difficulty = this.save.settings.difficulty;
+    // 보스 러시: { course, stages, index, player, carry } 이면 바로 보스 방에서 시작하고, 이기면 다음 보스로 (src/logic/rush.js)
+    this.rush = data.rush || null;
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
     this.cfg = withDifficulty(cfg, this.difficulty, this.stageNum); // 뒤 스테이지일수록 조금씩 어려워짐
     this.stage = getStage(this.stageNum);
@@ -65,8 +68,8 @@ export class GameScene extends Phaser.Scene {
     this.firedTalks = new Set();
     this.bossTips = new Set();
     this.gateNagAt = -10;
-    this.fromCheckpoint = data.fromCheckpoint && this.save.checkpoint === this.stageNum;
-    if (this.save.lastStage !== this.stageNum) this.save = saveStore.update({ lastStage: this.stageNum }); // 지도를 다시 열면 여기서 시작
+    this.fromCheckpoint = !this.rush && data.fromCheckpoint && this.save.checkpoint === this.stageNum;
+    if (!this.rush && this.save.lastStage !== this.stageNum) this.save = saveStore.update({ lastStage: this.stageNum }); // 지도를 다시 열면 여기서 시작
     if (!this.registry.has('runTime')) this.registry.set('runTime', 0);
 
     // 슬로모션이 남아 있을 수 있으니 시간 속도를 되돌린다
@@ -84,7 +87,7 @@ export class GameScene extends Phaser.Scene {
     this.impact = new ImpactFx(this); // 보스가 만들 때 효과 줄이기 설정을 읽으므로 보스보다 먼저
     this.foreground = new Foreground(this);
 
-    const startX = this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
+    const startX = this.rush ? st.arena.startX + 140 : this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
     this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
     this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
     this.player = this.makePlayer(startX, this.hero);
@@ -110,7 +113,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.monsters = [];
-    if (!this.fromCheckpoint) {
+    if (!this.fromCheckpoint && !this.rush) {
       const spots = adjustMonsters(st.monsters.map((spot) => parseMonsterSpot(spot, st.groundY)), this.difficulty, st.gateX);
       for (const spot of spots) this.monsters.push(createMonster(this, spot, this.cfg));
       this.physics.add.collider(this.monsters, this.solids);
@@ -140,7 +143,12 @@ export class GameScene extends Phaser.Scene {
     // 출발 방패: 스테이지 이름이 지나간 뒤 강철 몸
     if (this.bonus.startShield) this.time.delayedCall(this.fromCheckpoint ? 400 : 1700, () => !this.ended && this.givePower('shield'));
 
-    if (this.fromCheckpoint) {
+    if (this.rush) {
+      for (const t of st.talks) this.firedTalks.add(t); // 보스 방에서 시작하니 길 안내는 건너뛴다
+      this.applyRushCarry();
+      this.showRushBanner();
+      this.rushFightAt = this.time.now + 1300; // 보스 이름판을 보여 준 뒤 싸움 시작
+    } else if (this.fromCheckpoint) {
       for (const t of st.talks) if (t.x < st.checkpointX) this.firedTalks.add(t);
       this.robot.say(['다시 가 보자! 이번엔 할 수 있어.']);
     } else {
@@ -433,7 +441,7 @@ export class GameScene extends Phaser.Scene {
     this.signBoards = st.signs.map((s) => drawSignboard(this, s.x, st.groundY, this.keyText(s.text), signStyle));
 
     // 체크포인트 깃발
-    this.flagActive = this.fromCheckpoint;
+    this.flagActive = this.fromCheckpoint || Boolean(this.rush); // 보스 러시는 체크포인트가 없다
     // 그림 크기와 상관없이 높이 90 으로 맞춘다 (flag 와 flag_on 은 같은 크기라 바꿔 끼워도 그대로)
     this.flag = this.add.image(st.checkpointX, st.groundY, this.flagActive ? 'flag_on' : 'flag').setOrigin(0.2, 1).setDepth(2);
     this.flag.setScale(90 / this.flag.height);
@@ -441,7 +449,7 @@ export class GameScene extends Phaser.Scene {
     // 보물 상자: 들어올 때마다 자리가 바뀐다. 이미 찾은 보물은 나오지 않는다
     this.chests = [];
     for (const tr of placeTreasures(st, this.stageNum)) {
-      if (this.save.treasures.includes(tr.id)) continue;
+      if (this.rush || this.save.treasures.includes(tr.id)) continue;
       const img = this.add.image(tr.x, tr.y, 'chest').setOrigin(0.5, 1).setDepth(2);
       img.setDisplaySize((40 * img.width) / img.height, 40); // 그림 비율을 지켜 높이만 맞춘다 (art.js 의 상자 그림)
       this.tweens.add({ targets: img, y: tr.y - 4, duration: 500, yoyo: true, repeat: -1 });
@@ -652,7 +660,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.chests = this.chests.filter((c) => !c.taken);
 
-    if (!this.bossStarted && p.x >= st.arena.startX + 80) this.startBossFight();
+    if (!this.bossStarted && p.x >= st.arena.startX + 80 && (!this.rush || this.time.now >= this.rushFightAt)) this.startBossFight();
   }
 
   // 보물을 먹으면 상자가 열리고 위로 떠오르며 사라진다
@@ -820,6 +828,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   checkLevelUp(dt) {
+    if (this.rush) return; // 보스 러시 중에는 멈추지 않는다 (카드는 다음 모험에서 고른다)
     if (!(this.save.picksPending > 0) || !this.canShowLevelUp()) return;
     this.levelUpWait -= dt;
     if (this.levelUpWait > 0) return;
@@ -942,7 +951,7 @@ export class GameScene extends Phaser.Scene {
     const title = makeText(this, a.startX + 480, 150, `${this.boss.name} 등장!`, 40, '#ff5555', { strokeThickness: 8 }).setOrigin(0.5).setDepth(60);
     this.tweens.add({ targets: title, alpha: 0, delay: 1400, duration: 500, onComplete: () => title.destroy() });
     // 보스마다 등장 대사가 다르다 (보스 클래스의 introLines 또는 스테이지 파일의 boss.intro)
-    const intro = this.boss.introLines || this.stage.boss.intro;
+    const intro = this.rush ? [this.rushIntro()] : this.boss.introLines || this.stage.boss.intro;
     this.robot.say(intro || ['으악, 크다!', '빨간 곳에 팔이 떨어져. 피한 다음 바닥에 박힌 팔을 때려!'], true);
     if (!intro) this.bossTips.add('slam');
   }
@@ -1092,6 +1101,12 @@ export class GameScene extends Phaser.Scene {
       this.scheduleRevive(player);
       return;
     }
+    if (this.rush) {
+      this.robot.say('아깝다! 다음엔 더 멀리 갈 수 있어.', true);
+      const { index, stages: list } = this.rush;
+      this.time.delayedCall(1300, () => this.scene.get('HUD')?.showRushOver({ reached: index + 1, total: list.length, time: this.registry.get('runTime') }));
+      return;
+    }
     this.robot.say('히어로! 일어나! 체크포인트로 돌아가자.', true);
     this.time.delayedCall(1300, () => this.scene.get('HUD')?.showGameOver(this.save.checkpoint === this.stageNum));
   }
@@ -1157,7 +1172,7 @@ export class GameScene extends Phaser.Scene {
         ring(this, p.x, p.y, 0xffd23f, 70, 400, 4);
         this.sfxPlay('levelup');
       });
-      this.robot.say(picksPending > 0 ? '레벨 업! 카드를 하나 골라 봐!' : '레벨 업! 근육이 0.1mm 커졌어!');
+      this.robot.say(picksPending > 0 ? (this.rush ? '레벨 업! 카드는 다음 모험에서 골라 줘.' : '레벨 업! 카드를 하나 골라 봐!') : '레벨 업! 근육이 0.1mm 커졌어!');
     }
   }
 
@@ -1225,9 +1240,73 @@ export class GameScene extends Phaser.Scene {
       this.shake(0.02, 600);
       this.gainXp(cfg.boss.xp, boss.bodyX, boss.groundY - 300);
       // 마지막 스테이지는 스테이지 파일의 endingLines 를 말한다 (없으면 기본 대사)
+      if (this.rush) {
+        this.nextRush();
+        return;
+      }
       this.robot.say(this.isLastStage ? this.stage.endingLines || ['해냈다! 마지막 보스를 쓰러뜨렸어!', '도시가 완전히 평화를 되찾았어!'] : ['해냈다!', '다음엔 좀 덜 무서운 괴물이면 좋겠어.'], true);
       this.time.delayedCall(1800, () => this.finishVictory());
     });
+  }
+
+  // ---------- 보스 러시 ----------
+
+  // 앞 보스전에서 남은 체력과 궁극기 게이지를 이어받는다
+  applyRushCarry() {
+    const carry = this.rush.carry;
+    if (!carry) return;
+    this.players.forEach((p, i) => {
+      const c = carry[i];
+      if (!c) return;
+      p.health.current = Math.max(1, Math.round(p.health.max * c.hp));
+      if (typeof c.ult === 'number') p.ultGauge = c.ult;
+    });
+  }
+
+  showRushBanner() {
+    const { index, stages: list } = this.rush;
+    const t = makeText(this, 480, 190, `보스 러시  ${index + 1} / ${list.length}\n${this.stage.boss.name}`, 40, '#ff6a4a', { strokeThickness: 8 })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(60);
+    this.tweens.add({ targets: t, alpha: 0, delay: 1100, duration: 400, onComplete: () => t.destroy() });
+  }
+
+  rushIntro() {
+    const { index, stages: list } = this.rush;
+    if (index === 0) return `보스 러시 시작! 다섯 마리 연달아 가자!`;
+    if (index === list.length - 1) return `마지막 보스야! 조금만 더!`;
+    return `${index + 1}번째 보스! 체력을 조금 채워 줬어.`;
+  }
+
+  // 보스를 쓰러뜨리면: 다음 보스가 남았으면 체력을 조금 채워 다음 보스 방으로, 다 이겼으면 기록표
+  nextRush() {
+    const r = this.rush;
+    const more = r.index + 1 < r.stages.length;
+    this.robot.say(more ? '좋아! 다음 보스로!' : '해냈다! 보스 다섯 마리를 다 이겼어!', true);
+    if (!more) {
+      this.time.delayedCall(1200, () => this.finishRushRun());
+      return;
+    }
+    const carry = this.players.map((p) => ({ hp: carryHealth(p.dead ? 0 : p.health.ratio, cfg.rush.healBetween), ult: p.ultGauge }));
+    this.time.delayedCall(cfg.rush.nextDelay * 1000, () => {
+      this.cameras.main.fadeOut(250);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.restart({ stage: r.stages[r.index + 1], rush: { ...r, index: r.index + 1, carry } });
+      });
+    });
+  }
+
+  finishRushRun() {
+    const r = this.rush;
+    const time = this.registry.get('runTime');
+    const entry = { name: r.player, hero: this.hero, time, duo: this.coop, at: Date.now() };
+    const result = finishRush(saveStore.load(), r.course, entry, cfg.gems, rushCourses(stages.length).length);
+    this.save = saveStore.update(result.patch);
+    this.sfxPlay('victory');
+    this.robot.queue = [];
+    this.robot.bubble.setVisible(false);
+    this.scene.get('HUD')?.showRushDone({ course: r.course, time, rank: result.rank, gems: result.gems, list: this.save.rush.records[r.course] || [], entry });
   }
 
   finishVictory() {

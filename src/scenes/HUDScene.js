@@ -9,7 +9,7 @@ import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/gr
 import { makeText, formatTime } from '../ui/text.js';
 import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons } from '../ui/touch.js';
 import { attackButtonLabel } from '../logic/controls.js';
-import { normalizeHero } from '../logic/heroes.js';
+import { normalizeHero, HERO_INFO } from '../logic/heroes.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -75,8 +75,10 @@ export class HUDScene extends Phaser.Scene {
     this.mode = 'play';
     this.overlay.setVisible(false);
     const stage = this.game_?.stageNum;
+    const rush = this.game_?.rush;
     this.scene.stop('Game');
-    this.scene.start('Map', { stage });
+    if (rush) this.scene.start('Title'); // 보스 러시는 타이틀에서 시작했으니 타이틀로
+    else this.scene.start('Map', { stage });
   }
 
   // ---------- 태블릿 화면 버튼 ----------
@@ -158,13 +160,15 @@ export class HUDScene extends Phaser.Scene {
 
   showPauseText() {
     const s = saveStore.load().settings;
+    const rush = Boolean(this.game_?.rush);
+    const out = rush ? '타이틀로' : '지도로';
     this.overlayTitle.setText('일시정지').setColor('#ffffff');
     this.overlayBody.setText(
       (this.touch
-        ? ['지도로 가면 지금 진행은 체크포인트까지만 남아요']
+        ? [rush ? '타이틀로 가면 이번 보스 러시는 기록되지 않아요' : '지도로 가면 지금 진행은 체크포인트까지만 남아요']
         : [
             'Esc: 계속하기',
-            'T: 지도로 (지금 진행은 체크포인트까지만 남아요)',
+            rush ? 'T: 타이틀로 (이번 보스 러시는 기록되지 않아요)' : 'T: 지도로 (지금 진행은 체크포인트까지만 남아요)',
             `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
             `F: 효과 줄이기 ${s.lowFx ? '켜짐' : '꺼짐'}`,
             `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
@@ -173,7 +177,7 @@ export class HUDScene extends Phaser.Scene {
     );
     this.setOverlayButtons([
       { text: '계속하기', fn: () => this.togglePause() },
-      { text: '지도로', fn: () => this.pauseToTitle() },
+      { text: out, fn: () => this.pauseToTitle() },
       { text: `소리 ${s.muted ? '꺼짐' : '켜짐'}`, fn: () => this.toggleSetting('muted') },
       { text: `흔들림 ${s.shake ? '켜짐' : '꺼짐'}`, fn: () => this.toggleSetting('shake') },
       { text: `효과 ${s.lowFx ? '줄임' : '보통'}`, fn: () => this.toggleSetting('lowFx') },
@@ -240,8 +244,69 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.setVisible(true);
   }
 
+  // 보스 러시에서 쓰러졌을 때
+  showRushOver({ reached, total, time }) {
+    this.mode = 'rushover';
+    this.overlayTitle.setText('보스 러시 끝!').setColor('#ff6a4a');
+    this.overlayBody.setText(
+      [
+        `${total}마리 중 ${reached}번째 보스에서 쓰러졌어요`,
+        `여기까지 ${formatTime(time)}`,
+        '끝까지 깨야 기록표에 이름이 올라가요',
+        this.touch ? '' : 'R 또는 클릭: 처음부터 다시    T: 타이틀로',
+      ].join('\n'),
+    );
+    this.setOverlayButtons([
+      { text: '처음부터 다시', fn: () => this.restartFromOverlay('retry') },
+      { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+    ]);
+    this.overlay.setVisible(true);
+  }
+
+  // 보스 러시를 끝까지 깼을 때: 걸린 시간과 가족 기록표 (이번 기록은 노랗게)
+  showRushDone({ course, time, rank, gems, list, entry }) {
+    this.mode = 'rushdone';
+    this.overlayTitle.setText(rank === 1 ? '1등 기록!' : '보스 러시 클리어!').setColor('#ffd23f');
+    const lines = [`코스 ${course}   ${entry.name}   ${formatTime(time)}${rank ? `   ${rank}등` : ''}${gems ? `   보석 +${gems}` : ''}`, ''];
+    list.slice(0, 5).forEach((r, i) => {
+      const me = r.at === entry.at && r.time === entry.time;
+      lines.push(`${me ? '▶ ' : ''}${i + 1}등  ${r.name}  ${HERO_INFO[r.hero]?.name ?? ''}${r.duo ? ' (둘이서)' : ''}  ${formatTime(r.time)}`);
+    });
+    if (!rank) lines.push('', '아깝다! 기록표에 들려면 조금 더 빨라야 해요');
+    if (!this.touch) lines.push('', 'R: 한 번 더    Enter 또는 클릭: 타이틀로');
+    this.overlayBody.setText(lines.join('\n'));
+    this.overlayTitle.setY(120);
+    this.overlayBody.setY(170);
+    this.setOverlayButtons([
+      { text: '한 번 더', fn: () => this.restartFromOverlay('retry') },
+      { text: '타이틀로', fn: () => this.restartFromOverlay('title') },
+    ]);
+    this.overlay.setVisible(true);
+  }
+
+  // 보스 러시 결과 화면에서: retry 는 같은 코스 처음부터, 나머지는 타이틀로
+  restartRush(kind) {
+    const gs = this.game_;
+    const r = gs.rush;
+    this.mode = 'play';
+    this.overlay.setVisible(false);
+    this.overlayTitle.setY(170);
+    this.overlayBody.setY(230);
+    this.registry.set('runTime', 0);
+    if (kind === 'retry') {
+      gs.scene.restart({ stage: r.stages[0], rush: { ...r, index: 0, carry: null } });
+      return;
+    }
+    this.scene.stop('Game');
+    this.scene.start('Title');
+  }
+
   // retry: 다시 하기, next: 다음으로(게임 오버면 다시 하기), title: 지도로
   restartFromOverlay(kind) {
+    if (this.mode === 'rushover' || this.mode === 'rushdone') {
+      this.restartRush(kind === 'retry' || (kind === 'next' && this.mode === 'rushover') ? 'retry' : 'title');
+      return;
+    }
     if (this.mode !== 'gameover' && this.mode !== 'victory') return;
     const gs = this.game_;
     const stage = gs.stageNum;
@@ -338,7 +403,8 @@ export class HUDScene extends Phaser.Scene {
       this.ultText.setVisible(false);
     }
 
-    this.treasureText.setText(`보물 ${found}/${st.treasures.length}`);
+    // 보스 러시에는 보물 상자가 없으니 그 자리에 몇 번째 보스인지
+    this.treasureText.setText(gs.rush ? `보스 러시 ${gs.rush.index + 1}/${gs.rush.stages.length}` : `보물 ${found}/${st.treasures.length}`);
 
     // 레벨 업 카드 레벨
     const u = save.upgrades || {};
@@ -365,8 +431,10 @@ export class HUDScene extends Phaser.Scene {
       g.strokePath();
     });
     this.drawPartner(gs);
+    // 보스 러시는 스테이지 이름 줄을 비운다 (몇 번째 보스인지는 보물 자리에 쓴다)
+    const r = gs.rush;
     this.timeText.setText(formatTime(this.registry.get('runTime') || 0));
-    this.stageText.setText(`스테이지 ${gs.stageNum} ${st.name}  (${DIFFICULTY_INFO[gs.difficulty]?.name ?? '보통'})`);
+    this.stageText.setText(r ? '' : `스테이지 ${gs.stageNum} ${st.name}  (${DIFFICULTY_INFO[gs.difficulty]?.name ?? '보통'})`);
     this.monsterText.setText(gs.gateOpen || gs.bossStarted ? '' : `남은 몬스터 ${gs.monsters.length}`);
 
     // 보스 체력 (부위별)

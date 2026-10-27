@@ -5,6 +5,7 @@ import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
 import { dexCounts } from '../logic/dex.js';
+import { rushCourses, courseUnlocked } from '../logic/rush.js';
 import { totalStars } from '../logic/rewards.js';
 import { DIFFICULTIES, DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { CONTROL_SCHEMES, CONTROL_INFO, TOUCH_INFO, controlLines } from '../logic/controls.js';
@@ -107,8 +108,9 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-N', () => this.ready && this.confirming && this.closeConfirm());
     kb.on('keydown-B', () => this.ready && !this.confirming && this.openShop());
     kb.on('keydown-G', () => this.ready && !this.confirming && this.openDex());
+    kb.on('keydown-R', () => this.ready && !this.confirming && this.openRush());
     kb.on('keydown-C', () => this.ready && !this.confirming && this.openRoom());
-    kb.on('keydown-Y', () => this.confirming && this.doReset());
+    kb.on('keydown-Y', () => this.confirming && this.confirmBox.visible && this.doReset()); // 도감이나 보스 러시가 열려 있을 때 Y 로 지워지지 않게
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
   }
 
@@ -176,6 +178,27 @@ export class TitleScene extends Phaser.Scene {
       this.openDex();
     });
 
+    // 보스 러시 (모험 지도 왼쪽, 경고 철판 모양). 코스 하나라도 열렸는지 보여 준다
+    const courses = rushCourses(stages.length);
+    const open = courses.filter((c) => courseUnlocked(save, c)).length;
+    this.rushBtn = this.add.container(width / 2 - 330, 302).setDepth(15).setAngle(-2);
+    const rushPlate = this.add.graphics();
+    rushPlate.fillStyle(0x000000, 0.45).fillRoundedRect(-82, -36, 168, 80, 10);
+    rushPlate.fillStyle(0x10161c, 1).fillRoundedRect(-88, -42, 176, 84, 12);
+    rushPlate.fillStyle(0x2a2f38, 1).fillRoundedRect(-84, -38, 168, 76, 9);
+    // 위아래 노랑 검정 줄무늬
+    for (let x = -84; x < 84; x += 16) {
+      rushPlate.fillStyle(0xffc21f, 1).fillTriangle(x, -38, x + 8, -38, x, -30).fillTriangle(x + 8, -38, x + 16, -38, x + 8, -30);
+      rushPlate.fillStyle(0xffc21f, 1).fillTriangle(x, 38, x + 8, 38, x, 30).fillTriangle(x + 8, 38, x + 16, 38, x + 8, 30);
+    }
+    const rushLabel = brushText(this, 0, -8, '보스 러시', 24, '#ff6a4a', { strokeThickness: 5 }).setOrigin(0.5);
+    const rushInfo = makeText(this, 0, 18, open ? `코스 ${open}/${courses.length} 열림` : '스테이지 5까지 깨면 열려요', open ? 15 : 12, '#ffffff').setOrigin(0.5);
+    this.rushBtn.add([rushPlate, rushLabel, rushInfo]);
+    this.rushBtn.setSize(176, 84).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.confirming) return;
+      this.openRush();
+    });
+
     // 설정 버튼 줄 (빨간 낙서, 파란 테이프, 회색 철판)
     const d = DIFFICULTY_INFO[save.settings.difficulty];
     const c = CONTROL_INFO[save.settings.controls];
@@ -240,7 +263,7 @@ export class TitleScene extends Phaser.Scene {
     const bg = this.add.rectangle(480, 270, 960, 540, 0x000000, 0.75).setInteractive();
     const plate = this.add.image(480, 262, 'tt-plate').setDisplaySize(660, 200);
     const msg = this.add
-      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록, 별, 보석, 상점, 도감이 모두 지워져요.', {
+      .text(480, 230, '정말 처음부터 다시 할까요?\n레벨, 경험치, 보물, 성장 카드, 스테이지 기록, 별, 보석, 상점, 도감,\n보스 러시 기록이 모두 지워져요.', {
         fontFamily: FONT,
         fontStyle: 'bold',
         fontSize: '21px',
@@ -551,6 +574,33 @@ export class TitleScene extends Phaser.Scene {
     this.build();
   }
 
+  // 보스 러시 고르는 화면 (src/scenes/RushScene.js). 닫으면 closeRush, 시작하면 startRush 를 부른다.
+  openRush() {
+    if (this.started || !this.ready) return;
+    this.confirming = true;
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.launch('Rush');
+    this.scene.bringToTop('Rush');
+  }
+
+  closeRush() {
+    this.confirming = false;
+    this.build();
+  }
+
+  // course: { id, stages }, player: 고른 사람 이름
+  startRush(course, player) {
+    if (this.started) return;
+    this.started = true;
+    this.confirming = false;
+    this.registry.set('runTime', 0);
+    this.scene.stop('Rush');
+    this.scene.start('Game', { stage: course.stages[0], rush: { course: course.id, stages: course.stages, index: 0, player } });
+    this.scene.launch('HUD');
+  }
+
   closeConfirm() {
     this.confirming = false;
     this.confirmBox.setVisible(false);
@@ -592,7 +642,7 @@ export class TitleScene extends Phaser.Scene {
       this.subText.setText(this.save.checkpoint ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요` : '');
       return;
     }
-    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 난이도, 조작, 상점, 레벨 초기화, 함께하기    G 키: 몬스터 도감');
+    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 난이도, 조작, 상점, 초기화, 함께하기    G: 몬스터 도감    R: 보스 러시');
     this.startText.setText('Enter: 모험 지도 열기');
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();
