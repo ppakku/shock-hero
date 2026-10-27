@@ -11,10 +11,13 @@ import { fitPortrait } from '../ui/portrait.js';
 import { customArt } from '../config/art.js';
 import { portraitArt } from '../logic/stageArt.js';
 import { queueArt, finishArt } from '../fx/artLoader.js';
+import { normalizeWorkshop, moveName, sizeName } from '../logic/workshop.js';
+import { ensureWorkshopTexture } from '../fx/workshopTextures.js';
 
 // 몬스터 도감. 타이틀 위에 열리고, 닫으면 타이틀을 다시 그린다.
 // 왼쪽은 칸(5 x 4), 오른쪽은 고른 칸의 자세한 설명. 아직 못 잡은 칸은 검은 그림자와 ??? 로 보인다.
-// 화살표로 고르기, Q 또는 Tab 으로 몬스터와 보스 바꾸기, Esc 또는 G 로 닫기. 손가락으로 칸과 탭을 눌러도 된다.
+// '공방' 탭은 아이들이 몬스터 공방에서 만든 작품 (작가 이름과 잡은 수).
+// 화살표로 고르기, Q 또는 Tab 으로 몬스터, 보스, 공방 바꾸기, Esc 또는 G 로 닫기. 손가락으로 칸과 탭을 눌러도 된다.
 const COLS = 5;
 const CARD_W = 104;
 const CARD_H = 96;
@@ -44,7 +47,8 @@ export class DexScene extends Phaser.Scene {
 
   // 도감 그림을 받는다 (못 찾은 칸도 그림의 그림자로 보여 주니까 전부). 도감을 처음 열 때만 받고, 스테이지에서 받은 그림은 다시 안 받는다
   preload() {
-    queueArt(this, portraitArt([...MONSTER_DEX.map((e) => e.id), ...bossDex(stages).map((b) => b.portrait)], customArt));
+    const looks = normalizeWorkshop(saveStore.load().workshop).designs.map((d) => d.look);
+    queueArt(this, portraitArt([...MONSTER_DEX.map((e) => e.id), ...bossDex(stages).map((b) => b.portrait), ...looks], customArt));
   }
 
   create() {
@@ -64,6 +68,7 @@ export class DexScene extends Phaser.Scene {
     this.tabs = [
       { id: 'monsters', label: '몬스터', x: GRID_X },
       { id: 'bosses', label: '보스', x: GRID_X + 124 },
+      { id: 'workshop', label: '공방', x: GRID_X + 248 },
     ].map((t) => {
       const c = this.add.container(t.x, 70);
       const bg = this.add.graphics();
@@ -84,7 +89,7 @@ export class DexScene extends Phaser.Scene {
     for (let i = 0; i < 20; i++) this.cards.push(this.makeCard(i));
     this.makePanel();
 
-    const help = isTouchDevice() ? '칸을 누르면 자세히 봐요' : '화살표 고르기    Q 또는 Tab: 몬스터와 보스 바꾸기    Esc 닫기';
+    const help = isTouchDevice() ? '칸을 누르면 자세히 봐요' : '화살표 고르기    Q 또는 Tab: 몬스터, 보스, 공방 바꾸기    Esc 닫기';
     makeText(this, 480, 524, help, 14, '#aaaaaa').setOrigin(0.5);
 
     const kb = this.input.keyboard;
@@ -96,7 +101,7 @@ export class DexScene extends Phaser.Scene {
     on(['RIGHT', 'D'], () => this.move(1, 0));
     on(['UP', 'W'], () => this.move(0, -1));
     on(['DOWN', 'S'], () => this.move(0, 1));
-    on(['Q', 'TAB', 'E'], () => this.setTab(this.tab === 'monsters' ? 'bosses' : 'monsters'));
+    on(['Q', 'TAB', 'E'], () => this.setTab({ monsters: 'bosses', bosses: 'workshop', workshop: 'monsters' }[this.tab]));
     on(['ESC', 'G'], () => this.close());
     this.refresh();
     this.cameras.main.fadeIn(120);
@@ -166,6 +171,15 @@ export class DexScene extends Phaser.Scene {
     if (this.tab === 'monsters') {
       return MONSTER_DEX.map((e) => ({ ...e, key: e.id, portrait: e.id, found: Boolean(dex.monsters[e.id]), count: dex.monsters[e.id] || 0 }));
     }
+    if (this.tab === 'workshop') {
+      return normalizeWorkshop(saveStore.load().workshop, stages.length).designs.map((d) => ({
+        ...d,
+        key: d.id,
+        found: true,
+        workshop: true,
+        portrait: ensureWorkshopTexture(this, d),
+      }));
+    }
     return this.bosses.map((b) => ({ ...b, key: `boss${b.stage}`, found: dex.bosses.includes(b.stage) }));
   }
 
@@ -206,7 +220,7 @@ export class DexScene extends Phaser.Scene {
       card.name.setText(e.found ? e.name : '???').setColor(e.found ? '#ffffff' : '#777777');
       if (card.name.width > CARD_W - 8) card.name.setScale((CARD_W - 8) / card.name.width);
       else card.name.setScale(1);
-      card.badge.setText(e.found && e.by === 'son' ? '★' : '');
+      card.badge.setText(e.workshop ? '🎨' : e.found && e.by === 'son' ? '★' : '');
       card.c.setScale(on ? 1.04 : 1);
     });
     this.showPanel(list[this.selected]);
@@ -215,6 +229,17 @@ export class DexScene extends Phaser.Scene {
   showPanel(e) {
     const big = this.big;
     big.stop();
+    if (!e) {
+      // 공방 탭에 작품이 아직 없을 때
+      big.setVisible(false);
+      this.bigQ.setText('🎨');
+      this.pName.setText('아직 작품이 없어요');
+      this.pTag.setText('');
+      this.pDesc.setText('타이틀 화면의 몬스터 공방에서 나만의 몬스터를 만들면 여기에 올라가요.');
+      this.pTip.setText('');
+      this.pMeta.setText('');
+      return;
+    }
     const has = this.fit(big, e.portrait, PANEL_W - 60, 150);
     big.setVisible(has);
     this.bigQ.setText(has ? '' : '?');
@@ -242,6 +267,14 @@ export class DexScene extends Phaser.Scene {
       this.pDesc.setText(e.desc);
       this.pTip.setText(`공략: ${e.tip}`);
       this.pMeta.setText(`잡은 수 ${e.count},  나오는 곳: ${whereText}`);
+      return;
+    }
+    if (this.tab === 'workshop') {
+      this.pName.setText(e.name);
+      this.pTag.setText(`🎨 ${e.maker} 작가님 디자인`);
+      this.pDesc.setText(e.intro || '작가님이 아직 소개를 안 썼어요. 공방에서 써 줄 수 있어요.');
+      this.pTip.setText(`움직임: ${moveName(e.move)},  크기: ${sizeName(e.size)}`);
+      this.pMeta.setText(`잡은 수 ${e.caught},  나오는 곳: 스테이지 ${e.stage}`);
       return;
     }
     this.pName.setText(e.found ? e.name : '???');

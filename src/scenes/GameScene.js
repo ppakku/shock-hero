@@ -16,7 +16,7 @@ import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
 import { placeTreasures } from '../logic/treasures.js';
 import { CONTROL_KEYS, keyText } from '../logic/controls.js';
 import { addXp, maxHealthFor } from '../logic/progression.js';
-import { normalizeHero, heroStats } from '../logic/heroes.js';
+import { normalizeHero, heroStats, fixJosa } from '../logic/heroes.js';
 import { nearestPlayer, strongerResult, partyCenter, clampSpread } from '../logic/coop.js';
 import { coop } from '../net/coop.js';
 import { countStat } from '../net/stats.js';
@@ -34,6 +34,9 @@ import { isTouchDevice, touchPad, touchPoints } from '../ui/touch.js';
 import { drawSignboard, signStyleFor } from '../ui/signboard.js';
 import { dexReward, monsterName } from '../logic/dex.js';
 import { finishRush, carryHealth, rushCourses } from '../logic/rush.js';
+import { workshopSpots, recordCatch } from '../logic/workshop.js';
+import { ensureWorkshopTexture } from '../fx/workshopTextures.js';
+import { artEntries } from '../logic/stageArt.js';
 // 수중 던전(스테이지 6): 물속 배경과 헤엄치기
 import { drawUnderwater } from '../fx/underwater.js';
 import { SwimController } from '../player/swim.js';
@@ -58,7 +61,9 @@ export class GameScene extends Phaser.Scene {
   // 이 스테이지 그림만 받는다 (배경, 몬스터, 보스). 이미 받은 그림은 다시 안 받는다 (src/logic/stageArt.js)
   preload() {
     const n = Phaser.Math.Clamp(this.sys.settings.data?.stage || 1, 1, stages.length);
-    queueArt(this, stageArt(n, stages, customArt));
+    // 몬스터 공방 작품이 나오는 스테이지면 작품 생김새 그림도
+    const looks = this.sys.settings.data?.rush ? [] : this.workshopHere(n).map((d) => d.look);
+    queueArt(this, [...stageArt(n, stages, customArt), ...artEntries(looks, customArt)]);
   }
 
   create(data = {}) {
@@ -129,6 +134,10 @@ export class GameScene extends Phaser.Scene {
     if (!this.fromCheckpoint && !this.rush) {
       const spots = adjustMonsters(st.monsters.map((spot) => parseMonsterSpot(spot, st.groundY)), this.difficulty, st.gateX);
       for (const spot of spots) this.monsters.push(createMonster(this, spot, this.cfg));
+      // 몬스터 공방 작품 (src/logic/workshop.js): 이 스테이지를 고른 작품이 원래 몬스터 옆에 나온다
+      for (const spot of workshopSpots(st, this.workshopHere(this.stageNum))) {
+        this.monsters.push(createMonster(this, { ...spot, tex: ensureWorkshopTexture(this, spot.workshop) }, this.cfg));
+      }
       this.physics.add.collider(this.monsters, this.solids);
       this.physics.add.collider(this.monsters, this.oneWays);
     }
@@ -1142,7 +1151,8 @@ export class GameScene extends Phaser.Scene {
   onMonsterKilled(monster) {
     this.greenGoo.explode(16, monster.x, monster.y);
     this.gainXp(monster.m.xp, monster.x, monster.y - 40);
-    this.recordDex('monster', monster.dexId, monster.x, monster.y - 70);
+    if (monster.workshop) this.recordWorkshop(monster);
+    else this.recordDex('monster', monster.dexId, monster.x, monster.y - 70);
     if (Math.random() < cfg.monster.heartDropChance + this.bonus.heartChance) this.dropHeart(monster.x, monster.y - 10);
   }
 
@@ -1204,6 +1214,25 @@ export class GameScene extends Phaser.Scene {
       q.health.heal(cfg.level.healthPerLevel * r.levelsGained);
       floatText(this, q.x, q.y - 70, `2P 레벨 업! Lv ${r.level}`, '#ffd23f', 22);
     }
+  }
+
+  // 이 스테이지에 나오는 몬스터 공방 작품들
+  workshopHere(n) {
+    const st = stages[n - 1];
+    if (!st || st.swim) return [];
+    return saveStore.load().workshop.designs.filter((d) => d.stage === n);
+  }
+
+  // 공방 작품을 잡았을 때: 잡은 수를 세고, 처음 잡으면 볼트가 작가 이름을 불러 준다
+  recordWorkshop(monster) {
+    const r = recordCatch(saveStore.load().workshop, monster.workshop.id);
+    if (!r.design) return;
+    this.save = saveStore.update({ workshop: r.workshop });
+    if (!r.first) return;
+    const t = makeText(this, monster.x, monster.y - 70, `🎨 ${r.design.maker} 작가님의 ${r.design.name}!`, 20, '#ffe14a').setOrigin(0.5).setDepth(45);
+    this.tweens.add({ targets: t, y: t.y - 30, duration: 400, ease: 'Back.out' });
+    this.tweens.add({ targets: t, alpha: 0, delay: 1800, duration: 400, onComplete: () => t.destroy() });
+    this.robot?.say(fixJosa(`${r.design.maker} 작가님이 만든 ${r.design.name}(을)를 잡았어! 도감 공방 칸에 적어 뒀어.`));
   }
 
   // 몬스터 도감에 적기. 처음 잡으면 "도감 등록!" 과 보석. 함께하기 친구 도감에도 적는다

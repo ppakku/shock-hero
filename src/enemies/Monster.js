@@ -3,6 +3,7 @@ import { Health } from '../logic/health.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
 import { monsterStats, pushedKnockback } from '../logic/monsters.js';
+import { workshopStats } from '../logic/workshop.js';
 
 export const TEXTURE = {
   basic: 'monster',
@@ -20,16 +21,19 @@ const Rect = Phaser.Geom.Rectangle;
 // 몬스터: 순찰 → 추격 → (빨개짐) 공격 준비 → 달려들기(뜀뛰기는 점프) → 멍하게 쉬기
 export class Monster extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, spot, cfg) {
-    const m = monsterStats(cfg, spot.type);
+    // 몬스터 공방 작품이면 spot.workshop 에 작품, spot.tex 에 칠한 그림 이름이 온다 (크기와 체력은 작품대로)
+    const w = spot.workshop || null;
+    const m = w ? workshopStats(monsterStats(cfg, spot.type), w) : monsterStats(cfg, spot.type);
     const x = spot.x;
     const y = spot.y - 30 * m.size;
     // 스테이지마다 어울리는 생김새 (theme.monsterSkins, 예: 용암 지대의 초록 몬스터는 불꽃 슬라임). 움직임과 세기는 그대로
     const skin = scene.stage?.theme?.monsterSkins?.[m.type];
-    const tex = skin && scene.textures.exists(skin) ? skin : TEXTURE[m.type];
+    const tex = w && spot.tex && scene.textures.exists(spot.tex) ? spot.tex : skin && scene.textures.exists(skin) ? skin : TEXTURE[m.type];
     super(scene, x, y, tex);
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.dexId = tex; // 몬스터 도감 칸 (src/logic/dex.js)
+    this.workshop = w;
+    this.dexId = w ? null : tex; // 몬스터 도감 칸 (src/logic/dex.js). 공방 작품은 따로 센다
     this.sizeToLook(tex, m.size);
     this.body.setSize(this.width * 0.8, this.height * 0.85, true);
     this.setCollideWorldBounds(true);
@@ -49,6 +53,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.dead = false;
     this.flying = false; // 하늘을 나는 몬스터만 true
     this.alert = makeText(scene, x, y - 40, '!', 28, '#ff4444').setOrigin(0.5).setDepth(30).setVisible(false);
+    // 공방 작품은 머리 위에 이름표
+    this.nameTag = w ? makeText(scene, x, y, w.name, 13, '#ffe14a').setOrigin(0.5, 1).setDepth(29) : null;
   }
 
   changeState(state) {
@@ -78,6 +84,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.dead) return;
     this.stateTime += dt;
     this.alert.setPosition(this.x, this.y - 40 * this.m.size);
+    this.nameTag?.setPosition(this.x, this.y - this.displayHeight / 2 - 4);
     if (!this.updateHurt()) this.think(dt);
     this.setFlipX(this.facing < 0);
   }
@@ -208,6 +215,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   die() {
     this.dead = true;
     this.alert.destroy();
+    this.nameTag?.destroy();
     this.body.enable = false;
     this.scene.onMonsterKilled(this);
     this.scene.tweens.add({

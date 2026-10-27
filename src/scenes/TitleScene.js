@@ -109,6 +109,7 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-B', () => this.ready && !this.confirming && this.openShop());
     kb.on('keydown-G', () => this.ready && !this.confirming && this.openDex());
     kb.on('keydown-R', () => this.ready && !this.confirming && this.openRush());
+    kb.on('keydown-M', () => this.ready && !this.confirming && this.openWorkshop());
     kb.on('keydown-C', () => this.ready && !this.confirming && this.openRoom());
     kb.on('keydown-Y', () => this.confirming && this.confirmBox.visible && this.doReset()); // 도감이나 보스 러시가 열려 있을 때 Y 로 지워지지 않게
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
@@ -176,6 +177,24 @@ export class TitleScene extends Phaser.Scene {
     this.dexBtn.setSize(176, 84).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
       if (this.confirming) return;
       this.openDex();
+    });
+
+    // 몬스터 공방 (몬스터 도감 아래, 초록 작업대 모양). 만든 작품 수를 보여 준다
+    const made = save.workshop.designs.length;
+    this.workshopBtn = this.add.container(width / 2 + 330, 392).setDepth(15).setAngle(-1.5);
+    const bench = this.add.graphics();
+    bench.fillStyle(0x000000, 0.45).fillRoundedRect(-80, -22, 168, 50, 10);
+    bench.fillStyle(0x10161c, 1).fillRoundedRect(-88, -28, 176, 54, 12);
+    bench.fillStyle(0x1f4a34, 1).fillRoundedRect(-84, -24, 168, 46, 9);
+    // 작업대 나뭇결과 못
+    bench.lineStyle(2, 0x2f6a4a, 1).lineBetween(-78, -6, 78, -6).lineBetween(-78, 8, 78, 8);
+    for (const x of [-74, 74]) bench.fillStyle(0xc0c8d0, 1).fillCircle(x, -16, 3).fillCircle(x, 14, 3);
+    const benchLabel = brushText(this, 0, -8, '몬스터 공방', 20, '#7af0a0', { strokeThickness: 5 }).setOrigin(0.5);
+    const benchInfo = makeText(this, 0, 13, made ? `작품 ${made}개` : '나만의 몬스터 만들기', 12, '#ffffff').setOrigin(0.5);
+    this.workshopBtn.add([bench, benchLabel, benchInfo]);
+    this.workshopBtn.setSize(176, 54).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.confirming) return;
+      this.openWorkshop();
     });
 
     // 보스 러시 (모험 지도 왼쪽, 경고 철판 모양). 코스 하나라도 열렸는지 보여 준다
@@ -601,6 +620,30 @@ export class TitleScene extends Phaser.Scene {
     this.scene.launch('HUD');
   }
 
+  // 몬스터 공방 (src/scenes/WorkshopScene.js). 닫으면 closeWorkshop, '만나러 가기' 를 누르면 startWorkshopStage 를 부른다.
+  openWorkshop() {
+    if (this.started || !this.ready) return;
+    this.confirming = true;
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    sfx.play('beep');
+    this.scene.launch('Workshop');
+    this.scene.bringToTop('Workshop');
+  }
+
+  closeWorkshop() {
+    this.confirming = false;
+    this.build();
+  }
+
+  // 작품이 나오는 스테이지로 바로 간다 (처음부터)
+  startWorkshopStage(n) {
+    this.scene.stop('Workshop');
+    this.confirming = false;
+    this.selected = Phaser.Math.Clamp(n, 1, this.save.unlocked);
+    this.begin(false);
+  }
+
   closeConfirm() {
     this.confirming = false;
     this.confirmBox.setVisible(false);
@@ -642,7 +685,7 @@ export class TitleScene extends Phaser.Scene {
       this.subText.setText(this.save.checkpoint ? `스테이지 ${this.save.checkpoint} 체크포인트에서 이어할 수 있어요` : '');
       return;
     }
-    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 난이도, 조작, 상점, 초기화, 함께하기    G: 몬스터 도감    R: 보스 러시');
+    this.optionHelp.setText(this.row === 1 ? `${helps[this.option]}  (Enter 또는 클릭으로 바꾸기)` : '↓ 키: 난이도, 조작, 상점, 초기화, 함께하기    G: 몬스터 도감    R: 보스 러시    M: 몬스터 공방');
     this.startText.setText('Enter: 모험 지도 열기');
     if (this.row === 1) this.startText.setText('↑ 키: 스테이지 고르기로 돌아가기');
     this.paintStartText();
