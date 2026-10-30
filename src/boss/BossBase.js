@@ -32,6 +32,7 @@ export class BossBase {
     this.t = 0;
     this.lastType = null;
     this.lastBlockedAt = -10;
+    this.markHeight = 200; // 물음표를 띄울 몸 높이 (날아다니지 않는 보스)
 
     this.warn = scene.add.graphics().setDepth(2);
     this.fxG = scene.add.graphics().setDepth(8);
@@ -118,7 +119,7 @@ export class BossBase {
   // 보스 머리 위에 잠깐 뜨는 물음표
   showFeintMark() {
     const x = this.x ?? this.kx ?? this.bodyX;
-    const y = Math.max(70, (this.y ?? this.groundY - 200) - 110);
+    const y = Math.max(70, (this.y ?? this.groundY - this.markHeight) - 110);
     const mark = makeText(this.scene, x, y, '?', 44, '#ffd23f').setOrigin(0.5).setDepth(31);
     this.scene.tweens.add({ targets: mark, y: y - 30, alpha: 0, duration: 650, onComplete: () => mark.destroy() });
   }

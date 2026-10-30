@@ -27,6 +27,7 @@ const TIPS = {
 export class KingBoss extends ArmBoss {
   constructor(scene, cfg, stage, skin = 5) {
     super(scene, cfg, stage, skin);
+    this.markHeight = 270; // 왕관 위
     this.kc = cfg.kingBoss;
     this.coreHealth = new Health(Math.round(this.c.coreHealth * this.hpScale * (this.kc.coreMultiplier || 1)));
     this.throne = scene.add.image(this.bodyX + 20, this.groundY, `boss_throne_${skin}`).setOrigin(0.5, 1).setDepth(1.5);
