@@ -11,7 +11,7 @@ import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons2
 import { attackButtonLabel } from '../logic/controls.js';
 import { normalizeHero, HERO_INFO } from '../logic/heroes.js';
 import { RULE_SHORT } from '../logic/daily.js';
-import { newMatch, sideName, winPips } from '../logic/versus.js';
+import { sideName, winPips } from '../logic/versus.js';
 import { coop } from '../net/coop.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
@@ -93,8 +93,7 @@ export class HUDScene extends Phaser.Scene {
   // 캔버스에 그리면 방장 버튼이 친구 화면에도 실려 친구 버튼과 겹쳐 보였다. HTML 층은 영상에 안 담긴다.
   // 손가락 읽기(touchPad)는 그대로 게임 캔버스가 받는다 (이 층은 pointer-events: none). 일시정지 자리만 투명한 요소로 받는다.
   buildTouchPad() {
-    const hero = normalizeHero(this.game_?.hero ?? saveStore.load().settings.hero);
-    this.padLabels = TOUCH_BUTTONS.map((b) => (b.id === 'attack' ? attackButtonLabel(hero) : b.label)); // 공격 버튼은 주인공의 공격 이름 (펀치, 번개탄, 망치)
+    this.setPadLabels();
     const dpr = Math.min(3, window.devicePixelRatio || 1); // 휴대폰에서 글자가 흐리지 않게
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative;width:960px;height:540px;pointer-events:none;';
@@ -118,6 +117,12 @@ export class HUDScene extends Phaser.Scene {
     // Phaser 가 매 프레임 이 요소의 pointer-events 를 다시 쓰므로 Phaser 속성으로 꺼야 손가락이 게임 캔버스에 닿는다.
     // 일시정지 자리(hit)만 자기 스타일 auto 로 받는다.
     this.padDom.pointerEvents = 'none';
+  }
+
+  // 공격 버튼은 주인공의 공격 이름 (펀치, 번개탄, 망치)
+  setPadLabels() {
+    const hero = normalizeHero(this.game_?.hero ?? saveStore.load().settings.hero);
+    this.padLabels = TOUCH_BUTTONS.map((b) => (b.id === 'attack' ? attackButtonLabel(hero) : b.label));
   }
 
   drawTouchPad(gs, p) {
@@ -161,6 +166,7 @@ export class HUDScene extends Phaser.Scene {
   onGameStart() {
     this.mode = 'play';
     this.overlay?.setVisible(false);
+    if (this.padLabels) this.setPadLabels(); // 겨루기는 저장과 다른 주인공일 수 있다
   }
 
   togglePause() {
@@ -368,7 +374,9 @@ export class HUDScene extends Phaser.Scene {
       if (kind === 'title') return this.leaveVersus();
       this.mode = 'play';
       this.overlay.setVisible(false);
-      this.game_.scene.restart({ versus: newMatch() });
+      const { heroes } = this.game_.versus.match;
+      this.scene.stop('Game');
+      this.scene.start('VersusPick', { heroes }); // 한 번 더 할 때도 주인공을 다시 고른다
       return;
     }
     if (this.mode === 'rushover' || this.mode === 'rushdone') {

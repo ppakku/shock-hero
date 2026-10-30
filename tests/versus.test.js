@@ -25,6 +25,11 @@ describe('겨루기 승부', () => {
     expect(m.round).toBe(4);
   });
 
+  it('고른 주인공은 판이 지나도 그대로다', () => {
+    const m = afterRound(newMatch(['giant', 'gunner']), 1, 3);
+    expect(m.heroes).toEqual(['giant', 'gunner']);
+  });
+
   it('무승부는 승수 없이 같은 판을 다시 한다', () => {
     const m = afterRound({ round: 2, wins: [1, 0] }, null, 3);
     expect(m).toEqual({ round: 2, wins: [1, 0], champion: null });

@@ -37,9 +37,7 @@ export class GuestScene extends Phaser.Scene {
     // 방장 화면 위쪽 체력은 방장 것이라, 내 체력이 어디인지 알려 준다
     this.hpHint = makeText(this, 936, 114, '▲ 내 체력 (2P)', 12, '#ffd23f').setOrigin(1, 0.5).setDepth(60);
     // 친구 화면에는 일시정지가 없다 (Esc 는 방에서 나가기)
-    this.controls = controlLines(this.touch ? 'touch' : save.settings.controls, save.settings.hero).map((l) =>
-      l.replace('일시정지 Esc', '방에서 나가기 Esc 두 번').replace(/\s*일시정지 오른쪽 위 II/, ''),
-    );
+    this.setControls(save.settings.hero);
     this.leaveAskAt = -9999;
     this.helpBox = null;
     const leave = makeText(this, 916, 140, '나가기', 16, '#ffffff', { backgroundColor: '#5a1020aa', padding: { x: 8, y: 4 } })
@@ -82,6 +80,24 @@ export class GuestScene extends Phaser.Scene {
     else if (event === 'lost') this.showLost();
   }
 
+  // 내 주인공에 맞는 조작법 글 (친구 화면에는 일시정지가 없다)
+  setControls(hero) {
+    const save = saveStore.load();
+    this.controls = controlLines(this.touch ? 'touch' : save.settings.controls, hero).map((l) =>
+      l.replace('일시정지 Esc', '방에서 나가기 Esc 두 번').replace(/\s*일시정지 오른쪽 위 II/, ''),
+    );
+  }
+
+  // 겨루기에서 저장과 다른 주인공을 골랐을 때: 조작법 글과 공격 버튼 이름을 바꾼다
+  useHero(hero) {
+    this.setControls(hero);
+    if (!this.padLabels) return;
+    const label = attackButtonLabel(normalizeHero(hero));
+    TOUCH_BUTTONS.forEach((b, i) => {
+      if (b.id === 'attack') this.padLabels[i].setText(label).setFontSize(labelFontSize(b, label));
+    });
+  }
+
   // 방장 화면 영상을 화면 가득 (영상 크기가 정해지면 960 x 540 에 맞춘다)
   showStream(stream) {
     if (!this.video) {
@@ -98,6 +114,7 @@ export class GuestScene extends Phaser.Scene {
     if (msg.versus) {
       this.hpHint.setY(82); // 겨루기 체력바는 맨 위에 있다
       this.note.setText('');
+      this.useHero(msg.hero);
     }
     if (msg.versus && msg.round > 1) return; // 겨루기는 첫 판에만 알려 준다
     this.helpBox?.destroy();
