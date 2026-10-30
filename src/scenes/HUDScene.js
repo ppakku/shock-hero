@@ -12,6 +12,7 @@ import { attackButtonLabel } from '../logic/controls.js';
 import { normalizeHero, HERO_INFO } from '../logic/heroes.js';
 import { RULE_SHORT } from '../logic/daily.js';
 import { newMatch, sideName, winPips } from '../logic/versus.js';
+import { coop } from '../net/coop.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -333,6 +334,7 @@ export class HUDScene extends Phaser.Scene {
       { text: '방으로', fn: () => this.restartFromOverlay('title') },
     ]);
     this.overlay.setVisible(true);
+    coop.sendInfo('방장이 한 번 더 할지 고르고 있어요'); // 위 키 안내는 방장 것이라 친구에게 따로 알려 준다
   }
 
   // 겨루기를 끝내고 타이틀 위에 방을 다시 연다 (나가기를 눌렀거나 친구 연결이 끊겼을 때)

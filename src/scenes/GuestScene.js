@@ -95,7 +95,10 @@ export class GuestScene extends Phaser.Scene {
 
   // 스테이지가 시작되면 내 조작법을 잠깐 (안내판과 볼트 대사는 방장 키 이름으로 나오니까)
   showControls(msg) {
-    if (msg.versus) this.hpHint.setY(82); // 겨루기 체력바는 맨 위에 있다
+    if (msg.versus) {
+      this.hpHint.setY(82); // 겨루기 체력바는 맨 위에 있다
+      this.note.setText('');
+    }
     if (msg.versus && msg.round > 1) return; // 겨루기는 첫 판에만 알려 준다
     this.helpBox?.destroy();
     const title = msg.versus ? '겨루기 시작! 나는 2P, 내 조작법:' : `스테이지 ${Number(msg.n) || ''} 시작! 나는 2P, 내 조작법:`;

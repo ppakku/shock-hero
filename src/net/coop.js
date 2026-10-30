@@ -103,6 +103,11 @@ class Coop {
     if (this.hostConnected) this.send({ t: 'stage', n, name });
   }
 
+  // 친구 화면에 안내 글자 (빈 글자면 지운다)
+  sendInfo(text) {
+    if (this.hostConnected) this.send({ t: 'info', text });
+  }
+
   // 겨루기 한 판이 시작됐다고 친구에게
   sendVersusRound(round) {
     if (this.hostConnected) this.send({ t: 'stage', versus: true, round });

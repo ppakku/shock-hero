@@ -130,10 +130,6 @@ export class TitleScene extends Phaser.Scene {
     this.ready = true;
     const save = saveStore.load();
     this.save = save;
-    if (this.openRoomOnReady) {
-      this.openRoomOnReady = false;
-      this.openRoom();
-    }
     const firstPick = save.checkpoint || save.unlocked;
     if (this.showAll) save.unlocked = stages.length; // 주소에 ?all: 모든 스테이지 열기 (테스트용, 저장은 안 바뀜)
     if (!this.selected || this.selected > save.unlocked) this.selected = firstPick;
@@ -322,6 +318,11 @@ export class TitleScene extends Phaser.Scene {
     yes.on('pointerdown', () => this.doReset());
     no.on('pointerdown', () => this.closeConfirm());
     this.confirmBox.add([bg, plate, msg, yes, no]);
+    // 겨루기에서 돌아왔으면 방을 연다 (확인 창을 만든 뒤에: openRoom 이 confirming 을 켜서 창이 보이지 않게)
+    if (this.openRoomOnReady) {
+      this.openRoomOnReady = false;
+      this.openRoom();
+    }
 
     if (this.touch) this.buildFullscreen();
     this.refresh();

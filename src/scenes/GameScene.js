@@ -374,11 +374,14 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.timeScale = 1;
     const next = afterRound(v.match, winner, cfg.versus.winsNeeded);
     const text = winner === null ? '무승부! 다시 한 판!' : `${sideName(winner)} 승리!`;
-    makeText(this, 480, 210, text, 56, winner === 0 ? '#7af0ff' : winner === 1 ? '#ffd23f' : '#ffffff', { strokeThickness: 9 }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
+    const banner = makeText(this, 480, 210, text, 56, winner === 0 ? '#7af0ff' : winner === 1 ? '#ffd23f' : '#ffffff', { strokeThickness: 9 }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
     this.sfxPlay('powerup');
     this.time.delayedCall(cfg.versus.roundEndPause * 1000, () => {
       if (next.champion === null) this.scene.restart({ versus: { round: next.round, wins: next.wins } });
-      else this.scene.get('HUD').showVersusOver(next);
+      else {
+        banner.destroy(); // 우승 화면 글자와 겹치지 않게
+        this.scene.get('HUD').showVersusOver(next);
+      }
     });
   }
 
