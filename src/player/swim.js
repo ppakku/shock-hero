@@ -64,14 +64,6 @@ export class SwimController {
     this.bubbles.explode(8, p.x, p.y);
   }
 
-  // 번개 사수의 물속 백스텝: 앞을 본 채로 뒤로 쑥 빠진다 (점프를 누르고 있으면 조금 위로)
-  onBackstep(facing, speed, input = {}) {
-    const p = this.player;
-    const up = input.jumpDown ? -0.35 : 0;
-    p.setVelocity(-facing * speed, up * speed);
-    this.bubbles.explode(8, p.x, p.y);
-  }
-
   // 매 프레임 (GameScene.update 에서 player.update 다음에): 천장 막기, 거품, 헤엄 자세
   update(dt) {
     const p = this.player;
