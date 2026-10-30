@@ -65,8 +65,8 @@ export const HERO_LOOKS = {
     hat: 'band',
     colors: {
       ...SHOCK,
-      suit: 0x14463f, suitBack: 0x0c2f2a, shade: 0x0f3831, light: 0x20665a,
-      gold: 0x2fe6c0, goldBack: 0x1c9e84, shorts: 0x0b2622, glove: 0x0a1f1c,
+      suit: 0x1c6457, suitBack: 0x124638, shade: 0x15544a, light: 0x2c8a78,
+      gold: 0x2fe6c0, goldBack: 0x1c9e84, shorts: 0x0f3a33, glove: 0x0a1f1c,
       hair: 0x1a1f22, hairDark: 0x0f1214, mask: 0x0e2b27, lens: 0xc8fff0, lensRing: 0x1c9e84,
       blue: 0x2fe6c0, blueLight: 0xbafff0,
     },

@@ -74,6 +74,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.spinFlip = 0;
     this.slashAttack = null; // 바람 닌자 돌진 베기 중인 공격
     this.slashSpeed = 0;
+    this.slashFromX = 0;
+    this.slashLength = 0;
     this.slow = NO_SLOW; // 겨루기: 상대의 얼음에 맞아 느려진 상태 (src/logic/slow.js)
     this.swim = null; // 수중 스테이지면 GameScene 이 SwimController 를 붙인다 (src/player/swim.js)
     this.skills = null; // 이 주인공의 기술 담당 (src/player/skills.js, GameScene 이 붙인다)
@@ -163,7 +165,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.dashing) {
       this.dashTime -= dt;
-      if (this.slashAttack) this.setVelocityX(this.facing * this.slashSpeed); // 바닥 마찰에 줄지 않고 끝까지 같은 빠르기로 벤다
+      if (this.slashAttack) {
+        this.setVelocityX(this.facing * this.slashSpeed); // 바닥 마찰에 줄지 않고 끝까지 같은 빠르기로 벤다
+        if (Math.abs(this.x - this.slashFromX) >= this.slashLength) this.dashTime = 0; // 화면이 끊겨도 정해진 거리만큼만 간다
+      }
       this.ghostTimer -= dt;
       if (this.ghostTimer <= 0) {
         this.ghostTimer = 0.03;
@@ -251,6 +256,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.slashAttack = attack;
     this.slashSpeed = attack.speed * (this.swim?.dashScale ?? 1); // 물속에서는 대시처럼 조금 느리다
     this.rushHits = new Set();
+    this.slashFromX = this.x;
+    this.slashLength = this.slashSpeed * attack.time;
     this.dashTime = attack.time;
     this.dashInvuln = attack.time + this.cfg.heroes.ninja.slashInvincibleAfter;
     this.body.allowGravity = false;
