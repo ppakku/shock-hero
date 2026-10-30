@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
 import { agePuddles, standingInPuddle, addPuddle } from '../logic/puddles.js';
 import { floatText } from '../fx/effects.js';
+import { stamp, stampWave } from '../fx/bossArt.js';
 
 // 두꺼비 보스와 골렘 보스가 같이 쓰는 작은 도우미들.
 
@@ -42,8 +43,9 @@ export function damagePart(scene, part, damage, x, y, opts = {}) {
 
 // 바닥 웅덩이 (독, 불): 서 있으면 조금씩 아프다
 export class Puddles {
-  constructor(scene, g, { damage, color, edge, tickTime = 0.6, name = '웅덩이' }) {
+  constructor(scene, g, { damage, color, edge, tickTime = 0.6, name = '웅덩이', art = null }) {
     this.scene = scene;
+    this.art = art; // 웅덩이 그림 이름 (없으면 도형)
     this.g = g;
     this.damage = damage;
     this.color = color;
@@ -71,6 +73,7 @@ export class Puddles {
     for (const p of this.list) {
       const fade = Math.min(1, p.left / 0.6);
       const wob = Math.sin(t * 6 + p.x) * 3;
+      if (this.art && stamp(this.scene, this.art, p.x, groundY + 8, p.w + 14 + wob, 34, { alpha: fade })) continue;
       g.fillStyle(this.color, 0.75 * fade).fillEllipse(p.x, groundY - 2, p.w + wob, 16);
       g.lineStyle(2, this.edge, 0.9 * fade).strokeEllipse(p.x, groundY - 2, p.w + wob, 16);
       g.fillStyle(this.edge, 0.8 * fade).fillCircle(p.x - p.w * 0.2, groundY - 6 - ((t * 30 + p.x) % 14), 3);
@@ -95,8 +98,9 @@ export class Puddles {
 
 // 바닥을 달리는 충격파들
 export class GroundWaves {
-  constructor(scene, g, { damage, speed, color = 0xffb030, light = 0xfff3a0 }) {
+  constructor(scene, g, { damage, speed, color = 0xffb030, light = 0xfff3a0, art = false }) {
     this.scene = scene;
+    this.art = art; // true 면 충격파 그림 (없으면 도형)
     this.g = g;
     this.damage = damage;
     this.speed = speed;
@@ -121,8 +125,10 @@ export class GroundWaves {
       w.left -= step;
       const s = Math.min(1, w.left / 60);
       const h = WAVE_H * Math.max(0.3, s);
-      this.g.fillStyle(this.color, 0.85).fillTriangle(w.x - 26, groundY, w.x, groundY - h, w.x + 26, groundY);
-      this.g.fillStyle(this.light, 0.9).fillTriangle(w.x - 12, groundY, w.x, groundY - h * 0.6, w.x + 12, groundY);
+      if (!this.art || !stampWave(this.scene, w.x, groundY, h)) {
+        this.g.fillStyle(this.color, 0.85).fillTriangle(w.x - 26, groundY, w.x, groundY - h, w.x + 26, groundY);
+        this.g.fillStyle(this.light, 0.9).fillTriangle(w.x - 12, groundY, w.x, groundY - h * 0.6, w.x + 12, groundY);
+      }
       if (Math.random() < 0.4) this.scene.dustAt(w.x, groundY, 1);
       this.scene.hurtPlayersIn(new Rect(w.x - 18, groundY - h, 36, h), this.damage, w.x - w.dir * 40, undefined, w.hits);
     }

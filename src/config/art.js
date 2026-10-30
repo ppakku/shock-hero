@@ -41,13 +41,19 @@ export const customArt = {
   // boss_ice_body_4: 'boss_ice_body_4.png', // 혹한의 아스트라 몸통 (왼쪽을 보는 모습, 날개 없이, 220x170 비율. 머리 왼쪽 위, 꼬리 오른쪽 아래)
   // boss_ice_wing_4: 'boss_ice_wing_4.png', // 혹한의 아스트라 날개 하나 (오른쪽 날개, 붙는 곳이 왼쪽 아래, 170x130 비율, 반투명 얼음 막)
   astra_4: { file: 'frost_astra.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 혹한의 아스트라 (아들 그림, 8장 날갯짓, 머리가 오른쪽이라 오른쪽을 봄). 있으면 위 몸통과 날개 대신 씀
-  // ice_heart: 'ice_heart.png', // 혹한의 아스트라 얼음 심장 (약점, 가슴에 붙음)
-  // ice_icicle: 'ice_icicle.png', // 떨어지는 고드름 (뾰족한 쪽이 아래)
-  // frost_spike: 'frost_spike.png', // 빙천지락 때 바닥에서 솟는 얼음 가시 (아래쪽이 바닥, 80x120 비율)
+  ice_heart: 'ice_heart.png', // 혹한의 아스트라 얼음 심장 (Gemini 그림, 약점, 가슴에 붙음)
+  ice_icicle: 'ice_icicle.png', // 떨어지는 고드름 (Gemini 그림, 뾰족한 쪽이 아래)
+  frost_spike: 'frost_spike.png', // 빙천지락 때 바닥에서 솟는 얼음 가시 (Gemini 그림, 아래쪽이 바닥, 80x120 비율)
+  fx_frost_wall: 'fx_frost_wall.png', // 냉기 브레스 끝에서 바닥을 달리는 서리 벽 (Gemini 그림, 높은 앞쪽이 오른쪽)
+  fx_frost_cone: 'fx_frost_cone.png', // 냉기 브레스 부채꼴 (Gemini 그림, 검은 배경, 뾰족한 위쪽이 입)
   watcher_2: { file: 'forest_watcher.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 포레스트 와처 (아들 그림, 8장, 오른쪽을 봄)
-  // watcher_flat_2: 'watcher_flat_2.png', // 지쳐서 엎드린 포레스트 와처
-  // watcher_blister: 'watcher_blister.png', // 와처 등의 초록 독혹
-  // slime_glob: 'slime_glob.png', // 와처가 뱉는 독 점액
+  // watcher_flat_2: 'watcher_flat_2.png', // 지쳐서 엎드린 포레스트 와처 (왼쪽을 봄, 머리가 왼쪽). 넣으면 시트를 누르는 대신 이 그림을 쓴다
+  watcher_blister: 'watcher_blister.png', // 와처 등의 초록 독혹 (Gemini 그림)
+  slime_glob: 'slime_glob.png', // 와처가 뱉는 독 점액 (Gemini 그림)
+  watcher_arm_2: 'watcher_arm.png', // 와처의 긴 팔 토막 (Gemini 그림, 가로로 길게, 팔꿈치 양쪽에 늘여 씀)
+  watcher_claw_2: 'watcher_claw.png', // 와처의 할퀴는 손 (Gemini 그림, 손끝이 왼쪽, 오른쪽이 손목)
+  watcher_vine_2: 'watcher_vine.png', // 땅에서 솟는 덩굴 (Gemini 그림, 아래쪽이 땅)
+  fx_puddle_poison: 'fx_puddle_poison.png', // 독 웅덩이 (Gemini 그림, 가로로 늘여 씀)
   // 스프라이트 시트는 이렇게 적어요: { file: 파일 이름, cols: 가로 칸 수, rows: 세로 칸 수, frameRate: 1초에 몇 장 }
   // 그림이 오른쪽을 보고 있으면 faces: 'right' 를 더 적어요.
   fx_breath: { file: 'fx_breath.png', cols: 4, rows: 2, frameRate: 12 }, // 땅을 훑는 불 뿜기 (아들 그림, 8장 반복, 머리가 왼쪽, 바닥이 칸 맨 아래)
@@ -71,8 +77,11 @@ export const customArt = {
   boss_fist_10: 'emperor_fist.png', // 그림자 황제가 날리는 주먹 (Gemini 그림, 왼쪽을 봄)
   boss_link_10: 'boss_link_shadow.png', // 그림자 황제 몸통과 팔을 잇는 그림자 촉수 줄 (Gemini 그림, 가로로 이어 붙는 띠)
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
-  // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X
-  // fireball: 'fireball.png', // 용의 불덩이
+  // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X (왼쪽을 봄). 넣으면 시트를 누르는 대신 이 그림을 쓴다
+  dragon_tail_3: 'dragon_tail.png', // 꼬리 휘두르기 때 몸 쪽 꼬리 토막 (Gemini 그림, 가로로 길게)
+  dragon_tailtip_3: 'dragon_tailtip.png', // 꼬리 끝 토막 (Gemini 그림, 끝이 왼쪽)
+  fx_puddle_fire: 'fx_puddle_fire.png', // 뜨거운 용암 웅덩이 (Gemini 그림, 가로로 늘여 씀)
+  // fireball: fx_fireball 시트가 있어서 쓰지 않는다 (fx_fireball 을 못 받았을 때만 나오는 임시 도형)
   boss_core: 'boss_core.png', // 보스 약점(코어) (Gemini 그림)
   boss_armor: 'boss_armor.png', // 코어를 덮은 장갑 (Gemini 그림)
   // ----- 수중 던전 (스테이지 6) -----
@@ -84,13 +93,21 @@ export const customArt = {
   monster_puffer_big: 'monster_puffer_big.png', // 가시복어 부푼 모습 (Gemini 그림, 가시 공)
   monster_piranha: 'monster_piranha.png', // 이빨 피라냐 (Gemini 그림, 오른쪽을 봄)
   monster_crab: 'monster_crab.png', // 집게 꽃게 (Gemini 그림, 오른쪽을 봄)
-  // boss_sea_body_6: 'boss_sea_body_6.png', // 스테이지 6 보스 몸통 (왼쪽을 보는 모습, 아래턱 없이)
-  // boss_sea_jaw_6: 'boss_sea_jaw_6.png', // 스테이지 6 보스 아래턱 (이빨이 위로, 붙는 곳이 오른쪽)
-  // boss_sea_lure: 'boss_sea_lure.png', // 스테이지 6 보스 머리 위 초롱불
-  // boss_sea_heart: 'boss_sea_heart.png', // 스테이지 6 보스 심장 (약점)
-  // boss_sea_bubble: 'boss_sea_bubble.png', // 스테이지 6 보스 거품 폭탄
-  // rock: 'rock.png', // 떨어지는 돌
-  // glob: 'glob.png', // 독침
+  boss_sea_body_6: 'boss_sea_body.png', // 심해 아귀왕 몸통 (Gemini 그림, 왼쪽을 봄, 아래턱 없이, 250x160 비율)
+  boss_sea_jaw_6: 'boss_sea_jaw.png', // 심해 아귀왕 아래턱 (Gemini 그림, 이빨이 위로, 붙는 곳이 오른쪽, 112x52 비율)
+  boss_sea_lure: 'boss_sea_lure.png', // 심해 아귀왕 머리 위 초롱불 (Gemini 그림)
+  boss_sea_heart: 'boss_sea_heart.png', // 심해 아귀왕 심장 (Gemini 그림, 약점)
+  boss_sea_bubble: 'boss_sea_bubble.png', // 심해 아귀왕 거품 폭탄 (Gemini 그림)
+  fx_sand_wave: 'fx_sand_wave.png', // 꼬리 휩쓸기 모래 파도 (Gemini 그림, 구름이 앞, 오른쪽으로 감, 아래쪽이 바닥)
+  // fx_ink: 'fx_ink.png', // 먹물 구름
+  rock: 'rock.png', // 떨어지는 돌 (Gemini 그림)
+  glob: 'glob.png', // 독침 (Gemini 그림)
+  // 보스들이 같이 쓰는 공격 효과 (Gemini 그림, 검은 배경이라 더하기 합성으로 그림, src/fx/bossArt.js)
+  fx_shockwave: { file: 'fx_shockwave.png', cols: 4, rows: 1, frameRate: 14 }, // 땅을 달리는 충격파 (4장 반복, 불꽃 바닥이 칸 높이의 약 0.8)
+  fx_rocket_trail: 'fx_rocket_trail.png', // 로켓 주먹 불꽃 꼬리 (왼쪽이 주먹 쪽)
+  fx_whirl: 'fx_whirl.png', // 빨아들이기 소용돌이 (돌려서 씀)
+  fx_portal: 'fx_portal.png', // 킹이 부하를 부르는 보라색 구멍
+  fx_star: 'fx_star.png', // 어지러울 때 도는 별 (Gemini 그림, 투명 배경)
   // 특별한 힘 아이콘 5개와 레벨 업 카드 아이콘 4개 (Gemini 그림, 80x80 정사각형)
   pw_speed: 'icon_pw_speed.png', // 번개 신발
   pw_shield: 'icon_pw_shield.png', // 강철 몸

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { rockTargets, comboKind } from '../logic/boss.js';
+import { stampWave } from '../fx/bossArt.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const lerp = Phaser.Math.Linear;
@@ -131,8 +132,10 @@ export class ComboHazards {
       return;
     }
     j.x += j.dir * c.shockwaveSpeed * dt;
-    this.fx.fillStyle(0xffb030, 0.85).fillTriangle(j.x - 26, gy, j.x, gy - WAVE_H, j.x + 26, gy);
-    this.fx.fillStyle(0xfff3a0, 0.9).fillTriangle(j.x - 12, gy, j.x, gy - WAVE_H * 0.6, j.x + 12, gy);
+    if (!stampWave(this.scene, j.x, gy)) {
+      this.fx.fillStyle(0xffb030, 0.85).fillTriangle(j.x - 26, gy, j.x, gy - WAVE_H, j.x + 26, gy);
+      this.fx.fillStyle(0xfff3a0, 0.9).fillTriangle(j.x - 12, gy, j.x, gy - WAVE_H * 0.6, j.x + 12, gy);
+    }
     this.scene.hurtPlayersIn(new Rect(j.x - 18, gy - WAVE_H, 36, WAVE_H), c.shockwaveDamage, j.x - j.dir * 40, undefined, j.hits);
     if (j.x < b.arenaStart - 80 || j.x > b.arenaEnd + 80) this.job = null;
   }

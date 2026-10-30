@@ -7,6 +7,7 @@ import { flash, floatText } from '../fx/effects.js';
 import { coreDamage, rockTargets, pickPattern, canSummon, summonSpots } from '../logic/boss.js';
 import { varyCount } from '../logic/bossVariety.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
+import { stamp, stampWave } from '../fx/bossArt.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -172,7 +173,9 @@ export class KingBoss extends ArmBoss {
       const dur = this.kc.summonWarningTime * this.speed;
       const k = Math.min(1, a.t / dur);
       for (const x of a.spots) {
-        this.warn.fillStyle(0x7a2aff, 0.25 + 0.3 * k).fillEllipse(x, this.groundY - 40, 40 + 50 * k, 80 + 40 * k);
+        if (!stamp(this.scene, 'fx_portal', x, this.groundY - 40, 60 + 60 * k, 90 + 60 * k, { alpha: 0.5 + 0.5 * k })) {
+          this.warn.fillStyle(0x7a2aff, 0.25 + 0.3 * k).fillEllipse(x, this.groundY - 40, 40 + 50 * k, 80 + 40 * k);
+        }
         this.warn.lineStyle(3, 0xd08aff, 0.6 + 0.4 * Math.sin(this.t * 16)).strokeEllipse(x, this.groundY - 40, 90, 120);
       }
       this.label(0, '부하 소환!', this.arenaStart + 480, 120, 26, '#d08aff');
@@ -415,8 +418,10 @@ export class KingBoss extends ArmBoss {
   updateWaves(dt) {
     for (const w of this.kwaves) {
       w.x += w.dir * this.c.shockwaveSpeed * dt;
-      this.fxG.fillStyle(0xffb030, 0.85).fillTriangle(w.x - 26, this.groundY, w.x, this.groundY - WAVE_H, w.x + 26, this.groundY);
-      this.fxG.fillStyle(0xfff3a0, 0.9).fillTriangle(w.x - 12, this.groundY, w.x, this.groundY - WAVE_H * 0.6, w.x + 12, this.groundY);
+      if (!stampWave(this.scene, w.x, this.groundY)) {
+        this.fxG.fillStyle(0xffb030, 0.85).fillTriangle(w.x - 26, this.groundY, w.x, this.groundY - WAVE_H, w.x + 26, this.groundY);
+        this.fxG.fillStyle(0xfff3a0, 0.9).fillTriangle(w.x - 12, this.groundY, w.x, this.groundY - WAVE_H * 0.6, w.x + 12, this.groundY);
+      }
       this.hurtPlayer(new Rect(w.x - 18, this.groundY - WAVE_H, 36, WAVE_H), this.c.shockwaveDamage, w.x - w.dir * 40, undefined, w.hits);
     }
     this.kwaves = this.kwaves.filter((w) => w.x > this.arenaStart - 60 && w.x < this.arenaEnd + 60);

@@ -52,8 +52,8 @@ export function monsterStages(stages) {
   return where;
 }
 
-// 보스 그림 이름 (보스 종류와 skin 으로 정해진다, src/boss/*.js). 수중 보스는 아직 그림이 없다
-const BOSS_PORTRAIT = { arms: 'boss_body_', king: 'boss_body_', dragon: 'dragon_', ice: 'astra_', watcher: 'watcher_' };
+// 보스 그림 이름 (보스 종류와 skin 으로 정해진다, src/boss/*.js)
+const BOSS_PORTRAIT = { arms: 'boss_body_', king: 'boss_body_', dragon: 'dragon_', ice: 'astra_', watcher: 'watcher_', sea: 'boss_sea_body_' };
 
 export function bossDex(stages) {
   return stages.map((st, i) => {

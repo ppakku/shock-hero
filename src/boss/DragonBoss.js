@@ -9,11 +9,14 @@ import { varyCount } from '../logic/bossVariety.js';
 import { floatText, ring } from '../fx/effects.js';
 import { FireFx } from '../fx/fireFx.js';
 import { make } from '../fx/textures.js';
+import { hasArt, stampLimb } from '../fx/bossArt.js';
 
 const lerp = Phaser.Math.Linear;
 const W = 320; // 서 있는 용 그림 크기
 const H = 260;
 const TH = 200; // 날개를 늘어뜨리고 쉬는 그림 높이
+const TIRED_W = 340; // 날개를 늘어뜨린 Gemini 그림을 쓸 때 화면 크기
+const TIRED_H = 230;
 const SHEET_H = 340; // 스프라이트 시트(아들 그림)를 쓸 때 화면 높이
 const SHEET_W = Math.round((SHEET_H * 344) / 384); // 한 칸 비율 그대로
 const SHEET_FOOT = 34; // 시트 칸 아래 빈 공간 (화면 픽셀)
@@ -94,14 +97,14 @@ export class DragonBoss extends BossBase {
     this.totalMax = this.tailPart.health.max + this.wing.health.max + this.belly.health.max;
     this.bellyOpen = false;
 
-    this.puddles = new Puddles(scene, this.hazG, { damage: k.fireDamage, color: 0xd8401c, edge: 0xffc040, name: '뜨거운 바닥' });
+    this.puddles = new Puddles(scene, this.hazG, { damage: k.fireDamage, color: 0xd8401c, edge: 0xffc040, name: '뜨거운 바닥', art: 'fx_puddle_fire' });
     // 불 뿜기 그림(fx_breath, 아들 그림)이 있으면 땅을 훑는 불길은 그 그림으로 그리고,
     // GroundWaves 의 세모 도형은 보이지 않는 붓(flameG)에 그리게 한다 (판정은 GroundWaves 그대로).
     this.breathSheet = scene.anims.exists('fx_breath_anim');
     this.flameG = this.breathSheet ? scene.add.graphics().setVisible(false) : this.fxG;
     this.breathPool = [];
     this.flames = new GroundWaves(scene, this.flameG, { damage: k.breathDamage, speed: k.breathSpeed, color: 0xff5a1f, light: 0xffe08a });
-    this.waves = new GroundWaves(scene, this.fxG, { damage: k.landWaveDamage, speed: k.landWaveSpeed, color: 0xff8a3d, light: 0xfff0b0 });
+    this.waves = new GroundWaves(scene, this.fxG, { damage: k.landWaveDamage, speed: k.landWaveSpeed, color: 0xff8a3d, light: 0xfff0b0, art: true });
     this.balls = []; // 하늘에서 떨어지는 불덩이
     this.action = null;
     this.side = null;
@@ -427,7 +430,14 @@ export class DragonBoss extends BossBase {
   draw() {
     const s = this.sprite;
     const tired = this.tired;
-    if (this.sheet) {
+    const sheetKey = `dragon_${this.skinKey}`;
+    const tiredKey = `dragon_tired_${this.skinKey}`;
+    const tiredArt = this.sheet && tired && hasArt(this.scene, tiredKey); // 날개를 늘어뜨린 그림
+    if (tiredArt) {
+      if (s.texture.key !== tiredKey) s.anims.stop();
+      s.setTexture(tiredKey).setDisplaySize(TIRED_W, TIRED_H);
+    } else if (this.sheet) {
+      if (s.texture.key !== sheetKey) s.setTexture(sheetKey).play(`${sheetKey}_anim`);
       // 시트 한 칸 비율(344x384)을 지켜서 그린다. 지치면 날갯짓이 느려지고 살짝 웅크린다.
       s.setDisplaySize(SHEET_W, tired ? SHEET_H * 0.85 : SHEET_H);
       s.anims.timeScale = tired ? 0.4 : this.raging ? 1.5 : 1;
@@ -436,7 +446,7 @@ export class DragonBoss extends BossBase {
       s.setDisplaySize(W, tired ? TH : H);
     }
     // 시트 그림은 칸 아래에 빈 공간이 있어서 그만큼 내려 발이 땅에 닿게 한다
-    s.setPosition(this.x, this.groundY - this.air - this.lift + (this.sheet ? SHEET_FOOT : 0));
+    s.setPosition(this.x, this.groundY - this.air - this.lift + (this.sheet && !tiredArt ? SHEET_FOOT : 0));
     s.setFlipX(this.facing > 0);
     this.bodyX = this.x;
     // 분노하면 몸의 용암 무늬가 밝게 빛난다
@@ -449,7 +459,10 @@ export class DragonBoss extends BossBase {
     const { base, mid, tip } = this.tailPoints();
     // 시트 그림에는 꼬리가 있으니, 꼬리 휘두르기 공격 중에만 휘두르는 꼬리를 따로 그린다
     const drawTail = !this.sheet || this.action?.type === 'tail';
-    if (drawTail) {
+    const tailFx = this.flashTail > 0 ? { tintFill: 0xffffff } : {};
+    if (drawTail && stampLimb(this.scene, 'dragon_tail_3', base, mid, 40, tailFx) && stampLimb(this.scene, 'dragon_tailtip_3', mid, tip, 40, tailFx)) {
+      // 꼬리 그림 두 토막 (부서지면 짧아진 길이 그대로)
+    } else if (drawTail) {
       const col = this.flashTail > 0 ? 0xffffff : this.colors.main;
       g.lineStyle(30, this.colors.dark, 1).lineBetween(base.x, base.y, mid.x, mid.y);
       g.lineStyle(20, this.colors.dark, 1).lineBetween(mid.x, mid.y, tip.x, tip.y);

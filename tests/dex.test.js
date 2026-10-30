@@ -25,13 +25,10 @@ describe('몬스터 도감', () => {
     expect(dexIdFor(stages[0], 'tank')).toBe('monster_tank');
   });
 
-  it('보스 20마리, 수중 보스 말고는 그림이 있다', () => {
+  it('보스 20마리 모두 그림이 있다', () => {
     const b = bossDex(stages);
     expect(b).toHaveLength(stages.length);
-    for (const e of b) {
-      if (e.type === 'sea') expect(e.portrait).toBeNull();
-      else expect(customArt[e.portrait], `${e.stage} ${e.portrait}`).toBeTruthy();
-    }
+    for (const e of b) expect(customArt[e.portrait], `${e.stage} ${e.portrait}`).toBeTruthy();
   });
 
   it('처음 잡으면 등록하고 보석, 다시 잡으면 수만 센다', () => {

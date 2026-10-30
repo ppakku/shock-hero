@@ -13,6 +13,7 @@ import { sheetFacesRight } from '../fx/spriteSheets.js';
 import { BossBase } from './BossBase.js';
 import { customArt } from '../config/art.js';
 import { drawSwirl } from './bossFx.js';
+import { stamp, stampWave } from '../fx/bossArt.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -678,8 +679,10 @@ export class ArmBoss extends BossBase {
     }
     for (const w of this.waves) {
       w.x -= this.c.shockwaveSpeed * dt;
-      this.fxG.fillStyle(0xffb030, 0.85).fillTriangle(w.x - 26, this.groundY, w.x, this.groundY - WAVE_H, w.x + 26, this.groundY);
-      this.fxG.fillStyle(0xfff3a0, 0.9).fillTriangle(w.x - 12, this.groundY, w.x, this.groundY - WAVE_H * 0.6, w.x + 12, this.groundY);
+      if (!stampWave(this.scene, w.x, this.groundY)) {
+        this.fxG.fillStyle(0xffb030, 0.85).fillTriangle(w.x - 26, this.groundY, w.x, this.groundY - WAVE_H, w.x + 26, this.groundY);
+        this.fxG.fillStyle(0xfff3a0, 0.9).fillTriangle(w.x - 12, this.groundY, w.x, this.groundY - WAVE_H * 0.6, w.x + 12, this.groundY);
+      }
       if (Math.random() < 0.4) this.scene.dustAt(w.x, this.groundY, 1);
       this.hurtPlayer(new Rect(w.x - 18, this.groundY - WAVE_H, 36, WAVE_H), this.c.shockwaveDamage, w.x + 40, undefined, w.hits);
     }
@@ -785,7 +788,9 @@ export class ArmBoss extends BossBase {
       fist.y = fistY + Math.sin(this.t * 40) * 2;
       // 불꽃 꼬리와 지나가는 높이
       const trail = Math.min(220, launchX - fist.x);
-      this.fxG.fillStyle(0xffb030, 0.45).fillRect(fist.x + fistW / 2, band.top + 14, trail, band.bottom - band.top - 28);
+      if (!stamp(this.scene, 'fx_rocket_trail', fist.x + fistW / 2 - 12, fistY, trail + 12, band.bottom - band.top - 8)) {
+        this.fxG.fillStyle(0xffb030, 0.45).fillRect(fist.x + fistW / 2, band.top + 14, trail, band.bottom - band.top - 28);
+      }
       this.warn.lineStyle(2, 0xff4444, 0.7).strokeRect(this.arenaStart, band.top, Math.max(0, fist.x - this.arenaStart), band.bottom - band.top);
       this.label(0, a.height === 'high' ? '가만히!' : '점프!', fist.x, band.top - 26, 24);
       if (Math.random() < 0.6) this.scene.dustAt(fist.x + fistW / 2, fist.y, 1);
