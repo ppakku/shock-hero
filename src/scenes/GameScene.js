@@ -80,7 +80,7 @@ export class GameScene extends Phaser.Scene {
     // 보스 러시: { course, stages, index, player, carry } 이면 바로 보스 방에서 시작하고, 이기면 다음 보스로 (src/logic/rush.js)
     this.rush = data.rush || null;
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
-    this.cfg = withDifficulty(cfg, this.difficulty, this.stageNum); // 뒤 스테이지일수록 조금씩 어려워짐
+    this.cfg = withDifficulty(cfg, this.difficulty, this.stageNum, this.save.level); // 뒤 스테이지일수록, 내 레벨이 앞설수록 어려워짐
     this.stage = getStage(this.stageNum);
     this.isLastStage = this.stageNum === stages.length;
     this.ended = false;
@@ -1161,7 +1161,7 @@ export class GameScene extends Phaser.Scene {
     this.gainXp(monster.m.xp, monster.x, monster.y - 40);
     if (monster.workshop) this.recordWorkshop(monster);
     else this.recordDex('monster', monster.dexId, monster.x, monster.y - 70);
-    if (Math.random() < cfg.monster.heartDropChance + this.bonus.heartChance) this.dropHeart(monster.x, monster.y - 10);
+    if (Math.random() < cfg.monster.heartDropChance * this.cfg.difficulty.heartChance + this.bonus.heartChance) this.dropHeart(monster.x, monster.y - 10);
   }
 
   // 하트: 먹으면 체력이 찬다. 10초 뒤 사라진다.

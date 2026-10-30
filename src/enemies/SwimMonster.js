@@ -100,14 +100,12 @@ export class SwimMonster extends Monster {
     const push = Math.min(320, pushedKnockback(k, this.m.knockbackScale));
     this.body.velocity.x = dir * push;
     this.body.velocity.y = attack.up ? -push * 0.6 : -push * 0.15;
-    this.facing = -dir;
     this.onHurt?.(attack);
     if (this.health.isDead) {
       this.die();
-    } else {
+    } else if (this.stagger(0.3 + k / 1500)) {
+      this.facing = -dir;
       this.clearTint();
-      this.stunTime = 0.3 + k / 1500;
-      this.changeState('stunned');
     }
     return true;
   }

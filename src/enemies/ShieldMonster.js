@@ -86,7 +86,11 @@ export class ShieldMonster extends Monster {
       ease: 'Cubic.easeOut',
       onComplete: () => piece.destroy(),
     });
-    if (this.state === 'stunned') this.stunTime = Math.max(this.stunTime, this.m.guardBreakStun);
+    // 방패를 깨면 버티는 중이어도 반드시 비틀거린다 (깬 보상)
+    if (this.state !== 'down') {
+      this.stunTime = Math.max(this.state === 'stunned' ? this.stunTime : 0, this.m.guardBreakStun);
+      this.changeState('stunned');
+    }
   }
 
   raiseGuard() {

@@ -19,9 +19,9 @@ export const FROS_MAX_Y = 340;
 export const FROS_DEFAULT_Y = 290;
 
 // 난이도가 없으면 보통
-export const NORMAL_DIFFICULTY = { level: 'normal', monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1 };
+export const NORMAL_DIFFICULTY = { level: 'normal', monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, stunGuard: 1 };
 
-// 난이도 배수를 곱한다. 피해(monsterDamage), 속도(monsterSpeed), 공격 준비와 경고와 공격 간격(monsterWindup)
+// 난이도 배수를 곱한다. 체력(monsterHealth), 피해(monsterDamage), 속도(monsterSpeed), 공격 준비와 경고와 공격 간격(monsterWindup)
 const DAMAGE_KEYS = ['damage', 'venomDamage', 'cloudDamage', 'spitDamage'];
 const SPEED_KEYS = ['moveSpeed', 'lungeSpeed'];
 const WINDUP_KEYS = ['windupTime', 'venomInterval', 'venomWarningTime', 'venomLockTime', 'spitWindup', 'spitCooldown'];
@@ -32,11 +32,17 @@ WINDUP_KEYS.push('boltWindup', 'boltCooldown', 'inflateWarning', 'puffCooldown',
 export function applyDifficulty(stats, difficulty) {
   const d = { ...NORMAL_DIFFICULTY, ...(difficulty ?? {}) };
   const num = (v) => (typeof v === 'number' && v > 0 ? v : 1);
-  const out = { ...stats };
+  const out = { ...stats, stunGuard: Math.max(0, d.stunGuard || 0) };
+  if (typeof out.maxHealth === 'number') out.maxHealth = Math.max(1, Math.round(out.maxHealth * num(d.monsterHealth)));
   for (const k of DAMAGE_KEYS) if (typeof out[k] === 'number') out[k] = Math.max(1, Math.round(out[k] * num(d.monsterDamage)));
   for (const k of SPEED_KEYS) if (typeof out[k] === 'number') out[k] *= num(d.monsterSpeed);
   for (const k of WINDUP_KEYS) if (typeof out[k] === 'number') out[k] *= num(d.monsterWindup);
   return out;
+}
+
+// 지금 비틀거릴 수 있는지. 마지막으로 비틀거린 뒤 guard 초가 지나야 또 멈춘다 (계속 때려서 꼼짝 못 하게 하는 것을 막는다).
+export function canStagger(lastStaggerAt, now, guard) {
+  return !(guard > 0) || now - lastStaggerAt >= guard;
 }
 
 export function monsterStats(cfg, type = 'basic') {

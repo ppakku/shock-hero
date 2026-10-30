@@ -207,9 +207,13 @@ export class GoldJellyfish extends SwimMonster {
       }
       return ok;
     }
-    this.aimG.clear();
-    this.aim = null;
-    return super.takeHit(attack, dir);
+    const ok = super.takeHit(attack, dir);
+    if (this.dead || this.state !== 'windup') {
+      // 버티고 조준을 계속할 때만 조준선을 남긴다
+      this.aimG.clear();
+      this.aim = null;
+    }
+    return ok;
   }
 
   afterUpdate(dt) {

@@ -238,14 +238,13 @@ export class Fros extends Monster {
     // 공중이라 위아래로는 안 밀리고 옆으로만 조금 밀린다
     const k = attack.knockback || 0;
     this.setVelocityX(dir * Math.min(300, pushedKnockback(k, this.m.knockbackScale)));
-    this.facing = -dir;
-    this.cancelAim();
     if (this.health.isDead) {
+      this.cancelAim();
       this.die();
-    } else {
+    } else if (this.stagger(0.35 + k / 1500)) {
+      this.facing = -dir;
+      this.cancelAim();
       this.clearTint();
-      this.stunTime = 0.35 + k / 1500;
-      this.changeState('stunned');
     }
     return true;
   }

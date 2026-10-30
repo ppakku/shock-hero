@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Health } from '../logic/health.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
-import { monsterStats, pushedKnockback } from '../logic/monsters.js';
+import { monsterStats, pushedKnockback, canStagger } from '../logic/monsters.js';
 import { workshopStats } from '../logic/workshop.js';
 
 export const TEXTURE = {
@@ -46,6 +46,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.state = 'idle';
     this.stateTime = 0;
     this.stunTime = 0;
+    this.lastStaggerAt = -Infinity;
     this.facing = -1;
     this.origin = x;
     this.patrolDir = -1;
@@ -197,6 +198,11 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     // 쓰러질지는 원래 펀치 힘으로 정하고, 실제로 밀리는 거리만 줄인다
     const k = attack.knockback || 0;
     const push = pushedKnockback(k, this.m.knockbackScale);
+    if (!this.health.isDead && k < this.m.downKnockback && !this.stagger(0.25 + k / 1200)) {
+      // 버티는 중: 하던 일을 계속하고 살짝만 밀린다
+      this.setVelocityX(dir * push * 0.25);
+      return true;
+    }
     this.setVelocity(dir * push, -Math.min(push * 0.5, 420));
     this.facing = -dir;
 
@@ -205,10 +211,17 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     } else if (k >= this.m.downKnockback) {
       this.changeState('down');
       this.setAngle(90 * dir);
-    } else {
-      this.stunTime = 0.25 + k / 1200;
-      this.changeState('stunned');
     }
+    return true;
+  }
+
+  // 맞고 비틀거린다. 얼마 전에 비틀거렸으면 버티고 false (cfg.difficulty.stunGuard)
+  stagger(time) {
+    const now = this.scene.time.now / 1000;
+    if (!canStagger(this.lastStaggerAt, now, this.m.stunGuard)) return false;
+    this.lastStaggerAt = now;
+    this.stunTime = time;
+    this.changeState('stunned');
     return true;
   }
 
