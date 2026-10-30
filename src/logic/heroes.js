@@ -1,10 +1,12 @@
 import { chargeRatio } from './combat.js';
 
-// 고를 수 있는 주인공 3명. 버튼은 같지만 싸우는 방법이 다르다.
+// 고를 수 있는 주인공 5명. 버튼은 같지만 싸우는 방법이 다르다.
 // shock: 쇼크 히어로 (주먹 근접형, 원래 주인공)
 // gunner: 번개 사수 (멀리서 쏘는 원거리형, 체력 적음)
 // giant: 강철 거인 (느리지만 세고 넓게 때리는 힘센형, 체력 많음)
-export const HERO_IDS = ['shock', 'gunner', 'giant'];
+// ninja: 바람 닌자 (빠르게 뛰어들어 베는 근접형, 체력 조금 적음)
+// mage: 얼음 마법사 (멀리서 적을 느리게 만드는 조종형, 체력 조금 적음)
+export const HERO_IDS = ['shock', 'gunner', 'giant', 'ninja', 'mage'];
 
 export const HERO_INFO = {
   shock: {
@@ -27,6 +29,20 @@ export const HERO_INFO = {
     lines: ['망치 내려찍기, 꾹 누르면 회오리', '대시는 몸통 박치기', '궁극기: 대지진'],
     ultName: '대지진!',
     color: '#ff9a3a',
+  },
+  ninja: {
+    name: '바람 닌자',
+    short: '빠르게 베어요, 체력은 적어요',
+    lines: ['표창 던지기, 꾹 누르면 돌진 베기', '대시로 빠르게 피하기', '궁극기: 회오리 베기'],
+    ultName: '회오리 베기!',
+    color: '#2fe0b0',
+  },
+  mage: {
+    name: '얼음 마법사',
+    short: '얼음으로 적을 느리게 해요',
+    lines: ['얼음탄, 꾹 누르면 얼음 폭발', '대시로 빠르게 피하기', '궁극기: 눈보라'],
+    ultName: '눈보라!',
+    color: '#a8e0ff',
   },
 };
 
@@ -164,6 +180,81 @@ export function rushAttack(cfg, damageMultiplier = 1) {
   };
 }
 
+// 바람 닌자: 짧게 떼면 표창, 꾹 누르면 돌진 베기 (적을 뚫고 지나가며 벤다, 오래 누를수록 멀리 간다).
+// 돌진 베기는 충전 공격으로 쳐서 방패를 깨고 단단한 해파리를 뚫는다. 움직임은 Player.startSlash 가 맡는다.
+export function ninjaAttack(heldSec, cfg, damageMultiplier = 1, { up = false } = {}) {
+  const g = cfg.heroes.ninja;
+  if (heldSec < cfg.charge.minTime) {
+    return {
+      kind: 'shot',
+      style: 'star',
+      damage: Math.max(1, Math.round(g.starDamage * damageMultiplier)),
+      knockback: g.starKnockback,
+      range: g.starSize,
+      ratio: 0,
+      full: false,
+      up: Boolean(up),
+    };
+  }
+  const ratio = chargeRatio(heldSec, cfg.charge);
+  return {
+    kind: 'charged',
+    style: 'slash',
+    damage: Math.round(lerp(g.slashMinDamage, g.slashMaxDamage, ratio) * damageMultiplier),
+    knockback: lerp(g.slashMinKnockback, g.slashMaxKnockback, ratio),
+    range: 0,
+    speed: g.slashSpeed,
+    time: lerp(g.slashMinTime, g.slashMaxTime, ratio),
+    ratio,
+    full: ratio >= 1,
+    up: false,
+  };
+}
+
+// 얼음 마법사: 짧게 떼면 천천히 날아가는 얼음탄, 꾹 누르면 앞쪽(또는 위쪽) 멀리서 터지는 얼음 폭발.
+// 얼음 폭발은 맞은 적을 느리게 만든다 (slow = { time, multiplier }, src/logic/slow.js).
+export function mageAttack(heldSec, cfg, damageMultiplier = 1, { up = false } = {}) {
+  const g = cfg.heroes.mage;
+  if (heldSec < cfg.charge.minTime) {
+    return {
+      kind: 'shot',
+      style: 'ice',
+      damage: Math.max(1, Math.round(g.iceDamage * damageMultiplier)),
+      knockback: g.iceKnockback,
+      range: g.iceSize,
+      ratio: 0,
+      full: false,
+      up: Boolean(up),
+    };
+  }
+  const ratio = chargeRatio(heldSec, cfg.charge);
+  return {
+    kind: 'charged',
+    style: 'frost',
+    damage: Math.round(lerp(g.frostMinDamage, g.frostMaxDamage, ratio) * damageMultiplier),
+    knockback: lerp(g.frostMinKnockback, g.frostMaxKnockback, ratio),
+    range: g.frostReach,
+    radius: lerp(g.frostMinRadius, g.frostMaxRadius, ratio),
+    slow: { time: lerp(g.slowMinTime, g.slowMaxTime, ratio), multiplier: g.slowMultiplier },
+    ratio,
+    full: ratio >= 1,
+    up: Boolean(up),
+  };
+}
+
+// 얼음 폭발이 닿는 사각형: 주인공에서 reach 만큼 떨어진 곳이 한가운데
+export function frostRect(px, py, facing, reach, radius, up) {
+  const cx = up ? px : px + facing * reach;
+  const cy = up ? py - reach : py - 6;
+  return { x: cx - radius, y: cy - radius, w: radius * 2, h: radius * 2 };
+}
+
+// 궁극기 눈보라가 맞은 적에게 거는 느려짐
+export function blizzardSlow(cfg) {
+  const g = cfg.heroes.mage;
+  return { time: g.blizzardSlowTime, multiplier: g.blizzardSlowMultiplier };
+}
+
 // 번개비: 화면 안 적마다 번개 한 줄기씩. 남는 줄기는 화면에 고르게 흩뿌린다.
 // targets 는 적의 x 목록, 돌려주는 값은 번개가 떨어질 x 목록 (최소 count 개).
 export function rainStrikeXs(targets, viewLeft, viewWidth, count) {
@@ -235,6 +326,42 @@ export const HERO_WORDS = {
     pufferSign: '회오리 금지!\n망치로 내려찍기!',
     pufferTalk: '가시복어가 부르르 떨면 곧 부풀어. 회오리랑 올려치기는 따끔해! 망치로 내려찍어!',
     dashThrough: '돌진이다! 빨간 길을 몸통 박치기로 뚫고 지나가!',
+  },
+  ninja: {
+    atk: '표창',
+    hold: '돌진 베기',
+    strong: '돌진 베기',
+    upAtk: '위로 던지는 표창',
+    upName: '위로 던지기',
+    dashName: '대시',
+    holdTip: '꾹 눌렀다 떼면 돌진 베기! 오래 누를수록 멀리 베고 나가.',
+    dashSign: '{dash} 로 대시해서 피하기',
+    shieldTip: '표창은 방패에 막혀! 돌진 베기로 방패를 깨거나 뒤로 돌아가서 던져!',
+    shieldSign: '돌진 베기로 방패 깨기, 아니면 뒤에서!',
+    jellyTip: '표창은 튕겨 나가. {punch} 를 꾹 눌러 돌진 베기로 깨뜨려!',
+    jellyTalk: '가까이 가면 단단한 공이 돼. 그땐 {punch} 를 꾹 눌러 돌진 베기!',
+    pufferTip: '표창이랑 돌진 베기는 가시를 뚫어! 가까이 서 있지 말고 멀리서 던져!',
+    pufferSign: '가시복어가 부풀어도\n멀리서 던지면 OK!',
+    pufferTalk: '가시복어가 부르르 떨면 곧 부풀어. 표창은 가시를 뚫으니까 멀리서 던져!',
+    dashThrough: '돌진이다! 빨간 길을 대시로 뚫고 지나가!',
+  },
+  mage: {
+    atk: '얼음탄',
+    hold: '얼음 폭발',
+    strong: '얼음 폭발',
+    upAtk: '위로 쏘는 얼음탄',
+    upName: '위로 쏘기',
+    dashName: '대시',
+    holdTip: '꾹 눌렀다 떼면 얼음 폭발! 맞은 적은 잠깐 느려져. 오래 누를수록 크게 터져.',
+    dashSign: '{dash} 로 대시해서 피하기',
+    shieldTip: '얼음탄은 방패에 막혀! 얼음 폭발로 방패를 깨거나 뒤로 돌아가서 쏴!',
+    shieldSign: '얼음 폭발로 방패 깨기, 아니면 뒤에서!',
+    jellyTip: '얼음탄은 튕겨 나가. {punch} 를 꾹 눌러 얼음 폭발로 깨뜨려!',
+    jellyTalk: '가까이 가면 단단한 공이 돼. 그땐 {punch} 를 꾹 눌러 얼음 폭발!',
+    pufferTip: '얼음탄이랑 얼음 폭발은 가시를 뚫어! 가까이 가지 말고 멀리서 쏴!',
+    pufferSign: '가시복어가 부풀어도\n멀리서 쏘면 OK!',
+    pufferTalk: '가시복어가 부르르 떨면 곧 부풀어. 얼음탄은 가시를 뚫으니까 멀리서 쏴!',
+    dashThrough: '돌진이다! 빨간 길을 대시로 뚫고 지나가!',
   },
 };
 

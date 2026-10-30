@@ -44,13 +44,13 @@ describe('조사 고르기', () => {
 });
 
 describe('주인공별 안내 글', () => {
-  it('세 주인공 모두 같은 말 칸이 있고, 금지 기호가 없다', () => {
+  it('모든 주인공이 같은 말 칸을 갖고, 금지 기호가 없다', () => {
     const keys = Object.keys(HERO_WORDS.shock);
     for (const id of HERO_IDS) {
       expect(Object.keys(HERO_WORDS[id]).sort()).toEqual([...keys].sort());
       for (const v of Object.values(HERO_WORDS[id])) expect(v).not.toMatch(/[—·]/);
     }
-    expect(heroWords('ninja')).toBe(HERO_WORDS.shock);
+    expect(heroWords('robot')).toBe(HERO_WORDS.shock);
   });
 
   it('공격 이름이 주인공마다 바뀌고 조사가 맞는다', () => {

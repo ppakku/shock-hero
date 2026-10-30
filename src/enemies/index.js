@@ -24,6 +24,7 @@ const CLASSES = {
 
 // 스테이지 파일의 몬스터 한 줄(spot = { x, y, type })로 몬스터를 만든다.
 // 몬스터가 지켜야 할 약속: dead, x, y, m.xp, update(dt), takeHit(attack, dir), getBounds(), flying(하늘을 나는지)
+// 느려짐(slowDown, updateSlow)은 Monster 를 물려받으면 저절로 된다.
 export function createMonster(scene, spot, cfg) {
   // 수중 스테이지에서는 초록 몬스터(쉬움 난이도가 바꿔 넣는 것) 대신 꽃게가 나온다
   if (scene.stage?.swim && (spot.type === 'basic' || !spot.type)) spot = { ...spot, type: 'crab' };

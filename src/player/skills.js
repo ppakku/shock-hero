@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { gaugeAfterDealing, gaugeAfterHurt, isUltReady, shotAttack, shotDirection, ultimateAttack } from '../logic/combat.js';
 import { floatText, ring } from '../fx/effects.js';
 import { heroFistOffset } from '../fx/heroTextures.js';
-import { HERO_INFO, beamRect, smashRect, spinRect, rushAttack, rainStrikeXs } from '../logic/heroes.js';
+import { HERO_INFO, beamRect, smashRect, spinRect, rushAttack, rainStrikeXs, frostRect, blizzardSlow } from '../logic/heroes.js';
 
 // 궁극기 충격파 색 (진한 것 → 밝은 것 → 가운데 → 바닥 줄)
 const SHOCK_WAVE = [0x3f8cff, 0x6fc0ff, 0xe8f7ff, 0x9fd8ff];
@@ -133,7 +133,7 @@ export class HeroSkills {
       .image(x, y, opts.tex || 'hero_ball')
       .setDepth(23)
       .setBlendMode(Phaser.BlendModes.ADD);
-    if (opts.tex) img.setDisplaySize(size * 2, size).setRotation(Math.atan2(dir.y, dir.x));
+    if (opts.tex) img.setDisplaySize(opts.spin ? size : size * 2, size).setRotation(Math.atan2(dir.y, dir.x));
     else img.setDisplaySize(size * 1.4, size * 1.4);
     this.scene.sfxPlay('shot');
     ring(this.scene, x, y, color, opts.tex ? 20 : 40, 200, 3);
@@ -142,7 +142,8 @@ export class HeroSkills {
       color,
       speed: opts.speed ?? sk.shotSpeed,
       distance: opts.distance ?? sk.shotDistance,
-      spins: !opts.tex,
+      spins: !opts.tex || Boolean(opts.spin),
+      spinRate: opts.spin ?? 8,
       img,
       x,
       y,
@@ -163,7 +164,7 @@ export class HeroSkills {
       s.y += s.dir.y * step;
       s.traveled += step;
       s.img.setPosition(s.x, s.y);
-      if (s.spins) s.img.setRotation(s.img.rotation + dt * 8);
+      if (s.spins) s.img.setRotation(s.img.rotation + dt * s.spinRate);
       this.trail(s.x, s.y, s.color);
 
       const rect = new Phaser.Geom.Rectangle(s.x - r, s.y - r, r * 2, r * 2);
@@ -209,6 +210,7 @@ export class HeroSkills {
       this.endSpin(player);
     }
     if (player.hero === 'gunner') return this.startRain(player);
+    if (player.hero === 'ninja' || player.hero === 'mage') return this.startStorm(player);
     const giant = player.hero === 'giant';
     const info = HERO_INFO[player.hero] || HERO_INFO.shock;
     player.ultActive = true;
@@ -228,6 +230,7 @@ export class HeroSkills {
     const a = this.ult;
     if (!a) return;
     if (a.phase === 'rain') return this.updateRain(a, dt);
+    if (a.phase === 'storm') return this.updateStorm(a, dt);
     const p = this.player;
     const u = this.cfg.ultimate;
     a.t += dt;
@@ -350,7 +353,7 @@ export class HeroSkills {
     }
   }
 
-  // ---------- 번개 사수와 강철 거인의 공격 ----------
+  // ---------- 주인공마다 다른 공격 ----------
 
   heroAttack(player, attack) {
     if (attack.style === 'bolt') return this.fireBolt(player, attack);
@@ -358,6 +361,10 @@ export class HeroSkills {
     if (attack.style === 'smash') return this.smash(player, attack);
     if (attack.style === 'hammerUp') return this.upperAttack(player, attack, { width: this.cfg.heroes.giant.upperWidth, color: 0xff9a3a });
     if (attack.style === 'spin') return this.startSpin(player, attack);
+    if (attack.style === 'star') return this.throwStar(player, attack);
+    if (attack.style === 'slash') return this.dashSlash(player, attack);
+    if (attack.style === 'ice') return this.fireIce(player, attack);
+    if (attack.style === 'frost') return this.frostBlast(player, attack);
   }
 
   // 번개탄: 작고 빠르고 멀리 간다. 위를 누르면 위로 (움직이면 대각선 위로)
@@ -459,14 +466,96 @@ export class HeroSkills {
     if (player && !player.dead) player.setFlipX(player.facing < 0);
   }
 
-  // 몸통 박치기: 대시하는 동안 부딪힌 적을 한 번씩 날려 보낸다
+  // 표창: 빠르지만 짧게 날아가고 빙글빙글 돈다. 위를 누르면 위로 (움직이면 대각선 위로)
+  throwStar(player, attack) {
+    const g = this.cfg.heroes.ninja;
+    const dir = shotDirection(player.facing, attack.up, player.lastMoving);
+    this.fireShot(player, dir, { tex: 'ninja_star', size: g.starSize, speed: g.starSpeed, distance: g.starDistance, color: 0x2fe6c0, spin: 24, attack });
+  }
+
+  // 돌진 베기: 지나가는 길에 칼바람 한 줄을 남기며 앞으로 뻗어 나간다 (피해는 updateRush 가 준다)
+  dashSlash(player, attack) {
+    const s = this.scene;
+    const dir = player.facing;
+    const len = attack.speed * attack.time * (player.swim?.dashScale ?? 1);
+    s.sfxPlay('charged');
+    ring(s, player.x, player.y, 0x2fe6c0, 40 + 30 * attack.ratio, 200, 4);
+    const glow = s.add.rectangle(player.x + (dir * len) / 2, player.y - 4, len, 20, 0x2fe6c0, 0.45).setDepth(24).setBlendMode(Phaser.BlendModes.ADD);
+    const core = s.add.rectangle(player.x + (dir * len) / 2, player.y - 4, len, 4, 0xffffff, 0.95).setDepth(24);
+    s.tweens.add({
+      targets: [glow, core],
+      alpha: 0,
+      scaleY: 0.2,
+      delay: attack.time * 1000,
+      duration: 200,
+      onComplete: () => {
+        glow.destroy();
+        core.destroy();
+      },
+    });
+    if (attack.full) s.shake(0.008, 140);
+    player.startSlash(attack);
+  }
+
+  // 얼음탄: 천천히 날아가는 얼음 조각. 위를 누르면 위로 (움직이면 대각선 위로)
+  fireIce(player, attack) {
+    const g = this.cfg.heroes.mage;
+    const dir = shotDirection(player.facing, attack.up, player.lastMoving);
+    this.fireShot(player, dir, { tex: 'mage_ice', size: g.iceSize, speed: g.iceSpeed, distance: g.iceDistance, color: 0x9fd8ff, attack });
+  }
+
+  // 얼음 폭발: 앞쪽(또는 위쪽) 멀리서 터지고, 맞은 적은 잠깐 느려진다 (attack.slow, GameScene.hitArea)
+  frostBlast(player, attack) {
+    const s = this.scene;
+    const dir = player.facing;
+    const r = frostRect(player.x, player.y, dir, attack.range, attack.radius, attack.up);
+    const rect = new Phaser.Geom.Rectangle(r.x, r.y, r.w, r.h);
+    s.sfxPlay('charged');
+    const blast = s.add.circle(rect.centerX, rect.centerY, attack.radius, 0x9fd8ff, 0.45).setDepth(24).setBlendMode(Phaser.BlendModes.ADD);
+    const core = s.add.circle(rect.centerX, rect.centerY, attack.radius * 0.5, 0xffffff, 0.8).setDepth(24);
+    s.tweens.add({
+      targets: [blast, core],
+      scale: 1.25,
+      alpha: 0,
+      duration: 320,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        blast.destroy();
+        core.destroy();
+      },
+    });
+    ring(s, rect.centerX, rect.centerY, 0xd8f0ff, attack.radius * 1.2, 280, 5);
+    for (let i = 0; i < 8; i++) this.iceChip(rect.centerX, rect.centerY, attack.radius, (i / 8) * Math.PI * 2);
+    if (attack.full) s.shake(0.008, 140);
+    if (s.hitArea(rect, attack, dir, player)) {
+      s.sfxPlay('hit');
+      this.onDealtDamage(attack.damage);
+      if (attack.full) s.impact?.chargedHit(dir);
+    }
+  }
+
+  // 폭발에서 사방으로 튀는 얼음 조각
+  iceChip(x, y, radius, angle) {
+    const s = this.scene;
+    const chip = s.add.image(x, y, 'spark').setTint(0xd8f0ff).setDepth(25).setScale(1.4);
+    s.tweens.add({
+      targets: chip,
+      x: x + Math.cos(angle) * radius,
+      y: y + Math.sin(angle) * radius,
+      alpha: 0,
+      duration: 320,
+      onComplete: () => chip.destroy(),
+    });
+  }
+
+  // 몸통 박치기와 돌진 베기: 대시하는 동안 부딪힌 적을 한 번씩 때린다
   updateRush() {
     const p = this.player;
     if (!p || !p.dashing || !p.rushHits) return;
     const s = this.scene;
     const b = p.getBounds();
     const rect = new Phaser.Geom.Rectangle(b.x - 12, b.y, b.width + 24, b.height);
-    const attack = rushAttack(this.cfg, p.damageMultiplier);
+    const attack = p.slashAttack || rushAttack(this.cfg, p.damageMultiplier);
     let hit = false;
     for (const m of s.monsters) {
       if (m.dead || p.rushHits.has(m) || !Phaser.Geom.Intersects.RectangleToRectangle(rect, m.getBounds())) continue;
@@ -486,7 +575,7 @@ export class HeroSkills {
       s.sfxPlay('hit');
       this.onDealtDamage(attack.damage);
       s.shake(0.008, 120);
-      ring(s, p.x + p.facing * 24, p.y, 0xff9a3a, 50, 200, 4);
+      ring(s, p.x + p.facing * 24, p.y, p.slashAttack ? 0x2fe6c0 : 0xff9a3a, 50, 200, 4);
     }
   }
 
@@ -560,6 +649,79 @@ export class HeroSkills {
     ring(s, x, groundY - 10, 0xffe14a, 60, 260, 4);
     s.sparks.explode(8, x, groundY - 20);
     s.dustAt(x, groundY - 4, 6);
+  }
+
+  // ---------- 바람 닌자와 얼음 마법사 궁극기: 회오리 베기, 눈보라 ----------
+  // 둘 다 제자리에서 화면 전체를 휩쓴다. 반쯤 지났을 때 화면 안 적 모두에게 피해.
+
+  startStorm(player) {
+    const s = this.scene;
+    const ninja = player.hero === 'ninja';
+    const info = HERO_INFO[player.hero];
+    player.ultActive = true;
+    player.ultPose = ninja ? 'spin' : 'upperGlow';
+    player.setVelocity(0, 0);
+    player.setTint(ninja ? 0xb0ffe8 : 0xd8f0ff);
+    this.ult = { phase: 'storm', t: 0, ninja, hit: false, next: 0 };
+    s.sfxPlay('ultimate');
+    floatText(s, player.x, player.y - 60, info.ultName, info.color, 30);
+    ring(s, player.x, player.y, ninja ? 0x2fe6c0 : 0x9fd8ff, 90, 350, 6);
+    s.cameras.main.flash(200, ...(ninja ? [20, 90, 80] : [120, 170, 210]));
+    return true;
+  }
+
+  updateStorm(a, dt) {
+    const s = this.scene;
+    const p = this.player;
+    const u = this.cfg.ultimate;
+    a.t += dt;
+    p.setVelocityX(0);
+    if (a.ninja) p.setFlipX(Math.floor(a.t / 0.07) % 2 === 0); // 빙글빙글
+    a.next -= dt;
+    if (a.next <= 0) {
+      a.next = a.ninja ? 0.07 : 0.03;
+      if (a.ninja) this.windCut();
+      else this.snowflake();
+    }
+    if (!a.hit && a.t >= 0.55) {
+      a.hit = true;
+      s.sfxPlay('ultimateBoom');
+      if (a.ninja) s.cameras.main.flash(260, 170, 255, 235);
+      else s.cameras.main.flash(320, 225, 240, 255);
+      s.shake(0.02, 400);
+      s.impact?.ultimate();
+      const { attack, bossDamage } = ultimateAttack(this.cfg, p.damageMultiplier);
+      const final = a.ninja ? attack : { ...attack, slow: blizzardSlow(this.cfg) };
+      if (s.hitScreen(final, bossDamage, p)) s.sfxPlay('hit');
+    }
+    if (a.t > 1.4) {
+      this.ult = null;
+      p.ultActive = false;
+      p.ultPose = null;
+      p.setTint(0xffffff);
+      p.setFlipX(p.facing < 0);
+      p.hurtInvuln = Math.max(p.hurtInvuln, u.invincibleAfter);
+    }
+  }
+
+  // 회오리 베기: 화면 아무 데나 번쩍이는 칼바람 한 줄
+  windCut() {
+    const s = this.scene;
+    const v = s.cameras.main.worldView;
+    const x = v.x + Math.random() * v.width;
+    const y = v.y + Math.random() * v.height;
+    const cut = s.add.rectangle(x, y, 320, 5, 0xffffff, 0.95).setDepth(26).setRotation(Math.random() * Math.PI);
+    cut.setStrokeStyle(3, 0x2fe6c0, 0.8);
+    s.tweens.add({ targets: cut, scaleX: 1.6, scaleY: 0.2, alpha: 0, duration: 200, onComplete: () => cut.destroy() });
+  }
+
+  // 눈보라: 화면 위에서 비스듬히 쏟아지는 눈송이 하나
+  snowflake() {
+    const s = this.scene;
+    const v = s.cameras.main.worldView;
+    const x = v.x + Math.random() * (v.width + 200);
+    const flake = s.add.image(x, v.y - 10, 'spark').setTint(0xffffff).setDepth(26).setScale(1 + Math.random() * 1.6);
+    s.tweens.add({ targets: flake, x: x - 200, y: v.bottom + 10, duration: 500 + Math.random() * 300, onComplete: () => flake.destroy() });
   }
 
   // 화면을 바꾸거나 스테이지가 끝날 때

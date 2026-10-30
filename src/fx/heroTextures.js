@@ -58,11 +58,38 @@ export const HERO_LOOKS = {
       blue: 0xff7a1a, blueLight: 0xffd08a,
     },
   },
+  // 바람 닌자: 짙은 녹색 옷 + 청록 무늬, 검은 머리에 청록 머리띠, 손에 짧은 칼
+  ninja: {
+    prefix: 'ninja',
+    prop: 'blade',
+    hat: 'band',
+    colors: {
+      ...SHOCK,
+      suit: 0x1c6457, suitBack: 0x124638, shade: 0x15544a, light: 0x2c8a78,
+      gold: 0x2fe6c0, goldBack: 0x1c9e84, shorts: 0x0f3a33, glove: 0x0a1f1c,
+      hair: 0x1a1f22, hairDark: 0x0f1214, mask: 0x0e2b27, lens: 0xc8fff0, lensRing: 0x1c9e84,
+      blue: 0x2fe6c0, blueLight: 0xbafff0,
+    },
+  },
+  // 얼음 마법사: 하늘색과 흰색 옷, 흰 머리에 뾰족 모자, 손에 얼음 지팡이
+  mage: {
+    prefix: 'mage',
+    prop: 'staff',
+    hat: 'wizard',
+    colors: {
+      ...SHOCK,
+      suit: 0xa8d4f0, suitBack: 0x7fb0d4, shade: 0x8fbfe0, light: 0xd4ecfa,
+      gold: 0xffffff, goldBack: 0xcfe4f2, shorts: 0x6f9fc8, glove: 0xf4fbff,
+      hair: 0xf2f7fa, hairDark: 0xc4d6e2, mask: 0x4f7ea8, lens: 0xe8f7ff, lensRing: 0xffffff,
+      blue: 0x9fd8ff, blueLight: 0xe8f7ff,
+    },
+  },
 };
 
 // 지금 그리는 주인공의 색과 손에 든 것 (makeHeroTextures 가 주인공마다 바꿔 끼운다)
 let C = SHOCK;
 let PROP = null;
+let HAT = null;
 
 const rad = (d) => (d * Math.PI) / 180;
 // 각도 약속: 0 = 아래로, + = 앞쪽(오른쪽)으로 돌아감, 180 = 위로
@@ -150,6 +177,19 @@ function drawProp(g, wrist, fore) {
     g.fillStyle(0x3d434d).fillRoundedRect(-10, 18, 20, 11, 2.5);
     g.fillStyle(0x6c7482).fillRoundedRect(-9, 19, 18, 4, 1.5);
     g.fillStyle(C.gold).fillRect(-10, 23.5, 20, 1.6);
+  } else if (PROP === 'blade') {
+    // 짧은 칼: 청록 손잡이, 코등이, 곧은 칼날
+    g.fillStyle(C.goldBack).fillRoundedRect(-1.5, -3, 3, 8, 1);
+    g.fillStyle(0x20262a).fillRoundedRect(-3.6, 4.6, 7.2, 1.8, 0.8);
+    g.fillStyle(0xdfeeee).fillPoints([{ x: -1.8, y: 6 }, { x: 1.8, y: 6 }, { x: 1.8, y: 22 }, { x: 0, y: 26 }, { x: -1.8, y: 22 }], true);
+    g.fillStyle(0xffffff).fillRect(-0.4, 7, 0.8, 16);
+  } else if (PROP === 'staff') {
+    // 얼음 지팡이: 긴 나무 막대 끝에 파란 얼음 수정
+    g.fillStyle(0x6a5a78).fillRoundedRect(-1.3, -14, 2.6, 36, 1.2);
+    g.fillStyle(0x8a7a98).fillRect(-0.4, -13, 0.8, 34);
+    g.fillStyle(0x9fd8ff, 0.3).fillCircle(0, 26, 8);
+    g.fillStyle(0x6fc0ff).fillPoints([{ x: 0, y: 19 }, { x: 4.5, y: 26 }, { x: 0, y: 33 }, { x: -4.5, y: 26 }], true);
+    g.fillStyle(0xe8f7ff).fillPoints([{ x: 0, y: 21.5 }, { x: 2, y: 26 }, { x: 0, y: 29 }, { x: -2, y: 26 }], true);
   }
   g.restore();
 }
@@ -218,6 +258,16 @@ function head(g, x, y, tilt) {
     true,
   );
   g.fillStyle(C.hairDark).fillTriangle(-4, -6, -1, -9, 0, -5).fillTriangle(1.5, -6, 4.5, -8.5, 4, -4.5);
+  if (HAT === 'band') {
+    // 닌자 머리띠: 이마를 두르고 뒤로 끈이 날린다
+    g.fillStyle(C.gold).fillRect(-7.5, -5, 15, 2.2);
+    g.fillTriangle(-7, -4.5, -14, -7, -13, -2.5).fillTriangle(-7, -4, -13, -1, -11, 2);
+  } else if (HAT === 'wizard') {
+    // 마법사 모자: 넓은 챙 위에 끝이 뒤로 꺾인 뾰족 모자
+    g.fillStyle(C.suit).fillPoints([{ x: -7, y: -5 }, { x: 7.5, y: -5 }, { x: 1.5, y: -14 }, { x: -6, y: -20 }, { x: -3.5, y: -13 }], true);
+    g.fillStyle(C.light).fillPoints([{ x: -5.5, y: -6 }, { x: -1, y: -6 }, { x: -1.5, y: -13 }, { x: -3.5, y: -13 }], true);
+    g.fillStyle(C.gold).fillRoundedRect(-10, -6.2, 20, 2.4, 1.2);
+  }
   g.restore();
 }
 
@@ -344,6 +394,7 @@ export function makeHeroTextures(scene) {
   for (const look of Object.values(HERO_LOOKS)) {
     C = look.colors;
     PROP = look.prop;
+    HAT = look.hat ?? null;
     for (const [name, pose] of Object.entries(HERO_POSES)) {
       const fist = drawFrame(scene, `${look.prefix}_${name}`, pose);
       if (fist && look.prefix === 'hero') fistAt[name] = { x: fist.x - CX, y: fist.y - HERO_ORIGIN_Y * HERO_FRAME.h };
@@ -361,6 +412,7 @@ export function makeHeroTextures(scene) {
   }
   C = SHOCK;
   PROP = null;
+  HAT = null;
   if (!custom) drawFrame(scene, 'player', HERO_POSES.idle0);
 
   // 파란 에너지탄
@@ -380,5 +432,23 @@ export function makeHeroTextures(scene) {
       true,
     );
     g.fillStyle(0xffffff).fillEllipse(30, 11, 16, 5);
+  });
+
+  // 바람 닌자의 표창 (네 갈래 별)
+  make(scene, 'ninja_star', 32, 32, (g) => {
+    g.fillStyle(0x2fe6c0, 0.35).fillCircle(16, 16, 15);
+    g.fillStyle(0xe8f4f4).fillPoints(
+      [{ x: 16, y: 1 }, { x: 19, y: 13 }, { x: 31, y: 16 }, { x: 19, y: 19 }, { x: 16, y: 31 }, { x: 13, y: 19 }, { x: 1, y: 16 }, { x: 13, y: 13 }],
+      true,
+    );
+    g.fillStyle(0x14463f).fillCircle(16, 16, 3);
+  });
+
+  // 얼음 마법사의 얼음탄 (가로로 긴 얼음 조각)
+  make(scene, 'mage_ice', 48, 24, (g) => {
+    g.fillStyle(0x9fd8ff, 0.3).fillEllipse(22, 12, 46, 22);
+    g.fillStyle(0x9fd8ff).fillPoints([{ x: 2, y: 12 }, { x: 16, y: 4 }, { x: 36, y: 5 }, { x: 46, y: 12 }, { x: 36, y: 19 }, { x: 16, y: 20 }], true);
+    g.fillStyle(0xe8f7ff).fillPoints([{ x: 14, y: 12 }, { x: 22, y: 7 }, { x: 36, y: 8 }, { x: 42, y: 12 }, { x: 34, y: 15 }, { x: 22, y: 15 }], true);
+    g.fillStyle(0xffffff).fillEllipse(32, 10, 10, 3);
   });
 }

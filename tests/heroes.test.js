@@ -12,15 +12,16 @@ const full = cfg.charge.fullTime + 1;
 
 describe('주인공 고르기', () => {
   it('모르는 이름은 쇼크 히어로', () => {
-    expect(normalizeHero('ninja')).toBe('shock');
+    expect(normalizeHero('robot')).toBe('shock');
     expect(normalizeHero(undefined)).toBe('shock');
     for (const id of HERO_IDS) expect(normalizeHero(id)).toBe(id);
   });
 
   it('다음, 이전으로 돌아가며 고른다', () => {
     expect(cycleHero('shock', 1)).toBe('gunner');
-    expect(cycleHero('giant', 1)).toBe('shock');
-    expect(cycleHero('shock', -1)).toBe('giant');
+    expect(cycleHero('giant', 1)).toBe('ninja');
+    expect(cycleHero('mage', 1)).toBe('shock');
+    expect(cycleHero('shock', -1)).toBe('mage');
   });
 
   it('고른 주인공이 저장되고, 예전 저장은 쇼크 히어로', () => {
