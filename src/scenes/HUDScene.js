@@ -6,8 +6,8 @@ import { saveStore } from '../save.js';
 import { xpToNext } from '../logic/progression.js';
 import { DIFFICULTY_INFO } from '../logic/difficulty.js';
 import { POWER_IDS, POWER_INFO, UPGRADE_TRACKS, UPGRADE_INFO } from '../logic/growth.js';
-import { makeText, formatTime } from '../ui/text.js';
-import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons } from '../ui/touch.js';
+import { makeText, formatTime, FONT, textSize } from '../ui/text.js';
+import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons2D, drawPauseButton2D } from '../ui/touch.js';
 import { attackButtonLabel } from '../logic/controls.js';
 import { normalizeHero, HERO_INFO } from '../logic/heroes.js';
 import { RULE_SHORT } from '../logic/daily.js';
@@ -85,32 +85,48 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // ---------- 태블릿 화면 버튼 ----------
+  // 게임 캔버스가 아니라 그 위의 HTML 층(2D canvas)에 그린다. 함께하기는 게임 캔버스를 영상으로 친구에게 보내는데,
+  // 캔버스에 그리면 방장 버튼이 친구 화면에도 실려 친구 버튼과 겹쳐 보였다. HTML 층은 영상에 안 담긴다.
+  // 손가락 읽기(touchPad)는 그대로 게임 캔버스가 받는다 (이 층은 pointer-events: none). 일시정지 자리만 투명한 요소로 받는다.
   buildTouchPad() {
-    this.padG = this.add.graphics().setDepth(90);
     const hero = normalizeHero(this.game_?.hero ?? saveStore.load().settings.hero);
-    this.padLabels = TOUCH_BUTTONS.map((b) => {
-      const label = b.id === 'attack' ? attackButtonLabel(hero) : b.label; // 공격 버튼은 주인공의 공격 이름 (펀치, 번개탄, 망치)
-      return makeText(this, b.x, b.y, label, label.length > 1 ? Math.max(14, Math.round(b.r * 0.46)) : Math.round(b.r * 0.6), '#ffffff')
-        .setOrigin(0.5)
-        .setDepth(91);
-    });
+    this.padLabels = TOUCH_BUTTONS.map((b) => (b.id === 'attack' ? attackButtonLabel(hero) : b.label)); // 공격 버튼은 주인공의 공격 이름 (펀치, 번개탄, 망치)
+    const dpr = Math.min(3, window.devicePixelRatio || 1); // 휴대폰에서 글자가 흐리지 않게
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;width:960px;height:540px;pointer-events:none;';
+    const cv = document.createElement('canvas');
+    cv.width = 960 * dpr;
+    cv.height = 540 * dpr;
+    cv.style.cssText = 'position:absolute;left:0;top:0;width:960px;height:540px;';
+    this.padCtx = cv.getContext('2d');
+    this.padCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const pb = PAUSE_BUTTON;
-    this.pauseBtn = this.add.container(pb.x, pb.y).setDepth(92);
-    const pg = this.add.graphics();
-    pg.fillStyle(0x000000, 0.45).fillCircle(0, 0, pb.r).lineStyle(3, 0xffffff, 0.7).strokeCircle(0, 0, pb.r);
-    pg.fillStyle(0xffffff, 0.9).fillRect(-7, -8, 5, 16).fillRect(2, -8, 5, 16);
-    this.pauseBtn.add(pg);
-    this.pauseBtn.setSize(pb.r * 2.4, pb.r * 2.4).setInteractive().on('pointerdown', () => this.togglePause());
+    const hit = document.createElement('div');
+    const hr = pb.r * 1.2;
+    hit.style.cssText = `position:absolute;left:${pb.x - hr}px;top:${pb.y - hr}px;width:${hr * 2}px;height:${hr * 2}px;border-radius:50%;pointer-events:auto;touch-action:none;`;
+    hit.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.togglePause();
+    });
+    wrap.append(cv, hit);
+    this.pauseHit = hit;
+    this.padDom = this.add.dom(480, 270, wrap).setDepth(90);
+    // Phaser 가 매 프레임 이 요소의 pointer-events 를 다시 쓰므로 Phaser 속성으로 꺼야 손가락이 게임 캔버스에 닿는다.
+    // 일시정지 자리(hit)만 자기 스타일 auto 로 받는다.
+    this.padDom.pointerEvents = 'none';
   }
 
   drawTouchPad(gs, p) {
     const show = this.mode === 'play' && gs.scene.isActive() && !gs.ended && !p.dead;
-    this.padG.clear().setVisible(show);
-    this.padLabels.forEach((t) => t.setVisible(show));
-    this.pauseBtn.setVisible(this.mode === 'play' || this.mode === 'paused');
+    const pauseOn = this.mode === 'play' || this.mode === 'paused';
+    this.padDom.setVisible(show || pauseOn);
+    this.pauseHit.style.display = pauseOn ? '' : 'none';
+    const ctx = this.padCtx;
+    ctx.clearRect(0, 0, 960, 540);
+    if (pauseOn) drawPauseButton2D(ctx);
     if (!show) return;
     const ultReady = typeof p.ultGauge === 'number' && p.ultGauge >= 1;
-    drawTouchButtons(this.padG, this.padLabels, touchPad, ultReady);
+    drawTouchButtons2D(ctx, this.padLabels, touchPad, { ultReady, font: FONT, textSize });
   }
 
   // 결과 화면과 일시정지 화면에서 손가락으로 누르는 버튼 (태블릿에서만)
