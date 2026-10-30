@@ -224,7 +224,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.spinLeft = 0;
       this.skills?.endSpin(this);
     }
-    if (this.hero === 'gunner') return this.startBackstep(input);
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0) || this.facing;
     this.facing = dir;
     this.setFlipX(dir < 0);
@@ -235,24 +234,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(dir * this.cfg.dash.speed, 0);
     this.swim?.onDash(dir, input); // 수중 스테이지: 헤엄 돌진
     this.rushHits = this.hero === 'giant' ? new Set() : null; // 강철 거인: 몸통 박치기로 이미 친 적
-    this.scene.onDash(this);
-  }
-
-  // 번개 사수의 대시: 앞을 본 채로 뒤로 폴짝 빠진다 (물속에서는 뒤로 쑥 헤엄쳐 빠진다)
-  startBackstep(input = {}) {
-    const g = this.cfg.heroes.gunner;
-    this.dashTime = this.cfg.dash.duration * 1.3;
-    this.dashInvuln = this.cfg.dash.invincibleTime;
-    this.dashCd.trigger();
-    this.setFlipX(this.facing < 0);
-    if (this.swim) {
-      this.body.allowGravity = false;
-      this.swim.onBackstep(this.facing, g.backstepSpeed, input);
-    } else {
-      this.body.allowGravity = true;
-      this.setVelocity(-this.facing * g.backstepSpeed, -g.backstepHop);
-    }
-    this.rushHits = null;
     this.scene.onDash(this);
   }
 
@@ -388,7 +369,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let a;
     if (this.dead || this.hurtLock > 0) a = 'hurt';
     else if (this.ultActive) a = this.ultPose || 'slam';
-    else if (this.dashing) a = this.hero === 'gunner' && !this.swim ? 'jump' : 'dash'; // 백스텝은 폴짝 뛰는 자세
+    else if (this.dashing) a = 'dash';
     else if (this.poseTime > 0 && this.poseName) a = this.poseName;
     else if (this.isCharging) a = 'charge';
     else if (!onGround) a = this.body.velocity.y < 0 ? 'jump' : 'fall';

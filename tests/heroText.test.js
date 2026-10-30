@@ -107,7 +107,7 @@ describe('주인공별 안내 글', () => {
     expect(CONTROL_INFO.arrows.lines[2]).toBe('어퍼컷 ↑ 누른 채 펀치    궁극기 D (파란 게이지가 꽉 차면)');
     expect(TOUCH_INFO.lines[1]).toBe('펀치 버튼 (꾹 눌렀다 떼면 충전 펀치)    대시 버튼    일시정지 오른쪽 위 II');
     expect(controlLines('classic', 'gunner')).toEqual([
-      '이동 A / D 또는 ← →    점프 Space    백스텝 K 또는 Shift',
+      '이동 A / D 또는 ← →    점프 Space    대시 K 또는 Shift',
       '번개탄 J 또는 마우스 왼쪽 (꾹 눌렀다 떼면 레이저)    일시정지 Esc',
       '위로 쏘기 W 나 ↑ 누른 채 번개탄    궁극기 L (파란 게이지가 꽉 차면)',
     ]);

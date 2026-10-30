@@ -94,8 +94,6 @@ export const balance = {
       beamLength: 640, // 레이저 길이
       beamMinWidth: 16, // 살짝 충전한 레이저 굵기
       beamMaxWidth: 48, // 최대 충전 레이저 굵기
-      backstepSpeed: 600, // 백스텝(대시) 속도
-      backstepHop: 240, // 백스텝 때 살짝 뜨는 힘
       rainStrikes: 9, // 궁극기 번개비 줄기 수 (적이 더 많으면 적마다 하나씩)
     },
     // 강철 거인: 느리지만 세고 넓게 때리는 힘센형
