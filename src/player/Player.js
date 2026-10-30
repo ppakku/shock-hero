@@ -4,11 +4,14 @@ import { Cooldown } from '../logic/cooldown.js';
 import { jumpKind } from '../logic/jump.js';
 import { chargeRatio, resolveAttack, upperRect } from '../logic/combat.js';
 import { HERO_FRAME, HERO_ORIGIN_Y, HERO_LOOKS } from '../fx/heroTextures.js';
-import { normalizeHero, heroStats, gunnerAttack, giantAttack } from '../logic/heroes.js';
+import { normalizeHero, heroStats, gunnerAttack, giantAttack, ninjaAttack, mageAttack } from '../logic/heroes.js';
+import { NO_SLOW, SLOW_TINT, addSlow, tickSlow } from '../logic/slow.js';
 
 // 주인공: 이동, 점프, 대시, 충전 펀치, 위쪽 공격, 궁극기, 피격.
 // 공격 판정과 효과는 scene.onPlayerAttack 이, 에너지탄과 궁극기는 this.skills (주인공마다 하나, GameScene 이 붙인다) 가 맡는다.
-// hero 로 주인공을 고른다 (src/logic/heroes.js): shock 주먹, gunner 번개 사수, giant 강철 거인.
+// hero 로 주인공을 고른다 (src/logic/heroes.js): shock 주먹, gunner 번개 사수, giant 강철 거인, ninja 바람 닌자, mage 얼음 마법사.
+const ATTACKS = { gunner: gunnerAttack, giant: giantAttack, ninja: ninjaAttack, mage: mageAttack };
+
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, cfg, { maxHealth, damageMultiplier = 1, powers = null, hero = 'shock' }) {
     hero = normalizeHero(hero);
@@ -69,6 +72,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.lastMoving = false;
     this.spinLeft = 0; // 강철 거인 회오리가 남은 시간
     this.spinFlip = 0;
+    this.slashAttack = null; // 바람 닌자 돌진 베기 중인 공격
+    this.slashSpeed = 0;
+    this.slow = NO_SLOW; // 겨루기: 상대의 얼음에 맞아 느려진 상태 (src/logic/slow.js)
     this.swim = null; // 수중 스테이지면 GameScene 이 SwimController 를 붙인다 (src/player/swim.js)
     this.skills = null; // 이 주인공의 기술 담당 (src/player/skills.js, GameScene 이 붙인다)
     this.tag = null; // 함께하기: 머리 위 '1P', '2P' 글자
@@ -86,7 +92,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   get moveSpeed() {
     const boots = this.powers?.has('speed') ? this.cfg.powers.speed.moveMultiplier : 1;
-    return this.cfg.player.moveSpeed * this.speedMultiplier * boots * this.stats.move;
+    return this.cfg.player.moveSpeed * this.speedMultiplier * boots * this.stats.move * this.slow.multiplier;
   }
 
   get invincible() {
@@ -142,6 +148,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.dead) return;
 
+    this.updateSlow(dt);
     const onGround = this.body.blocked.down || this.body.touching.down;
     this.coyote = onGround ? 0.1 : Math.max(0, this.coyote - dt);
     if (onGround) this.airJumpsLeft = (this.cfg.player.airJumps || 0) + (this.bonusAirJumps || 0); // 상점 트리플 점프면 +1
@@ -156,6 +163,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.dashing) {
       this.dashTime -= dt;
+      if (this.slashAttack) this.setVelocityX(this.facing * this.slashSpeed); // 바닥 마찰에 줄지 않고 끝까지 같은 빠르기로 벤다
       this.ghostTimer -= dt;
       if (this.ghostTimer <= 0) {
         this.ghostTimer = 0.03;
@@ -181,7 +189,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (!input.attackDown) this.releaseAttack(input);
     }
 
-    if (this.hurtLock > 0) return;
+    if (this.hurtLock > 0 || this.dashing) return; // 돌진 베기가 막 시작됐으면 걷기가 속도를 덮어쓰지 않게
 
     // 수중 스테이지: 걷기와 점프 대신 헤엄치기 (src/player/swim.js)
     if (this.swim) return this.swim.move(dt, input);
@@ -237,15 +245,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.onDash(this);
   }
 
+  // 바람 닌자 돌진 베기: 대시처럼 앞으로 뻗어 나가며 적을 뚫고 지나간다. 한 적은 한 번만 벤다 (skills.updateRush).
+  // 대시 버튼으로 쓴 게 아니라서 scene.onDash 를 부르지 않는다 (오늘의 도전 '대시 안 쓰고 깨기' 에 세지 않음).
+  startSlash(attack) {
+    this.slashAttack = attack;
+    this.slashSpeed = attack.speed * (this.swim?.dashScale ?? 1); // 물속에서는 대시처럼 조금 느리다
+    this.rushHits = new Set();
+    this.dashTime = attack.time;
+    this.dashInvuln = attack.time + this.cfg.heroes.ninja.slashInvincibleAfter;
+    this.body.allowGravity = false;
+    this.setVelocity(this.facing * this.slashSpeed, 0);
+  }
+
   endDash() {
     this.dashTime = 0;
+    this.slashAttack = null;
     this.body.allowGravity = true;
     this.setVelocityX(this.body.velocity.x * 0.3);
   }
 
   releaseAttack(input = {}) {
     const up = Boolean(input.upDown);
-    const resolve = this.hero === 'gunner' ? gunnerAttack : this.hero === 'giant' ? giantAttack : resolveAttack;
+    const resolve = ATTACKS[this.hero] || resolveAttack;
     const attack = resolve(this.chargeHeld, this.cfg, this.damageMultiplier, { up });
     this.lastMoving = Boolean(input.left || input.right);
     const glow = attack.kind === 'charged' && attack.style !== 'smash';
@@ -259,14 +280,32 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.chargeHeld = 0;
     // 주인공마다 다음 공격까지 기다리는 시간이 다르다 (번개탄은 빠르게, 망치는 느리게)
     const h = this.cfg.heroes;
-    this.attackCd.duration =
-      attack.style === 'bolt' ? h.gunner.boltCooldown : attack.style === 'smash' ? h.giant.smashCooldown : this.cfg.punch.cooldown;
+    const cooldowns = {
+      bolt: h.gunner.boltCooldown, smash: h.giant.smashCooldown,
+      star: h.ninja.starCooldown, slash: h.ninja.slashCooldown, ice: h.mage.iceCooldown, frost: h.mage.frostCooldown,
+    };
+    this.attackCd.duration = cooldowns[attack.style] ?? this.cfg.punch.cooldown;
     this.attackCd.trigger();
     if (attack.style === 'spin') {
       this.spinLeft = attack.time;
       this.spinFlip = 0;
     }
     this.scene.onPlayerAttack(this, attack);
+  }
+
+  // 겨루기: 상대의 얼음에 맞아 잠깐 느려진다
+  slowDown(slow) {
+    this.slow = addSlow(this.slow, slow);
+  }
+
+  updateSlow(dt) {
+    if (this.slow.left <= 0) return;
+    this.slow = tickSlow(this.slow, dt);
+    if (this.slow.left <= 0) {
+      if (this.tintTopLeft === SLOW_TINT) this.clearTint();
+    } else if (!this.isTinted) {
+      this.setTint(SLOW_TINT);
+    }
   }
 
   cancelCharge() {

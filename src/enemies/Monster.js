@@ -4,6 +4,7 @@ import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
 import { monsterStats, pushedKnockback, canStagger } from '../logic/monsters.js';
 import { workshopStats } from '../logic/workshop.js';
+import { NO_SLOW, SLOW_TINT, addSlow, tickSlow, slowedStats } from '../logic/slow.js';
 
 export const TEXTURE = {
   basic: 'monster',
@@ -53,6 +54,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hasHit = false;
     this.dead = false;
     this.flying = false; // 하늘을 나는 몬스터만 true
+    this.slow = NO_SLOW; // 얼음에 맞아 느려진 상태 (src/logic/slow.js)
+    this.baseStats = null; // 느려지기 전 숫자 (느려진 동안만)
     this.alert = makeText(scene, x, y - 40, '!', 28, '#ff4444').setOrigin(0.5).setDepth(30).setVisible(false);
     // 공방 작품은 머리 위에 이름표
     this.nameTag = w ? makeText(scene, x, y, w.name, 13, '#ffe14a').setOrigin(0.5, 1).setDepth(29) : null;
@@ -213,6 +216,28 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       this.setAngle(90 * dir);
     }
     return true;
+  }
+
+  // 얼음에 맞아 잠깐 느려진다 (slow = { time, multiplier }). 움직임은 모두 this.m 의 속도를 읽으니 숫자만 바꾼다.
+  slowDown(slow) {
+    if (this.dead) return;
+    this.slow = addSlow(this.slow, slow);
+    if (this.slow.left <= 0) return;
+    this.baseStats ??= this.m;
+    this.m = slowedStats(this.baseStats, this.slow.multiplier);
+  }
+
+  // 느려짐 시간이 흐른다 (GameScene 이 update 뒤에 부른다. 종류마다 update 가 달라서 여기로 뺐다)
+  updateSlow(dt) {
+    if (this.dead || !this.baseStats) return;
+    this.slow = tickSlow(this.slow, dt);
+    if (this.slow.left <= 0) {
+      this.m = this.baseStats;
+      this.baseStats = null;
+      if (this.tintTopLeft === SLOW_TINT) this.clearTint();
+    } else if (!this.isTinted) {
+      this.setTint(SLOW_TINT); // 공격 신호처럼 다른 색을 쓰는 동안은 양보한다
+    }
   }
 
   // 맞고 비틀거린다. 얼마 전에 비틀거렸으면 버티고 false (cfg.difficulty.stunGuard)

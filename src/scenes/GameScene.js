@@ -53,6 +53,8 @@ const CHARGE_COLORS = {
   shock: [0x3f8cff, 0x6fc0ff, 0x9fe8ff, 0xe8f7ff],
   gunner: [0xe0a800, 0xffd23f, 0xfff08a, 0xffffff],
   giant: [0xd0601a, 0xff8a2a, 0xffc080, 0xfff0d8],
+  ninja: [0x0f9a80, 0x2fe6c0, 0x9ff5e4, 0xf0fffb],
+  mage: [0x4f9ae0, 0x9fd8ff, 0xd8f0ff, 0xffffff],
 };
 const KEY = Phaser.Input.Keyboard.KeyCodes;
 
@@ -320,7 +322,9 @@ export class GameScene extends Phaser.Scene {
     const foe = this.rivalOf(by);
     if (foe.dead || !intersects(rect, foe.getBounds())) return false;
     const damage = versusDamage(attack, foe.health.max, cfg.versus.ultCap);
-    return foe.hurt(damage, foe.x - dir, attack.knockback) === 'hit'; // fromX 를 맞는 쪽 뒤에 둬서 공격 방향으로 밀린다
+    const hit = foe.hurt(damage, foe.x - dir, attack.knockback) === 'hit'; // fromX 를 맞는 쪽 뒤에 둬서 공격 방향으로 밀린다
+    if (hit && attack.slow) foe.slowDown(attack.slow); // 얼음 마법사: 상대도 잠깐 느려진다
+    return hit;
   }
 
   // 판 이름을 보여 주고 3, 2, 1 을 센 뒤 시작한다
@@ -657,7 +661,10 @@ export class GameScene extends Phaser.Scene {
     this.partner?.update(dt, this.readPartnerInput());
     for (const p of this.players) p.swim?.update(dt); // 수중 스테이지: 천장 막기, 거품, 헤엄 자세
     this.updateParty();
-    for (const m of this.monsters) m.update(dt);
+    for (const m of this.monsters) {
+      m.update(dt);
+      m.updateSlow?.(dt); // 얼음에 맞아 느려진 시간
+    }
     this.monsters = this.monsters.filter((m) => !m.dead);
     this.updateGate();
     this.boss.update(dt);
@@ -729,7 +736,7 @@ export class GameScene extends Phaser.Scene {
     const full = r >= 1;
     const t = this.time.now;
     const pulse = full ? 1 + Math.sin(t / 60) * 0.12 : 1;
-    // 주인공마다 에너지 색: 쇼크 히어로 파랑, 번개 사수 노랑, 강철 거인 주황 [진한, 중간, 밝은, 가운데]
+    // 주인공마다 에너지 색: 쇼크 히어로 파랑, 번개 사수 노랑, 강철 거인 주황, 바람 닌자 청록, 얼음 마법사 하늘색 [진한, 중간, 밝은, 가운데]
     const [deep, mid, bright, core] = CHARGE_COLORS[p.hero] || CHARGE_COLORS.shock;
     // 충전 링 (파란 에너지)
     this.chargeG.lineStyle(4, 0x000000, 0.35).strokeCircle(p.x, p.y, 40);
@@ -1087,7 +1094,7 @@ export class GameScene extends Phaser.Scene {
     const dir = player.facing;
     // 에너지 연사: 펀치마다 에너지탄 (최대 충전은 원래 쏘니까 빼고)
     if (this.powers.has('rapid') && !attack.full) this.fireRapidShot(player, attack.up);
-    // 번개 사수와 강철 거인은 기술 담당(src/player/skills.js)이 따로 처리한다
+    // 쇼크 히어로 말고는 기술 담당(src/player/skills.js)이 따로 처리한다
     if (attack.style) {
       player.skills.heroAttack(player, attack);
       return;
@@ -1150,6 +1157,7 @@ export class GameScene extends Phaser.Scene {
     for (const m of this.monsters) {
       if (!m.dead && intersects(rect, m.getBounds())) {
         m.takeHit(attack, dir);
+        if (attack.slow) m.slowDown?.(attack.slow); // 얼음 마법사: 맞은 몬스터가 느려진다 (보스는 안 느려진다)
         hitAny = true;
       }
     }
@@ -1164,6 +1172,7 @@ export class GameScene extends Phaser.Scene {
     for (const m of this.monsters) {
       if (!m.dead && view.contains(m.x, m.y)) {
         m.takeHit(attack, m.x < this.player.x ? -1 : 1);
+        if (attack.slow) m.slowDown?.(attack.slow);
         hitAny = true;
       }
     }

@@ -40,7 +40,7 @@ export class SwimController {
   move(dt, input) {
     const p = this.player;
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    let speed = p.cfg.player.moveSpeed * this.c.moveMultiplier;
+    let speed = p.cfg.player.moveSpeed * this.c.moveMultiplier * p.slow.multiplier;
     if (p.isCharging) speed *= p.cfg.charge.moveSpeedMultiplier;
     p.setVelocityX(swimHorizontal(p.body.velocity.x, dir, speed, dt, this.c.waterDrag));
     if (dir !== 0) p.facing = dir;
