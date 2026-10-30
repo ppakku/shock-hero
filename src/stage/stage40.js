@@ -16,7 +16,7 @@ export const stage40 = {
   checkpointX: 8320,
 
   // 2장 스테이지 20 성 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage20.theme, sky: [0x040004, 0x5a0420], weather: { kind: 'embers', color: 0xff2a4a }, tint: { color: 0x34001c, alpha: 0.46 } },
+  theme: { ...stage20.theme, sky: [0x040004, 0x5a0420], weather: { kind: 'embers', color: 0xff2a4a }, tint: { color: 0x640028, alpha: 0.5 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },
@@ -151,12 +151,12 @@ export const stage40 = {
     name: '마왕',
     skin: 10,
     arms: 3,
-    healthScale: 3.0,
+    healthScale: 2.8,
     speedScale: 0.7,
-    rockBonus: 4,
-    shockwaves: 4,
+    rockBonus: 3,
+    shockwaves: 3,
     colors: { main: 0x4a0a20, light: 0x8a1a3a, dark: 0x240410, arm: 0x5e1028 },
-    minions: ['fast', 'jumper', 'tank', 'shield', 'spitter'],
+    minions: ['fast', 'jumper', 'shield', 'spitter'],
     phases: [
       ['doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'spit', 'sweep'],
       ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'summon', 'shockwave'],

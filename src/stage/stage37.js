@@ -16,7 +16,7 @@ export const stage37 = {
   checkpointX: 7820,
 
   // 2장 스테이지 15 성 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage15.theme, sky: [0x080210, 0x3a1a5a], weather: { kind: 'embers', color: 0x8affd0 }, tint: { color: 0x2a0018, alpha: 0.42 } },
+  theme: { ...stage15.theme, sky: [0x080210, 0x3a1a5a], weather: { kind: 'embers', color: 0x8affd0 }, tint: { color: 0x560030, alpha: 0.46 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },
@@ -145,12 +145,12 @@ export const stage37 = {
     name: '마왕의 근위대장',
     skin: 5,
     arms: 3,
-    healthScale: 2.7,
+    healthScale: 2.6,
     speedScale: 0.72,
     rockBonus: 3,
     shockwaves: 3,
     colors: { main: 0x3a1a4a, light: 0x6a2a7a, dark: 0x1a0a26, arm: 0x4e2460 },
-    minions: ['shield', 'tank', 'spitter'],
+    minions: ['shield', 'jumper', 'spitter'],
     phases: [
       ['doubleSlam', 'rocketPunch', 'sweep', 'summon', 'shockwave', 'spit'],
       ['multiSlam', 'rocketPunch', 'inhale', 'summon', 'sweep', 'doubleSlam'],

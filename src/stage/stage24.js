@@ -16,7 +16,7 @@ export const stage24 = {
   checkpointX: 6980,
 
   // 1장 스테이지 4 얼음 산 배경에 눈폭풍을 덮음
-  theme: { ...stage4.theme, sky: [0x0e1a30, 0x88a8c8], weather: { kind: 'snow', color: 0xd8ecff }, tint: { color: 0x14243c, alpha: 0.32 } },
+  theme: { ...stage4.theme, sky: [0x0e1a30, 0x88a8c8], weather: { kind: 'snow', color: 0xd8ecff }, tint: { color: 0x102a5a, alpha: 0.34 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },

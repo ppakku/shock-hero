@@ -16,7 +16,7 @@ export const stage39 = {
   checkpointX: 8020,
 
   // 2장 스테이지 19 얼음 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage19.theme, sky: [0x04081a, 0x2a3a70], weather: { kind: 'snow', color: 0xbcd0ff }, tint: { color: 0x2a0018, alpha: 0.42 } },
+  theme: { ...stage19.theme, sky: [0x04081a, 0x2a3a70], weather: { kind: 'snow', color: 0xbcd0ff }, tint: { color: 0x560030, alpha: 0.46 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },

@@ -16,7 +16,7 @@ export const stage38 = {
   checkpointX: 7940,
 
   // 2장 스테이지 13 용암 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage13.theme, sky: [0x0a0204, 0x7a1a0a], weather: { kind: 'embers', color: 0xffa040 }, tint: { color: 0x2a0018, alpha: 0.42 } },
+  theme: { ...stage13.theme, sky: [0x0a0204, 0x7a1a0a], weather: { kind: 'embers', color: 0xffa040 }, tint: { color: 0x560030, alpha: 0.46 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },

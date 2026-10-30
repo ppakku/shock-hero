@@ -16,7 +16,7 @@ export const stage25 = {
   checkpointX: 7100,
 
   // 1장 스테이지 5 성 배경에 폭풍 하늘을 덮음
-  theme: { ...stage5.theme, sky: [0x0a0a20, 0x3a3a6a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x14243c, alpha: 0.32 } },
+  theme: { ...stage5.theme, sky: [0x0a0a20, 0x3a3a6a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x102a5a, alpha: 0.34 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },
@@ -129,7 +129,7 @@ export const stage25 = {
     name: '폭풍 기사왕',
     skin: 5,
     arms: 3,
-    healthScale: 2.5,
+    healthScale: 2.4,
     speedScale: 0.75,
     rockBonus: 3,
     shockwaves: 3,

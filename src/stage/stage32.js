@@ -16,7 +16,7 @@ export const stage32 = {
   checkpointX: 7240,
 
   // 1장 스테이지 7 공장 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage7.theme, sky: [0x100408, 0x6a2a1a], weather: { kind: 'embers', color: 0xff5a2a }, tint: { color: 0x2a0018, alpha: 0.42 } },
+  theme: { ...stage7.theme, sky: [0x100408, 0x6a2a1a], weather: { kind: 'embers', color: 0xff5a2a }, tint: { color: 0x560030, alpha: 0.46 } },
 
   platforms: [
     { x: 520, y: 380, w: 192 },

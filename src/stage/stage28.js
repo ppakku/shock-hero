@@ -16,7 +16,7 @@ export const stage28 = {
   checkpointX: 7340,
 
   // 1장 스테이지 2 숲 배경에 어두운 먹구름을 덮음
-  theme: { ...stage2.theme, sky: [0x0a100c, 0x3a4a30], weather: { kind: 'embers', color: 0xd0e8ff }, tint: { color: 0x14243c, alpha: 0.32 } },
+  theme: { ...stage2.theme, sky: [0x0a100c, 0x3a4a30], weather: { kind: 'embers', color: 0xd0e8ff }, tint: { color: 0x102a5a, alpha: 0.34 } },
 
   platforms: [
     { x: 520, y: 390, w: 96 },

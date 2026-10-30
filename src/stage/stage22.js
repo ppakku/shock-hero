@@ -16,7 +16,7 @@ export const stage22 = {
   checkpointX: 6740,
 
   // 1장 스테이지 2 숲 배경에 폭풍 하늘을 덮음
-  theme: { ...stage2.theme, sky: [0x081418, 0x2a5a4a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x14243c, alpha: 0.32 } },
+  theme: { ...stage2.theme, sky: [0x081418, 0x2a5a4a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x102a5a, alpha: 0.34 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },

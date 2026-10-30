@@ -16,7 +16,7 @@ export const stage27 = {
   checkpointX: 7220,
 
   // 1장 스테이지 7 공장 배경에 폭풍 하늘을 덮음
-  theme: { ...stage7.theme, sky: [0x10141e, 0x4a5a6a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x14243c, alpha: 0.32 } },
+  theme: { ...stage7.theme, sky: [0x10141e, 0x4a5a6a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x102a5a, alpha: 0.34 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },

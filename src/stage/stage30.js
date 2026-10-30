@@ -16,7 +16,7 @@ export const stage30 = {
   checkpointX: 7580,
 
   // 1장 스테이지 10 어둠의 왕궁 배경에 폭풍 하늘을 덮음
-  theme: { ...stage10.theme, sky: [0x06060e, 0x2a2a58], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x10183a, alpha: 0.4 } },
+  theme: { ...stage10.theme, sky: [0x06060e, 0x2a2a58], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x0e2258, alpha: 0.4 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },
@@ -134,7 +134,7 @@ export const stage30 = {
     name: '폭풍 군주',
     skin: 10,
     arms: 3,
-    healthScale: 2.7,
+    healthScale: 2.6,
     speedScale: 0.72,
     rockBonus: 3,
     shockwaves: 3,

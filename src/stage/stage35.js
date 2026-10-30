@@ -16,7 +16,7 @@ export const stage35 = {
   checkpointX: 7600,
 
   // 1장 스테이지 2 숲 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage2.theme, sky: [0x0c0414, 0x4a2a5a], weather: { kind: 'bubbles', color: 0xd06aff }, tint: { color: 0x2a0018, alpha: 0.42 } },
+  theme: { ...stage2.theme, sky: [0x0c0414, 0x4a2a5a], weather: { kind: 'bubbles', color: 0xd06aff }, tint: { color: 0x560030, alpha: 0.46 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },

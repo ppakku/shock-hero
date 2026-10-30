@@ -16,7 +16,7 @@ export const stage31 = {
   checkpointX: 7120,
 
   // 1장 스테이지 1 배경을 마왕의 어둠으로 덮음
-  theme: { ...stage1.theme, sky: [0x0a0208, 0x4a1a2a], weather: { kind: 'embers', color: 0xc06aff }, tint: { color: 0x2a0018, alpha: 0.42 } },
+  theme: { ...stage1.theme, sky: [0x0a0208, 0x4a1a2a], weather: { kind: 'embers', color: 0xc06aff }, tint: { color: 0x560030, alpha: 0.46 } },
 
   platforms: [
     { x: 520, y: 390, w: 96 },

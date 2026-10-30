@@ -16,7 +16,7 @@ export const stage21 = {
   checkpointX: 6620,
 
   // 1장 스테이지 1 배경에 폭풍 하늘을 덮음
-  theme: { ...stage1.theme, sky: [0x0c1428, 0x3a5a7a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x14243c, alpha: 0.32 } },
+  theme: { ...stage1.theme, sky: [0x0c1428, 0x3a5a7a], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x102a5a, alpha: 0.34 } },
 
   platforms: [
     { x: 520, y: 390, w: 128 },
