@@ -8,11 +8,14 @@ import { nextTiredAfter, varyCount } from '../logic/bossVariety.js';
 import { floatText } from '../fx/effects.js';
 import { make } from '../fx/textures.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
+import { hasArt, stamp, stampLimb } from '../fx/bossArt.js';
 
 const lerp = Phaser.Math.Linear;
 const W = 260; // 기어 다니는 와처 그림 크기
 const H = 170;
 const FLAT_H = 100; // 지쳐서 엎드린 그림 높이
+const FLAT_ART_W = 300; // 엎드린 Gemini 그림을 쓸 때 화면 크기
+const FLAT_ART_H = 120;
 const SHEET_H = 290; // 스프라이트 시트(아들 그림)를 쓸 때 화면 높이
 const SHEET_W = Math.round((SHEET_H * 344) / 384); // 한 칸 비율 그대로
 const SHEET_FOOT = 34; // 시트 칸 아래 빈 공간 (화면 픽셀)
@@ -82,7 +85,7 @@ export class WatcherBoss extends BossBase {
     this.totalMax = this.arm.health.max + this.back.health.max + this.head.health.max;
     this.headOpen = false;
 
-    this.puddles = new Puddles(scene, this.hazG, { damage: k.puddleDamage, color: 0x4fbf2a, edge: 0xc8ff4a, name: '독 웅덩이' });
+    this.puddles = new Puddles(scene, this.hazG, { damage: k.puddleDamage, color: 0x4fbf2a, edge: 0xc8ff4a, name: '독 웅덩이', art: 'fx_puddle_poison' });
     this.globs = [];
     this.vines = []; // 솟아오르는 덩굴 { x, t, warn, hit }
     this.grab = null; // 덩굴에 잡힌 상태
@@ -318,7 +321,16 @@ export class WatcherBoss extends BossBase {
     const tired = this.tired;
     const breathe = this.action ? 0 : Math.sin(this.t * 3) * 0.03;
     const sq = this.squash + breathe;
-    if (this.sheet) {
+    const sheetKey = `watcher_${this.skinKey}`;
+    const flatKey = `watcher_flat_${this.skinKey}`;
+    if (this.sheet && tired && hasArt(this.scene, flatKey)) {
+      // 엎드린 그림 (왼쪽을 봄)
+      if (s.texture.key !== flatKey) s.anims.stop();
+      s.setTexture(flatKey).setDisplaySize(FLAT_ART_W, FLAT_ART_H);
+      s.setPosition(this.x, this.groundY - this.air);
+      s.setFlipX(this.facing > 0);
+    } else if (this.sheet) {
+      if (s.texture.key !== sheetKey) s.setTexture(sheetKey).play(`${sheetKey}_anim`);
       // 지치면 납작 엎드리고(세로로 눌림) 움직임이 느려진다
       s.setDisplaySize(SHEET_W * (2 - sq), SHEET_H * sq * (tired ? 0.62 : 1));
       s.anims.timeScale = tired ? 0.35 : this.raging ? 1.5 : 1;
@@ -419,6 +431,12 @@ export class WatcherBoss extends BossBase {
     const fullTip = sh.x + dir * a.len;
     const drawArm = (y) => {
       const elbow = { x: (sh.x + a.tipX) / 2, y: Math.min(sh.y, y) - 30 };
+      const tip = { x: a.tipX, y };
+      if (stampLimb(this.scene, 'watcher_arm_2', sh, elbow, ARM_T + 10) && stampLimb(this.scene, 'watcher_arm_2', elbow, tip, ARM_T + 6, { overlap: 12 })) {
+        const turn = Math.atan2(y - elbow.y, a.tipX - elbow.x) + Math.PI;
+        stamp(this.scene, 'watcher_claw_2', a.tipX, y, 74, 54, { rotation: turn, flipY: a.tipX > elbow.x });
+        return;
+      }
       this.armG.lineStyle(ARM_T, 0x2b1d14, 1).lineBetween(sh.x, sh.y, elbow.x, elbow.y).lineBetween(elbow.x, elbow.y, a.tipX, y);
       this.armG.lineStyle(ARM_T - 8, 0x5a4230, 1).lineBetween(sh.x, sh.y, elbow.x, elbow.y).lineBetween(elbow.x, elbow.y, a.tipX, y);
       this.armG.lineStyle(5, 0x2b1d14, 1);
@@ -632,7 +650,8 @@ export class WatcherBoss extends BossBase {
       }
       const grow = Math.min(1, (v.t - v.warn) / 0.12);
       const h = 130 * grow;
-      for (let i = -1; i <= 1; i++) {
+      const vineArt = stamp(this.scene, 'watcher_vine_2', v.x, this.groundY + 4, 92, h + 8, { rotation: Math.sin(this.t * 6 + v.x) * 0.03 });
+      for (let i = -1; i <= 1 && !vineArt; i++) {
         const bx = v.x + i * 16;
         this.vineG.lineStyle(9, 0x2f6a14, 1).beginPath();
         this.vineG.moveTo(bx, this.groundY);
@@ -665,8 +684,10 @@ export class WatcherBoss extends BossBase {
     }
     p.x = g.x;
     p.body.velocity.x = 0;
-    this.vineG.lineStyle(7, 0x2f6a14, 1).lineBetween(p.x - 16, this.groundY, p.x + 10, p.y);
-    this.vineG.lineStyle(7, 0x2f6a14, 1).lineBetween(p.x + 16, this.groundY, p.x - 10, p.y - 10);
+    if (!stamp(this.scene, 'watcher_vine_2', p.x, this.groundY + 4, 70, this.groundY - p.y + 34)) {
+      this.vineG.lineStyle(7, 0x2f6a14, 1).lineBetween(p.x - 16, this.groundY, p.x + 10, p.y);
+      this.vineG.lineStyle(7, 0x2f6a14, 1).lineBetween(p.x + 16, this.groundY, p.x - 10, p.y - 10);
+    }
     this.label(4, '덩굴에 잡혔다! 대시로 빠져나와!', p.x, p.y - 80, 18, '#ffd23f');
     if (g.tick <= 0) {
       g.tick = 0.7;
@@ -768,6 +789,7 @@ export class WatcherBoss extends BossBase {
       const ang = this.t * 4 + (i * Math.PI * 2) / 3;
       const sx = cx + Math.cos(ang) * 34;
       const sy = this.groundY - FLAT_H - 10 + Math.sin(ang) * 8;
+      if (stamp(this.scene, 'fx_star', sx, sy, 24, 24, { rotation: ang })) continue;
       this.fxG.fillStyle(0xffe066, 1).fillTriangle(sx - 7, sy + 4, sx + 7, sy + 4, sx, sy - 8);
       this.fxG.fillStyle(0xffe066, 1).fillTriangle(sx - 7, sy - 3, sx + 7, sy - 3, sx, sy + 9);
     }

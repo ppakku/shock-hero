@@ -37,8 +37,17 @@ const MONSTER_EXTRA = {
 
 // 보스 그림 이름은 이 말로 시작하고 _<skin> 으로 끝난다 (예: boss_arm_5, astra_4)
 const BOSS_PREFIXES = ['boss_', 'astra_', 'watcher_', 'dragon_'];
-// 보스 종류마다 쓰는 효과 그림
-const BOSS_FX = { dragon: ['fx_breath', 'fx_pillar', 'fx_explosion', 'fx_fireball'] };
+// 보스 종류마다 쓰는 효과 그림. 이름이 _<skin> 으로 끝나지 않는 보스 그림도 여기에 적는다.
+// (여기 빠지면 그림 대신 임시 도형이 조용히 나온다)
+const ARM_FX = ['rock', 'glob', 'fx_shockwave', 'fx_rocket_trail', 'fx_whirl'];
+const BOSS_FX = {
+  arms: ARM_FX,
+  king: [...ARM_FX, 'fx_portal'],
+  dragon: ['fx_breath', 'fx_pillar', 'fx_explosion', 'fx_fireball', 'fx_shockwave', 'fx_puddle_fire'],
+  watcher: ['watcher_blister', 'slime_glob', 'fx_puddle_poison', 'fx_star'],
+  ice: ['ice_heart', 'ice_icicle', 'frost_spike', 'fx_frost_cone', 'fx_frost_wall', 'fx_shockwave'],
+  sea: ['boss_sea_lure', 'boss_sea_heart', 'boss_sea_bubble', 'rock', 'fx_shockwave', 'fx_sand_wave', 'fx_star', 'fx_ink', 'fx_whirl'],
+};
 // 킹 보스가 따로 정하지 않았을 때 부르는 부하 (src/boss/KingBoss.js)
 const KING_MINIONS = ['basic', 'fast', 'jumper'];
 

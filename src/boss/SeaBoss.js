@@ -8,15 +8,14 @@ import { ComboHazards } from './comboHazards.js';
 import { drawSwirl } from './bossFx.js';
 import { flash, floatText, ring } from '../fx/effects.js';
 import { makeCanvas } from '../enemies/seaTextures.js';
+import { stamp } from '../fx/bossArt.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
 
 // =============================================================
 //  심해 아귀왕 (스테이지 6 수중 던전 보스)
-//  아들의 물속 보스 디자인이 오면 그림만 바꾸면 된다:
-//   - makeTextures() 의 boss_sea_body_6 / boss_sea_jaw_6 / boss_sea_lure 를 고치거나
-//   - src/config/art.js 에 같은 이름으로 PNG 를 넣으면 그 그림을 쓴다
+//  그림은 src/config/art.js 의 boss_sea_* (Gemini 그림). makeTextures() 는 그림을 못 받았을 때 나오는 임시 도형이다.
 //  몸 크기와 부위 위치는 아래 LOOK 숫자만 맞추면 된다.
 // =============================================================
 const LOOK = {
@@ -96,7 +95,7 @@ export class SeaBoss extends BossBase {
     this.pose(0);
   }
 
-  // ---------- 그림 (아들 디자인이 오면 이 부분만 바꾸면 됨) ----------
+  // ---------- 임시 도형 (그림을 못 받았을 때) ----------
 
   static makeTextures(scene, stage, skin) {
     const c = stage.boss.colors || {};
@@ -610,7 +609,9 @@ export class SeaBoss extends BossBase {
       this.y = Math.min(this.restY, this.y + 30 * dt);
       for (let i = 0; i < 3; i++) {
         const ang = this.t * 5 + i * 2.1;
-        this.fxG.fillStyle(0xffe066, 1).fillCircle(this.x + Math.cos(ang) * 40, this.y - 80 + Math.sin(ang) * 8, 5);
+        const sx = this.x + Math.cos(ang) * 40;
+        const sy = this.y - 80 + Math.sin(ang) * 8;
+        if (!stamp(this.scene, 'fx_star', sx, sy, 24, 24, { rotation: ang })) this.fxG.fillStyle(0xffe066, 1).fillCircle(sx, sy, 5);
       }
       this.label(0, '어지러워! 지금 때려!', this.x, this.y - 120, 22, '#ffd23f');
       if (a.t >= this.sc.dizzyTime) this.endAction();
@@ -741,7 +742,8 @@ export class SeaBoss extends BossBase {
   runInk() {
     const a = this.action;
     if (a.phase === 'aim') {
-      this.fxG.fillStyle(0x0a0a14, 0.5).fillCircle(this.mouth.x, this.mouth.y, 20 + a.t * 60);
+      const inkR = 20 + a.t * 60;
+      if (!stamp(this.scene, 'fx_ink', this.mouth.x, this.mouth.y, inkR * 2.4, inkR * 2.4, { rotation: a.t })) this.fxG.fillStyle(0x0a0a14, 0.5).fillCircle(this.mouth.x, this.mouth.y, inkR);
       this.label(0, '먹물이다!', this.x, this.y - 110, 24, '#bfc7d5');
       if (a.t >= 0.8 * this.speed) {
         this.scene.sfxPlay('ink');
@@ -801,7 +803,9 @@ export class SeaBoss extends BossBase {
       this.y = this.restY + Math.sin(this.t * 20) * 3;
       this.scene.dustAt(this.x - a.dir * 100, this.groundY - 4, 2);
       // 모래 물결
-      this.fxG.fillStyle(0xbfae8a, 0.6).fillEllipse(this.x - a.dir * 60, this.groundY - h / 2, 200, h);
+      if (!stamp(this.scene, 'fx_sand_wave', this.x - a.dir * 60, this.groundY + 4, 250, h + 24, { flipX: a.dir < 0 })) {
+        this.fxG.fillStyle(0xbfae8a, 0.6).fillEllipse(this.x - a.dir * 60, this.groundY - h / 2, 200, h);
+      }
       const danger = new Rect(this.x - 120, this.groundY - h, 240, h);
       this.hurtPlayer(danger, this.sc.sweepDamage, this.x - a.dir * 80, 360, a.hits);
       const done = a.dir < 0 ? this.x <= a.endX : this.x >= a.endX;

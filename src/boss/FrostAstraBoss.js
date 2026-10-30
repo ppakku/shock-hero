@@ -10,6 +10,7 @@ import { drawIceShard, drawFrostCone } from './bossFx.js';
 import { flash, floatText } from '../fx/effects.js';
 import { make } from '../fx/textures.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
+import { stamp } from '../fx/bossArt.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -879,8 +880,9 @@ export class FrostAstraBoss extends BossBase {
       const l = Math.min(a.front, tail);
       const waveOn = a.dir > 0 ? tail < this.maxX + 80 : tail > this.minX - 80;
       if (waveOn) {
-        this.fxG.fillStyle(0xbfeeff, 0.8).fillRect(l, gy - BREATH_H * 0.6 * grow, BREATH_LEN, BREATH_H * 0.6 * grow);
-        for (let i = 0; i < 6; i++) {
+        const wallArt = stamp(this.scene, 'fx_frost_wall', l + BREATH_LEN / 2, gy + 4, BREATH_LEN + 20, BREATH_H * grow + 10, { flipX: a.dir < 0 });
+        if (!wallArt) this.fxG.fillStyle(0xbfeeff, 0.8).fillRect(l, gy - BREATH_H * 0.6 * grow, BREATH_LEN, BREATH_H * 0.6 * grow);
+        for (let i = 0; i < 6 && !wallArt; i++) {
           const sx = l + i * 22 + 4;
           const h = grow * BREATH_H * (0.7 + 0.3 * Math.sin(i * 2.1 + this.t * 20));
           this.fxG.fillStyle(0x3d9be0, 0.9).fillTriangle(sx - 2, gy, sx + 10, gy - h - 4, sx + 22, gy);

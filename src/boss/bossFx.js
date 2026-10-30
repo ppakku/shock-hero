@@ -1,8 +1,10 @@
 // 보스들이 같이 쓰는 그림 효과
+import { stamp } from '../fx/bossArt.js';
 
 // 빨아들이기 소용돌이: 입 쪽으로 빨려 들어가는 선들.
 // dir = -1 이면 왼쪽에서, 1 이면 오른쪽에서 끌어온다. strength 0~1.
 export function drawSwirl(g, mx, my, t, strength, dir = -1) {
+  stamp(g.scene, 'fx_whirl', mx, my, 150, 150, { rotation: t * 4 * dir, alpha: strength * 0.7 });
   const n = 16;
   for (let i = 0; i < n; i++) {
     const ph = (t * 1.3 + i * 0.37) % 1;
@@ -46,6 +48,14 @@ export function drawIceShard(g, x, y, size, angle, color = 0xe8fbff, alpha = 1) 
 // 냉기 브레스 부채꼴: 입(mx, my)에서 바닥 x0~x1 까지 퍼지는 서리.
 // power 0~1 (뿜기 시작할 때 커짐), t 는 흔들림용 시간
 export function drawFrostCone(g, mx, my, x0, x1, gy, t, power = 1) {
+  // 그림: 뾰족한 위쪽이 입, 아래쪽이 바닥 x0~x1 (입이 한쪽으로 치우친 만큼 돌려 놓는다)
+  const cx = (x0 + x1) / 2;
+  const reach = Math.hypot(cx - mx, gy - my);
+  const lean = Math.atan2(gy - my, cx - mx) - Math.PI / 2;
+  if (stamp(g.scene, 'fx_frost_cone', mx, my, Math.abs(x1 - x0) * 1.15, reach * 1.1, { rotation: lean, alpha: power })) {
+    g.fillStyle(0xf0fbff, 0.7 * power).fillEllipse(cx, gy, Math.abs(x1 - x0) * 1.05, 26);
+    return;
+  }
   const wob = Math.sin(t * 30) * 6;
   const pts = (shrink) => {
     const mid = (x0 + x1) / 2;
