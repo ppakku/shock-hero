@@ -79,7 +79,7 @@ export class GameScene extends Phaser.Scene {
     this.versus = data.versus ? { match: data.versus, phase: 'ready', left: cfg.versus.roundTime } : null;
     this.dailyCounts = { deaths: 0, ults: 0, dashes: 0 };
     // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
-    this.hero = normalizeHero(this.daily ? this.daily.hero : this.save.settings.hero);
+    this.hero = normalizeHero(this.daily ? this.daily.hero : this.versus ? this.versus.match.heroes[0] : this.save.settings.hero);
     this.touch = isTouchDevice(); // 태블릿: 화면 버튼 (HUD 가 그린다)
     this.difficulty = this.save.settings.difficulty;
     // 보스 러시: { course, stages, index, player, carry } 이면 바로 보스 방에서 시작하고, 이기면 다음 보스로 (src/logic/rush.js)
@@ -124,12 +124,12 @@ export class GameScene extends Phaser.Scene {
     // 주소에 ?duo 를 붙이면 시험용으로 친구가 나온다 (window.__p2 에 키를 넣어 움직인다).
     const duo = new URLSearchParams(window.location.search).has('duo') ? { hero: 'gunner' } : null;
     const friend = data.partner || (coop.hostConnected ? coop.partner : duo);
-    const partner = this.versus ? { ...friend, ...VERSUS_PROFILE } : friend; // 겨루기는 둘 다 성장치 없이
+    const partner = this.versus ? { ...friend, ...VERSUS_PROFILE, hero: this.versus.match.heroes[1] } : friend; // 겨루기는 둘 다 성장치 없이
     // 인터넷 친구는 자기 레벨, 강화 카드, 상점 강화로 나온다 (partner.level 이 없으면 방장 것)
     this.partner = partner ? this.makePlayer(this.versus ? st.width - startX : startX - 50, normalizeHero(partner.hero), partner.level ? partner : null) : null;
     this.partnerInput = coop.hostConnected ? () => coop.takeInput() : null;
     if (this.partnerInput) {
-      if (this.versus) coop.sendVersusRound(this.versus.match.round);
+      if (this.versus) coop.sendVersusRound(this.versus.match.round, this.partner.hero);
       else coop.sendStage(this.stageNum, this.stage.name);
       const off = coop.on((e) => {
         if (e !== 'lost') return;
@@ -377,7 +377,7 @@ export class GameScene extends Phaser.Scene {
     const banner = makeText(this, 480, 210, text, 56, winner === 0 ? '#7af0ff' : winner === 1 ? '#ffd23f' : '#ffffff', { strokeThickness: 9 }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
     this.sfxPlay('powerup');
     this.time.delayedCall(cfg.versus.roundEndPause * 1000, () => {
-      if (next.champion === null) this.scene.restart({ versus: { round: next.round, wins: next.wins } });
+      if (next.champion === null) this.scene.restart({ versus: { ...v.match, round: next.round, wins: next.wins } });
       else {
         banner.destroy(); // 우승 화면 글자와 겹치지 않게
         this.scene.get('HUD').showVersusOver(next);

@@ -15,7 +15,6 @@ import { isTouchDevice, isPhone } from '../ui/touch.js';
 import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { tokenizeControlLine } from '../ui/titleLayout.js';
 import { coop } from '../net/coop.js';
-import { newMatch } from '../logic/versus.js';
 
 // 타이틀: 모험 지도 열기 + 설정(난이도, 조작, 상점, 레벨 초기화, 함께하기). 스테이지는 지도(src/scenes/MapScene.js)에서 고른다.
 // ↑ ↓ 로 줄을 옮기고, ← → 로 고르고, Enter 로 시작하거나 바꾼다. 마우스로 눌러도 된다.
@@ -603,8 +602,7 @@ export class TitleScene extends Phaser.Scene {
   startVersus() {
     if (this.started) return;
     this.started = true;
-    this.scene.start('Game', { versus: newMatch() });
-    this.scene.launch('HUD');
+    this.scene.start('VersusPick');
   }
 
   closeShop() {
