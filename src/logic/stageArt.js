@@ -71,14 +71,19 @@ export function bootArt(art) {
   return artEntries(BOOT_ART, art);
 }
 
+// 스테이지 테마의 그림 (배경, 바닥, 발판)
+export function themeArt(st) {
+  const th = st.theme || {};
+  const pics = [th.bgImage, th.arenaImage, th.groundImage, th.platformImage].filter(Boolean).map((p) => ({ key: p.key, file: p.file }));
+  if (th.scenery === 'underwater') pics.push({ key: 'underwater_bg', file: 'underwater_bg.jpg' });
+  return pics;
+}
+
 // 스테이지 n 에 들어갈 때 받을 그림 (배경, 바닥, 발판, 몬스터, 보스)
 export function stageArt(n, stages, art) {
   const st = stages[n - 1];
   if (!st) return [];
-  const th = st.theme || {};
-  const pics = [th.bgImage, th.arenaImage, th.groundImage, th.platformImage].filter(Boolean).map((p) => ({ key: p.key, file: p.file }));
-  if (th.scenery === 'underwater') pics.push({ key: 'underwater_bg', file: 'underwater_bg.jpg' });
-  return [...pics, ...artEntries([...monsterArtKeys(st), ...bossArtKeys(st, n, art)], art)];
+  return [...themeArt(st), ...artEntries([...monsterArtKeys(st), ...bossArtKeys(st, n, art)], art)];
 }
 
 // 도감과 보스 러시에서 보여 주는 보스 얼굴 그림

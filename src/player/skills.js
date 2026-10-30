@@ -107,7 +107,7 @@ export class HeroSkills {
       s.shake(0.01, 160);
       this.fireShotFrom(player, true);
     }
-    if (s.hitArea(rect, attack, dir)) {
+    if (s.hitArea(rect, attack, dir, player)) {
       s.sfxPlay('hit');
       this.onDealtDamage(attack.damage);
       s.sparks.explode(10, x, rect.y + 30);
@@ -167,7 +167,7 @@ export class HeroSkills {
       this.trail(s.x, s.y, s.color);
 
       const rect = new Phaser.Geom.Rectangle(s.x - r, s.y - r, r * 2, r * 2);
-      if (this.scene.hitArea(rect, s.attack, s.side)) {
+      if (this.scene.hitArea(rect, s.attack, s.side, this.player)) {
         this.onDealtDamage(s.attack.damage);
         this.scene.sfxPlay('hit');
         this.popShot(s, true);
@@ -296,7 +296,7 @@ export class HeroSkills {
     }
 
     const { attack, bossDamage } = ultimateAttack(this.cfg, p.damageMultiplier);
-    if (s.hitScreen(attack, bossDamage)) s.sfxPlay('hit');
+    if (s.hitScreen(attack, bossDamage, p)) s.sfxPlay('hit');
   }
 
   endSlowMotion() {
@@ -346,7 +346,7 @@ export class HeroSkills {
       s.dustAt(p.x + 200, groundY - 4, 12);
       for (const dir of [-1, 1]) this.waves.push({ x0: p.x, y: groundY, dir, t: 0, colors: GIANT_WAVE, size: 0.6 });
       const { attack, bossDamage } = ultimateAttack(this.cfg, p.damageMultiplier * 0.3);
-      if (s.hitScreen(attack, bossDamage)) s.sfxPlay('hit');
+      if (s.hitScreen(attack, bossDamage, p)) s.sfxPlay('hit');
     }
   }
 
@@ -393,7 +393,7 @@ export class HeroSkills {
     const my = attack.up ? player.y - 34 : player.y - 6;
     ring(s, mx, my, 0xffe14a, 30 + 30 * attack.ratio, 220, 4);
     if (attack.full) s.shake(0.008, 140);
-    if (s.hitArea(rect, attack, dir)) {
+    if (s.hitArea(rect, attack, dir, player)) {
       s.sfxPlay('hit');
       this.onDealtDamage(attack.damage);
       if (attack.full) s.impact?.chargedHit(dir);
@@ -415,7 +415,7 @@ export class HeroSkills {
     const crack = s.add.ellipse(hx, groundY - 2, attack.range * 1.2, 14, 0xffb060, 0.7).setDepth(24);
     s.tweens.add({ targets: crack, scaleX: 1.5, alpha: 0, duration: 260, onComplete: () => crack.destroy() });
     s.shake(0.006, 120);
-    if (s.hitArea(rect, attack, dir)) {
+    if (s.hitArea(rect, attack, dir, player)) {
       s.sfxPlay('hit');
       this.onDealtDamage(attack.damage);
       s.shake(0.01, 140);
@@ -443,8 +443,8 @@ export class HeroSkills {
     // 왼쪽 반은 왼쪽으로, 오른쪽 반은 오른쪽으로 밀어낸다
     const left = new Phaser.Geom.Rectangle(r.x, r.y, r.w / 2, r.h);
     const right = new Phaser.Geom.Rectangle(r.x + r.w / 2, r.y, r.w / 2, r.h);
-    const hitL = s.hitArea(left, a, -1);
-    const hitR = s.hitArea(right, a, 1);
+    const hitL = s.hitArea(left, a, -1, p);
+    const hitR = s.hitArea(right, a, 1, p);
     if (hitL || hitR) {
       s.sfxPlay('hit');
       this.onDealtDamage(a.damage);
@@ -478,6 +478,10 @@ export class HeroSkills {
       p.rushHits.add(s.boss);
       hit = true;
     }
+    if (!p.rushHits.has('rival') && s.hitRival(p, rect, attack, p.facing)) {
+      p.rushHits.add('rival'); // 겨루기: 상대도 한 번만 날려 보낸다
+      hit = true;
+    }
     if (hit) {
       s.sfxPlay('hit');
       this.onDealtDamage(attack.damage);
@@ -498,6 +502,7 @@ export class HeroSkills {
     const view = s.cameras.main.worldView;
     const targets = s.monsters.filter((m) => !m.dead && view.contains(m.x, m.y)).map((m) => m.x);
     if (s.bossStarted && s.boss?.x != null) targets.push(s.boss.x);
+    if (s.versus) targets.push(s.rivalOf(player).x);
     const xs = rainStrikeXs(targets, view.x + 40, view.width - 80, g.rainStrikes);
     // 번개가 한 줄기씩 순서대로 떨어진다
     const strikes = xs.map((x, i) => ({ x, at: 0.15 + (0.9 * i) / Math.max(1, xs.length) }));
@@ -528,7 +533,7 @@ export class HeroSkills {
       s.shake(0.02, 400);
       s.impact?.ultimate();
       const { attack, bossDamage } = ultimateAttack(this.cfg, p.damageMultiplier);
-      if (s.hitScreen(attack, bossDamage)) s.sfxPlay('hit');
+      if (s.hitScreen(attack, bossDamage, p)) s.sfxPlay('hit');
     }
     if (a.t > 1.4) {
       this.ult = null;

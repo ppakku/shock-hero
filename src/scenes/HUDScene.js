@@ -11,6 +11,7 @@ import { isTouchDevice, touchPad, TOUCH_BUTTONS, PAUSE_BUTTON, drawTouchButtons2
 import { attackButtonLabel } from '../logic/controls.js';
 import { normalizeHero, HERO_INFO } from '../logic/heroes.js';
 import { RULE_SHORT } from '../logic/daily.js';
+import { newMatch, sideName, winPips } from '../logic/versus.js';
 
 // 화면 위에 겹쳐 그리는 정보판. 게임 장면이 멈춰도 이 장면은 계속 돈다.
 export class HUDScene extends Phaser.Scene {
@@ -49,6 +50,7 @@ export class HUDScene extends Phaser.Scene {
     this.overlayButtons = [];
     this.mode = 'play';
     this.touch = isTouchDevice();
+    this.versusHud = null;
     if (this.touch) this.buildTouchPad();
 
     this.input.keyboard.on('keydown-ESC', () => this.togglePause());
@@ -74,6 +76,7 @@ export class HUDScene extends Phaser.Scene {
   }
 
   pauseToTitle() {
+    if (this.game_?.versus) return this.leaveVersus();
     this.mode = 'play';
     this.overlay.setVisible(false);
     const stage = this.game_?.stageNum;
@@ -180,14 +183,16 @@ export class HUDScene extends Phaser.Scene {
   showPauseText() {
     const s = saveStore.load().settings;
     const rush = Boolean(this.game_?.rush);
-    const out = rush ? '타이틀로' : '지도로';
+    const versus = Boolean(this.game_?.versus);
+    const out = versus ? '나가기' : rush ? '타이틀로' : '지도로';
+    const leaveLine = versus ? '겨루기를 그만두고 방으로 돌아가요' : rush ? '타이틀로 가면 이번 보스 러시는 기록되지 않아요' : '지도로 가면 지금 진행은 체크포인트까지만 남아요';
     this.overlayTitle.setText('일시정지').setColor('#ffffff');
     this.overlayBody.setText(
       (this.touch
-        ? [rush ? '타이틀로 가면 이번 보스 러시는 기록되지 않아요' : '지도로 가면 지금 진행은 체크포인트까지만 남아요']
+        ? [leaveLine]
         : [
             'Esc: 계속하기',
-            rush ? 'T: 타이틀로 (이번 보스 러시는 기록되지 않아요)' : 'T: 지도로 (지금 진행은 체크포인트까지만 남아요)',
+            `T: ${out} (${leaveLine})`,
             `H: 화면 흔들림 ${s.shake ? '켜짐' : '꺼짐'}`,
             `F: 효과 줄이기 ${s.lowFx ? '켜짐' : '꺼짐'}`,
             `M: 소리 ${s.muted ? '꺼짐' : '켜짐'}`,
@@ -318,6 +323,26 @@ export class HUDScene extends Phaser.Scene {
     this.overlay.setVisible(true);
   }
 
+  // 겨루기 우승이 정해졌을 때: 같은 친구와 처음부터 또는 방으로
+  showVersusOver({ champion, wins }) {
+    this.mode = 'versusover';
+    this.overlayTitle.setText(`${sideName(champion)} 우승!`).setColor(champion === 0 ? '#7af0ff' : '#ffd23f');
+    this.overlayBody.setText([`1P  ${wins[0]} : ${wins[1]}  2P`, this.touch ? '' : 'R 또는 클릭: 한 번 더    T: 방으로'].join('\n'));
+    this.setOverlayButtons([
+      { text: '한 번 더', fn: () => this.restartFromOverlay('retry') },
+      { text: '방으로', fn: () => this.restartFromOverlay('title') },
+    ]);
+    this.overlay.setVisible(true);
+  }
+
+  // 겨루기를 끝내고 타이틀 위에 방을 다시 연다 (나가기를 눌렀거나 친구 연결이 끊겼을 때)
+  leaveVersus() {
+    this.mode = 'play';
+    this.overlay.setVisible(false);
+    this.scene.stop('Game');
+    this.scene.start('Title', { openRoom: true });
+  }
+
   // 보스 러시 결과 화면에서: retry 는 같은 코스 처음부터, 나머지는 타이틀로
   restartRush(kind) {
     const gs = this.game_;
@@ -337,6 +362,13 @@ export class HUDScene extends Phaser.Scene {
 
   // retry: 다시 하기, next: 다음으로(게임 오버면 다시 하기), title: 지도로
   restartFromOverlay(kind) {
+    if (this.mode === 'versusover') {
+      if (kind === 'title') return this.leaveVersus();
+      this.mode = 'play';
+      this.overlay.setVisible(false);
+      this.game_.scene.restart({ versus: newMatch() });
+      return;
+    }
     if (this.mode === 'rushover' || this.mode === 'rushdone') {
       this.restartRush(kind === 'retry' || (kind === 'next' && this.mode === 'rushover') ? 'retry' : 'title');
       return;
@@ -380,12 +412,46 @@ export class HUDScene extends Phaser.Scene {
     this.p2Text.setText(q.dead ? `2P 쓰러짐${left != null ? `  ${left}초 뒤 부활` : ''}` : `2P 체력 ${Math.ceil(q.health.current)} / ${q.health.max}`);
   }
 
+  // 겨루기 화면: 양쪽 위에 체력과 궁극기, 가운데에 남은 시간과 승수. 모험 정보판은 숨긴다
+  makeVersusHud() {
+    for (const t of [this.hpText, this.lvText, this.dashText, this.treasureText, this.timeText, this.ultText, this.stageText, this.dailyText, this.p2Text, this.monsterText, this.bossTitle, this.upgradeText]) t.setVisible(false);
+    this.versusHud = {
+      names: [makeText(this, 24, 50, '', 14, '#7af0ff').setOrigin(0, 0.5), makeText(this, 936, 50, '', 14, '#ffd23f').setOrigin(1, 0.5)],
+      clock: makeText(this, 480, 28, '', 32).setOrigin(0.5),
+      score: makeText(this, 480, 62, '', 20, '#ffffff').setOrigin(0.5),
+    };
+  }
+
+  drawVersus(gs) {
+    if (!this.versusHud) this.makeVersusHud();
+    const g = this.g;
+    const h = this.versusHud;
+    const v = gs.versus;
+    gs.players.forEach((p, side) => {
+      const right = side === 1;
+      const ratio = p.dead ? 0 : p.health.ratio;
+      const x = right ? 704 : 20;
+      g.fillStyle(0x000000, 0.6).fillRoundedRect(x, 20, 236, 18, 6);
+      const w = 230 * ratio;
+      if (w > 0) g.fillStyle(ratio < 0.3 ? 0xff6a3d : right ? 0xffd23f : 0x7af0ff, 1).fillRoundedRect(right ? x + 233 - w : x + 3, 23, w, 12, 4);
+      const ult = Math.max(0, Math.min(1, p.ultGauge));
+      const ready = ult >= 1 && Math.floor(this.time.now / 200) % 2 === 0;
+      g.fillStyle(0x000000, 0.6).fillRect(x, 62, 236, 8);
+      if (ult > 0) g.fillStyle(ready ? 0xffffff : 0x3fd0ff, 1).fillRect(right ? x + 234 - 232 * ult : x + 2, 64, 232 * ult, 4);
+      h.names[side].setText(`${sideName(side)} ${HERO_INFO[p.hero]?.name ?? ''}  ${Math.ceil(p.health.current)} / ${p.health.max}${ult >= 1 ? '  궁극기!' : ''}`);
+    });
+    h.clock.setText(String(Math.ceil(v.left))).setColor(v.left <= 10 ? '#ff8a8a' : '#ffffff');
+    const need = cfg.versus.winsNeeded;
+    h.score.setText(`${winPips(v.match.wins[0], need)}   ${winPips(v.match.wins[1], need)}`);
+  }
+
   update(_t, deltaMs) {
     const gs = this.game_;
     const p = gs?.player;
     this.g.clear();
     if (!p || !p.health) return;
     if (this.touch) this.drawTouchPad(gs, p);
+    if (gs.versus) return this.drawVersus(gs);
     const g = this.g;
 
     // 체력바 (30% 아래면 빨갛게 깜빡이고 경고음)

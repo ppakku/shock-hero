@@ -35,7 +35,7 @@ export class GuestScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.note = makeText(this, 480, 300, '', 18, '#ff9a8a').setOrigin(0.5).setDepth(50);
     // 방장 화면 위쪽 체력은 방장 것이라, 내 체력이 어디인지 알려 준다
-    makeText(this, 936, 114, '▲ 내 체력 (2P)', 12, '#ffd23f').setOrigin(1, 0.5).setDepth(60);
+    this.hpHint = makeText(this, 936, 114, '▲ 내 체력 (2P)', 12, '#ffd23f').setOrigin(1, 0.5).setDepth(60);
     // 친구 화면에는 일시정지가 없다 (Esc 는 방에서 나가기)
     this.controls = controlLines(this.touch ? 'touch' : save.settings.controls, save.settings.hero).map((l) =>
       l.replace('일시정지 Esc', '방에서 나가기 Esc 두 번').replace(/\s*일시정지 오른쪽 위 II/, ''),
@@ -95,8 +95,10 @@ export class GuestScene extends Phaser.Scene {
 
   // 스테이지가 시작되면 내 조작법을 잠깐 (안내판과 볼트 대사는 방장 키 이름으로 나오니까)
   showControls(msg) {
+    if (msg.versus) this.hpHint.setY(82); // 겨루기 체력바는 맨 위에 있다
+    if (msg.versus && msg.round > 1) return; // 겨루기는 첫 판에만 알려 준다
     this.helpBox?.destroy();
-    const title = `스테이지 ${Number(msg.n) || ''} 시작! 나는 2P, 내 조작법:`;
+    const title = msg.versus ? '겨루기 시작! 나는 2P, 내 조작법:' : `스테이지 ${Number(msg.n) || ''} 시작! 나는 2P, 내 조작법:`;
     this.helpBox = makeText(this, 480, 400, [title, ...this.controls].join('\n'), 15, '#ffffff', {
       align: 'center',
       lineSpacing: 6,
@@ -106,7 +108,7 @@ export class GuestScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(56);
     const box = this.helpBox;
-    this.tweens.add({ targets: box, alpha: 0, delay: 7000, duration: 500, onComplete: () => box.destroy() });
+    this.tweens.add({ targets: box, alpha: 0, delay: msg.versus ? cfg.versus.countdown * 1000 : 7000, duration: 500, onComplete: () => box.destroy() });
   }
 
   // 보상을 내 저장에 넣고, 화면 아래에 잠깐 알려 준다
