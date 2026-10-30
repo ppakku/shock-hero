@@ -2,7 +2,11 @@
 # 쓰는 법: GEMINI_BATCH=주문서.json browser-harness < tools/gemini_batch.py
 # 주문서: [{ "prompt": "...", "out": "/절대/경로/그림.png" }, ...]. 이미 있는 파일은 건너뛴다.
 # 한 번에 하나씩만 돌린다 (Chrome 탭 하나를 쓰므로 동시에 돌리면 서로 방해한다).
-import json, os, shutil, tempfile, time
+import json, os, shutil, sys, tempfile, time
+
+# 사용 중지: 2026-10-31 공유 browser-harness 연결에서 현재 탭이 다른 세션 탭으로 바뀌어
+# 프롬프트가 Apps Script 편집기에 입력됐다. 전용 브라우저 연결과 입력 직전 탭 확인이 생길 때까지 돌리지 않는다.
+sys.exit('gemini_batch.py is disabled: it can type into another tab on a shared browser connection')
 
 orders = json.load(open(os.environ['GEMINI_BATCH']))
 new_tab('https://gemini.google.com/app')
