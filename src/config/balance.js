@@ -121,6 +121,49 @@ export const balance = {
       rushKnockback: 560, // 몸통 박치기가 미는 힘
       quakeShocks: 3, // 궁극기 대지진 흔들림 횟수 (첫 번째가 가장 셈)
     },
+    // 바람 닌자: 빠르게 뛰어들어 베는 근접형
+    ninja: {
+      healthMultiplier: 0.85, // 체력 배수
+      moveMultiplier: 1.2, // 걷는 속도 배수
+      starDamage: 6, // 표창 피해량 (짧게 눌렀다 떼기)
+      starKnockback: 80, // 표창이 미는 힘
+      starSpeed: 1000, // 표창 속도
+      starDistance: 300, // 표창이 날아가는 거리 (번개탄보다 짧음)
+      starSize: 26, // 표창 크기
+      starCooldown: 0.16, // 다음 표창까지 기다리는 시간
+      slashMinDamage: 14, // 살짝 충전한 돌진 베기 피해량
+      slashMaxDamage: 34, // 최대 충전 돌진 베기 피해량
+      slashMinKnockback: 200, // 살짝 충전한 돌진 베기가 미는 힘
+      slashMaxKnockback: 520, // 최대 충전 돌진 베기가 미는 힘
+      slashSpeed: 1000, // 돌진 베기 속도
+      slashMinTime: 0.16, // 살짝 충전한 돌진 베기가 이어지는 시간
+      slashMaxTime: 0.36, // 최대 충전 돌진 베기가 이어지는 시간 (속도 x 시간 = 날아가는 거리)
+      slashCooldown: 0.5, // 돌진 베기를 뗀 뒤 다음 공격까지 기다리는 시간
+      slashInvincibleAfter: 0.12, // 돌진 베기가 끝나고도 공격을 피하는 시간
+    },
+    // 얼음 마법사: 멀리서 적을 느리게 만드는 조종형
+    mage: {
+      healthMultiplier: 0.9, // 체력 배수
+      iceDamage: 7, // 얼음탄 피해량 (짧게 눌렀다 떼기)
+      iceKnockback: 70, // 얼음탄이 미는 힘
+      iceSpeed: 420, // 얼음탄 속도 (번개탄의 절반쯤으로 천천히 날아감)
+      iceDistance: 480, // 얼음탄이 날아가는 거리
+      iceSize: 28, // 얼음탄 크기
+      iceCooldown: 0.3, // 다음 얼음탄까지 기다리는 시간
+      frostMinDamage: 14, // 살짝 충전한 얼음 폭발 피해량
+      frostMaxDamage: 32, // 최대 충전 얼음 폭발 피해량
+      frostMinKnockback: 120, // 살짝 충전한 얼음 폭발이 미는 힘
+      frostMaxKnockback: 300, // 최대 충전 얼음 폭발이 미는 힘 (약해야 느려진 적이 가까이 남음)
+      frostReach: 220, // 얼음 폭발이 터지는 거리 (주인공에서 폭발 한가운데까지)
+      frostMinRadius: 60, // 살짝 충전한 얼음 폭발 크기
+      frostMaxRadius: 120, // 최대 충전 얼음 폭발 크기
+      frostCooldown: 0.4, // 얼음 폭발을 뗀 뒤 다음 공격까지 기다리는 시간
+      slowMinTime: 1.5, // 살짝 충전한 얼음 폭발에 맞은 적이 느려지는 시간
+      slowMaxTime: 3, // 최대 충전 얼음 폭발에 맞은 적이 느려지는 시간
+      slowMultiplier: 0.45, // 얼음 폭발에 맞은 적의 속도 (0.45 = 평소의 45%)
+      blizzardSlowTime: 4, // 궁극기 눈보라에 맞은 적이 느려지는 시간
+      blizzardSlowMultiplier: 0.35, // 눈보라에 맞은 적의 속도
+    },
   },
 
   // ---------- 초록 몬스터 ----------
