@@ -23,6 +23,27 @@ const sceneryKind = (st) => SCENERY_KIND[st.theme?.scenery] || 'city';
 const CHAPTER_LOOK = {
   1: { sea: 0x1d3a52, land: 0x6f8a4a, edge: 0x3e5228, title: '#ffe14a' },
   2: { sea: 0x1a0f24, land: 0x5a3a4a, edge: 0x2e1a26, title: '#ff8a7a' },
+  3: { sea: 0x0e1a30, land: 0x4a6a80, edge: 0x24384e, title: '#8ad8ff', blobs: 'split', spark: 0xa8c8ff },
+  4: { sea: 0x0a0208, land: 0x4e1622, edge: 0x220810, title: '#ff5a5a', blobs: 'islands', spark: 0xff5a3a },
+};
+
+// 땅 모양 [x, y, 크기]. 점 자리(src/ui/mapLayout.js)는 같고 땅만 장마다 달라진다
+const LAND = {
+  // 1장, 2장: 하나로 이어진 큰 땅
+  whole: [
+    [150, 330, 150], [330, 300, 170], [520, 320, 170], [700, 300, 170], [830, 280, 130],
+    [300, 170, 120], [480, 180, 130], [660, 160, 130], [800, 190, 110], [140, 220, 90],
+  ],
+  // 3장: 폭풍에 위아래로 갈라진 땅
+  split: [
+    [120, 350, 130], [250, 340, 150], [400, 365, 150], [540, 345, 150], [680, 360, 150], [820, 330, 150],
+    [290, 150, 130], [460, 170, 130], [630, 140, 140], [790, 175, 130],
+  ],
+  // 4장: 어둠의 바다에 뜬 섬들
+  islands: [
+    [110, 365, 120], [250, 320, 120], [390, 370, 120], [530, 318, 120], [670, 368, 120], [820, 312, 130],
+    [780, 190, 120], [620, 150, 120], [460, 196, 120], [285, 150, 150],
+  ],
 };
 
 export class MapScene extends Phaser.Scene {
@@ -72,11 +93,8 @@ export class MapScene extends Phaser.Scene {
     // 바다와 땅
     const g = this.add.graphics();
     g.fillStyle(look.sea, 1).fillRect(0, 0, 960, 540);
-    for (let i = 0; i < 40; i++) g.fillStyle(0xffffff, 0.04).fillCircle((i * 197) % 960, 30 + ((i * 113) % 480), 2 + (i % 3)); // 물결 반짝이
-    const blobs = [
-      [150, 330, 150], [330, 300, 170], [520, 320, 170], [700, 300, 170], [830, 280, 130],
-      [300, 170, 120], [480, 180, 130], [660, 160, 130], [800, 190, 110], [140, 220, 90],
-    ];
+    for (let i = 0; i < 40; i++) g.fillStyle(look.spark ?? 0xffffff, look.spark ? 0.08 : 0.04).fillCircle((i * 197) % 960, 30 + ((i * 113) % 480), 2 + (i % 3)); // 물결 반짝이
+    const blobs = LAND[look.blobs] || LAND.whole;
     g.fillStyle(look.edge, 1);
     for (const [x, y, r] of blobs) g.fillCircle(x, y + 6, r * 0.62);
     g.fillStyle(look.land, 1);

@@ -394,6 +394,8 @@ export class GameScene extends Phaser.Scene {
   drawBackground() {
     const st = this.stage;
     const th = st.theme;
+    // theme.tint: 배경 전체를 덮는 색. 같은 배경 그림을 다른 장 분위기로 바꾼다 (발판과 캐릭터는 그대로)
+    if (th.tint) this.add.rectangle(480, 270, 960, 540, th.tint.color, th.tint.alpha).setScrollFactor(0).setDepth(-13);
     // 수중 던전: 물속 동굴 배경은 따로 그린다 (src/fx/underwater.js)
     if (th.scenery === 'underwater') return drawUnderwater(this);
     const sky = this.add.graphics().setScrollFactor(0).setDepth(-20);
@@ -504,6 +506,7 @@ export class GameScene extends Phaser.Scene {
         snow: { y: -10, speedY: { min: 40, max: 90 }, speedX: { min: -20, max: 20 }, scale: { min: 0.15, max: 0.35 }, lifespan: 9000 },
         embers: { y: 560, speedY: { min: -80, max: -30 }, speedX: { min: -15, max: 15 }, scale: { start: 0.35, end: 0 }, lifespan: 6000 },
         bubbles: { y: 560, speedY: { min: -60, max: -25 }, speedX: { min: -10, max: 10 }, scale: { min: 0.2, max: 0.5 }, lifespan: 7000 },
+        rain: { y: -10, speedY: { min: 620, max: 820 }, speedX: { min: -90, max: -60 }, scaleX: 0.06, scaleY: 0.4, lifespan: 1000, frequency: 24 },
       }[w.kind];
       if (opts) {
         const { y, ...rest } = opts;
@@ -1405,7 +1408,8 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       this.robot.say(this.isLastStage ? this.stage.endingLines || ['해냈다! 마지막 보스를 쓰러뜨렸어!', '도시가 완전히 평화를 되찾았어!'] : ['해냈다!', '다음엔 좀 덜 무서운 괴물이면 좋겠어.'], true);
-      this.time.delayedCall(1800, () => this.finishVictory());
+      // 엔딩 대사는 끝까지 읽을 시간을 준다 (승리 화면이 뜨면 말풍선이 닫힌다)
+      this.time.delayedCall(this.isLastStage ? 2600 * (this.stage.endingLines?.length || 1) : 1800, () => this.finishVictory());
     });
   }
 
@@ -1505,6 +1509,7 @@ export class GameScene extends Phaser.Scene {
     this.scene.get('HUD')?.showVictory({
       stage: this.stageNum,
       last: this.isLastStage,
+      ending: this.stage.endingLines?.at(-1),
       time,
       best,
       isRecord,

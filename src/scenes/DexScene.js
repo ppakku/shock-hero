@@ -5,6 +5,7 @@ import { stages } from '../stage/index.js';
 import { MONSTER_DEX, bossDex, monsterStages, normalizeDex, dexCounts } from '../logic/dex.js';
 import { makeSeaMonsterTextures } from '../enemies/seaTextures.js';
 import { isTouchDevice } from '../ui/touch.js';
+import { pageCount, pageOf, turnPage } from '../ui/paging.js';
 import { makeText, FONT } from '../ui/text.js';
 import { TITLE_FONT } from '../ui/titleArt.js';
 import { fitPortrait } from '../ui/portrait.js';
@@ -15,10 +16,11 @@ import { normalizeWorkshop, moveName, sizeName } from '../logic/workshop.js';
 import { ensureWorkshopTexture } from '../fx/workshopTextures.js';
 
 // 몬스터 도감. 타이틀 위에 열리고, 닫으면 타이틀을 다시 그린다.
-// 왼쪽은 칸(5 x 4), 오른쪽은 고른 칸의 자세한 설명. 아직 못 잡은 칸은 검은 그림자와 ??? 로 보인다.
+// 왼쪽은 칸(5 x 4, 넘치면 쪽을 넘긴다), 오른쪽은 고른 칸의 자세한 설명. 아직 못 잡은 칸은 검은 그림자와 ??? 로 보인다.
 // '공방' 탭은 아이들이 몬스터 공방에서 만든 작품 (작가 이름과 잡은 수).
-// 화살표로 고르기, Q 또는 Tab 으로 몬스터, 보스, 공방 바꾸기, Esc 또는 G 로 닫기. 손가락으로 칸과 탭을 눌러도 된다.
+// 화살표로 고르기 (끝 칸에서 더 가면 다음 쪽), Q 또는 Tab 으로 몬스터, 보스, 공방 바꾸기, Page Up / Down 으로 쪽 넘기기, Esc 또는 G 로 닫기. 손가락으로 칸과 탭을 눌러도 된다.
 const COLS = 5;
+const PER_PAGE = 20; // 한 쪽의 칸 수 (5 x 4)
 const CARD_W = 104;
 const CARD_H = 96;
 const GAP = 6;
@@ -86,10 +88,11 @@ export class DexScene extends Phaser.Scene {
     close.on('pointerdown', () => this.close());
 
     this.cards = [];
-    for (let i = 0; i < 20; i++) this.cards.push(this.makeCard(i));
+    for (let i = 0; i < PER_PAGE; i++) this.cards.push(this.makeCard(i));
     this.makePanel();
+    this.makePager();
 
-    const help = isTouchDevice() ? '칸을 누르면 자세히 봐요' : '화살표 고르기    Q 또는 Tab: 몬스터, 보스, 공방 바꾸기    Esc 닫기';
+    const help = isTouchDevice() ? '칸을 누르면 자세히 봐요' : '화살표 고르기    Q 또는 Tab: 몬스터, 보스, 공방 바꾸기    Page Up / Down: 쪽 넘기기    Esc 닫기';
     makeText(this, 480, 524, help, 14, '#aaaaaa').setOrigin(0.5);
 
     const kb = this.input.keyboard;
@@ -102,6 +105,8 @@ export class DexScene extends Phaser.Scene {
     on(['UP', 'W'], () => this.move(0, -1));
     on(['DOWN', 'S'], () => this.move(0, 1));
     on(['Q', 'TAB', 'E'], () => this.setTab({ monsters: 'bosses', bosses: 'workshop', workshop: 'monsters' }[this.tab]));
+    on(['PAGE_UP'], () => this.turn(-1));
+    on(['PAGE_DOWN'], () => this.turn(1));
     on(['ESC', 'G'], () => this.close());
     this.refresh();
     this.cameras.main.fadeIn(120);
@@ -119,11 +124,32 @@ export class DexScene extends Phaser.Scene {
     c.add([bg, img, q, name, badge]);
     c.setSize(CARD_W, CARD_H).setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => {
-      this.selected = i;
+      this.selected = pageOf(this.selected, PER_PAGE) * PER_PAGE + i;
       sfx.play('cardMove');
       this.refresh();
     });
     return { c, bg, img, q, name, badge };
+  }
+
+  // 탭 오른쪽: 쪽 넘기기 (칸이 한 쪽에 다 들어가면 안 보인다)
+  makePager() {
+    const y = 85;
+    const arrow = (x, label, dir) =>
+      makeText(this, x, y, label, 20, '#ffffff', { strokeThickness: 4 })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => this.turn(dir));
+    this.pagePrev = arrow(422, '◀', -1);
+    this.pageNext = arrow(548, '▶', 1);
+    this.pageText = makeText(this, 485, y, '', 15, '#ffe14a').setOrigin(0.5);
+  }
+
+  turn(dir) {
+    const next = turnPage(this.selected, dir, PER_PAGE, this.entries().length);
+    if (next === this.selected) return;
+    this.selected = next;
+    sfx.play('cardMove');
+    this.refresh();
   }
 
   makePanel() {
@@ -200,11 +226,18 @@ export class DexScene extends Phaser.Scene {
     });
 
     const list = this.entries();
+    const page = pageOf(this.selected, PER_PAGE);
+    const pages = pageCount(list.length, PER_PAGE);
+    [this.pagePrev, this.pageNext, this.pageText].forEach((t) => t.setVisible(pages > 1));
+    this.pageText.setText(`${page + 1} / ${pages} 쪽`);
+    this.pagePrev.setAlpha(page > 0 ? 1 : 0.3);
+    this.pageNext.setAlpha(page < pages - 1 ? 1 : 0.3);
     this.cards.forEach((card, i) => {
-      const e = list[i];
+      const at = page * PER_PAGE + i;
+      const e = list[at];
       card.c.setVisible(Boolean(e));
       if (!e) return;
-      const on = i === this.selected;
+      const on = at === this.selected;
       card.bg.clear();
       card.bg.fillStyle(INK, 1).fillRoundedRect(-CARD_W / 2 - 2, -CARD_H / 2 - 2, CARD_W + 4, CARD_H + 4, 10);
       card.bg.fillStyle(e.found ? 0x2c3a4c : 0x3a4252, 1).fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 8);
