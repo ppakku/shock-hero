@@ -4,6 +4,7 @@ import {
   chooseBossAttack, bossSpeedMultiplier, coreDamage, rockTargets, doubleSlamTargets,
   pickRocketHeight, rocketBand, inhaleStep, shouldRage, restAfterAttack, difficultyOf,
 } from '../logic/boss.js';
+import { varyCount } from '../logic/bossVariety.js';
 import { ComboHazards } from './comboHazards.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
@@ -341,6 +342,7 @@ export class ArmBoss extends BossBase {
 
   // 공격 종류별로 나눠 실행 (킹 돌연변이가 더 붙인다)
   runAction(dt) {
+    if (this.checkFeint()) return;
     const a = this.action;
     if (a.jobs) this.runArmJobs(dt);
     else if (a.type === 'rocks') this.runRocks(dt);
@@ -393,29 +395,31 @@ export class ArmBoss extends BossBase {
     for (const arm of this.arms) arm.link?.setVisible(false);
   }
 
-  startAction(forceType = null) {
+  // picked: 킹 돌연변이가 대신 골라서 넘긴 공격 (진짜로 강제된 공격이 아니므로 속여도 된다)
+  startAction(forceType = null, picked = false) {
     const p = this.target;
     const alive = this.armsAlive;
     const type = forceType || chooseBossAttack(this.def.phases, alive.length, this.totalArms, this.lastType);
     this.lastType = type;
     const a = { type, phase: 'aim', t: 0 };
+    this.prepareAttack(a, { slam: this.c.slamWarningTime, sweep: this.c.sweepWarningTime }, !forceType || picked);
     const pickArm = () => alive[Math.floor(Math.random() * alive.length)];
     const target = () => Phaser.Math.Clamp(p.x, this.minX, this.maxArmX);
 
-    if (type === 'slam') a.jobs = [this.makeJob(pickArm(), 'slam', target(), this.c.slamWarningTime)];
+    if (type === 'slam') a.jobs = [this.makeJob(pickArm(), 'slam', target(), this.c.slamWarningTime * a.late)];
     else if (type === 'multiSlam') {
-      a.jobs = [this.makeJob(pickArm(), 'slam', target(), this.c.multiSlamWarningTime, Math.max(1, Math.round(this.c.multiSlamCount)))];
+      a.jobs = [this.makeJob(pickArm(), 'slam', target(), this.c.multiSlamWarningTime, varyCount(Math.max(1, Math.round(this.c.multiSlamCount)), this.variety, Math.random, 2))];
     } else if (type === 'doubleSlam') {
       const two = Phaser.Utils.Array.Shuffle([...alive]).slice(0, 2);
       const xs = doubleSlamTargets(p.x, this.minX, this.maxArmX);
-      a.jobs = two.map((arm, i) => this.makeJob(arm, 'slam', xs[i], this.c.doubleSlamWarningTime));
+      a.jobs = two.map((arm, i) => this.makeJob(arm, 'slam', xs[i], this.c.doubleSlamWarningTime * a.late));
     } else if (type === 'sweep') {
-      const job = this.makeJob(pickArm(), 'sweep', this.maxArmX, this.c.sweepWarningTime);
+      const job = this.makeJob(pickArm(), 'sweep', this.maxArmX, this.c.sweepWarningTime * a.late);
       job.startX = this.maxArmX;
       job.endX = this.minX;
       a.jobs = [job];
     } else if (type === 'rocks') {
-      const count = Math.max(1, Math.round(this.c.rockCount + (this.def.rockBonus || 0) + (alive.length === 0 ? 1 : 0)));
+      const count = varyCount(Math.max(1, Math.round(this.c.rockCount + (this.def.rockBonus || 0) + (alive.length === 0 ? 1 : 0))), this.variety, Math.random, 2);
       a.targets = rockTargets(p.x, count, this.minX, this.maxArmX + 40);
       this.scene.tweens.add({ targets: this.body, y: this.groundY - 10, duration: 120, yoyo: true });
     } else if (type === 'shockwave') {
@@ -439,6 +443,11 @@ export class ArmBoss extends BossBase {
     this.scene.sfxPlay('warn');
     this.tip(type);
     this.combo.maybeStart(type, this.diff.bossCombo);
+  }
+
+  // 속임 동작: 들고 있던 팔을 내려놓는다
+  onFeintCancel(a) {
+    for (const j of a.jobs ?? []) j.arm.busy = false;
   }
 
   makeJob(arm, kind, target, warnTime, repeats = 1) {
@@ -467,7 +476,7 @@ export class ArmBoss extends BossBase {
     this.rocks = [];
     this.waves = [];
     this.globs = [];
-    const rest = restAfterAttack(this.raging, this.chained, this.c.idleTime * this.speed, this.c.rageChainGap);
+    const rest = restAfterAttack(this.raging, this.chained, this.restTime(this.c.idleTime) * this.speed, this.c.rageChainGap);
     this.timer = rest.wait;
     this.chained = rest.chained;
   }
@@ -643,7 +652,7 @@ export class ArmBoss extends BossBase {
     const m = this.speed;
     const startX = this.frontX + 10;
     if (a.phase === 'aim') {
-      const dur = this.c.shockwaveWarningTime * m;
+      const dur = this.c.shockwaveWarningTime * m * a.late;
       const alpha = 0.15 + 0.15 * Math.sin(this.t * 20);
       this.warn.fillStyle(0xff2020, alpha).fillRect(this.minX - 60, this.groundY - WAVE_H, startX - this.minX + 60, WAVE_H);
       this.warn.lineStyle(2, 0xff4444, 1).strokeRect(this.minX - 60, this.groundY - WAVE_H, startX - this.minX + 60, WAVE_H);
@@ -858,7 +867,7 @@ export class ArmBoss extends BossBase {
     const m = this.mouthOpen;
     const dir = this.inhaleSide();
     if (a.phase === 'aim') {
-      const dur = this.c.inhaleWarningTime * this.speed;
+      const dur = this.c.inhaleWarningTime * this.speed * a.late;
       const k = Math.min(1, a.t / dur);
       this.fxG.fillStyle(0x10040e, 0.9).fillEllipse(m.x, m.y, 30 + 30 * k, 16 + 30 * k);
       drawSwirl(this.fxG, m.x, m.y, this.t, 0.35 + 0.3 * k, dir);

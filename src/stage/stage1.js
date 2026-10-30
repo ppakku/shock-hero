@@ -87,9 +87,9 @@ export const stage1 = {
     colors: { main: 0x6e4232, light: 0x9a6a50, dark: 0x3a2a24, arm: 0x7a5444 }, // 녹슨 쇠 색
     // [팔 다 있을 때, 팔 1개 부순 뒤, 팔 다 부순 뒤(코어)] 쓰는 공격
     phases: [
-      ['slam', 'multiSlam', 'rocketPunch'],
+      ['slam', 'multiSlam', 'rocketPunch', 'shockwave'],
       ['slam', 'sweep', 'rocketPunch', 'inhale'],
-      ['rocks', 'shockwave', 'inhale'],
+      ['rocks', 'shockwave', 'inhale', 'spit'],
     ],
   },
 };

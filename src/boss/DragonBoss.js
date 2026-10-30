@@ -5,6 +5,7 @@ import { chooseDragonAttack, pillarWaves, flyLandingX, gustVelocity, gustPillarX
 import { spreadTargets } from '../logic/watcher.js';
 import { coreDamage } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
+import { varyCount } from '../logic/bossVariety.js';
 import { floatText, ring } from '../fx/effects.js';
 import { FireFx } from '../fx/fireFx.js';
 import { make } from '../fx/textures.js';
@@ -372,7 +373,7 @@ export class DragonBoss extends BossBase {
       this.timer -= dt;
       this.walk(dt);
       if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
-    } else {
+    } else if (!this.checkFeint()) {
       const a = this.action;
       a.t += dt;
       if (a.type === 'breath') this.runBreath(dt);
@@ -465,10 +466,11 @@ export class DragonBoss extends BossBase {
     this.lastType = type;
     const k = this.k;
     const a = { type, phase: 'aim', t: 0 };
+    this.prepareAttack(a, { breath: k.breathWarningTime, tail: k.tailWarningTime });
     this.facePlayer();
     const p = this.target;
     if (type === 'breath') {
-      a.count = this.raging ? 3 : 2;
+      a.count = varyCount(this.raging ? 3 : 2, this.variety, Math.random, 2);
       a.spawned = 0;
     } else if (type === 'wing') {
       a.pillars = gustPillarXs(p.x, this.x, this.arenaStart, this.arenaEnd);
@@ -480,11 +482,16 @@ export class DragonBoss extends BossBase {
       a.phase = 'takeoff';
       a.lx = flyLandingX(this.x, this.leftStop, this.rightStop);
       a.x0 = this.x;
-      const count = Math.max(1, Math.round(k.bombCount + (this.raging ? 1 : 0)));
+      const count = varyCount(Math.max(1, Math.round(k.bombCount + (this.raging ? 1 : 0))), this.variety);
       a.bombs = spreadTargets(p.x, count, this.arenaStart + 60, this.arenaEnd - 60).map((x) => ({ x, done: false }));
     } else if (type === 'pillars') {
-      const [w0, w1] = pillarWaves(this.arenaStart + 20, this.arenaEnd - 20, k.pillarSpacing);
-      const list = this.raging ? [w0, w1, w0] : [w0, w1];
+      const shaped = Math.random() < this.variety.shape; // 줄을 밀고, 절반은 둘째 묶음부터 터뜨린다
+      const offset = shaped ? (Math.random() - 0.5) * k.pillarSpacing : 0;
+      const swap = shaped && Math.random() < 0.5;
+      const [w0, w1] = pillarWaves(this.arenaStart + 20, this.arenaEnd - 20, k.pillarSpacing, offset);
+      const first = swap ? w1 : w0;
+      const second = swap ? w0 : w1;
+      const list = this.raging ? [first, second, first] : [first, second];
       const warn = k.pillarWarningTime * this.speed;
       const step = warn + k.pillarWaveGap;
       a.waves = list.map((xs, i) => ({ xs, start: i * step, warn, hits: new Set(), burst: false }));
@@ -516,11 +523,17 @@ export class DragonBoss extends BossBase {
     else if (this.wing.alive) this.tip('tired', TIPS.tired);
   }
 
+  // 속임 동작: 들어 올린 몸을 내린다 (꼬리는 저절로 내려옴)
+  onFeintCancel() {
+    this.lift = 0;
+    this.air = 0;
+  }
+
   endAction() {
     this.action = null;
     this.lift = 0;
     this.air = 0;
-    this.timer = this.k.idleTime * this.speed;
+    this.timer = this.restTime(this.k.idleTime) * this.speed;
   }
 
   // ---------- 불 뿜기 (땅을 훑는 불길, 점프로 넘기) ----------
@@ -533,7 +546,7 @@ export class DragonBoss extends BossBase {
     const f = this.facing;
     const startX = this.x + f * 160;
     if (a.phase === 'aim') {
-      const dur = k.breathWarningTime * m;
+      const dur = k.breathWarningTime * m * a.late;
       const q = Math.min(1, a.t / dur);
       this.fxG.fillStyle(0xff9a1f, 0.4 + 0.4 * Math.sin(this.t * 25)).fillCircle(mo.x, mo.y + 20, 10 + 12 * q);
       const wall = f < 0 ? this.arenaStart : this.arenaEnd;
@@ -581,7 +594,7 @@ export class DragonBoss extends BossBase {
       }
     };
     if (a.phase === 'aim') {
-      const dur = k.wingWarningTime * m;
+      const dur = k.wingWarningTime * m * a.late;
       this.lift = Math.abs(Math.sin(this.t * 10)) * 10;
       markPillars(a.t / dur);
       this.label(0, '날개 바람! 앞으로 걸어서 버텨!', this.x, this.groundY - H - 40, 22);
@@ -659,7 +672,7 @@ export class DragonBoss extends BossBase {
     const reach0 = this.x - f * 70;
     const reach1 = this.x - f * ((this.tailPart.alive ? TAIL_LEN : 170) + 30);
     if (a.phase === 'aim') {
-      const dur = k.tailWarningTime * m;
+      const dur = k.tailWarningTime * m * a.late;
       this.tail.lift = 140 * Math.min(1, a.t / (dur * 0.6));
       // 꼬리 끝이 빨갛게 달아오른다
       const tp = this.tailPoints().tip;

@@ -17,9 +17,10 @@ export function chooseDragonAttack(phases, tailAlive, wingAlive, last = null, ra
 
 // 불기둥 자리: 싸움터를 spacing 간격으로 나눠서 짝수 번째, 홀수 번째 두 묶음으로.
 // 첫 묶음이 터지는 동안 두 번째 묶음 자리(아직 안 터진 곳)에 서 있으면 안전하다.
-export function pillarWaves(minX, maxX, spacing) {
+// offset 만큼 줄 전체를 밀어도 기둥 사이 간격은 그대로다.
+export function pillarWaves(minX, maxX, spacing, offset = 0) {
   const xs = [];
-  for (let x = minX + spacing / 2; x <= maxX; x += spacing) xs.push(Math.round(x));
+  for (let x = minX + spacing / 2 + offset; x <= maxX; x += spacing) xs.push(Math.round(x));
   return [xs.filter((_, i) => i % 2 === 0), xs.filter((_, i) => i % 2 === 1)];
 }
 

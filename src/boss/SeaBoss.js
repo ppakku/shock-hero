@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BossBase } from './BossBase.js';
 import { Health } from '../logic/health.js';
 import { coreDamage, rockTargets, pickPattern, shouldRage, restAfterAttack, landingX, difficultyOf } from '../logic/boss.js';
+import { nextTiredAfter, varyCount } from '../logic/bossVariety.js';
 import { whirlPullStep, seaChargeY, seaPhaseIndex, seaUsableAttacks } from '../logic/swim.js';
 import { ComboHazards } from './comboHazards.js';
 import { drawSwirl } from './bossFx.js';
@@ -54,6 +55,7 @@ export class SeaBoss extends BossBase {
     this.face = -1; // -1 왼쪽을 봄
     this.action = null;
     this.attacks = 0;
+    this.tiredRoll = nextTiredAfter(this.sc.tiredAfter, this.variety); // 이번에 지치기까지 공격 수
     this.chained = false;
     this.inkLeft = 0;
     this.bubbles = [];
@@ -482,7 +484,7 @@ export class SeaBoss extends BossBase {
   startAction(forceType = null) {
     let type = forceType;
     if (!type) {
-      if (this.attacks >= Math.max(2, Math.round(this.sc.tiredAfter))) type = 'rest';
+      if (this.attacks >= this.tiredRoll) type = 'rest';
       else {
         const phases = this.def.phases || [];
         const idx = Math.min(seaPhaseIndex(this.partsAlive.length, 2), phases.length - 1);
@@ -494,6 +496,7 @@ export class SeaBoss extends BossBase {
     const p = this.target;
     const mid = (this.minX + this.maxX) / 2;
     const a = { type, phase: 'aim', t: 0, hits: new Set() }; // hits: 이번 공격에 이미 맞은 주인공
+    this.prepareAttack(a, { charge: this.sc.chargeWarningTime, sweep: this.sc.sweepWarningTime }, !forceType);
     if (type === 'charge') {
       a.dir = p.x < mid ? -1 : 1; // 이 방향으로 돌진
       a.startX = a.dir < 0 ? this.maxX - 40 : this.minX + 40;
@@ -502,7 +505,7 @@ export class SeaBoss extends BossBase {
       a.y = seaChargeY(p.y, 214, this.restY - 20);
       a.ready = false;
     } else if (type === 'bubbles') {
-      const n = Math.max(1, Math.round(this.sc.bubbleCount + (this.raging ? 2 : 0)));
+      const n = varyCount(Math.max(1, Math.round(this.sc.bubbleCount + (this.raging ? 2 : 0))), this.variety, Math.random, 2);
       a.targets = rockTargets(p.x, n, this.minX - 20, this.maxX + 20, Math.random, 110);
     } else if (type === 'whirlpool') {
       a.x = p.x < mid ? this.maxX - 60 : this.minX + 60;
@@ -531,12 +534,13 @@ export class SeaBoss extends BossBase {
     this.action = null;
     if (a && a.type === 'rest') {
       this.attacks = 0;
+      this.tiredRoll = nextTiredAfter(this.sc.tiredAfter, this.variety);
       this.timer = 0.6;
       this.chained = false;
       return;
     }
     this.attacks += 1;
-    const rest = restAfterAttack(this.raging, this.chained, this.sc.idleTime * this.speed, this.c.rageChainGap);
+    const rest = restAfterAttack(this.raging, this.chained, this.restTime(this.sc.idleTime) * this.speed, this.c.rageChainGap);
     this.timer = rest.wait;
     this.chained = rest.chained;
   }
@@ -547,6 +551,7 @@ export class SeaBoss extends BossBase {
   }
 
   runAction(dt) {
+    if (this.checkFeint()) return;
     const a = this.action;
     a.t += dt;
     if (a.type === 'charge') this.runCharge(dt);
@@ -567,7 +572,7 @@ export class SeaBoss extends BossBase {
       const there = this.moveTo(a.startX, a.y, dt, this.sc.swimSpeed * 1.6);
       this.face = a.dir;
       if (there) a.ready = true;
-      const dur = this.sc.chargeWarningTime * this.speed;
+      const dur = this.sc.chargeWarningTime * this.speed * a.late;
       const alpha = 0.18 + 0.14 * Math.sin(this.t * 18);
       const g = this.inkLeft > 0 ? this.topG : this.warn;
       g.fillStyle(0xff2020, alpha).fillRect(this.minX - 60, a.y - band, this.maxX - this.minX + 120, band * 2);
@@ -785,7 +790,7 @@ export class SeaBoss extends BossBase {
       this.warn.fillStyle(0xff2020, alpha).fillRect(this.minX - 60, this.groundY - h, this.maxX - this.minX + 120, h);
       this.warn.lineStyle(3, 0xff4444, 1).strokeRect(this.minX - 60, this.groundY - h, this.maxX - this.minX + 120, h);
       this.label(0, '꼬리 휩쓸기! ▲ 위로 헤엄쳐! ▲', (this.minX + this.maxX) / 2, this.groundY - h - 30, 24);
-      if (a.ready && a.t >= this.sc.sweepWarningTime * this.speed) {
+      if (a.ready && a.t >= this.sc.sweepWarningTime * this.speed * a.late) {
         this.next(a, 'go');
         this.scene.sfxPlay('swoop');
       }

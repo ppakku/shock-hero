@@ -93,7 +93,7 @@
       if (a?.type === 'crawl') for (const d of a.drops) if (!d.done) zones.push([d.x - 70, d.x + 70]);
       if (a?.type === 'claw' && (a.phase === 'aim' || a.phase === 'shoot' || a.phase === 'hold')) {
         const sx = boss.shoulder.x;
-        if (bandJump(sx, sx + boss.facing * a.len, boss.k.clawWarningTime * boss.speed - a.t, a.phase)) return inp;
+        if (bandJump(sx, sx + boss.facing * a.len, boss.k.clawWarningTime * boss.speed * (a.late ?? 1) - a.t, a.phase)) return inp;
       }
       if (a?.type === 'claw' && a.phase === 'stuck' && boss.arm.alive) {
         target = { x: (boss.shoulder.x + a.tipX) / 2 + boss.facing * 40, face: -boss.facing, mode: 'punch' };
@@ -128,7 +128,7 @@
       if (a?.type === 'tail' && (a.phase === 'aim' || a.phase === 'sweep')) {
         const r0 = boss.x - f * 70;
         const r1 = boss.x - f * ((boss.tailPart.alive ? 310 : 170) + 30);
-        if (bandJump(r0, r1, boss.k.tailWarningTime * boss.speed - a.t, a.phase === 'sweep' ? 'shoot' : 'aim', 0.16)) return inp;
+        if (bandJump(r0, r1, boss.k.tailWarningTime * boss.speed * (a.late ?? 1) - a.t, a.phase === 'sweep' ? 'shoot' : 'aim', 0.16)) return inp;
       }
       if (a?.type === 'breath' && a.phase === 'fire' && a.spawned < a.count) {
         // 불줄기가 닿는 자리 근처면 불길이 생기기 직전에 점프
