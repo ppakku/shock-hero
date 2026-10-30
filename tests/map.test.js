@@ -29,11 +29,17 @@ describe('모험 지도', () => {
     expect(locateStage(chapters, 1)).toEqual({ chapterIndex: 0, index: 0 });
     expect(locateStage(chapters, 11)).toEqual({ chapterIndex: 1, index: 0 });
     expect(locateStage(chapters, 20)).toEqual({ chapterIndex: 1, index: 9 });
+    expect(locateStage(chapters, 21)).toEqual({ chapterIndex: 2, index: 0 });
+    expect(locateStage(chapters, 40)).toEqual({ chapterIndex: 3, index: 9 });
   });
 
   it('2장은 스테이지 11 이 열려야 열린다', () => {
     expect(chapterUnlocked(chapters[1], 10)).toBe(false);
     expect(chapterUnlocked(chapters[1], 11)).toBe(true);
+    expect(chapterUnlocked(chapters[2], 20)).toBe(false);
+    expect(chapterUnlocked(chapters[2], 21)).toBe(true);
+    expect(chapterUnlocked(chapters[3], 30)).toBe(false);
+    expect(chapterUnlocked(chapters[3], 31)).toBe(true);
     expect(chapters.flatMap((c) => c.stages)).toEqual(stages.map((_, i) => i + 1));
   });
 });

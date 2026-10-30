@@ -7,12 +7,13 @@ const gems = { rushClear: 5 };
 const entry = (name, time, at = time) => ({ name, hero: 'shock', time, duo: false, at });
 
 describe('보스 러시', () => {
-  it('스테이지 다섯 개씩 코스 네 개', () => {
+  it('스테이지 다섯 개씩 코스 여덟 개', () => {
     const c = rushCourses(stages.length);
-    expect(c).toHaveLength(4);
+    expect(c).toHaveLength(8);
     expect(c[0].stages).toEqual([1, 2, 3, 4, 5]);
     expect(c[3].stages).toEqual([16, 17, 18, 19, 20]);
-    expect(new Set(c.map((x) => x.name)).size).toBe(4);
+    expect(c[7].stages).toEqual([36, 37, 38, 39, 40]);
+    expect(new Set(c.map((x) => x.name)).size).toBe(8);
   });
 
   it('코스의 스테이지를 다 깨야 열린다', () => {

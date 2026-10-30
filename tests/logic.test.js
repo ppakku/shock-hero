@@ -147,7 +147,7 @@ describe('저장', () => {
     expect(slower.isRecord).toBe(false);
     expect(slower.best).toBe(100);
     expect(slower.patch.unlocked).toBe(3);
-    expect(clearStagePatch({ ...save, unlocked: 20 }, 20, 300).patch.unlocked).toBe(20);
+    expect(clearStagePatch({ ...save, unlocked: 40 }, 40, 300).patch.unlocked).toBe(40);
   });
 
   it('저장소가 없거나 고장 나도 기본값으로 시작한다', () => {
@@ -233,9 +233,9 @@ describe('몬스터 종류', () => {
 
 // 아이들이 스테이지 파일을 고쳤을 때 실수를 잡아 주는 검사
 describe('스테이지 파일 검사', () => {
-  it('스테이지는 20개 (저장의 STAGE_COUNT 와 같다), 지도 2장', () => {
-    expect(stages).toHaveLength(20);
-    expect(chapters.map((c) => c.stages.length)).toEqual([10, 10]);
+  it('스테이지는 40개 (저장의 STAGE_COUNT 와 같다), 지도 4장', () => {
+    expect(stages).toHaveLength(40);
+    expect(chapters.map((c) => c.stages.length)).toEqual([10, 10, 10, 10]);
     expect(STAGE_COUNT).toBe(stages.length);
   });
 
@@ -292,11 +292,11 @@ describe('스테이지 파일 검사', () => {
       });
 
       it('발판은 점프로 올라갈 수 있게 이어져 있다', () => {
-        // 땅이나 다른 발판에서 높이 120 이하, 가로 거리가 가까운 발판이 있어야 한다
+        // 땅이나 다른 발판에서 높이 120 이하, 가로 거리가 가까운 발판이 있어야 한다 (같은 높이로 건너뛰는 공중 다리도 된다)
         for (const p of st.platforms) {
           const fromGround = st.groundY - p.y <= 120;
           const fromOther = st.platforms.some(
-            (q) => q !== p && q.y > p.y && q.y - p.y <= 120 && Math.abs(q.x - p.x) - (q.w + p.w) / 2 <= 90,
+            (q) => q !== p && q.y >= p.y && q.y - p.y <= 120 && Math.abs(q.x - p.x) - (q.w + p.w) / 2 <= 90,
           );
           expect(fromGround || fromOther, `x ${p.x}, y ${p.y} 발판에 올라갈 방법이 없어요`).toBe(true);
         }

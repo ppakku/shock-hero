@@ -11,13 +11,14 @@
 - 수중 몬스터(스테이지 6): `jelly`(골드해파리 GX), `puffer`(가시복어), `piranha`(이빨 피라냐)는 헤엄칩니다.
   `y` 로 높이를 정하고(170 ~ 446 사이만 됨), 안 적으면 종류마다 기본 높이. `crab`(집게 꽃게)은 바닥을 걷습니다.
 - 스테이지에 `swim: true` 를 적으면 주인공이 헤엄칩니다(숫자는 `balance.js` 의 `swim`). 이때 발판은 y 190 보다 아래에 두세요(헤엄 천장 150).
-- 지도의 장은 스테이지 파일의 `chapter` 로 정합니다(안 적으면 1장). 장 이름은 `src/stage/index.js` 의 `CHAPTER_NAMES`. 한 장에 10개까지 지도에 예쁘게 놓입니다(`src/ui/mapLayout.js`).
+- 지도의 장은 스테이지 파일의 `chapter` 로 정합니다(안 적으면 1장). 장 이름은 `src/stage/index.js` 의 `CHAPTER_NAMES`. 한 장에 10개까지 지도에 예쁘게 놓입니다(`src/ui/mapLayout.js`). 장마다 지도 색과 땅 모양은 `src/scenes/MapScene.js` 의 `CHAPTER_LOOK`, `LAND`.
 - 2장 스테이지(11 ~ 20)는 1장 스테이지의 `theme` 을 `...stage2.theme` 처럼 가져다 쓰고 하늘과 날씨만 바꿨습니다.
-- 마지막 스테이지는 `src/stage/index.js` 의 `stages` 맨 끝 스테이지입니다. 깼을 때 로봇 대사는 그 스테이지의 `endingLines`.
+- 3장(21 ~ 30)과 4장(31 ~ 40)도 앞 스테이지의 `theme` 을 가져다 씁니다. `tint: { color, alpha }` 를 적으면 배경 전체에 그 색을 덮어서 같은 그림도 다른 분위기가 됩니다(3장은 폭풍, 4장은 마왕의 어둠). 날씨는 `snow`, `embers`, `bubbles`, `rain`.
+- 마지막 스테이지는 `src/stage/index.js` 의 `stages` 맨 끝 스테이지입니다. 깼을 때 로봇 대사는 그 스테이지의 `endingLines`이고, 마지막 줄은 승리 화면에도 나옵니다.
 - 보물 `id` 는 모든 스테이지에서 겹치면 안 됩니다.
 - 보물은 `id` 와 `power` 만 적습니다. 자리는 스테이지에 들어올 때마다 발판 위나 땅 위에서 무작위로 정해집니다(`src/logic/treasures.js`).
   뒤 스테이지일수록 높은 발판에 숨을 때가 많습니다. 보물 개수는 적은 줄 수만큼이고, 뒤 스테이지일수록 늘려 주세요.
-- 스테이지가 하나 넘어갈 때마다 몬스터와 보스가 조금씩 세집니다(`src/logic/difficulty.js` 의 `STAGE_RAMP`).
+- 스테이지가 하나 넘어갈 때마다 몬스터와 보스가 조금씩 세집니다(`src/logic/difficulty.js` 의 `STAGE_RAMP`). 2장부터는 반씩, 3장부터는 4분의 1씩만 쌓입니다.
 - 보스에 `skin: 1` 처럼 적으면 그 번호 스테이지의 보스 그림을 그대로 씁니다(예: 스테이지 7 파쇄자 MK2 는 스테이지 1 그림).
 - 안내판 글과 로봇 대사에 `{punch}`, `{dash}`, `{ult}`, `{up}`, `{move}`, `{jump}` 를 쓰면 고른 조작 방식의 키 이름으로 바뀝니다.
 - `{atk}`(기본 공격), `{hold}`(꾹 눌렀다 떼는 공격), `{strong}`(약점에 가장 센 공격), `{upAtk}`(위쪽 공격) 를 쓰면 고른 주인공의 공격 이름으로 바뀝니다 (펀치, 번개탄, 망치 등). 주인공마다 뜻이 다른 조언은 `{shieldTip}`, `{jellyTip}`, `{pufferTip}` 같은 문장 표시를 씁니다 (목록: `src/logic/heroes.js` 의 `HERO_WORDS`).
