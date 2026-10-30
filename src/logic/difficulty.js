@@ -11,11 +11,11 @@ export const DIFFICULTY_INFO = {
 // monsterHealth, monsterDamage, bossHealth, bossDamage: 체력과 공격력 배수
 // stunGuard: 몬스터가 한 번 비틀거린 뒤 이 초 동안은 맞아도 멈추지 않는다 (0 이면 때릴 때마다 멈춤)
 // heartChance: 하트가 떨어질 확률 배수
-// catchUp: 내 레벨이 스테이지보다 높을 때 몬스터가 따라오는 정도 (0 = 안 따라옴, 1 = 다 따라옴)
+// catchUp: 내 레벨이 스테이지보다 높을 때 몬스터가 따라오는 정도 (0 = 안 따라옴, 0.8 = 80% 따라옴)
 export const DIFFICULTY_VALUES = {
   easy: { monsterHealth: 0.8, monsterDamage: 0.7, monsterSpeed: 0.9, monsterWindup: 1.3, bossHealth: 0.8, bossDamage: 0.8, bossSpeed: 1.2, bossCombo: 0, stunGuard: 0, heartChance: 1, catchUp: 0 },
-  normal: { monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 1, heartChance: 0.8, catchUp: 0.5 },
-  hard: { monsterHealth: 1.4, monsterDamage: 1.25, monsterSpeed: 1.15, monsterWindup: 0.8, bossHealth: 1.4, bossDamage: 1.3, bossSpeed: 0.8, bossCombo: 0.5, stunGuard: 1.6, heartChance: 0.55, catchUp: 1 },
+  normal: { monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 0.8, heartChance: 0.8, catchUp: 0.4 },
+  hard: { monsterHealth: 1.3, monsterDamage: 1.25, monsterSpeed: 1.15, monsterWindup: 0.8, bossHealth: 1.4, bossDamage: 1.3, bossSpeed: 0.8, bossCombo: 0.5, stunGuard: 1.4, heartChance: 0.55, catchUp: 0.8 },
 };
 
 export function normalizeDifficulty(level) {
@@ -24,8 +24,8 @@ export function normalizeDifficulty(level) {
 
 // 스테이지가 하나 넘어갈 때마다 조금씩 어려워지는 양 (스테이지 1 은 그대로, 10 이면 9번 쌓임, 20 이면 13.5번)
 export const STAGE_RAMP = {
-  monsterHealth: 0.12, // 몬스터 체력 +12%
-  monsterDamage: 0.1, // 몬스터 피해 +10%
+  monsterHealth: 0.1, // 몬스터 체력 +10%
+  monsterDamage: 0.07, // 몬스터 피해 +7%
   monsterSpeed: 0.015, // 몬스터 빠르기 +1.5%
   monsterWindup: -0.015, // 공격 준비 시간 -1.5%
   bossHealth: 0.05, // 보스 체력 +5%
@@ -38,7 +38,7 @@ export const STAGE_RAMP = {
 export const STAGE_LEVELS = [1, 4, 6, 8, 9, 10, 10, 11, 12, 12, 12, 13, 13, 14, 14, 14, 14, 15, 15, 15];
 
 // 레벨이 하나 앞설 때마다 늘어나는 양 (catchUp 을 곱해서 쓴다). maxLevels 까지만 쌓인다.
-export const LEVEL_CATCHUP = { monsterHealth: 0.1, monsterDamage: 0.06, bossHealth: 0.06, bossDamage: 0.04, maxLevels: 15 };
+export const LEVEL_CATCHUP = { monsterHealth: 0.08, monsterDamage: 0.04, bossHealth: 0.06, bossDamage: 0.04, maxLevels: 15 };
 
 // 내 레벨이 스테이지 예상 레벨보다 몇 앞서 있는지 (뒤처져 있으면 0)
 export function levelsAhead(level, stageNum = 1) {

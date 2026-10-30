@@ -19,7 +19,7 @@ export const FROS_MAX_Y = 340;
 export const FROS_DEFAULT_Y = 290;
 
 // 난이도가 없으면 보통
-export const NORMAL_DIFFICULTY = { level: 'normal', monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, stunGuard: 1 };
+export const NORMAL_DIFFICULTY = { level: 'normal', monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, stunGuard: 0.8 };
 
 // 난이도 배수를 곱한다. 체력(monsterHealth), 피해(monsterDamage), 속도(monsterSpeed), 공격 준비와 경고와 공격 간격(monsterWindup)
 const DAMAGE_KEYS = ['damage', 'venomDamage', 'cloudDamage', 'spitDamage'];

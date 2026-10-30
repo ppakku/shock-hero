@@ -52,23 +52,26 @@ describe('보물 자리 무작위', () => {
 describe('스테이지마다 조금씩 어려워짐', () => {
   it('스테이지 1 은 원래 난이도 그대로', () => {
     const d = withDifficulty({}, 'normal', 1).difficulty;
-    expect(d).toEqual({ level: 'normal', monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossSpeed: 1, bossCombo: 0.15 });
+    expect(d).toMatchObject({ level: 'normal', monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 0.8 });
   });
 
   it('스테이지가 오를수록 몬스터와 보스가 서서히 세진다', () => {
     for (let n = 2; n <= stages.length; n++) {
       const a = withDifficulty({}, 'normal', n - 1).difficulty;
       const b = withDifficulty({}, 'normal', n).difficulty;
+      expect(b.monsterHealth).toBeGreaterThan(a.monsterHealth);
       expect(b.monsterDamage).toBeGreaterThan(a.monsterDamage);
+      expect(b.bossDamage).toBeGreaterThan(a.bossDamage);
       expect(b.monsterSpeed).toBeGreaterThan(a.monsterSpeed);
       expect(b.monsterWindup).toBeLessThan(a.monsterWindup);
       expect(b.bossHealth).toBeGreaterThan(a.bossHealth);
       expect(b.bossSpeed).toBeLessThan(a.bossSpeed);
       expect(b.bossCombo).toBeGreaterThan(a.bossCombo);
     }
-    // 서서히: 한 스테이지에 5% 넘게 뛰지 않는다
+    // 서서히: 빠르기와 보스는 한 스테이지에 5%, 몬스터 체력과 피해는 12% 넘게 뛰지 않는다
     const r = stageRamp(2);
-    for (const k of ['monsterDamage', 'monsterSpeed', 'monsterWindup', 'bossHealth', 'bossSpeed']) expect(Math.abs(r[k] - 1)).toBeLessThanOrEqual(0.05);
+    for (const k of ['monsterSpeed', 'monsterWindup', 'bossHealth', 'bossDamage', 'bossSpeed']) expect(Math.abs(r[k] - 1)).toBeLessThanOrEqual(0.05 + 1e-9);
+    for (const k of ['monsterHealth', 'monsterDamage']) expect(r[k] - 1).toBeLessThanOrEqual(0.12 + 1e-9);
   });
 
   it('어려움 10 스테이지도 겹쳐 쓰기 확률은 1 을 넘지 않는다', () => {

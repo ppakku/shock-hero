@@ -16,8 +16,8 @@ describe('몬스터 세기', () => {
   it('뒤 스테이지일수록 펀치를 더 많이 때려야 한다', () => {
     expect(punches('normal', 1)).toBe(4);
     expect(punches('normal', 10)).toBeGreaterThanOrEqual(6);
-    expect(punches('normal', 20)).toBeGreaterThanOrEqual(7);
-    expect(punches('hard', 20)).toBeGreaterThanOrEqual(9);
+    expect(punches('normal', 20)).toBeGreaterThanOrEqual(6);
+    expect(punches('hard', 20)).toBeGreaterThanOrEqual(8);
   });
 
   it('난이도에 따라 체력이 다르다', () => {
@@ -40,10 +40,10 @@ describe('레벨 맞춤', () => {
     expect(levelsAhead(undefined, 3)).toBe(0);
   });
 
-  it('어려움은 다 따라오고, 보통은 절반, 쉬움은 안 따라온다', () => {
+  it('어려움이 가장 많이, 보통은 절반, 쉬움은 안 따라온다', () => {
     const grow = (d) => green(d, 1, 11).maxHealth / green(d, 1).maxHealth;
-    expect(grow('hard')).toBeCloseTo(2, 1);
-    expect(grow('normal')).toBeCloseTo(1.5, 1);
+    expect(grow('hard')).toBeCloseTo(1.64, 1);
+    expect(grow('normal')).toBeCloseTo(1.32, 1);
     expect(grow('easy')).toBe(1);
   });
 
@@ -72,9 +72,9 @@ describe('보스 세기', () => {
 
 describe('비틀거리기', () => {
   it('한 번 비틀거린 뒤 정해진 시간 동안은 버틴다', () => {
-    expect(canStagger(-Infinity, 0, 1.6)).toBe(true);
-    expect(canStagger(1, 2, 1.6)).toBe(false);
-    expect(canStagger(1, 2.6, 1.6)).toBe(true);
+    expect(canStagger(-Infinity, 0, 1.4)).toBe(true);
+    expect(canStagger(1, 2, 1.4)).toBe(false);
+    expect(canStagger(1, 2.4, 1.4)).toBe(true);
   });
 
   it('쉬움은 언제나 비틀거린다', () => {
