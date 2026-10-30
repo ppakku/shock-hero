@@ -8,7 +8,7 @@ import { HELD_KEYS, TAP_KEYS } from '../logic/room.js';
 import { applyGuestReward } from '../logic/coopRewards.js';
 import { cfg } from '../config/index.js';
 import { getStage, stages } from '../stage/index.js';
-import { isTouchDevice, touchPad, touchPoints, TOUCH_BUTTONS, drawTouchButtons } from '../ui/touch.js';
+import { isTouchDevice, touchPad, touchPoints, TOUCH_BUTTONS, drawTouchButtons, labelFontSize } from '../ui/touch.js';
 import { makeText } from '../ui/text.js';
 
 const KEY = Phaser.Input.Keyboard.KeyCodes;
@@ -60,7 +60,7 @@ export class GuestScene extends Phaser.Scene {
       const hero = normalizeHero(save.settings.hero);
       this.padLabels = TOUCH_BUTTONS.map((b) => {
         const label = b.id === 'attack' ? attackButtonLabel(hero) : b.label;
-        return makeText(this, b.x, b.y, label, label.length > 1 ? Math.max(14, Math.round(b.r * 0.46)) : Math.round(b.r * 0.6), '#ffffff')
+        return makeText(this, b.x, b.y, label, labelFontSize(b, label), '#ffffff')
           .setOrigin(0.5)
           .setDepth(41);
       });

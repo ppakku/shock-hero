@@ -194,3 +194,80 @@ export function drawTouchButtons(g, labels, pad, ultReady = false) {
   }
   g.fillStyle(0xffffff, 0.45).fillCircle(st.ax + dx, st.ay + dy, 26);
 }
+
+// 버튼 글자 크기 (HUD 와 친구 화면이 같은 값을 쓴다). 두 글자 넘는 말은 버튼 안에 들어가게 조금 작게.
+export function labelFontSize(b, label) {
+  return label.length > 1 ? Math.max(14, Math.round(b.r * 0.46)) : Math.round(b.r * 0.6);
+}
+
+// ── 방장 화면 버튼: 게임 캔버스가 아니라 그 위의 HTML 층에 그린다 ──
+// 함께하기는 게임 캔버스를 그대로 영상으로 친구에게 보낸다(src/net/coop.js). 캔버스에 그린 버튼은 그 영상에 같이
+// 실려서, 친구가 자기 버튼을 또 그리면 두 벌이 겹쳐 보였다(방장이 태블릿이고 친구가 휴대폰이면 자리가 달라 어긋난다).
+// HTML 층(2D canvas)은 영상에 안 담기므로 방장 HUD 는 아래 함수로 그린다. 모양과 흐림 정도는 위 drawTouchButtons 와 같다.
+// ctx: 2D 그리기 문맥(960 x 540 좌표), labels: 버튼 글자 (TOUCH_BUTTONS 순서), pad: 지금 상태의 TouchPad
+// opts.font: 글꼴, opts.textSize: 글자 크기 보정(휴대폰은 키운다), opts.ultReady: 궁극기 준비됨
+const rgba = (r, g, b, a) => `rgba(${r},${g},${b},${a})`;
+function circle2D(ctx, x, y, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
+  }
+}
+
+export function drawTouchButtons2D(ctx, labels, pad, { ultReady = false, font = 'sans-serif', textSize = (n) => n } = {}) {
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  TOUCH_BUTTONS.forEach((b, i) => {
+    const down = !!pad.down[b.id];
+    const glow = b.id === 'ult' && ultReady;
+    const fill = down ? rgba(255, 255, 255, 0.35) : glow ? rgba(63, 208, 255, 0.3) : rgba(0, 0, 0, 0.14);
+    const stroke = glow ? rgba(159, 232, 255, down ? 0.8 : 0.6) : rgba(255, 255, 255, down ? 0.8 : 0.32);
+    circle2D(ctx, b.x, b.y, b.r, fill, stroke);
+    // 글자: makeText 와 같은 검은 테두리 + 흰 글자, 누르는 동안만 또렷하게
+    const label = labels[i] ?? b.label;
+    const size = textSize(labelFontSize(b, label));
+    ctx.font = `${size}px ${font}`;
+    ctx.globalAlpha = down ? 0.95 : glow ? 0.8 : 0.5;
+    ctx.lineWidth = Math.max(2, Math.round(size / 6));
+    ctx.strokeStyle = '#000000';
+    ctx.strokeText(label, b.x, b.y);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, b.x, b.y);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 3;
+  });
+  const st = pad.stick;
+  const r = STICK.radius;
+  if (!st) {
+    const h = STICK.hint;
+    circle2D(ctx, h.x, h.y, r + 12, rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.22));
+    circle2D(ctx, h.x, h.y, 24, rgba(255, 255, 255, 0.18));
+    return;
+  }
+  circle2D(ctx, st.ax, st.ay, r + 12, rgba(0, 0, 0, 0.16), rgba(255, 255, 255, 0.4));
+  let dx = st.x - st.ax;
+  let dy = st.y - st.ay;
+  const d = Math.hypot(dx, dy);
+  if (d > r) {
+    dx = (dx / d) * r;
+    dy = (dy / d) * r;
+  }
+  circle2D(ctx, st.ax + dx, st.ay + dy, 26, rgba(255, 255, 255, 0.45));
+}
+
+// 일시정지 버튼 (II) 도 같은 HTML 층에. 누르는 자리는 HUD 가 투명한 HTML 요소로 겹쳐 둔다.
+export function drawPauseButton2D(ctx, pb = PAUSE_BUTTON) {
+  ctx.lineWidth = 3;
+  circle2D(ctx, pb.x, pb.y, pb.r, rgba(0, 0, 0, 0.45), rgba(255, 255, 255, 0.7));
+  ctx.fillStyle = rgba(255, 255, 255, 0.9);
+  ctx.fillRect(pb.x - 7, pb.y - 8, 5, 16);
+  ctx.fillRect(pb.x + 2, pb.y - 8, 5, 16);
+}
