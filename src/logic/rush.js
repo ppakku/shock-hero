@@ -14,7 +14,7 @@ export const PLAYERS = ['쿨쿨대장', '불꼬리', '꿀곰이', '말랑베개'
 // 처음 올렸을 때 쓰던 이름으로 남은 기록은 별명으로 바꿔 읽는다
 const OLD_NAMES = { 아빠: '쿨쿨대장', 엄마: '불꼬리', 형: '꿀곰이', 동생: '말랑베개', 친구: '꼬르륵' };
 const renamed = (name) => OLD_NAMES[name] || name;
-const COURSE_NAMES = ['처음 만난 보스들', '더 세진 보스들', '돌아온 보스들', '마지막 보스들'];
+const COURSE_NAMES = ['처음 만난 보스들', '더 세진 보스들', '돌아온 보스들', '괴물 대왕의 보스들', '폭풍의 보스들', '폭풍 군주의 보스들', '그림자 보스들', '마왕과 마지막 보스들'];
 
 // 스테이지 다섯 개씩 한 코스. [{ id, name, stages: [1..5] }]
 export function rushCourses(stageCount) {
@@ -63,7 +63,7 @@ function sortRecords(list) {
 
 // 코스를 끝까지 깼을 때. entry = { name, hero, time, duo, at }
 // 돌려줌: { patch: { rush, gems? }, rank (1부터, 기록표에 못 들면 null), gems, firstClear, best }
-export function finishRush(save, courseId, entry, gemCfg, courseCount = 4) {
+export function finishRush(save, courseId, entry, gemCfg, courseCount = 8) {
   const rush = normalizeRush(save.rush, courseCount);
   const prev = rush.records[courseId] || [];
   const all = sortRecords([...prev, entry]);

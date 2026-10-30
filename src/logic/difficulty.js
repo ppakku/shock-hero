@@ -22,7 +22,7 @@ export function normalizeDifficulty(level) {
   return DIFFICULTIES.includes(level) ? level : 'normal';
 }
 
-// 스테이지가 하나 넘어갈 때마다 조금씩 어려워지는 양 (스테이지 1 은 그대로, 10 이면 9번 쌓임, 20 이면 13.5번)
+// 스테이지가 하나 넘어갈 때마다 조금씩 어려워지는 양 (스테이지 1 은 그대로, 10 이면 9번, 20 이면 14번, 40 이면 19번 쌓임)
 export const STAGE_RAMP = {
   monsterHealth: 0.1, // 몬스터 체력 +10%
   monsterDamage: 0.07, // 몬스터 피해 +7%
@@ -35,7 +35,10 @@ export const STAGE_RAMP = {
 };
 
 // 처음부터 차례로 깼을 때 스테이지마다 예상되는 레벨. 이보다 높으면 "레벨이 앞선" 만큼 몬스터가 따라온다.
-export const STAGE_LEVELS = [1, 4, 6, 8, 9, 10, 10, 11, 12, 12, 12, 13, 13, 14, 14, 14, 14, 15, 15, 15];
+export const STAGE_LEVELS = [
+  1, 4, 6, 8, 9, 10, 10, 11, 12, 12, 12, 13, 13, 14, 14, 14, 14, 15, 15, 15,
+  15, 15, 16, 16, 16, 16, 16, 16, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18,
+];
 
 // 레벨이 하나 앞설 때마다 늘어나는 양 (catchUp 을 곱해서 쓴다). maxLevels 까지만 쌓인다.
 export const LEVEL_CATCHUP = { monsterHealth: 0.08, monsterDamage: 0.04, bossHealth: 0.06, bossDamage: 0.04, maxLevels: 15 };
@@ -48,10 +51,10 @@ export function levelsAhead(level, stageNum = 1) {
 }
 
 // 스테이지 번호에 맞춘 배수. 난이도(쉬움, 보통, 어려움) 값에 곱한다(겹쳐 쓰기는 더한다).
-// 스테이지 11 부터(2장)는 반씩만 쌓인다. 너무 가파르지 않게.
+// 스테이지 11 부터(2장)는 반씩, 스테이지 21 부터(3장, 4장)는 4분의 1씩만 쌓인다. 공격력 카드가 다 차서 주인공은 더 안 세지므로 너무 가파르지 않게.
 export function stageRamp(stageNum = 1) {
   const raw = Math.max(0, (Number.isFinite(stageNum) ? Math.floor(stageNum) : 1) - 1);
-  const n = Math.min(raw, 9) + Math.max(0, raw - 9) * 0.5;
+  const n = Math.min(raw, 9) + Math.max(0, Math.min(raw, 19) - 9) * 0.5 + Math.max(0, raw - 19) * 0.25;
   const out = {};
   for (const [k, step] of Object.entries(STAGE_RAMP)) out[k] = k === 'bossCombo' ? step * n : 1 + step * n;
   return out;

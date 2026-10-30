@@ -9,7 +9,7 @@ import { emptyWorkshop, normalizeWorkshop } from './workshop.js';
 import { emptyDaily, normalizeDaily } from './daily.js';
 
 const KEY = 'shock-hero-save-v1';
-export const STAGE_COUNT = 20; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
+export const STAGE_COUNT = 40; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
 
 export function defaultSave() {
   return {
@@ -61,6 +61,9 @@ function normalize(data) {
     d.bestTimes[1] = data.bestTime;
     d.unlocked = Math.max(d.unlocked, 2);
   }
+  // 깬 스테이지의 다음 스테이지는 언제나 열려 있다. 스테이지가 늘기 전에 끝까지 깬 저장은 unlocked 가 옛날 마지막 번호에 멈춰 있어서 여기서 다음 장을 연다
+  const topCleared = Math.max(0, ...Object.keys(d.bestTimes).map(Number));
+  d.unlocked = Math.min(STAGE_COUNT, Math.max(d.unlocked, topCleared + 1));
   if (validStage(data.lastStage)) d.lastStage = data.lastStage;
   if (Array.isArray(data.flawless)) d.flawless = [...new Set(data.flawless.filter(validStage))];
   if (Number.isInteger(data.gems) && data.gems >= 0) d.gems = data.gems;
