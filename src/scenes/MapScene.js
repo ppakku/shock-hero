@@ -226,12 +226,12 @@ export class MapScene extends Phaser.Scene {
     return this.textures.exists(key) ? key : 'player';
   }
 
-  // 오른쪽 위: 주인공 카드 3장. 누르면 그 주인공으로 바뀐다.
+  // 오른쪽 위: 주인공 카드. 누르면 그 주인공으로 바뀐다. 주인공이 늘면 왼쪽으로 늘어선다.
   drawHeroPicker() {
-    const xs = [796, 858, 920];
-    makeText(this, 858, 52, this.touch ? '주인공 고르기' : '주인공 고르기 (H)', 13, '#ffffff').setOrigin(0.5).setDepth(40);
+    const xOf = (i) => 920 - (HERO_IDS.length - 1 - i) * 53;
+    makeText(this, xOf((HERO_IDS.length - 1) / 2), 52, this.touch ? '주인공 고르기' : '주인공 고르기 (H)', 13, '#ffffff').setOrigin(0.5).setDepth(40);
     this.heroCards = HERO_IDS.map((id, i) => {
-      const c = this.add.container(xs[i], 98).setDepth(40);
+      const c = this.add.container(xOf(i), 98).setDepth(40);
       const bg = this.add.graphics();
       bg.fillStyle(0x0c0e14, 0.85).fillRoundedRect(-28, -32, 56, 64, 10);
       const ring = this.add.graphics();
@@ -251,7 +251,7 @@ export class MapScene extends Phaser.Scene {
       const on = card.id === this.hero;
       card.ring.clear();
       card.ring.lineStyle(on ? 4 : 2, on ? Phaser.Display.Color.HexStringToColor(HERO_INFO[card.id].color).color : 0x555a66, 1).strokeRoundedRect(-28, -32, 56, 64, 10);
-      card.c.setScale(on ? 1.08 : 0.92).setAlpha(on ? 1 : 0.75);
+      card.c.setScale(on ? 1.02 : 0.84).setAlpha(on ? 1 : 0.75).setDepth(on ? 41 : 40); // 고른 카드가 옆 카드 위로
     }
     this.heroName.setText(`${info.name}: ${info.short}`).setColor(info.color);
   }

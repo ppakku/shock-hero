@@ -10,10 +10,12 @@ import { isTouchDevice } from '../ui/touch.js';
 import { makeText } from '../ui/text.js';
 
 const KEY = Phaser.Input.Keyboard.KeyCodes;
-const CARD_XS = [190, 480, 770];
-const CARD_Y = 260;
-const CARD_W = 250;
-const CARD_H = 270;
+// 주인공 수만큼 960 너비에 나란히 놓는다 (카드 5장이면 양쪽 여백 29)
+const CARD_W = 174;
+const CARD_GAP = 8;
+const CARD_XS = HERO_IDS.map((_, i) => 480 + (i - (HERO_IDS.length - 1) / 2) * (CARD_W + CARD_GAP));
+const CARD_Y = 232;
+const CARD_H = 250;
 const SIDE_COLORS = [0x7af0ff, 0xffd23f];
 
 // 겨루기 주인공 고르기. 방장 기기에서 돌고, 친구는 영상으로 같은 화면을 보며 자기 키로 고른다.
@@ -66,9 +68,9 @@ export class VersusPickScene extends Phaser.Scene {
     const key = `${HERO_LOOKS[id].prefix}_idle0`;
     const custom = id === 'shock' && this.registry.get('heroCustomArt');
     const img = this.add.image(0, 20, custom || !this.textures.exists(key) ? 'player' : key).setOrigin(0.5, 1);
-    if (img.height) img.setScale(130 / img.height);
-    const name = makeText(this, 0, 46, info.name, 24, info.color, { strokeThickness: 5 }).setOrigin(0.5);
-    const short = makeText(this, 0, 84, info.short, 15, '#dddddd').setOrigin(0.5);
+    if (img.height) img.setScale(120 / img.height);
+    const name = makeText(this, 0, 44, info.name, 22, info.color, { strokeThickness: 5 }).setOrigin(0.5);
+    const short = makeText(this, 0, 86, info.short, 14, '#dddddd', { wordWrap: { width: CARD_W - 18 } }).setOrigin(0.5);
     const ring = this.add.graphics();
     const tags = [0, 1].map((side) => makeText(this, side ? 62 : -62, -CARD_H / 2 + 22, sideName(side), 20, side ? '#ffd23f' : '#7af0ff').setOrigin(0.5));
     c.add([bg, img, name, short, ring, ...tags]);
