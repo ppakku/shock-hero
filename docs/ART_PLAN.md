@@ -29,7 +29,13 @@
 - [x] 2-1 파쇄자의 쇠팔과 주먹 (`shredder_arm.png`, `shredder_fist.png`, `tools/make_shredder_arm.py` 로 한 장에서 두 장 만듦)
 - [x] 2-2 혹한의 아스트라 날갯짓 8장 (`frost_astra.png`, 머리가 오른쪽이라 `faces: 'right'`)
 - [x] 2-3 킹 돌연변이 앉은 모습 8장, 일어선 모습 8장, 왕좌, 팔과 주먹 (`king_seated.png`, `king_stand.png`, `king_throne.png`, `king_arm.png`, `king_fist.png`, Gemini 웹, 그림이 오른쪽을 봄)
-- [ ] 2-4 수중 보스 (아들 디자인 기다리는 중)
+- [x] 2-4 심해 아귀왕 몸통, 아래턱, 초롱불, 심장, 거품 폭탄 (`boss_sea_*.png`, Gemini 웹, 왼쪽을 봄)
+- [x] 2-5 혹한의 아스트라 얼음 심장, 고드름, 얼음 가시 (`ice_heart.png`, `ice_icicle.png`, `frost_spike.png`)
+- [x] 2-6 포레스트 와처 독혹, 독 점액, 긴 팔, 손, 덩굴 (`watcher_blister.png`, `slime_glob.png`, `watcher_arm.png`, `watcher_claw.png`, `watcher_vine.png`)
+- [x] 2-7 아스트라노바X 꼬리 휘두르기 (`dragon_tail.png`, `dragon_tailtip.png`)
+- [x] 2-8 돌과 독침 (`rock.png`, `glob.png`). 팔 보스, 킹, 아귀왕이 같이 씀
+- [x] 2-9 공격 효과 (`fx_shockwave`, `fx_rocket_trail`, `fx_whirl`, `fx_portal`, `fx_frost_cone`, `fx_frost_wall`, `fx_sand_wave`, `fx_star`, `fx_puddle_poison`, `fx_puddle_fire`). `src/fx/bossArt.js` 의 stamp() 로 그린다. 그림을 못 받으면 원래 도형이 나온다
+- [ ] 2-10 엎드린 와처, 날개 늘어뜨린 용, 먹물 구름 (`watcher_flat_2`, `dragon_tired_3`, `fx_ink`, 코드는 준비됨, art.js 주석을 풀고 파일만 넣으면 됨. 지금은 시트를 눌러서, 먹물은 도형으로 보여 준다)
 
 ### 3. 일반 몬스터 (각각 4x2 걷기나 떠다니기 8장)
 - [x] 초록 몬스터, 빨강 날쌘돌이, 파랑 뚱보, 보라 뜀뛰기 (`monster_green/red/blue/purple.png`, Gemini 웹, `tools/make_sheet.py`)

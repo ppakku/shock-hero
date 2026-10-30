@@ -432,7 +432,7 @@ export class WatcherBoss extends BossBase {
     const drawArm = (y) => {
       const elbow = { x: (sh.x + a.tipX) / 2, y: Math.min(sh.y, y) - 30 };
       const tip = { x: a.tipX, y };
-      if (stampLimb(this.scene, 'watcher_arm_2', sh, elbow, ARM_T + 10) && stampLimb(this.scene, 'watcher_arm_2', elbow, tip, ARM_T + 6)) {
+      if (stampLimb(this.scene, 'watcher_arm_2', sh, elbow, ARM_T + 10) && stampLimb(this.scene, 'watcher_arm_2', elbow, tip, ARM_T + 6, { overlap: 12 })) {
         const turn = Math.atan2(y - elbow.y, a.tipX - elbow.x) + Math.PI;
         stamp(this.scene, 'watcher_claw_2', a.tipX, y, 74, 54, { rotation: turn, flipY: a.tipX > elbow.x });
         return;

@@ -4,7 +4,7 @@ import { stamp } from '../fx/bossArt.js';
 // 빨아들이기 소용돌이: 입 쪽으로 빨려 들어가는 선들.
 // dir = -1 이면 왼쪽에서, 1 이면 오른쪽에서 끌어온다. strength 0~1.
 export function drawSwirl(g, mx, my, t, strength, dir = -1) {
-  stamp(g.scene, 'fx_whirl', mx, my, 190, 190, { rotation: t * 4 * dir, alpha: strength });
+  stamp(g.scene, 'fx_whirl', mx, my, 150, 150, { rotation: t * 4 * dir, alpha: strength * 0.7 });
   const n = 16;
   for (let i = 0; i < n; i++) {
     const ph = (t * 1.3 + i * 0.37) % 1;

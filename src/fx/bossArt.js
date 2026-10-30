@@ -78,11 +78,15 @@ export function stamp(scene, key, x, y, w, h, o = {}) {
 }
 
 // 두 점 사이를 잇는 그림 (팔, 꼬리). 그림은 가로로 길고 왼쪽 끝이 바깥쪽(from 이 안쪽, to 가 바깥쪽)
+// o.overlap: 앞 토막과 겹치게 from 쪽으로 더 늘릴 길이 (꺾이는 곳에 틈이 안 보이게)
 export function stampLimb(scene, key, from, to, thick, o = {}) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const rotation = Math.atan2(dy, dx) + Math.PI;
-  return stamp(scene, key, (from.x + to.x) / 2, (from.y + to.y) / 2, Math.hypot(dx, dy), thick, { ...o, rotation, flipY: dx > 0 });
+  const len = Math.hypot(dx, dy) || 1;
+  const back = o.overlap || 0;
+  const cx = (from.x + to.x) / 2 - ((dx / len) * back) / 2;
+  const cy = (from.y + to.y) / 2 - ((dy / len) * back) / 2;
+  return stamp(scene, key, cx, cy, len + back, thick, { ...o, rotation: Math.atan2(dy, dx) + Math.PI, flipY: dx > 0 });
 }
 
 // 땅을 달리는 충격파 한 개. 그림이 공격 높이(h)만큼 솟게 칸 크기를 맞춘다
