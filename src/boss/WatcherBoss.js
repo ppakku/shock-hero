@@ -4,6 +4,7 @@ import { BossPart, Puddles, Rect, intersects, damagePart, warnBox } from './boss
 import { chooseWatcherAttack, popUpX, spreadTargets, crawlPlan } from '../logic/watcher.js';
 import { coreDamage } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
+import { nextTiredAfter, varyCount } from '../logic/bossVariety.js';
 import { floatText } from '../fx/effects.js';
 import { make } from '../fx/textures.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
@@ -88,6 +89,7 @@ export class WatcherBoss extends BossBase {
     this.action = null;
     this.side = null;
     this.combo = 0;
+    this.tiredRoll = nextTiredAfter(this.k.comboLength, this.variety, Math.random, 1); // 이번에 지치기까지 공격 수
     this.introSaid = false;
   }
 
@@ -294,7 +296,7 @@ export class WatcherBoss extends BossBase {
       this.timer -= dt;
       this.facePlayer();
       if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
-    } else {
+    } else if (!this.checkFeint()) {
       const a = this.action;
       a.t += dt;
       if (a.type === 'claw') this.runClaw(dt);
@@ -349,7 +351,7 @@ export class WatcherBoss extends BossBase {
 
   startAction() {
     const k = this.k;
-    if (this.combo >= Math.max(1, Math.round(k.comboLength))) {
+    if (this.combo >= this.tiredRoll) {
       this.startTired();
       return;
     }
@@ -357,6 +359,7 @@ export class WatcherBoss extends BossBase {
     this.lastType = type;
     this.combo += 1;
     const a = { type, phase: 'aim', t: 0 };
+    this.prepareAttack(a, { claw: k.clawWarningTime, spit: k.spitWarningTime });
     if (type === 'claw') {
       this.facePlayer();
       const wall = this.facing < 0 ? this.arenaStart + 10 : this.arenaEnd - 10;
@@ -368,10 +371,10 @@ export class WatcherBoss extends BossBase {
       a.phase = 'sink';
     } else if (type === 'spit') {
       this.facePlayer();
-      a.count = Math.max(1, Math.round(k.spitCount + (this.raging ? 1 : 0)));
+      a.count = varyCount(Math.max(1, Math.round(k.spitCount + (this.raging ? 1 : 0))), this.variety);
       a.fired = 0;
     } else if (type === 'vines') {
-      this.addVines(Math.max(1, Math.round(k.vineCount + (this.raging ? 1 : 0))));
+      this.addVines(varyCount(Math.max(1, Math.round(k.vineCount + (this.raging ? 1 : 0))), this.variety));
     } else if (type === 'crawl') {
       a.plan = crawlPlan(this.x, this.arenaStart + 20, this.arenaEnd - 20);
       a.phase = 'run';
@@ -387,13 +390,22 @@ export class WatcherBoss extends BossBase {
     }
   }
 
+  // 속임 동작: 공격 횟수로 세지 않는다
+  onFeintCancel() {
+    this.combo -= 1;
+    this.squash = 1;
+    this.air = 0;
+    this.angle = 0;
+    this.alpha = 1;
+  }
+
   endAction(idle = this.k.idleTime) {
     this.action = null;
     this.squash = 1;
     this.air = 0;
     this.angle = 0;
     this.alpha = 1;
-    this.timer = idle * this.speed;
+    this.timer = this.restTime(idle) * this.speed;
   }
 
   // ---------- 긴 팔 할퀴기 (땅에 박히면 때릴 기회) ----------
@@ -413,7 +425,7 @@ export class WatcherBoss extends BossBase {
       for (const off of [-12, 0, 12]) this.armG.lineBetween(a.tipX, y, a.tipX + dir * 26, y + off);
     };
     if (a.phase === 'aim') {
-      const dur = k.clawWarningTime * m;
+      const dur = k.clawWarningTime * m * a.late;
       a.tipX = sh.x - dir * 30 * Math.min(1, a.t / dur); // 팔을 뒤로 당긴다
       drawArm(sh.y + 10);
       const x0 = Math.min(sh.x, fullTip);
@@ -492,7 +504,7 @@ export class WatcherBoss extends BossBase {
       return;
     }
     if (a.phase === 'hidden') {
-      const dur = k.burrowWarningTime * m;
+      const dur = k.burrowWarningTime * m * a.late;
       const q = Math.min(1, a.t / dur);
       // 갈라지는 땅 (초록 빛) + 빨간 경고 칸
       this.shadowG.fillStyle(0x2a5a10, 0.4 + 0.4 * q).fillEllipse(a.tx, this.groundY, 80 + 120 * q, 18);
@@ -734,6 +746,7 @@ export class WatcherBoss extends BossBase {
 
   startTired(extra = 0) {
     this.combo = 0;
+    this.tiredRoll = nextTiredAfter(this.k.comboLength, this.variety, Math.random, 1);
     this.side = null;
     this.puddles.clear(); // 지치면 독 웅덩이가 마른다 (때리러 가기 편하게)
     this.action = { type: 'tired', t: 0, dur: this.k.tiredTime + extra };

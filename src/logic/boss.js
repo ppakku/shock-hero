@@ -157,14 +157,14 @@ export function breathCone(x, dir, near, len) {
 
 // 빙천지락 얼음 가시 자리: gap 간격 줄을 번갈아 두 묶음으로 나눈다.
 // 첫 묶음이 솟을 때는 둘째 묶음 자리가 안전하고, 그 반대도 마찬가지.
-// waves 가 3 이면 첫 묶음이 한 번 더 솟는다 (분노).
-export function avalancheWaves(minX, maxX, gap, offset = 0, waves = 2) {
+// waves 가 3 이면 첫 묶음이 한 번 더 솟는다 (분노). swap 이면 둘째 묶음부터 솟는다.
+export function avalancheWaves(minX, maxX, gap, offset = 0, waves = 2, swap = false) {
   const xs = [];
   for (let x = minX + (offset % gap); x <= maxX; x += gap) xs.push(Math.round(x));
   const a = xs.filter((_, i) => i % 2 === 0);
   const b = xs.filter((_, i) => i % 2 === 1);
   const out = [];
-  for (let i = 0; i < waves; i++) out.push(i % 2 === 0 ? a : b);
+  for (let i = 0; i < waves; i++) out.push(i % 2 === (swap ? 1 : 0) ? a : b);
   return out;
 }
 

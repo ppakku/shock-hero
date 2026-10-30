@@ -4,6 +4,7 @@ import { Health } from '../logic/health.js';
 import {
   coreDamage, rockTargets, pickPattern, shouldRage, restAfterAttack, landingX, difficultyOf, breathCone, avalancheWaves, FROST,
 } from '../logic/boss.js';
+import { nextTiredAfter, varyCount } from '../logic/bossVariety.js';
 import { ComboHazards } from './comboHazards.js';
 import { drawIceShard, drawFrostCone } from './bossFx.js';
 import { flash, floatText } from '../fx/effects.js';
@@ -73,6 +74,7 @@ export class FrostAstraBoss extends BossBase {
     this.mode = 'fly'; // 'fly' 날기, 'rest' 지쳐서 쉬기, 'grounded' 날개가 부서져 땅에 있음
     this.action = null;
     this.attacks = 0; // 쉬고 나서 한 공격 수
+    this.tiredRoll = nextTiredAfter(this.ic.tiredAfter, this.variety, Math.random, 1); // 이번에 지치기까지 공격 수
     this.chained = false;
     this.flap = 0;
     this.flapSound = 0;
@@ -544,7 +546,7 @@ export class FrostAstraBoss extends BossBase {
   // 다음 공격 고르기
   startAction(forceType = null) {
     let type = forceType;
-    const tiredAfter = Math.max(2, Math.round(this.ic.tiredAfter) - (2 - this.wingsAlive.length));
+    const tiredAfter = Math.max(2, this.tiredRoll - (2 - this.wingsAlive.length));
     if (!type) {
       if (this.mode === 'fly' && this.attacks >= tiredAfter) type = 'land';
       else {
@@ -559,9 +561,10 @@ export class FrostAstraBoss extends BossBase {
     this.lastType = type;
     const p = this.target;
     const a = { type, phase: 'aim', t: 0 };
+    this.prepareAttack(a, { freezeBreath: this.ic.breathWarningTime, dive: this.ic.diveWarningTime }, !forceType);
     const mid = (this.minX + this.maxX) / 2;
     if (type === 'icicles') {
-      const n = Math.max(1, Math.round(this.ic.icicleCount + (this.mode === 'grounded' ? 1 : 0)));
+      const n = varyCount(Math.max(1, Math.round(this.ic.icicleCount + (this.mode === 'grounded' ? 1 : 0))), this.variety, Math.random, 2);
       a.targets = rockTargets(p.x, n, this.minX - 20, this.maxX + 20);
       a.phase = this.mode === 'fly' ? 'rise' : 'aim';
     } else if (type === 'dive') {
@@ -588,7 +591,7 @@ export class FrostAstraBoss extends BossBase {
     } else if (type === 'avalanche') {
       const waves = this.raging ? 3 : 2;
       const gap = this.ic.avalancheGap;
-      a.waves = avalancheWaves(this.minX - 40, this.maxX + 40, gap, Math.random() * gap, waves);
+      a.waves = avalancheWaves(this.minX - 40, this.maxX + 40, gap, Math.random() * gap, waves, Math.random() < this.variety.shape / 2);
       a.wave = 0;
       a.phase = 'rise';
       a.hitWave = [];
@@ -621,18 +624,20 @@ export class FrostAstraBoss extends BossBase {
     this.fxG.clear();
     if (a && a.type === 'land') {
       this.attacks = 0;
+      this.tiredRoll = nextTiredAfter(this.ic.tiredAfter, this.variety, Math.random, 1);
       this.timer = 0.6;
       this.chained = false;
       return;
     }
     this.attacks += 1;
-    const idle = (this.mode === 'grounded' ? 1.1 : this.ic.idleTime) * this.speed;
+    const idle = this.restTime(this.mode === 'grounded' ? 1.1 : this.ic.idleTime) * this.speed;
     const rest = restAfterAttack(this.raging, this.chained, idle, this.c.rageChainGap);
     this.timer = rest.wait;
     this.chained = rest.chained;
   }
 
   runAction(dt) {
+    if (this.checkFeint()) return;
     const a = this.action;
     a.t += dt;
     if (a.type === 'icicles') this.runIcicles(dt);
@@ -718,7 +723,7 @@ export class FrostAstraBoss extends BossBase {
       // 출발점으로 날아가며 경고
       const there = this.moveTo(a.startX, HIGH_Y, dt, this.ic.flySpeed * 1.5);
       this.faceTo(a.endX);
-      const dur = this.ic.diveWarningTime * this.speed;
+      const dur = this.ic.diveWarningTime * this.speed * a.late;
       if (there) a.ready = true;
       this.drawDiveWarning(a);
       if (a.ready && a.t >= dur) {
@@ -799,7 +804,7 @@ export class FrostAstraBoss extends BossBase {
         this.y = this.groundBodyY - 6; // 고개를 쳐듦
       }
       this.face = a.dir;
-      const dur = this.ic.breathWarningTime * this.speed;
+      const dur = this.ic.breathWarningTime * this.speed * a.late;
       if (a.ready) {
         if (a.warnT === 0) this.scene.sfxPlay('breathCharge');
         a.warnT += dt;

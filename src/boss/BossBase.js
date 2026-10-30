@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { chooseBossAttack } from '../logic/boss.js';
+import { bossVarietyOf, jitterRest, lateWarning, shouldFeint, FEINT_AT } from '../logic/bossVariety.js';
 import { makeText } from '../ui/text.js';
+
+const FEINT_PAUSE = 0.35; // 속임 동작으로 취소한 뒤 다음 공격까지 시간
 
 // 새 보스를 만들 때 쓰면 편한 공통 도우미.
 // 꼭 상속할 필요는 없지만, README.md 의 약속(속성과 메서드)은 지켜야 한다.
@@ -69,6 +72,55 @@ export class BossBase {
     const type = fresh.length ? fresh[Math.floor(Math.random() * fresh.length)] : chooseBossAttack(phases, armsAlive, armsAlive);
     this.lastType = type;
     return type;
+  }
+
+  // 난이도별 박자와 모양 흔들림 값
+  get variety() {
+    return bossVarietyOf(this.diff?.level);
+  }
+
+  // 공격 사이 쉬는 시간 하나 뽑기
+  restTime(base) {
+    return jitterRest(base, this.variety);
+  }
+
+  // 공격을 시작할 때 부른다. a.late: 경고 시간에 곱할 값 (1 이상), a.feintAt: 속임 동작으로 취소할 시각.
+  // warnTimes = { 속여도 되는 공격: 경고 시간 }. 속임 뒤 첫 공격은 다시 속이지 않는다.
+  prepareAttack(a, warnTimes = {}, canFeint = true) {
+    const v = this.variety;
+    a.late = lateWarning(1, v);
+    const again = this.justFeinted;
+    this.justFeinted = false;
+    if (!canFeint || again || !shouldFeint(a.type, Object.keys(warnTimes), v)) return;
+    a.feintAt = warnTimes[a.type] * a.late * this.speed * FEINT_AT;
+  }
+
+  // 경고 중에 속임 시각이 지났으면 공격을 취소한다. 다음 공격은 평소처럼 고르므로 방금 공격은 빠지고 경고도 처음부터 나온다.
+  checkFeint() {
+    const a = this.action;
+    if (!a || a.feintAt === undefined) return false;
+    const inAim = a.jobs ? a.jobs[0].phase === 'aim' : a.phase === 'aim';
+    const clock = a.jobs ? a.jobs[0].t : (a.warnT ?? a.t);
+    if (!inAim || clock < a.feintAt) return false;
+    this.onFeintCancel(a);
+    this.action = null;
+    this.justFeinted = true;
+    this.timer = FEINT_PAUSE;
+    this.clearFx();
+    this.showFeintMark();
+    this.tip('feint', '속임수야! 보스가 공격을 바꿨어. 끝까지 신호를 봐!');
+    return true;
+  }
+
+  // 취소하는 공격이 남긴 것을 치운다 (하위 클래스가 채운다)
+  onFeintCancel(_a) {}
+
+  // 보스 머리 위에 잠깐 뜨는 물음표
+  showFeintMark() {
+    const x = this.x ?? this.kx ?? this.bodyX;
+    const y = Math.max(70, (this.y ?? this.groundY - 200) - 110);
+    const mark = makeText(this.scene, x, y, '?', 44, '#ffd23f').setOrigin(0.5).setDepth(31);
+    this.scene.tweens.add({ targets: mark, y: y - 30, alpha: 0, duration: 650, onComplete: () => mark.destroy() });
   }
 
   // 체력 비율이 절반 아래로 내려가면 분노 모드 (한 번만)

@@ -5,6 +5,7 @@ import { make } from '../fx/textures.js';
 import { Health } from '../logic/health.js';
 import { flash, floatText } from '../fx/effects.js';
 import { coreDamage, rockTargets, pickPattern, canSummon, summonSpots } from '../logic/boss.js';
+import { varyCount } from '../logic/bossVariety.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
 
 const Rect = Phaser.Geom.Rectangle;
@@ -125,7 +126,7 @@ export class KingBoss extends ArmBoss {
       this.startSummon();
       return;
     }
-    super.startAction(type);
+    super.startAction(type, !forceType);
   }
 
   pickSeated(avoid = null) {
@@ -147,6 +148,7 @@ export class KingBoss extends ArmBoss {
     const hi = this.standing ? this.maxX : this.maxArmX;
     const spots = summonSpots(p.x, Math.min(2, room), this.minX, hi);
     this.lastType = 'summon';
+    this.justFeinted = false;
     this.action = { type: 'summon', phase: 'aim', t: 0, spots };
     this.scene.sfxPlay('summon');
     this.tip('summon');
@@ -154,6 +156,7 @@ export class KingBoss extends ArmBoss {
   }
 
   runAction(dt) {
+    if (this.checkFeint()) return;
     const a = this.action;
     if (a.type === 'summon') this.runSummon(dt);
     else if (a.type === 'leap') this.runLeap(dt);
@@ -238,7 +241,7 @@ export class KingBoss extends ArmBoss {
       this.ky = this.groundY;
       this.faceTo(this.target.x);
       // 숨 고르기: 이때 코어를 때릴 기회
-      this.label(0, '지금! 코어를 때려!', this.kx, this.groundY - STAND_H - 40, 20, '#ffd23f');
+      if (!this.justFeinted) this.label(0, '지금! 코어를 때려!', this.kx, this.groundY - STAND_H - 40, 20, '#ffd23f');
       this.timer -= dt;
       if (this.timer <= 0 && this.scene.anyAlive) this.startAction();
     } else {
@@ -342,6 +345,7 @@ export class KingBoss extends ArmBoss {
     }
     this.lastType = type;
     const a = { type, phase: 'aim', t: 0 };
+    this.prepareAttack(a, { charge: this.kc.chargeWarningTime }, !forceType);
     if (type === 'leap') {
       a.fromX = this.kx;
       a.tx = Phaser.Math.Clamp(p.x, this.minX + 20, this.maxX - 20);
@@ -351,7 +355,7 @@ export class KingBoss extends ArmBoss {
       if (Math.abs(wall - this.kx) < 160) a.dir = -a.dir;
       a.endX = a.dir > 0 ? this.maxX : this.minX;
     } else if (type === 'rocks') {
-      const count = Math.max(1, Math.round(this.c.rockCount + (this.def.rockBonus || 0)));
+      const count = varyCount(Math.max(1, Math.round(this.c.rockCount + (this.def.rockBonus || 0))), this.variety, Math.random, 2);
       a.targets = rockTargets(p.x, count, this.minX - 20, this.maxX + 20);
     }
     this.action = a;
@@ -422,7 +426,7 @@ export class KingBoss extends ArmBoss {
     const a = this.action;
     a.t += dt;
     if (a.phase === 'aim') {
-      const dur = this.kc.chargeWarningTime * this.speed;
+      const dur = this.kc.chargeWarningTime * this.speed * a.late;
       this.face = a.dir;
       this.kx += Math.sin(this.t * 50) * 1.5;
       const x0 = Math.min(this.kx, a.endX) - 40;
