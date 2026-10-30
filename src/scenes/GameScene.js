@@ -19,9 +19,11 @@ import { addXp, maxHealthFor } from '../logic/progression.js';
 import { normalizeHero, heroStats, fixJosa } from '../logic/heroes.js';
 import { nearestPlayer, strongerResult, partyCenter, clampSpread } from '../logic/coop.js';
 import { coop } from '../net/coop.js';
+import { VERSUS_PROFILE, afterRound, sideName, timeUpWinner, versusConfig, versusDamage } from '../logic/versus.js';
+import { versusArena, noBoss, noRobot } from '../stage/arena.js';
 import { countStat } from '../net/stats.js';
 import { customArt } from '../config/art.js';
-import { stageArt } from '../logic/stageArt.js';
+import { stageArt, themeArt } from '../logic/stageArt.js';
 import { queueArt, finishArt } from '../fx/artLoader.js';
 import { HELD_KEYS, TAP_KEYS } from '../logic/room.js';
 import {
@@ -61,6 +63,7 @@ export class GameScene extends Phaser.Scene {
 
   // 이 스테이지 그림만 받는다 (배경, 몬스터, 보스). 이미 받은 그림은 다시 안 받는다 (src/logic/stageArt.js)
   preload() {
+    if (this.sys.settings.data?.versus) return queueArt(this, themeArt(versusArena)); // 겨루기는 경기장 그림만
     const n = Phaser.Math.Clamp(this.sys.settings.data?.stage || 1, 1, stages.length);
     // 몬스터 공방 작품이 나오는 스테이지면 작품 생김새 그림도
     const looks = this.sys.settings.data?.rush ? [] : this.workshopHere(n).map((d) => d.look);
@@ -72,6 +75,8 @@ export class GameScene extends Phaser.Scene {
     this.save = saveStore.load();
     // 오늘의 도전: { date, stage, hero, rule, limit, broken } 이면 이 판만 정해진 주인공으로 (src/logic/daily.js)
     this.daily = !data.rush && data.daily ? { ...data.daily } : null;
+    // 겨루기: { round, wins } 이면 경기장에서 친구와 대결한다 (src/logic/versus.js). 판마다 이 장면을 다시 시작한다
+    this.versus = data.versus ? { match: data.versus, phase: 'ready', left: cfg.versus.roundTime } : null;
     this.dailyCounts = { deaths: 0, ults: 0, dashes: 0 };
     // 모험 지도에서 고른 주인공 (안내판 글도 이 주인공 말로 쓰므로 먼저)
     this.hero = normalizeHero(this.daily ? this.daily.hero : this.save.settings.hero);
@@ -80,8 +85,8 @@ export class GameScene extends Phaser.Scene {
     // 보스 러시: { course, stages, index, player, carry } 이면 바로 보스 방에서 시작하고, 이기면 다음 보스로 (src/logic/rush.js)
     this.rush = data.rush || null;
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
-    this.cfg = withDifficulty(cfg, this.difficulty, this.stageNum, this.save.level); // 뒤 스테이지일수록, 내 레벨이 앞설수록 어려워짐
-    this.stage = getStage(this.stageNum);
+    this.cfg = this.versus ? versusConfig(cfg) : withDifficulty(cfg, this.difficulty, this.stageNum, this.save.level); // 뒤 스테이지일수록, 내 레벨이 앞설수록 어려워짐
+    this.stage = this.versus ? versusArena : getStage(this.stageNum);
     this.isLastStage = this.stageNum === stages.length;
     this.ended = false;
     this.bossStarted = false;
@@ -90,9 +95,9 @@ export class GameScene extends Phaser.Scene {
     this.bossTips = new Set();
     this.gateNagAt = -10;
     this.fromCheckpoint = !this.rush && data.fromCheckpoint && this.save.checkpoint === this.stageNum;
-    if (!this.rush) countStat('start', this.stageNum);
-    else if (!this.rush.index) countStat('rush-start', this.rush.course);
-    if (!this.rush && this.save.lastStage !== this.stageNum) this.save = saveStore.update({ lastStage: this.stageNum }); // 지도를 다시 열면 여기서 시작
+    if (!this.rush && !this.versus) countStat('start', this.stageNum);
+    else if (this.rush && !this.rush.index) countStat('rush-start', this.rush.course);
+    if (!this.rush && !this.versus && this.save.lastStage !== this.stageNum) this.save = saveStore.update({ lastStage: this.stageNum }); // 지도를 다시 열면 여기서 시작
     if (!this.registry.has('runTime')) this.registry.set('runTime', 0);
 
     // 슬로모션이 남아 있을 수 있으니 시간 속도를 되돌린다
@@ -111,20 +116,26 @@ export class GameScene extends Phaser.Scene {
     this.foreground = new Foreground(this);
 
     const startX = this.rush ? st.arena.startX + 140 : this.fromCheckpoint ? st.checkpointX + 40 : st.playerStartX;
-    this.bonus = shopBonuses(this.save.shop, cfg.shop); // 상점에서 산 영구 강화
+    this.bonus = shopBonuses(this.versus ? VERSUS_PROFILE.shop : this.save.shop, cfg.shop); // 상점에서 산 영구 강화
     this.powers = new PowerSet(scalePowerTimes(cfg.powers, this.bonus.powerTimeMultiplier)); // 보물 상자의 특별한 힘 (스테이지마다 새로)
-    this.player = this.makePlayer(startX, this.hero);
+    this.player = this.makePlayer(startX, this.hero, this.versus ? VERSUS_PROFILE : null);
     // 함께하기: 친구 주인공. 인터넷으로 친구가 들어와 있으면(src/net/coop.js) 친구가 고른 주인공이 나온다.
     // 친구가 누른 키는 this.partnerInput() 이 돌려준다.
     // 주소에 ?duo 를 붙이면 시험용으로 친구가 나온다 (window.__p2 에 키를 넣어 움직인다).
     const duo = new URLSearchParams(window.location.search).has('duo') ? { hero: 'gunner' } : null;
-    const partner = data.partner || (coop.hostConnected ? coop.partner : duo);
+    const friend = data.partner || (coop.hostConnected ? coop.partner : duo);
+    const partner = this.versus ? { ...friend, ...VERSUS_PROFILE } : friend; // 겨루기는 둘 다 성장치 없이
     // 인터넷 친구는 자기 레벨, 강화 카드, 상점 강화로 나온다 (partner.level 이 없으면 방장 것)
-    this.partner = partner ? this.makePlayer(startX - 50, normalizeHero(partner.hero), partner.level ? partner : null) : null;
+    this.partner = partner ? this.makePlayer(this.versus ? st.width - startX : startX - 50, normalizeHero(partner.hero), partner.level ? partner : null) : null;
     this.partnerInput = coop.hostConnected ? () => coop.takeInput() : null;
     if (this.partnerInput) {
-      coop.sendStage(this.stageNum, this.stage.name);
-      const off = coop.on((e) => e === 'lost' && this.robot?.say('2P 친구와 연결이 끊겼어요. 친구가 같은 코드로 다시 들어오면 다음 스테이지부터 같이 해요.', true));
+      if (this.versus) coop.sendVersusRound(this.versus.match.round);
+      else coop.sendStage(this.stageNum, this.stage.name);
+      const off = coop.on((e) => {
+        if (e !== 'lost') return;
+        if (this.versus) this.scene.get('HUD').leaveVersus(); // 겨루기는 둘이 있어야 하니 방으로 돌아간다
+        else this.robot?.say('2P 친구와 연결이 끊겼어요. 친구가 같은 코드로 다시 들어오면 다음 스테이지부터 같이 해요.', true);
+      });
       this.events.once('shutdown', off);
     }
     this.players = [this.player, this.partner].filter(Boolean);
@@ -148,12 +159,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.buildGate();
 
-    this.boss = createBoss(this, this.cfg, st, st.boss.skin || this.stageNum);
+    this.boss = this.versus ? noBoss : createBoss(this, this.cfg, st, st.boss.skin || this.stageNum);
     if (this.boss.blocker) this.physics.add.collider(this.players, this.boss.blocker);
     for (const p of this.players) p.skills = new HeroSkills(this, p);
     this.skills = this.player.skills; // 1P 의 기술 (예전 코드와 HUD 가 읽는다)
 
-    this.robot = new Robot(this, this.player);
+    this.robot = this.versus ? noRobot : new Robot(this, this.player);
     this.shadows = new Shadows(this);
     this.applyUpgrades();
     this.powerG = this.add.graphics().setDepth(11);
@@ -170,7 +181,9 @@ export class GameScene extends Phaser.Scene {
     // 출발 방패: 스테이지 이름이 지나간 뒤 강철 몸
     if (this.bonus.startShield) this.time.delayedCall(this.fromCheckpoint ? 400 : 1700, () => !this.ended && this.givePower('shield'));
 
-    if (this.rush) {
+    if (this.versus) {
+      this.startVersusRound();
+    } else if (this.rush) {
       for (const t of st.talks) this.firedTalks.add(t); // 보스 방에서 시작하니 길 안내는 건너뛴다
       this.applyRushCarry();
       this.showRushBanner();
@@ -257,7 +270,8 @@ export class GameScene extends Phaser.Scene {
   // 카메라는 두 사람의 가운데를 따라가고, 두 사람이 화면 밖으로 멀어지지 않게 붙잡는다
   updateParty() {
     if (!this.coop) return;
-    const xs = clampSpread(this.players, cfg.coop.maxSpread, this.prevXs);
+    // 겨루기 경기장은 화면 한 칸이라 두 사람을 붙잡을 필요가 없다
+    const xs = this.versus ? this.players.map((p) => p.x) : clampSpread(this.players, cfg.coop.maxSpread, this.prevXs);
     this.players.forEach((p, i) => {
       if (xs[i] !== p.x) {
         p.x = xs[i];
@@ -291,6 +305,83 @@ export class GameScene extends Phaser.Scene {
       ring(this, player.x, player.y, 0x3ff07a, 70, 400, 5);
       floatText(this, player.x, player.y - 60, '다시 일어났다!', '#3ff07a', 22);
       this.sfxPlay('powerup');
+    });
+  }
+
+  // ---------- 겨루기 ----------
+
+  rivalOf(player) {
+    return this.players.find((p) => p !== player);
+  }
+
+  // 겨루기에서 by 의 공격이 상대에게 닿았으면 피해를 준다. 대시로 피했거나 무적이면 false
+  hitRival(by, rect, attack, dir) {
+    if (!by || this.versus?.phase !== 'fight') return false;
+    const foe = this.rivalOf(by);
+    if (foe.dead || !intersects(rect, foe.getBounds())) return false;
+    const damage = versusDamage(attack, foe.health.max, cfg.versus.ultCap);
+    return foe.hurt(damage, foe.x - dir, attack.knockback) === 'hit'; // fromX 를 맞는 쪽 뒤에 둬서 공격 방향으로 밀린다
+  }
+
+  // 판 이름을 보여 주고 3, 2, 1 을 센 뒤 시작한다
+  startVersusRound() {
+    const { countdown } = cfg.versus;
+    const big = (y, size, color) => makeText(this, 480, y, '', size, color, { strokeThickness: 8 }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
+    const title = big(170, 40, '#ffd23f').setText(`${this.versus.match.round}번째 판`);
+    const count = big(250, 72, '#ffffff').setText(String(countdown));
+    this.partner.facing = -1; // 서로 마주 본다
+    this.partner.setFlipX(true);
+    this.sfxPlay('beep');
+    for (let i = 1; i < countdown; i++) {
+      this.time.delayedCall(i * 1000, () => {
+        count.setText(String(countdown - i));
+        this.sfxPlay('beep');
+      });
+    }
+    this.time.delayedCall(countdown * 1000, () => {
+      this.versus.phase = 'fight';
+      title.destroy();
+      count.setText('시작!').setColor('#ffb21f');
+      this.sfxPlay('powerup');
+      this.tweens.add({ targets: count, alpha: 0, delay: 500, duration: 300, onComplete: () => count.destroy() });
+    });
+  }
+
+  updateVersus(dt) {
+    this.player.update(dt, this.readInput());
+    this.partner.update(dt, this.readPartnerInput());
+    this.updateParty();
+    for (const p of this.players) p.skills.update(dt);
+    this.chargeG.clear();
+    for (const p of this.players) this.drawCharge(p);
+    this.shadows.update();
+    this.foreground.update();
+    const v = this.versus;
+    if (v.phase !== 'fight') return;
+    v.left = Math.max(0, v.left - dt);
+    if (v.left <= 0) this.endVersusRound(timeUpWinner(this.players.map((p) => p.health.ratio)));
+  }
+
+  // 한 판이 끝났다. winner: 이긴 쪽 번호 (null 이면 무승부)
+  endVersusRound(winner) {
+    const v = this.versus;
+    if (v.phase !== 'fight') return; // 먼저 쓰러진 사람이 진다
+    v.phase = 'done';
+    this.ended = true;
+    // 궁극기 슬로모션 중에 끝나도 승자 표시가 늘어지지 않게 시간을 되돌린다
+    this.time.timeScale = 1;
+    this.tweens.timeScale = 1;
+    this.physics.world.timeScale = 1;
+    const next = afterRound(v.match, winner, cfg.versus.winsNeeded);
+    const text = winner === null ? '무승부! 다시 한 판!' : `${sideName(winner)} 승리!`;
+    const banner = makeText(this, 480, 210, text, 56, winner === 0 ? '#7af0ff' : winner === 1 ? '#ffd23f' : '#ffffff', { strokeThickness: 9 }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
+    this.sfxPlay('powerup');
+    this.time.delayedCall(cfg.versus.roundEndPause * 1000, () => {
+      if (next.champion === null) this.scene.restart({ versus: { round: next.round, wins: next.wins } });
+      else {
+        banner.destroy(); // 우승 화면 글자와 겹치지 않게
+        this.scene.get('HUD').showVersusOver(next);
+      }
     });
   }
 
@@ -560,6 +651,7 @@ export class GameScene extends Phaser.Scene {
     // 멈칫(히트 스톱) 중이면 이번 프레임은 멈춰 있는다
     if (this.impact.tick(deltaMs)) return;
     const dt = (Math.min(deltaMs, 50) / 1000) * this.time.timeScale;
+    if (this.versus) return this.updateVersus(dt);
     const input = this.player.picking ? {} : this.readInput(); // 카드 고르는 중에는 1P 가 가만히
     this.player.update(dt, input);
     this.partner?.update(dt, this.readPartnerInput());
@@ -588,6 +680,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // 조작을 받지 않는 때: 스테이지가 끝났거나, 겨루기 카운트다운 중
+  get inputOff() {
+    return this.ended || this.versus?.phase === 'ready';
+  }
+
   readInput() {
     const k = this.keys;
     const down = (action) => k[action].some((key) => key.isDown);
@@ -596,7 +693,7 @@ export class GameScene extends Phaser.Scene {
     const m = this.input.mousePointer;
     const mouseDown = !!m && m.isDown && m.leftButtonDown() && !m.wasTouch;
     const t = this.touch ? touchPad.poll(touchPoints(this)) : { down: {}, pressed: {} };
-    if (this.ended) return { left: false, right: false, jumpDown: false, jumpPressed: false, attackDown: false, dashPressed: false, upDown: false, ultPressed: false };
+    if (this.inputOff) return { left: false, right: false, jumpDown: false, jumpPressed: false, attackDown: false, dashPressed: false, upDown: false, ultPressed: false };
     return {
       upDown: down('up') || !!t.down.up, // 위쪽 공격용 (W 나 ↑)
       ultPressed: justDown('ult') || !!t.pressed.ult, // 궁극기
@@ -618,7 +715,7 @@ export class GameScene extends Phaser.Scene {
       for (const k of TAP_KEYS) if (i[k]) i[k] = false; // 한 번 누른 키는 한 프레임만 쓴다
       i = copy;
     }
-    const off = this.ended;
+    const off = this.inputOff;
     return Object.fromEntries([...HELD_KEYS, ...TAP_KEYS].map((k) => [k, !off && Boolean(i[k])]));
   }
 
@@ -1023,7 +1120,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    const hitAny = this.hitArea(rect, attack, dir);
+    const hitAny = this.hitArea(rect, attack, dir, player);
     if (hitAny) {
       this.sfxPlay('hit');
       player.skills.onDealtDamage(attack.damage);
@@ -1047,8 +1144,9 @@ export class GameScene extends Phaser.Scene {
 
   // 공격 사각형에 닿은 몬스터와 보스에게 피해를 준다. 하나라도 맞았으면 true.
   // 주먹, 에너지탄, 위쪽 공격 등 모든 주인공 공격이 이 함수를 쓴다.
-  hitArea(rect, attack, dir) {
-    let hitAny = false;
+  // by: 공격한 주인공 (겨루기에서 상대에게도 닿는다). 볼트처럼 주인공이 아닌 공격은 넘기지 않는다.
+  hitArea(rect, attack, dir, by = null) {
+    let hitAny = this.hitRival(by, rect, attack, dir);
     for (const m of this.monsters) {
       if (!m.dead && intersects(rect, m.getBounds())) {
         m.takeHit(attack, dir);
@@ -1059,10 +1157,10 @@ export class GameScene extends Phaser.Scene {
     return hitAny;
   }
 
-  // 화면 안의 모든 몬스터와 보스에게 피해 (궁극기)
-  hitScreen(attack, bossDamage) {
+  // 화면 안의 모든 몬스터와 보스에게 피해 (궁극기). by: 궁극기를 쓴 주인공
+  hitScreen(attack, bossDamage, by = null) {
     const view = this.cameras.main.worldView;
-    let hitAny = false;
+    let hitAny = by ? this.hitRival(by, view, attack, this.rivalOf(by)?.x < by.x ? -1 : 1) : false;
     for (const m of this.monsters) {
       if (!m.dead && view.contains(m.x, m.y)) {
         m.takeHit(attack, m.x < this.player.x ? -1 : 1);
@@ -1126,6 +1224,7 @@ export class GameScene extends Phaser.Scene {
     if (player === this.player) this.dailyCounts.deaths++;
     player.maxLabel?.setVisible(false);
     player.tag?.setVisible(false);
+    if (this.versus) return this.endVersusRound(player === this.player ? 1 : 0);
     if (this.coop && this.anyAlive) {
       this.robot.say(player === this.player ? '1P 가 쓰러졌어! 2P, 조금만 버텨!' : '2P 가 쓰러졌어! 1P, 조금만 버텨!', true);
       this.scheduleRevive(player);

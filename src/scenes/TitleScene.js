@@ -15,6 +15,7 @@ import { isTouchDevice, isPhone } from '../ui/touch.js';
 import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { tokenizeControlLine } from '../ui/titleLayout.js';
 import { coop } from '../net/coop.js';
+import { newMatch } from '../logic/versus.js';
 
 // 타이틀: 모험 지도 열기 + 설정(난이도, 조작, 상점, 레벨 초기화, 함께하기). 스테이지는 지도(src/scenes/MapScene.js)에서 고른다.
 // ↑ ↓ 로 줄을 옮기고, ← → 로 고르고, Enter 로 시작하거나 바꾼다. 마우스로 눌러도 된다.
@@ -87,7 +88,9 @@ export class TitleScene extends Phaser.Scene {
     super('Title');
   }
 
-  create() {
+  // data.openRoom: 겨루기를 마치고 돌아오면 방을 바로 연다
+  create(data = {}) {
+    this.openRoomOnReady = Boolean(data.openRoom);
     this.showAll = new URLSearchParams(window.location.search).has('all');
     this.touch = isTouchDevice(); // 태블릿: 카드와 버튼을 손가락으로 누른다
     this.started = false;
@@ -315,6 +318,11 @@ export class TitleScene extends Phaser.Scene {
     yes.on('pointerdown', () => this.doReset());
     no.on('pointerdown', () => this.closeConfirm());
     this.confirmBox.add([bg, plate, msg, yes, no]);
+    // 겨루기에서 돌아왔으면 방을 연다 (확인 창을 만든 뒤에: openRoom 이 confirming 을 켜서 창이 보이지 않게)
+    if (this.openRoomOnReady) {
+      this.openRoomOnReady = false;
+      this.openRoom();
+    }
 
     if (this.touch) this.buildFullscreen();
     this.refresh();
@@ -583,12 +591,20 @@ export class TitleScene extends Phaser.Scene {
     this.scene.bringToTop('Room');
   }
 
-  // goMap: 방장이 친구를 맞이하고 '모험 지도 열기' 를 눌렀으면 true
-  closeRoom(goMap) {
+  // go: 방장이 친구를 맞이하고 '모험 지도 열기' 를 눌렀으면 true, '겨루기' 를 눌렀으면 'versus'
+  closeRoom(go) {
     this.confirming = false;
     this.input.keyboard.enabled = true;
-    if (goMap) return this.openMap();
+    if (go === 'versus') return this.startVersus();
+    if (go) return this.openMap();
     this.build();
+  }
+
+  startVersus() {
+    if (this.started) return;
+    this.started = true;
+    this.scene.start('Game', { versus: newMatch() });
+    this.scene.launch('HUD');
   }
 
   closeShop() {

@@ -10,7 +10,8 @@ import { isTouchDevice } from '../ui/touch.js';
 import { makeText, FONT } from '../ui/text.js';
 
 // 함께하기 방. 타이틀 위에 열린다.
-//   방 만들기: 5 자리 코드가 나오고 친구를 기다린다. 친구가 들어오면 Enter 로 모험 지도를 연다 (방장이 스테이지를 고른다).
+//   방 만들기: 5 자리 코드가 나오고 친구를 기다린다. 친구가 들어오면 Enter 로 모험 지도를 열거나 (방장이 스테이지를 고른다),
+//   V 로 겨루기를 시작한다 (5 판 3 선승 대결, src/logic/versus.js).
 //   방 참여: 친구가 알려 준 코드를 넣고 Enter. 이어지면 방장 화면(src/scenes/GuestScene.js)으로 간다.
 // Esc 로 한 단계 뒤로 (방을 닫거나 창을 닫는다).
 export class RoomScene extends Phaser.Scene {
@@ -39,6 +40,7 @@ export class RoomScene extends Phaser.Scene {
     kb.on('keydown-ENTER', () => this.enter());
     kb.on('keydown-ONE', () => this.mode === 'menu' && this.startHost());
     kb.on('keydown-TWO', () => this.mode === 'menu' && this.showJoin());
+    kb.on('keydown-V', () => this.mode === 'host' && this.openVersus());
 
     this.off = coop.on((event, data) => this.onCoop(event, data));
     this.events.once('shutdown', () => {
@@ -109,19 +111,24 @@ export class RoomScene extends Phaser.Scene {
     this.codeText.setText(ready ? spaced(coop.code) : '······');
     if (coop.hostConnected) {
       const name = HERO_INFO[normalizeHero(coop.partner.hero)]?.name ?? '친구';
-      this.hostState.setText(`친구가 들어왔어요! (2P: ${name})\n같이 할 스테이지를 지도에서 골라 주세요`).setColor('#3ff07a');
-      this.help.setText(this.touch ? '아래 글자를 누르면 모험 지도가 열려요' : 'Enter: 모험 지도 열기    Esc: 방 닫기');
+      this.hostState.setText(`친구가 들어왔어요! (2P: ${name})\n같이 모험하거나, 5 판 3 선승으로 겨뤄 봐요`).setColor('#3ff07a');
+      this.help.setText(this.touch ? '아래 글자를 누르면 시작해요' : 'Enter: 모험 지도 열기    V: 겨루기    Esc: 방 닫기');
       if (!this.goBtn) {
-        this.goBtn = makeText(this, 480, 410, '▶ 모험 지도 열기', 26, '#ffb21f', { strokeThickness: 6 })
-          .setOrigin(0.5)
-          .setInteractive({ useHandCursor: true })
-          .on('pointerdown', () => this.openMap());
-        this.box.add(this.goBtn);
+        const go = (x, label, color, fn) =>
+          makeText(this, x, 410, label, 26, color, { strokeThickness: 6 })
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', fn);
+        this.goBtn = go(310, '▶ 모험 지도 열기', '#ffb21f', () => this.openMap());
+        this.versusBtn = go(660, '▶ 겨루기', '#ff8a6a', () => this.openVersus());
+        this.box.add([this.goBtn, this.versusBtn]);
       }
       return;
     }
     this.goBtn?.destroy();
+    this.versusBtn?.destroy();
     this.goBtn = null;
+    this.versusBtn = null;
     this.hostState
       .setText(ready ? '친구에게 이 코드를 알려 주세요.\n친구를 기다리는 중...' : '방을 만드는 중...')
       .setColor('#ffffff');
@@ -134,6 +141,14 @@ export class RoomScene extends Phaser.Scene {
     const title = this.scene.get('Title');
     this.scene.stop();
     title.closeRoom?.(true);
+  }
+
+  openVersus() {
+    if (!coop.hostConnected) return;
+    sfx.play('beep');
+    const title = this.scene.get('Title');
+    this.scene.stop();
+    title.closeRoom?.('versus');
   }
 
   // ---------- 친구 ----------
