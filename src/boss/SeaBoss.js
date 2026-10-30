@@ -91,7 +91,7 @@ export class SeaBoss extends BossBase {
     mask.setInvertAlpha(true);
     this.dark.setMask(mask);
     this.combo = new ComboHazards(this, { rockTexture: 'rock', rockDamage: 12 });
-    this.introLines = ['으악, 엄청 큰 아귀야! 심해 아귀왕이다!', '머리 위 초롱불과 큰 턱을 부수면 심장이 드러나!', '지쳐서 바닥에 내려앉거나 벽에 부딪혀 어지러울 때가 기회야!'];
+    this.introLines = [`으악, 엄청 큰 아귀야! ${this.name ?? '심해 아귀왕'}이다!`, '머리 위 초롱불과 큰 턱을 부수면 심장이 드러나!', '지쳐서 바닥에 내려앉거나 벽에 부딪혀 어지러울 때가 기회야!'];
     this.pose(0);
   }
 
