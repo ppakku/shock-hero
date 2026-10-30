@@ -136,7 +136,7 @@ describe('스테이지 6 수중 던전', () => {
     expect(stage6.swim).toBe(true);
     expect(stage6.theme.scenery).toBe('underwater');
     const swims = stages.map((st, i) => (st.swim ? i + 1 : null)).filter(Boolean);
-    expect(swims).toEqual([6, 16]);
+    expect(swims).toEqual([6, 16, 26, 36]);
     for (const n of swims) {
       const st = stages[n - 1];
       expect(st.theme.scenery).toBe('underwater');

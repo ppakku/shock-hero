@@ -259,7 +259,7 @@ export class HUDScene extends Phaser.Scene {
     return `오늘의 도전 성공! 보석 +${daily.gems}`;
   }
 
-  showVictory({ stage, last, time, best, isRecord, level, treasures, stars, newStars = [], gems = 0, totalGems = 0, daily = null }) {
+  showVictory({ stage, last, ending, time, best, isRecord, level, treasures, stars, newStars = [], gems = 0, totalGems = 0, daily = null }) {
     this.mode = 'victory';
     this.victoryStage = stage;
     this.victoryLast = last;
@@ -271,7 +271,7 @@ export class HUDScene extends Phaser.Scene {
         `별 ${stars ? starText(stars) : ''}    보석 +${gems} (모두 ${totalGems}개)`,
         newStars.length ? `새 별: ${newStars.join(', ')}!` : '',
         ...(daily ? [this.dailyLine(daily)] : []),
-        last ? '마지막 보스까지 쓰러뜨리고 모두를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
+        last ? ending || '마지막 보스까지 쓰러뜨리고 모두를 구했어요! 축하해요!' : this.touch ? '' : `Enter 또는 클릭: 스테이지 ${stage + 1}로!`,
         this.touch ? '' : last ? 'Enter 또는 클릭: 지도로    R: 이 스테이지 다시' : 'R: 이 스테이지 다시    T: 지도로',
       ].join('\n'),
     );

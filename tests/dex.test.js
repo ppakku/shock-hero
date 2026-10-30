@@ -25,7 +25,7 @@ describe('몬스터 도감', () => {
     expect(dexIdFor(stages[0], 'tank')).toBe('monster_tank');
   });
 
-  it('보스 20마리 모두 그림이 있다', () => {
+  it('보스 40마리 모두 그림이 있다', () => {
     const b = bossDex(stages);
     expect(b).toHaveLength(stages.length);
     for (const e of b) expect(customArt[e.portrait], `${e.stage} ${e.portrait}`).toBeTruthy();

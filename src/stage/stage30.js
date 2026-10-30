@@ -1,0 +1,151 @@
+// =============================================================
+//  스테이지 30: 폭풍의 문 (3장, 3장 마지막)
+//  폭풍이 시작되는 커다란 문. 위층 길, 큰 계단, 탑이 모두 나오는 3장의 마지막 시험.
+//  고치는 법은 같은 폴더의 README.md 를 보세요.
+// =============================================================
+
+import { stage10 } from './stage10.js';
+
+export const stage30 = {
+  name: '폭풍의 문',
+  chapter: 3, // 지도 3장
+  width: 8860,
+  groundY: 480,
+  playerStartX: 120,
+  gateX: 7460,
+  checkpointX: 7580,
+
+  // 1장 스테이지 10 어둠의 왕궁 배경에 폭풍 하늘을 덮음
+  theme: { ...stage10.theme, sky: [0x06060e, 0x2a2a58], weather: { kind: 'rain', color: 0xa8c8ff }, tint: { color: 0x0e2258, alpha: 0.4 } },
+
+  platforms: [
+    { x: 520, y: 390, w: 128 },
+    { x: 690, y: 300, w: 96 },
+    { x: 860, y: 210, w: 96 },
+    { x: 1030, y: 120, w: 128 },
+    { x: 1236, y: 120, w: 128 },
+    { x: 1440, y: 120, w: 128 },
+    { x: 1738, y: 390, w: 128 },
+    { x: 1738, y: 210, w: 128 },
+    { x: 1888, y: 300, w: 128 },
+    { x: 1888, y: 120, w: 160 },
+    { x: 2218, y: 390, w: 128 },
+    { x: 2388, y: 300, w: 96 },
+    { x: 2558, y: 390, w: 96 },
+    { x: 2558, y: 210, w: 128 },
+    { x: 2758, y: 390, w: 96 },
+    { x: 2758, y: 210, w: 128 },
+    { x: 2958, y: 390, w: 96 },
+    { x: 2958, y: 210, w: 128 },
+    { x: 3256, y: 380, w: 192 },
+    { x: 3618, y: 390, w: 192 },
+    { x: 3768, y: 300, w: 192 },
+    { x: 3918, y: 210, w: 192 },
+    { x: 4280, y: 390, w: 128 },
+    { x: 4450, y: 300, w: 128 },
+    { x: 4620, y: 210, w: 128 },
+    { x: 4790, y: 120, w: 128 },
+    { x: 4960, y: 210, w: 128 },
+    { x: 5130, y: 300, w: 128 },
+    { x: 5300, y: 390, w: 128 },
+    { x: 5598, y: 380, w: 192 },
+    { x: 5960, y: 390, w: 96 },
+    { x: 6124, y: 300, w: 96 },
+    { x: 6290, y: 390, w: 96 },
+    { x: 6456, y: 300, w: 96 },
+    { x: 6620, y: 390, w: 96 },
+    { x: 6886, y: 390, w: 128 },
+    { x: 6886, y: 210, w: 128 },
+    { x: 7036, y: 300, w: 128 },
+    { x: 7036, y: 120, w: 160 },
+  ],
+
+  monsters: [
+    { x: 800, type: 'tank' },
+    { x: 970, type: 'shield' },
+    { x: 1090, type: 'fros' },
+    { x: 1390, type: 'spitter' },
+    { x: 1580, type: 'jumper' },
+    { x: 1750, type: 'fast' },
+    { x: 1870, type: 'fast' },
+    { x: 2170, type: 'shield' },
+    { x: 2360, type: 'tank' },
+    { x: 2530, type: 'tank' },
+    { x: 2660, type: 'shield' },
+    { x: 2950, type: 'fros' },
+    { x: 3140, type: 'spitter' },
+    { x: 3256, y: 380, type: 'shield' },
+    { x: 3310, type: 'jumper' },
+    { x: 3440, type: 'fast' },
+    { x: 3730, type: 'fast' },
+    { x: 3920, type: 'shield' },
+    { x: 4090, type: 'tank' },
+    { x: 4220, type: 'tank' },
+    { x: 4510, type: 'shield' },
+    { x: 4700, type: 'fros' },
+    { x: 4870, type: 'spitter' },
+    { x: 5000, type: 'jumper' },
+    { x: 5290, type: 'fast' },
+    { x: 5480, type: 'fast' },
+    { x: 5598, y: 380, type: 'spitter' },
+    { x: 5650, type: 'shield' },
+    { x: 5780, type: 'tank' },
+    { x: 6070, type: 'tank' },
+    { x: 6270, type: 'shield' },
+    { x: 6430, type: 'fros' },
+    { x: 6560, type: 'spitter' },
+    { x: 6850, type: 'jumper' },
+    { x: 7050, type: 'fast' },
+    { x: 7220, type: 'fast' },
+    { x: 7340, type: 'shield' },
+  ],
+
+  // 보물: 자리는 들어올 때마다 무작위 (src/logic/treasures.js). 개수는 여기 적은 만큼.
+  // power 는 상자에서 나오는 특별한 힘 (speed, shield, power, star, rapid). 없으면 아무거나.
+  treasures: [
+    { id: 'stage30-gatekey', power: 'power' },
+    { id: 'stage30-hinge' },
+    { id: 'stage30-stormcore', power: 'star' },
+    { id: 'stage30-runestone' },
+    { id: 'stage30-windbell', power: 'shield' },
+    { id: 'stage30-lockpick' },
+    { id: 'stage30-crownpiece', power: 'rapid' },
+    { id: 'stage30-mural' },
+    { id: 'stage30-skyshard', power: 'speed' },
+    { id: 'stage30-oath' },
+  ],
+
+  signs: [
+    { x: 300, text: '스테이지 30: 폭풍의 문\n3장 마지막, 폭풍의 문!' },
+    { x: 4200, text: '문이 가까워진다\n바람이 거세진다...' },
+    { x: 7810, text: '보스 폭풍 군주\n이 앞에서 기다린다...' },
+  ],
+
+  talks: [
+    { x: 0, lines: ['찾았다! 저 커다란 문에서 폭풍이 쏟아져 나와!', '문을 지키는 폭풍 군주를 쓰러뜨리면 다 끝날 거야!'] },
+    { x: 3700, lines: ['위층 길로 가면 빠르고, 아래층 길로 가면 안전해!'] },
+    { x: 7580, lines: ['체크포인트!', '폭풍 군주야. 3장에서 가장 센 보스!', '부하를 부르면 먼저 정리하고, 팔이 멈칫할 때 때려!'] },
+  ],
+
+  arena: { startX: 7900, endX: 8860 },
+
+  boss: {
+    type: 'king',
+    name: '폭풍 군주',
+    skin: 10,
+    arms: 3,
+    healthScale: 2.6,
+    speedScale: 0.72,
+    rockBonus: 3,
+    shockwaves: 3,
+    colors: { main: 0x1a2a5a, light: 0x3a5aa0, dark: 0x0c1430, arm: 0x2a3e78 },
+    minions: ['fast', 'jumper', 'shield', 'spitter'],
+    phases: [
+      ['doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'slam', 'spit'],
+      ['multiSlam', 'sweep', 'rocketPunch', 'inhale', 'summon', 'doubleSlam'],
+      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'summon', 'shockwave', 'sweep'],
+    ],
+    finalPhase: ['leap', 'charge', 'rocks', 'summon', 'leap', 'inhale'],
+    intro: ['폭풍 군주가 일어섰어! 문이 흔들려!', '여기만 넘으면 문 너머로 갈 수 있어. 힘내!'],
+  },
+};
