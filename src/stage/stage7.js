@@ -92,6 +92,7 @@ export const stage7 = {
     type: 'arms',
     name: '파쇄자 MK2', // 스테이지 1 파쇄자가 고쳐져서 더 세짐
     skin: 'drill', // 스테이지 1 파쇄자 그림을 그대로 씀 (art.js 의 _1 그림)
+    signature: 'drillBurrow',
     arms: 3,
     healthScale: 1.9,
     speedScale: 0.9,
@@ -100,10 +101,10 @@ export const stage7 = {
     colors: { main: 0x6e4232, light: 0x9a6a50, dark: 0x3a2a24, arm: 0x7a5444 },
     // [팔 다 있을 때, 1개 부순 뒤, 2개 부순 뒤, 다 부순 뒤(코어)]
     phases: [
-      ['slam', 'doubleSlam', 'rocketPunch', 'sweep'],
-      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale'],
-      ['multiSlam', 'sweep', 'rocketPunch', 'shockwave', 'rocks'],
-      ['rocks', 'shockwave', 'inhale'],
+      ['slam', 'doubleSlam', 'rocketPunch', 'signature'],
+      ['multiSlam', 'signature', 'rocketPunch', 'inhale'],
+      ['multiSlam', 'sweep', 'signature', 'shockwave', 'rocks'],
+      ['rocks', 'signature', 'inhale'],
     ],
   },
 };

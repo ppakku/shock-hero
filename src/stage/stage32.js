@@ -118,6 +118,7 @@ export const stage32 = {
     type: 'arms',
     name: '마왕의 파쇄자',
     skin: 'volt',
+    signature: 'voltChain',
     arms: 3,
     healthScale: 2.5,
     speedScale: 0.74,
@@ -125,10 +126,10 @@ export const stage32 = {
     shockwaves: 3,
     colors: { main: 0x5a1a2a, light: 0x8a2a3a, dark: 0x2a0a14, arm: 0x6a2030 },
     phases: [
-      ['doubleSlam', 'multiSlam', 'rocketPunch', 'sweep', 'shockwave'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'shockwave', 'rocks'],
-      ['multiSlam', 'rocketPunch', 'sweep', 'inhale', 'rocks'],
-      ['rocketPunch', 'rocks', 'shockwave', 'inhale'],
+      ['doubleSlam', 'multiSlam', 'rocketPunch', 'signature', 'shockwave'],
+      ['multiSlam', 'rocketPunch', 'signature', 'shockwave', 'rocks'],
+      ['multiSlam', 'signature', 'sweep', 'inhale', 'rocks'],
+      ['rocketPunch', 'rocks', 'shockwave', 'signature'],
     ],
   },
 };

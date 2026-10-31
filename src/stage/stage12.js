@@ -94,6 +94,7 @@ export const stage12 = {
     type: 'arms',
     name: '파쇄자 MK3',
     skin: 'drill',
+    signature: 'drillBurrow',
     arms: 3,
     healthScale: 2.1,
     speedScale: 0.85,
@@ -101,10 +102,10 @@ export const stage12 = {
     shockwaves: 2,
     colors: { main: 0x6e4232, light: 0x9a6a50, dark: 0x3a2a24, arm: 0x7a5444 },
     phases: [
-      ['slam', 'doubleSlam', 'rocketPunch', 'sweep', 'multiSlam'],
-      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'sweep'],
-      ['multiSlam', 'sweep', 'rocketPunch', 'shockwave', 'rocks'],
-      ['rocks', 'shockwave', 'inhale', 'rocks'],
+      ['slam', 'signature', 'rocketPunch', 'sweep', 'multiSlam'],
+      ['multiSlam', 'doubleSlam', 'signature', 'inhale', 'sweep'],
+      ['multiSlam', 'sweep', 'rocketPunch', 'signature', 'rocks'],
+      ['signature', 'shockwave', 'inhale', 'rocks'],
     ],
   },
 };

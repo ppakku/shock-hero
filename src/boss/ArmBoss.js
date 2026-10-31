@@ -5,6 +5,7 @@ import {
   pickRocketHeight, rocketBand, inhaleStep, shouldRage, restAfterAttack, difficultyOf,
 } from '../logic/boss.js';
 import { varyCount } from '../logic/bossVariety.js';
+import { signatureDue } from '../logic/sig_arms.js';
 import { ComboHazards } from './comboHazards.js';
 import { flash, floatText } from '../fx/effects.js';
 import { makeText } from '../ui/text.js';
@@ -147,6 +148,8 @@ export class ArmBoss extends BossBase {
     this.action = null;
     this.chained = false;
     this.rocketCount = 0;
+    this.attacks = 0; // 지금까지 고른 공격 수
+    this.signatureSeen = false;
     this.combo = new ComboHazards(this, { waveMaxX: this.frontX });
   }
 
@@ -351,6 +354,7 @@ export class ArmBoss extends BossBase {
     else if (a.type === 'spit') this.runSpit(dt);
     else if (a.type === 'rocketPunch') this.runRocketPunch(dt);
     else if (a.type === 'inhale') this.runInhale(dt);
+    else if (a.type === 'signature') this.runSignature(dt);
     else this.endAction();
   }
 
@@ -400,7 +404,10 @@ export class ArmBoss extends BossBase {
   startAction(forceType = null, picked = false) {
     const p = this.target;
     const alive = this.armsAlive;
-    const type = forceType || chooseBossAttack(this.def.phases, alive.length, this.totalArms, this.lastType);
+    const due = !forceType && signatureDue(this.def.phases, this.attacks, this.signatureSeen, this.c.signatureBy);
+    const type = forceType || (due ? 'signature' : chooseBossAttack(this.def.phases, alive.length, this.totalArms, this.lastType));
+    this.attacks += 1;
+    this.signatureSeen ||= type === 'signature';
     this.lastType = type;
     const a = { type, phase: 'aim', t: 0 };
     this.prepareAttack(a, { slam: this.c.slamWarningTime, sweep: this.c.sweepWarningTime }, !forceType || picked);
@@ -438,6 +445,8 @@ export class ArmBoss extends BossBase {
       a.arm.busy = true;
     } else if (type === 'inhale') {
       this.scene.tweens.add({ targets: this.body, scaleY: this.body.scaleY * 1.06, duration: 500, yoyo: true });
+    } else if (type === 'signature') {
+      this.startSignature();
     }
     if (a.jobs) for (const j of a.jobs) j.arm.busy = true;
     this.action = a;
@@ -456,6 +465,7 @@ export class ArmBoss extends BossBase {
   }
 
   endAction() {
+    this.stopSignature();
     const a = this.action;
     if (a?.jobs) {
       for (const j of a.jobs) {

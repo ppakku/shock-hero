@@ -113,6 +113,7 @@ export const stage21 = {
     type: 'arms',
     name: '파쇄자 MK4',
     skin: 'volt',
+    signature: 'voltChain',
     arms: 3,
     healthScale: 2.2,
     speedScale: 0.82,
@@ -120,10 +121,10 @@ export const stage21 = {
     shockwaves: 2,
     colors: { main: 0x3a4a6e, light: 0x5a78a8, dark: 0x1e2a44, arm: 0x4a5e88 },
     phases: [
-      ['slam', 'doubleSlam', 'rocketPunch', 'sweep', 'shockwave'],
-      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'rocks'],
-      ['multiSlam', 'sweep', 'rocketPunch', 'shockwave', 'rocks'],
-      ['rocks', 'shockwave', 'inhale', 'rocketPunch'],
+      ['slam', 'doubleSlam', 'rocketPunch', 'sweep', 'signature'],
+      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'signature'],
+      ['multiSlam', 'sweep', 'signature', 'shockwave', 'rocks'],
+      ['signature', 'shockwave', 'inhale', 'rocketPunch'],
     ],
   },
 };
