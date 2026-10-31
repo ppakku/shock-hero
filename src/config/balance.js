@@ -432,6 +432,16 @@ export const balance = {
     chargeDamage: 20, // 돌진 피해량
     tiredTime: 1.6, // 일어선 왕이 공격 뒤 숨 고르는 시간 (때릴 기회)
     coreMultiplier: 2.2, // 왕의 코어 체력 배수 (boss.coreHealth 에 곱함. 일어선 뒤 싸움이 길어져요)
+    phantomWarnTime: 1.1, // 망령 왕: 등 뒤에 나타나기 전 경고 시간
+    phantomDamage: 22, // 망령 왕: 내리치기 피해량
+    lanceWarnTime: 1.2, // 폭풍 기사왕: 창이 꽂힌 뒤 날아오기까지 경고 시간
+    lanceRadius: 130, // 폭풍 기사왕: 창 둘레 번개 구역 반지름
+    lanceDamage: 20, // 폭풍 기사왕: 번개 피해량
+    hellfireWarnTime: 1.0, // 마왕: 불기둥이 터지기 전 경고 시간
+    hellfireStep: 0.16, // 마왕: 불기둥이 차례로 터지는 간격
+    hellfireDamage: 18, // 마왕: 불기둥 피해량
+    mixWarnTime: 0.9, // 마왕 마지막 공격: 작은 위험의 경고 시간
+    mixDamage: 14, // 마왕 마지막 공격: 작은 위험 피해량
   },
 
   // ---------- 스테이지 2 보스: 포레스트 와처 (아들이 디자인한 숲 괴물) ----------

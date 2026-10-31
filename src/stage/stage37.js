@@ -144,6 +144,7 @@ export const stage37 = {
     type: 'king',
     name: '마왕의 근위대장',
     skin: 'demon',
+    signature: 'hellfire',
     arms: 3,
     healthScale: 2.6,
     speedScale: 0.72,
@@ -152,10 +153,10 @@ export const stage37 = {
     colors: { main: 0x3a1a4a, light: 0x6a2a7a, dark: 0x1a0a26, arm: 0x4e2460 },
     minions: ['shield', 'jumper', 'spitter'],
     phases: [
-      ['doubleSlam', 'rocketPunch', 'sweep', 'summon', 'shockwave', 'spit'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'summon', 'sweep', 'doubleSlam'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'summon', 'spit', 'sweep'],
+      ['doubleSlam', 'rocketPunch', 'sweep', 'summon', 'shockwave', 'signature'],
+      ['multiSlam', 'rocketPunch', 'inhale', 'summon', 'signature', 'doubleSlam'],
+      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'summon', 'signature', 'sweep'],
     ],
-    finalPhase: ['charge', 'leap', 'inhale', 'summon', 'charge', 'rocks'],
+    finalPhase: ['charge', 'leap', 'inhale', 'summon', 'signature', 'rocks'],
   },
 };

@@ -133,6 +133,7 @@ export const stage30 = {
     type: 'king',
     name: '폭풍 군주',
     skin: 'storm',
+    signature: 'stormLance',
     arms: 3,
     healthScale: 2.6,
     speedScale: 0.72,
@@ -141,11 +142,11 @@ export const stage30 = {
     colors: { main: 0x1a2a5a, light: 0x3a5aa0, dark: 0x0c1430, arm: 0x2a3e78 },
     minions: ['fast', 'jumper', 'shield', 'spitter'],
     phases: [
-      ['doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'slam', 'spit'],
-      ['multiSlam', 'sweep', 'rocketPunch', 'inhale', 'summon', 'doubleSlam'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'summon', 'shockwave', 'sweep'],
+      ['doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'signature', 'spit'],
+      ['multiSlam', 'sweep', 'rocketPunch', 'inhale', 'summon', 'signature'],
+      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'summon', 'shockwave', 'signature'],
     ],
-    finalPhase: ['leap', 'charge', 'rocks', 'summon', 'leap', 'inhale'],
+    finalPhase: ['leap', 'charge', 'rocks', 'summon', 'signature', 'inhale'],
     intro: ['폭풍 군주가 일어섰어! 문이 흔들려!', '여기만 넘으면 문 너머로 갈 수 있어. 힘내!'],
   },
 };

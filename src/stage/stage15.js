@@ -102,6 +102,7 @@ export const stage15 = {
     type: 'king',
     name: '망령 킹',
     skin: 'ghost',
+    signature: 'phantomStep',
     arms: 3,
     healthScale: 2.2,
     speedScale: 0.75,
@@ -110,10 +111,10 @@ export const stage15 = {
     colors: { main: 0x5a1a2a, light: 0x8a2a3a, dark: 0x30101a, arm: 0x7a2a3a },
     minions: ['fast', 'jumper', 'shield'],
     phases: [
-      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'spit'],
-      ['multiSlam', 'sweep', 'rocketPunch', 'inhale', 'summon', 'shockwave'],
-      ['rocketPunch', 'inhale', 'rocks', 'spit', 'summon', 'sweep'],
+      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'signature'],
+      ['multiSlam', 'sweep', 'rocketPunch', 'inhale', 'summon', 'signature'],
+      ['rocketPunch', 'inhale', 'rocks', 'signature', 'summon', 'sweep'],
     ],
-    finalPhase: ['leap', 'charge', 'inhale', 'summon', 'rocks'],
+    finalPhase: ['leap', 'charge', 'inhale', 'summon', 'signature'],
   },
 };

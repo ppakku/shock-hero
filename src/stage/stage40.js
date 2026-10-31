@@ -150,6 +150,8 @@ export const stage40 = {
     type: 'king',
     name: '마왕',
     skin: 'demon',
+    signature: 'hellfire',
+    finalSignature: 'finalMix', // 일어선 뒤에는 이 공격을 쓴다
     arms: 3,
     healthScale: 2.8,
     speedScale: 0.7,
@@ -158,11 +160,11 @@ export const stage40 = {
     colors: { main: 0x4a0a20, light: 0x8a1a3a, dark: 0x240410, arm: 0x5e1028 },
     minions: ['fast', 'jumper', 'shield', 'spitter'],
     phases: [
-      ['doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'spit', 'sweep'],
-      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'summon', 'shockwave'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'spit', 'summon', 'sweep'],
+      ['doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'signature', 'sweep'],
+      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'summon', 'signature'],
+      ['multiSlam', 'rocketPunch', 'inhale', 'signature', 'spit', 'summon', 'sweep'],
     ],
-    finalPhase: ['leap', 'charge', 'rocks', 'summon', 'inhale', 'leap', 'charge'],
+    finalPhase: ['leap', 'charge', 'rocks', 'summon', 'inhale', 'signature', 'charge'],
     intro: ['마왕이 눈을 떴어! 성 전체가 흔들려!', '이번이 마지막이야. 끝까지 포기하지 마!'],
   },
 };

@@ -128,6 +128,7 @@ export const stage25 = {
     type: 'king',
     name: '폭풍 기사왕',
     skin: 'storm',
+    signature: 'stormLance',
     arms: 3,
     healthScale: 2.4,
     speedScale: 0.75,
@@ -136,10 +137,10 @@ export const stage25 = {
     colors: { main: 0x2a3a6a, light: 0x4a6aa0, dark: 0x141e3a, arm: 0x3a4e80 },
     minions: ['fast', 'shield', 'spitter'],
     phases: [
-      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'sweep'],
-      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'summon', 'spit'],
-      ['multiSlam', 'rocketPunch', 'rocks', 'spit', 'summon', 'sweep', 'shockwave'],
+      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'shockwave', 'signature'],
+      ['multiSlam', 'doubleSlam', 'rocketPunch', 'inhale', 'summon', 'signature'],
+      ['multiSlam', 'rocketPunch', 'rocks', 'spit', 'summon', 'sweep', 'signature'],
     ],
-    finalPhase: ['charge', 'leap', 'summon', 'rocks', 'inhale', 'charge'],
+    finalPhase: ['charge', 'leap', 'summon', 'rocks', 'inhale', 'signature'],
   },
 };

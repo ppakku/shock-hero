@@ -117,6 +117,7 @@ export const stage20 = {
     type: 'king',
     name: '괴물 대왕',
     skin: 'ghost',
+    signature: 'phantomStep',
     arms: 3,
     healthScale: 2.6,
     speedScale: 0.7,
@@ -125,10 +126,10 @@ export const stage20 = {
     colors: { main: 0x5a1a2a, light: 0x8a2a3a, dark: 0x30101a, arm: 0x7a2a3a },
     minions: ['fast', 'jumper', 'shield', 'spitter'],
     phases: [
-      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'spit', 'shockwave'],
-      ['multiSlam', 'doubleSlam', 'sweep', 'rocketPunch', 'inhale', 'summon'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'spit', 'summon', 'sweep'],
+      ['slam', 'doubleSlam', 'rocketPunch', 'summon', 'spit', 'signature'],
+      ['multiSlam', 'signature', 'sweep', 'rocketPunch', 'inhale', 'summon'],
+      ['multiSlam', 'rocketPunch', 'inhale', 'rocks', 'signature', 'summon', 'sweep'],
     ],
-    finalPhase: ['leap', 'charge', 'inhale', 'summon', 'rocks', 'leap'],
+    finalPhase: ['leap', 'charge', 'inhale', 'summon', 'rocks', 'signature'],
   },
 };
