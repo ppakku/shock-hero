@@ -4,7 +4,7 @@ import { saveStore } from '../save.js';
 import { stages } from '../stage/index.js';
 import { cfg } from '../config/index.js';
 import { HERO_INFO } from '../logic/heroes.js';
-import { HERO_LOOKS } from '../fx/heroTextures.js';
+import { HERO_LOOKS, fitHero } from '../fx/heroTextures.js';
 import { todayKey, todayChallenge, challengeText, doneToday } from '../logic/daily.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText, FONT } from '../ui/text.js';
@@ -57,7 +57,8 @@ export class DailyScene extends Phaser.Scene {
     const key = `${HERO_LOOKS[c.hero].prefix}_idle0`;
     const tex = c.hero === 'shock' && this.registry.get('heroCustomArt') ? 'player' : this.textures.exists(key) ? key : 'player';
     const img = this.add.image(271, 318, tex).setOrigin(0.5, 1);
-    img.setScale(Math.min(150 / img.width, 140 / img.height));
+    if (tex === key) fitHero(img, 140);
+    else img.setScale(Math.min(150 / img.width, 140 / img.height));
     makeText(this, 271, 334, hero.name, 18, hero.color, { strokeThickness: 4 }).setOrigin(0.5);
 
     // 오른쪽: 도전 설명

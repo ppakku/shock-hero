@@ -58,7 +58,9 @@
 - [x] 스테이지 5 괴물 성 (`castle_bg.jpg`, `castle_arena.jpg`, `castle_ground.png`, `castle_platform.png`, 배경은 Gemini 원본 다운로드 오류로 화면 크기 그림을 키움)
 - [x] 스테이지 6 수중 던전 (아들 배경 + `sea_ground.png`, `sea_platform.png`)
 - [x] 스테이지 7 고철 공장 (`factory_bg.jpg`, `factory_arena.jpg`, `factory_ground.png`, `factory_platform.png`)
-- [ ] 새 주인공 번개 사수, 강철 거인 (아들 디자인 기다리는 중, 지금은 쇼크 히어로 몸에 색만 바꾼 임시 그림)
+- [x] 쇼크 히어로 Gemini 그림 (`heroart_shock.webp`, `docs/hero_sheet.png` 디자인을 그대로 씀)
+- [ ] 번개 사수, 강철 거인, 바람 닌자, 얼음 마법사 Gemini 그림 (지금은 코드로 그린 그림)
+- [ ] 타격 그림 `fx_hit.png`, `fx_charge_blast.png` (지금은 도형으로 대신함)
 
 ### 보스 변종 14종
 - [x] 본체 시트, 팔, 주먹, 꼬리, 왕좌, 아래턱 (`src/config/variantArt.js`). 시트는 `tools/make_variant_sheet.py` 로 만듭니다. 칸 선을 끊고 8번째 칸은 별 표시 때문에 4번째 칸을 씁니다.

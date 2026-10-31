@@ -30,6 +30,15 @@ const ART_FIST = {
 // 이 그림 폭의 장면 크기 (주인공 그림이 Gemini 그림이면 ART_FRAME)
 export const frameOfWidth = (width) => (width === ART_FRAME.w * ART_S ? ART_FRAME : HERO_FRAME);
 
+// 카드와 아이콘의 주인공 그림 크기를 맞춘다. Gemini 그림은 칸에 여백이 많아서 몸 높이(ART_BODY)로 재고 발을 기준으로 놓는다.
+const ART_BODY = 66;
+export function fitHero(img, h) {
+  if (!img.height) return;
+  const art = frameOfWidth(img.width) === ART_FRAME;
+  if (art) img.setOrigin(0.5, ART_FRAME.feetY / ART_FRAME.h);
+  img.setScale(art ? (h * 0.8) / (ART_BODY * ART_S) : h / img.height);
+}
+
 // 쇼크 히어로 색
 const SHOCK = {
   suit: 0x2b2b31,
