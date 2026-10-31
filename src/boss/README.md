@@ -30,3 +30,9 @@
 `scene.sfxPlay(name)`, `scene.shake(i, ms)`,
 `scene.dustAt/gooAt/greenGooAt(x, y, n)`, `scene.robot.say(text, urgent)`, `scene.bossTips`(Set), `scene.gainXp(n, x, y)`,
 `scene.spawnMonster(spot)` (부하 소환, spot = `{ x, y, type }`), `scene.monsters`.
+
+## 변종과 전용 공격
+- 변종은 `boss.skin` 에 이름을 적는다 (`src/config/variantArt.js`). 없는 그림은 원래 보스 그림을 빌려 쓴다.
+- 전용 공격은 `src/boss/signatures/<계열>.js` 에 `Signature` 를 상속해 만든다. `step(dt)` 가 true 를 돌려주면 끝이다.
+- 스테이지에 `signature: '이름'` 을 적고 `phases` 의 공격 하나를 `'signature'` 로 바꾼다.
+- 보스의 `startAction` 은 `type === 'signature'` 일 때 `startSignature()`, 공격 진행에서는 `runSignature(dt)` 를 부른다.

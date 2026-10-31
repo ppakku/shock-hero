@@ -117,7 +117,7 @@ export const stage32 = {
   boss: {
     type: 'arms',
     name: '마왕의 파쇄자',
-    skin: 1,
+    skin: 'volt',
     arms: 3,
     healthScale: 2.5,
     speedScale: 0.74,

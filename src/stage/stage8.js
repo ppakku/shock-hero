@@ -95,7 +95,7 @@ export const stage8 = {
   boss: {
     type: 'dragon',
     name: '분노한 아스트라노바X',
-    skin: 3, // 스테이지 3 아스트라노바X 그림을 그대로 씀
+    skin: 'rock', // 스테이지 3 아스트라노바X 그림을 그대로 씀
     healthScale: 1.45,
     speedScale: 0.85,
     colors: { main: 0xc8282a, dark: 0x7a1418, armor: 0x2e2a2c, lava: 0xff7a1f, belly: 0xf0d0a0 },

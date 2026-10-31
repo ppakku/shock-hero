@@ -97,7 +97,7 @@ export const stage9 = {
   boss: {
     type: 'ice',
     name: '사나운 혹한의 아스트라',
-    skin: 4, // 스테이지 4 혹한의 아스트라 그림을 그대로 씀
+    skin: 'blizzard', // 스테이지 4 혹한의 아스트라 그림을 그대로 씀
     healthScale: 1.9,
     speedScale: 0.8,
     colors: { bright: 0x3d9be0, main: 0x2a5fa8, dark: 0x1a2552, pale: 0xc4cee0, light: 0xd8f6ff },

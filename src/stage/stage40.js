@@ -149,7 +149,7 @@ export const stage40 = {
   boss: {
     type: 'king',
     name: '마왕',
-    skin: 10,
+    skin: 'demon',
     arms: 3,
     healthScale: 2.8,
     speedScale: 0.7,

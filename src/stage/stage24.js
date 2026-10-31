@@ -113,7 +113,7 @@ export const stage24 = {
   boss: {
     type: 'ice',
     name: '눈폭풍의 아스트라',
-    skin: 4,
+    skin: 'obsidian',
     healthScale: 2.4,
     speedScale: 0.76,
     colors: { bright: 0x7ab8e8, main: 0x3a70b0, dark: 0x1c2c58, pale: 0xd0dcec, light: 0xe8faff },

@@ -134,7 +134,7 @@ export const stage38 = {
   boss: {
     type: 'dragon',
     name: '흑룡 아스트라노바X',
-    skin: 3,
+    skin: 'black',
     healthScale: 2.4,
     speedScale: 0.7,
     colors: { main: 0x2a2228, dark: 0x120e12, armor: 0x4a1a1a, lava: 0xff6a1a, belly: 0x8a7a70 },

@@ -6,6 +6,8 @@
 //  (배경이 투명한 PNG 가 가장 예쁘게 나와요)
 // =============================================================
 
+import { variantArt } from './variantArt.js';
+
 export const customArt = {
   // player: 'player.png', // 주인공 (오른쪽을 보는 모습으로 그려 주세요)
   monster: { file: 'monster_green.png', cols: 4, rows: 2, frameRate: 8 }, // 초록 몬스터 (Gemini 그림, 8장 걷기, 오른쪽을 봄)
@@ -127,3 +129,5 @@ export const customArt = {
   chest: 'chest.png', // 보물 상자 (Gemini 그림)
   chest_open: 'chest_open.png', // 열린 보물 상자 (Gemini 그림, 금화와 보석)
 };
+
+Object.assign(customArt, variantArt(customArt));

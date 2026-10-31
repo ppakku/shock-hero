@@ -132,7 +132,7 @@ export const stage35 = {
   boss: {
     type: 'watcher',
     name: '뒤틀린 와처',
-    skin: 2,
+    skin: 'wraith',
     healthScale: 2.3,
     speedScale: 0.72,
     colors: { main: 0x3a1e4a, dark: 0x1c0e26, moss: 0x6a2a7a, slime: 0xff6ae0 },

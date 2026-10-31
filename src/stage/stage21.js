@@ -112,7 +112,7 @@ export const stage21 = {
   boss: {
     type: 'arms',
     name: '파쇄자 MK4',
-    skin: 1,
+    skin: 'volt',
     arms: 3,
     healthScale: 2.2,
     speedScale: 0.82,

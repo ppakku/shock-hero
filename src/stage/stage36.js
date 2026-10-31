@@ -126,7 +126,7 @@ export const stage36 = {
   boss: {
     type: 'sea',
     name: '어둠의 아귀왕',
-    skin: 6,
+    skin: 'abyss',
     healthScale: 2.1,
     speedScale: 0.76,
     colors: { main: 0x1a1a3a, light: 0x3a3a6a, dark: 0x0a0a1e, belly: 0x6a6a9a, lure: 0xff5ad5 },

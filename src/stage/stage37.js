@@ -143,7 +143,7 @@ export const stage37 = {
   boss: {
     type: 'king',
     name: '마왕의 근위대장',
-    skin: 5,
+    skin: 'demon',
     arms: 3,
     healthScale: 2.6,
     speedScale: 0.72,

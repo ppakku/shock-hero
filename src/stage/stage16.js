@@ -99,7 +99,7 @@ export const stage16 = {
   boss: {
     type: 'sea',
     name: '심연의 아귀왕',
-    skin: 6,
+    skin: 'ray',
     healthScale: 1.7,
     speedScale: 0.85,
     colors: { main: 0x2a4a6a, light: 0x4a7aa0, dark: 0x14263a, belly: 0x8ab0c0, lure: 0x9dff6a },

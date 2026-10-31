@@ -120,7 +120,7 @@ export const stage33 = {
   boss: {
     type: 'dragon',
     name: '붉은 달의 아스트라노바X',
-    skin: 3,
+    skin: 'black',
     healthScale: 2.2,
     speedScale: 0.72,
     colors: { main: 0xa01420, dark: 0x5a0a12, armor: 0x241c20, lava: 0xff3a2a, belly: 0xe8b0a0 },

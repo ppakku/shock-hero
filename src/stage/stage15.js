@@ -101,7 +101,7 @@ export const stage15 = {
   boss: {
     type: 'king',
     name: '망령 킹',
-    skin: 5,
+    skin: 'ghost',
     arms: 3,
     healthScale: 2.2,
     speedScale: 0.75,

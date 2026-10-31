@@ -119,7 +119,7 @@ export const stage29 = {
   boss: {
     type: 'dragon',
     name: '불비의 아스트라노바X',
-    skin: 3,
+    skin: 'thunder',
     healthScale: 2.1,
     speedScale: 0.74,
     colors: { main: 0xd84a1a, dark: 0x8a2410, armor: 0x3a2a24, lava: 0xffc23a, belly: 0xf8e0a8 },

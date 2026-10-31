@@ -307,6 +307,7 @@ export class WatcherBoss extends BossBase {
       else if (a.type === 'spit') this.runSpit(dt);
       else if (a.type === 'vines') this.runVinesAction(dt);
       else if (a.type === 'crawl') this.runCrawl(dt);
+      else if (a.type === 'signature') this.runSignature(dt);
       else if (a.type === 'tired') this.runTired(dt);
     }
     if (this.side) this.runSide(dt);
@@ -392,6 +393,9 @@ export class WatcherBoss extends BossBase {
       a.phase = 'run';
       const count = Math.max(1, Math.round(k.dripCount + (this.raging ? 1 : 0)));
       a.drops = spreadTargets(this.target.x, count, this.arenaStart + 60, this.arenaEnd - 60).map((x) => ({ x, done: false }));
+    } else if (type === 'signature') {
+      this.facePlayer();
+      this.startSignature();
     }
     this.action = a;
     this.scene.sfxPlay('warn');

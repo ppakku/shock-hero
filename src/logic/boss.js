@@ -10,6 +10,7 @@ export const BOSS_PATTERNS = {
   rocketPunch: { arms: 1 }, // 주먹 발사 (낮으면 점프, 높으면 가만히)
   inhale: { arms: 0 }, // 빨아들이기 (반대쪽으로 달려서 버티기)
   summon: { arms: 0 }, // 부하 부르기 (킹 돌연변이)
+  signature: { arms: 0 }, // 변종의 전용 공격 (src/boss/signatures/)
 };
 
 // 혹한의 아스트라(스테이지 4, 날아다니는 얼음 용) 공격 이름

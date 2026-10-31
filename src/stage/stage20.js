@@ -116,7 +116,7 @@ export const stage20 = {
   boss: {
     type: 'king',
     name: '괴물 대왕',
-    skin: 5,
+    skin: 'ghost',
     arms: 3,
     healthScale: 2.6,
     speedScale: 0.7,

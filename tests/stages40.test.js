@@ -21,7 +21,7 @@ const SEA_ONLY = ['jelly', 'puffer', 'piranha', 'crab'];
 const LAND_ONLY = ['basic', 'fast', 'tank', 'jumper', 'fros', 'spitter', 'shield'];
 const BOSS_KINDS = ['arms', 'shredder', 'watcher', 'dragon', 'ice', 'king', 'sea'];
 // 보스 종류마다 그림이 있는 skin (art.js)
-const SKINS = { arms: [1], shredder: [1], watcher: [2], dragon: [3], ice: [4], king: [5, 10], sea: [6] };
+const SKINS = { arms: ['volt'], shredder: [1], watcher: ['bog', 'wraith'], dragon: ['thunder', 'black'], ice: ['obsidian', 'blizzard'], king: ['storm', 'demon'], sea: ['ray', 'abyss'] };
 const ATTACKS = {
   arms: ['slam', 'multiSlam', 'doubleSlam', 'sweep', 'rocks', 'shockwave', 'spit', 'rocketPunch', 'inhale'],
   shredder: ['sawDash', 'sawThrow', 'sawDive', 'crawl', 'stomp', 'rocket', 'grind'],
@@ -138,7 +138,7 @@ describe('스테이지 40개', () => {
       expect(b.healthScale, `${n}`).toBeGreaterThan(1);
       for (const list of [...b.phases, ...(b.finalPhase ? [b.finalPhase] : [])]) {
         expect(list.length, `${n}`).toBeGreaterThan(0);
-        for (const a of list) expect(ATTACKS[b.type], `${n} ${a}`).toContain(a);
+        for (const a of list) expect([...ATTACKS[b.type], 'signature'], `${n} ${a}`).toContain(a);
       }
       if (b.type === 'king') {
         expect(b.finalPhase, `${n}`).toBeTruthy();

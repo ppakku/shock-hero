@@ -122,7 +122,7 @@ export const stage34 = {
   boss: {
     type: 'ice',
     name: '검은 얼음의 아스트라',
-    skin: 4,
+    skin: 'obsidian',
     healthScale: 2.6,
     speedScale: 0.72,
     colors: { bright: 0x5a5ac0, main: 0x2a2a78, dark: 0x101030, pale: 0x9aa0c8, light: 0xc0c8ff },
