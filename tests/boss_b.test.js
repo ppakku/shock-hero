@@ -119,10 +119,10 @@ describe('스테이지 1, 4, 5 보스 설정', () => {
   const s4 = stages[3];
   const s5 = stages[4];
 
-  it('스테이지 1 은 새 공격(주먹 발사, 빨아들이기)을 쓴다', () => {
+  it('스테이지 1 은 주먹 발사와 빨아들여 갈기를 쓴다', () => {
     const all = s1.boss.phases.flat();
-    expect(all).toContain('rocketPunch');
-    expect(all).toContain('inhale');
+    expect(all).toContain('rocket');
+    expect(all).toContain('grind');
   });
 
   it('스테이지 4 는 날아다니는 얼음 보스, 공격 이름이 맞다', () => {

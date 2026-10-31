@@ -61,7 +61,7 @@ export function stageRamp(stageNum = 1) {
 }
 
 // 보스 숫자가 들어 있는 곳. 이름이 Damage 로 끝나는 숫자가 보스가 주는 피해다.
-const BOSS_SECTIONS = ['boss', 'iceBoss', 'kingBoss', 'watcherBoss', 'dragonBoss', 'seaBoss'];
+const BOSS_SECTIONS = ['boss', 'iceBoss', 'kingBoss', 'watcherBoss', 'shredderBoss', 'dragonBoss', 'seaBoss'];
 
 function scaleBossDamage(section, mul) {
   const out = { ...section };

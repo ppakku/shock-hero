@@ -25,4 +25,5 @@
 - 바뀌는 말 뒤 조사는 `{strong}(으)로`, `{atk}(을)를`, `{strong}(이)가`, `{atk}(이)나` 처럼 쓰면 받침에 맞게 골라집니다 (망치로, 번개탄으로).
 - 보스 공격 이름: `slam`(내려찍기), `multiSlam`(연속 내려찍기), `doubleSlam`(두 팔 동시), `sweep`(바닥 쓸기),
   `rocks`(돌 떨구기), `shockwave`(땅 울림, 점프로 넘기), `spit`(독침).
+- 파쇄자(`type: 'shredder'`) 공격 이름: `sawDash`(톱니 돌진), `sawThrow`(톱날 던지기), `sawDive`(땅속 톱날), `grind`(빨아들여 갈기), `crawl`(벽과 천장), `stomp`(뛰어 내려찍기), `rocket`(주먹 발사). `phases` 에 같은 이름을 두 번 적으면 두 배로 자주 나옵니다.
 - `npm test` 를 돌리면 위 규칙을 어겼는지 자동으로 확인해 줍니다.

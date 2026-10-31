@@ -19,11 +19,12 @@ const JUMP = 100; // README: 발판 사이 높이는 100 이하
 const REACH = 90; // 발판 끝과 끝 사이 가로 거리 (logic.test.js 의 발판 규칙과 같음)
 const SEA_ONLY = ['jelly', 'puffer', 'piranha', 'crab'];
 const LAND_ONLY = ['basic', 'fast', 'tank', 'jumper', 'fros', 'spitter', 'shield'];
-const BOSS_KINDS = ['arms', 'watcher', 'dragon', 'ice', 'king', 'sea'];
+const BOSS_KINDS = ['arms', 'shredder', 'watcher', 'dragon', 'ice', 'king', 'sea'];
 // 보스 종류마다 그림이 있는 skin (art.js)
-const SKINS = { arms: [1], watcher: [2], dragon: [3], ice: [4], king: [5, 10], sea: [6] };
+const SKINS = { arms: [1], shredder: [1], watcher: [2], dragon: [3], ice: [4], king: [5, 10], sea: [6] };
 const ATTACKS = {
   arms: ['slam', 'multiSlam', 'doubleSlam', 'sweep', 'rocks', 'shockwave', 'spit', 'rocketPunch', 'inhale'],
+  shredder: ['sawDash', 'sawThrow', 'sawDive', 'crawl', 'stomp', 'rocket', 'grind'],
   watcher: ['claw', 'spit', 'burrow', 'vines', 'crawl'],
   dragon: ['breath', 'tail', 'wing', 'pillars', 'fly'],
   ice: ['freezeBreath', 'dive', 'avalanche', 'icicles', 'hop'],

@@ -446,6 +446,54 @@ export const balance = {
     partXp: 30, // 긴 팔이나 등 독혹을 부수면 얻는 경험치
   },
 
+  // ---------- 스테이지 1 보스: 파쇄자 (아들이 그린 녹슨 드럼통, 배에 톱니) ----------
+  // 포레스트 와처처럼 돌아다닌다. 땅에 떨어진 주먹을 때려 쇠팔을 부수고,
+  // 톱니가 벽에 끼거나 과열로 주저앉으면 배의 톱니 덮개를 때려요. 둘 다 부수면 코어가 약점.
+  // 주먹 발사와 빨아들이기의 시간은 위 boss 숫자를 같이 써요.
+  shredderBoss: {
+    armHealth: 120, // 쇠팔 체력
+    guardHealth: 160, // 톱니 덮개 체력
+    coreHealth: 220, // 코어(약점) 체력
+    rocketReach: 560, // 주먹이 날아가는 거리. 떨어진 주먹을 때려요
+    rocketStuckTime: 2.6, // 떨어진 주먹을 때릴 수 있는 시간
+    idleTime: 1.3, // 공격과 공격 사이 쉬는 시간 (이때 걸어서 다가와요)
+    walkSpeed: 120, // 쉴 때 걷는 속도
+    walkKeep: 240, // 주인공과 이만큼 떨어지면 멈춤
+    comboLength: 3, // 이만큼 공격하면 과열돼서 주저앉음
+    tiredTime: 3.2, // 주저앉아 있는 시간 (때릴 기회). 이때 뜨거운 고철도 식음
+    dashWarningTime: 1.1, // 톱니 돌진 전 경고 시간
+    dashSpeed: 720, // 돌진 속도
+    dashDamage: 18, // 돌진 피해량
+    jamTime: 1.8, // 톱니가 벽에 끼어 있는 시간 (때릴 기회)
+    throwWarningTime: 0.8, // 톱날 던지기 전 경고 시간
+    bladeCount: 2, // 던지는 톱날 개수 (화나면 1개 더)
+    bladeGap: 0.8, // 톱날 사이 시간 (점프가 끝난 뒤에 다음 톱날이 오게)
+    bladeSpeed: 400, // 톱날 속도
+    bladeDamage: 12, // 톱날 피해량
+    finSpeed: 230, // 땅속 톱날이 쫓아오는 속도 (걷는 속도 260 보다 작아야 도망칠 수 있어요)
+    finTime: 2.4, // 땅속 톱날이 쫓아오는 시간
+    finDamage: 10, // 땅속 톱날 피해량
+    burstWarningTime: 0.8, // 멈춘 뒤 튀어나오기 전 경고 시간
+    burstDamage: 22, // 튀어나올 때 피해량
+    crawlSpeed: 480, // 벽과 천장을 기어가는 속도
+    scrapCount: 3, // 천장에서 떨어뜨리는 고철 개수 (화나면 1개 더)
+    scrapDamage: 10, // 고철 피해량
+    puddleTime: 3.5, // 뜨거운 고철이 남아 있는 시간
+    puddleWidth: 90, // 뜨거운 고철 너비
+    puddleDamage: 4, // 뜨거운 고철 위에 서 있으면 조금씩 깎이는 체력
+    stompWarningTime: 0.9, // 뛰어 내려찍기 전 경고 시간
+    stompAirTime: 0.6, // 공중에 떠 있는 시간
+    stompDamage: 20, // 내려찍기 피해량
+    waveDamage: 10, // 충격파 피해량
+    waveSpeed: 340, // 충격파 속도
+    waveRange: 420, // 충격파가 가는 거리
+    chewTime: 1.2, // 톱니에 잡혀 있는 시간 (대시로 바로 빠져나올 수 있음)
+    chewTick: 0.4, // 이 시간마다 갈림
+    chewDamage: 6, // 한 번 갈릴 때 피해량
+    chargedPunchCoreMultiplier: 1.5, // 충전 펀치로 코어를 치면 피해 배수
+    partXp: 30, // 쇠팔이나 덮개를 부수면 얻는 경험치
+  },
+
   // ---------- 스테이지 3 보스: 아스트라노바X (아들이 디자인한 붉은 용) ----------
   // 꼬리를 휘두른 뒤 땅에 떨어진 꼬리를, 날개가 축 처졌을 때 날개를 때려요.
   // 둘 다 부수면 공격이 끝날 때마다 헉헉거려요. 그때 크림색 배(약점)를 때려요.
