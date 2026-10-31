@@ -40,6 +40,10 @@ export class HorrorHud {
     this.slit = document.createElement('div');
     this.slit.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;display:none;background:linear-gradient(90deg,#000 0 40%,transparent 44% 56%,#000 60% 100%)';
     root.appendChild(this.slit);
+    // 안내 화면 위에도 보이는 알림. 화면이 꺼졌을 때 쓴다
+    this.notice = document.createElement('div');
+    this.notice.style.cssText = 'position:absolute;left:12px;right:12px;top:10%;z-index:6;pointer-events:none;text-align:center;color:#ffd080;font:20px sans-serif;text-shadow:0 0 4px #000';
+    root.appendChild(this.notice);
     this.layer = null;
   }
 
@@ -54,7 +58,10 @@ export class HorrorHud {
     this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
   }
 
+  // 매 프레임 불린다. 글자가 같으면 화면을 건드리지 않는다
   setPrompt(text) {
+    if (text === this.promptText) return;
+    this.promptText = text;
     this.prompt.textContent = text;
   }
 
@@ -64,6 +71,10 @@ export class HorrorHud {
     this.sayTimer = setTimeout(() => {
       this.message.textContent = '';
     }, seconds * 1000);
+  }
+
+  setNotice(text) {
+    this.notice.textContent = text;
   }
 
   showSlit(on) {
@@ -130,5 +141,6 @@ export class HorrorHud {
     this.closeLayer();
     this.box.remove();
     this.slit.remove();
+    this.notice.remove();
   }
 }

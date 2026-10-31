@@ -2,10 +2,11 @@
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
 import { CELL, center, cellOf, frontOf, findPath, lineOfSight } from '../logic/horrorGrid.js';
-import { stepPlayer, nextPixelRatio, noiseFor } from '../logic/horrorInput.js';
+import { stepPlayer, nextPixelRatio, startRatio, noiseFor } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, recordEscape, nearestUse } from '../logic/horrorRun.js';
 import { saveStore } from '../save.js';
+import { sfx } from '../audio/sfx.js';
 import { factoryMap } from './maps/factory.js';
 import { buildWorld } from './world.js';
 import { CreatureModel } from './creatureModel.js';
@@ -16,6 +17,9 @@ import { HorrorAudio } from './audio.js';
 const EYE = 1.6; // 눈높이 (미터)
 const RADIUS = 0.2; // 주인공 몸 반지름 (칸)
 const MAX_DT = 0.05;
+const FPS_GAP = 0.5; // 이보다 긴 프레임은 화면이 가려졌던 틈이라 초당 장수에 넣지 않는다 (초)
+const LOST_TEXT = '화면이 잠깐 꺼졌어요. 돌아올 때까지 기다려 주세요';
+const BACK_TEXT = '화면이 돌아왔어요. 계속하기를 누르세요';
 const HIDE_LOOK = 0.6; // 사물함 안에서 고개를 돌릴 수 있는 각도 (라디안)
 // 잡히는 장면 (초): 얼굴이 달려든다, 화면 가득 찬 채 있다가 어두워진다, 시작 지점으로 돌아간다
 const LUNGE_TIME = 0.16;
@@ -52,7 +56,7 @@ export class HorrorGame {
     this.fps = 60;
     this.fpsFrames = 0;
     this.fpsTime = 0;
-    this.ratio = Math.min(window.devicePixelRatio || 1, this.k.maxRatio);
+    this.ratio = startRatio(window.devicePixelRatio, touch, this.k);
     this.showFps = new URLSearchParams(window.location.search).has('fps');
 
     this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -63,6 +67,7 @@ export class HorrorGame {
       this.hud?.destroy();
       if (this.onResize) window.removeEventListener('resize', this.onResize);
       if (this.onVisibility) document.removeEventListener('visibilitychange', this.onVisibility);
+      this.unbindContext();
       this.renderer.dispose(); // 만들다 실패하면 WebGL 자리를 돌려준다
       this.renderer.forceContextLoss();
       throw e;
@@ -118,8 +123,26 @@ export class HorrorGame {
       if (document.hidden) this.pause();
     };
     document.addEventListener('visibilitychange', this.onVisibility);
+    this.onContextLost = (e) => {
+      e.preventDefault(); // 이렇게 해야 복구 신호가 온다
+      this.contextLost = true;
+      this.hud.setNotice(LOST_TEXT);
+      this.pause(); // 까만 화면에서 쫓기지 않게 한다
+    };
+    this.onContextRestored = () => {
+      this.contextLost = false;
+      this.hud.setNotice(this.state === 'paused' ? BACK_TEXT : ''); // 스스로 다시 시작하지 않고 일시정지에 머문다
+    };
+    this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+    this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     window.__horror = this;
     window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight }; // 봇이 쓴다
+  }
+
+  unbindContext() {
+    if (!this.onContextLost) return;
+    this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
+    this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
   }
 
   // 벽, 바닥, 사물함 문에 그림을 입힌다. 그림을 못 받으면 밋밋한 색으로 둔다
@@ -171,9 +194,14 @@ export class HorrorGame {
 
   // 시작 버튼을 누른 순간에 부른다. 소리와 마우스 잠금은 이때만 허락된다.
   beginPlay() {
+    if (this.contextLost) return; // 화면이 돌아오면 다시 누른다
     this.hud.closeLayer();
     this.state = 'play';
-    this.audio = new HorrorAudio({ muted: this.muted });
+    try {
+      this.audio = new HorrorAudio({ muted: this.muted });
+    } catch (e) {
+      console.error('공포 모드 소리를 켜지 못해 소리 없이 합니다', e);
+    }
     this.relock();
     this.hud.say(startHint(this.touch), 6);
   }
@@ -196,8 +224,8 @@ export class HorrorGame {
     if (this.state !== 'play') return;
     this.camera.updateMatrixWorld();
     const s = this.stalker;
-    this.audio.update(dt);
-    this.audio.updateStalker(this.camera, { x: s.x * CELL, y: 1.5, z: s.y * CELL }, s.mode, Math.hypot(s.x - this.p.x, s.y - this.p.y), dt);
+    this.audio?.update(dt);
+    this.audio?.updateStalker(this.camera, { x: s.x * CELL, y: 1.5, z: s.y * CELL }, s.mode, Math.hypot(s.x - this.p.x, s.y - this.p.y), dt);
   }
 
   playFrame(inp, dt) {
@@ -232,7 +260,7 @@ export class HorrorGame {
     const i = this.scaresLeft.findIndex((s) => s.cx === c.cx && s.cy === c.cy);
     if (i < 0) return;
     this.scaresLeft.splice(i, 1);
-    this.audio.play('scare');
+    this.audio?.play('scare');
     this.hud.say(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)], 3);
     if (!this.lowFx) this.blink = { t: 0, n: 0 };
   }
@@ -274,13 +302,13 @@ export class HorrorGame {
     if (!t) return;
     if (t.kind === 'fuse' && takeFuse(this.run, t.index)) {
       this.fuseMeshes[t.index].visible = false;
-      this.audio.play('fuse');
+      this.audio?.play('fuse');
       if (this.run.have >= this.k.fuseCount) this.hud.say('퓨즈를 다 찾았다! 전원을 찾아 꽂자', 4);
     }
-    if (t.kind === 'box' && chargeShock(this.run, t.index)) this.audio.play('fuse');
+    if (t.kind === 'box' && chargeShock(this.run, t.index)) this.audio?.play('fuse');
     if (t.kind === 'panel' && insertFuses(this.run, this.k)) {
       this.world.setPowered();
-      this.audio.play('door');
+      this.audio?.play('door');
       this.hud.say('전원이 켜졌다! 정문으로 가자!', 4);
     }
     if (t.kind === 'locker') this.toggleLocker(t.index);
@@ -312,7 +340,7 @@ export class HorrorGame {
       this.hud.say('쇼크가 없다. 전기 상자에서 충전하자', 2);
       return;
     }
-    this.audio.play('punch');
+    this.audio?.play('punch');
     const s = this.stalker;
     if (Math.hypot(s.x - this.p.x, s.y - this.p.y) <= this.k.shockRange && lineOfSight(this.map, this.p, s)) {
       stunStalker(s, this.k);
@@ -327,8 +355,8 @@ export class HorrorGame {
     this.state = 'caught';
     this.cancelBlink(); // 깜빡임이 잡히는 장면의 밝기를 덮어쓰지 않게 한다
     caught(this.run);
-    this.audio.suspend();
-    this.audio.play('caught');
+    this.audio?.suspend();
+    this.audio?.play('caught');
     this.hidden = null;
     this.hud.showSlit(false);
     this.hud.setPrompt('');
@@ -379,11 +407,13 @@ export class HorrorGame {
     this.model.update(this.stalker, 0, this.p);
     this.flash.intensity = this.k.flashIntensity;
     this.flash.visible = this.lightOn;
-    this.audio.resume();
+    this.audio?.resume();
     this.hud.fade(false);
     this.hud.setStatus(this.statusNow());
     this.hud.say('다시 시작 지점이다. 찾은 퓨즈는 그대로야.', 4);
     this.state = 'play';
+    // 잡히는 동안 Esc 로 마우스가 풀렸거나 화면이 꺼졌으면 쫓기기 전에 멈춘다
+    if (this.contextLost || (!this.touch && !this.input.locked())) this.pause();
   }
 
   win() {
@@ -391,8 +421,8 @@ export class HorrorGame {
     const result = escape(this.run, this.k);
     if (!result) return;
     this.state = 'end';
-    this.audio.suspend();
-    this.audio.play('door');
+    this.audio?.suspend();
+    this.audio?.play('door');
     const save = saveStore.load();
     save.gems += result.gems;
     save.horror = recordEscape(save.horror, result.clean);
@@ -406,17 +436,21 @@ export class HorrorGame {
     if (this.state !== 'play') return;
     this.state = 'paused';
     this.cancelBlink();
-    this.audio.suspend();
+    this.input.clearTouch();
+    this.audio?.suspend();
     document.exitPointerLock?.();
-    this.hud.showPause(
-      () => {
-        this.hud.hidePause();
-        this.audio.resume();
-        this.state = 'play';
-        this.relock();
-      },
-      () => this.exit(),
-    );
+    this.hud.showPause(() => this.resumePlay(), () => this.exit());
+  }
+
+  // 계속하기를 누른 순간에 부른다. iPad 는 밖에 나갔다 오면 소리를 멈춰 두므로 여기서 다시 깨운다
+  resumePlay() {
+    if (this.contextLost) return; // 화면이 없는 채로 쫓기지 않게 돌아올 때까지 기다린다
+    sfx.unlock();
+    this.hud.setNotice('');
+    this.hud.hidePause();
+    this.audio?.resume();
+    this.state = 'play';
+    this.relock();
   }
 
   placeCamera() {
@@ -425,6 +459,7 @@ export class HorrorGame {
   }
 
   trackFps(dt) {
+    if (dt > FPS_GAP) return; // 가려진 틈 때문에 해상도가 내려가지 않게 한다
     this.fpsFrames += 1;
     this.fpsTime += dt;
     if (this.fpsTime < 2) return;
@@ -443,23 +478,28 @@ export class HorrorGame {
     if (this.dead) return;
     this.dead = true;
     this.blink = null;
-    this.textures.forEach((t) => t.dispose());
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
-    this.input.destroy();
-    this.hud.destroy();
-    this.audio?.destroy();
-    this.model.dispose();
-    this.scene.traverse((o) => {
-      o.geometry?.dispose();
-      if (o.material) [o.material].flat().forEach((m) => m.dispose());
-      if (o.isInstancedMesh) o.dispose(); // 벽 인스턴스 버퍼
-    });
-    this.flash.shadow.dispose(); // 손전등 그림자 지도
-    this.renderer.dispose();
-    this.renderer.forceContextLoss(); // 태블릿은 WebGL 을 몇 개만 허용한다
-    window.__horror = null;
-    this.onExit();
+    this.unbindContext();
+    try {
+      this.textures.forEach((t) => t.dispose());
+      this.input.destroy();
+      this.hud.destroy();
+      this.audio?.destroy();
+      this.model.dispose();
+      this.scene.traverse((o) => {
+        o.geometry?.dispose();
+        if (o.material) [o.material].flat().forEach((m) => m.dispose());
+        if (o.isInstancedMesh) o.dispose(); // 벽 인스턴스 버퍼
+      });
+      this.flash.shadow.dispose(); // 손전등 그림자 지도
+      this.renderer.dispose();
+      this.renderer.forceContextLoss(); // 태블릿은 WebGL 을 몇 개만 허용한다
+    } finally {
+      window.__horror = null;
+      window.__horrorLogic = null;
+      this.onExit(); // 정리에 실패해도 까만 화면과 멈춘 Phaser 를 남기지 않는다
+    }
   }
 }
