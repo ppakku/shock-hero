@@ -597,6 +597,21 @@ export const balance = {
     sweepDamage: 16, // 꼬리 휩쓸기 피해량
     sweepHeight: 100, // 꼬리가 휩쓰는 바닥 높이 (헤엄쳐 올라가서 피하기)
     rageAt: 0.5, // 전체 체력이 이 비율 아래면 분노 모드
+    // 변종 전용 공격: 전기 고리 (전기 가오리)
+    ringCount: 2, // 한 번에 퍼지는 고리 수 (분노하면 1개 더)
+    ringWarningTime: 1.0, // 고리마다 틈을 보여 주는 경고 시간
+    ringSpeed: 300, // 고리가 퍼지는 속도
+    ringLaneWidth: 130, // 틈의 폭
+    ringDamage: 16, // 고리 피해량
+    // 변종 전용 공격: 어둠과 가짜 미끼 (어둠 아귀)
+    blackoutWarningTime: 1.0, // 어두워지기 전 가짜 미끼 자리 경고 시간
+    blackoutTime: 5.0, // 어두운 시간
+    fakeLures: 3, // 가짜 미끼 수 (분노하면 1개 더)
+    fakeDrift: 30, // 가짜 미끼가 다가오는 속도 (헤엄 속도보다 훨씬 느리게)
+    fakeTrigger: 80, // 이만큼 가까이 가면 가짜 미끼에 불이 붙음
+    fakeFuse: 0.6, // 불이 붙고 터질 때까지 시간 (달아날 틈)
+    fakeBlast: 100, // 터지는 범위
+    fakeDamage: 12, // 가짜 미끼 피해량
   },
 
   // ---------- 레벨 ----------
