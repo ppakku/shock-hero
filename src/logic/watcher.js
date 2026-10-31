@@ -17,6 +17,26 @@ export function chooseWatcherAttack(phases, armAlive, backAlive, last = null, ra
   return fresh[Math.floor(rand() * fresh.length) % fresh.length];
 }
 
+// 긴 팔의 팔꿈치: 어깨와 손끝 사이 가운데, 어깨보다 조금 높다
+export function armElbow(sh, tipX, y) {
+  return { x: (sh.x + tipX) / 2, y: Math.min(sh.y, y) - 30 };
+}
+
+// 그려진 긴 팔을 따라 놓은 맞는 칸들 (어깨 > 팔꿈치 > 손끝). 팔이 비스듬해서 사각형 하나로는 덮이지 않는다.
+export function armBoxes(sh, tipX, y, thick) {
+  const elbow = armElbow(sh, tipX, y);
+  const boxes = [];
+  for (const [from, to] of [[sh, elbow], [elbow, { x: tipX, y }]]) {
+    const count = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / thick));
+    for (let i = 0; i <= count; i++) {
+      const cx = from.x + ((to.x - from.x) * i) / count;
+      const cy = from.y + ((to.y - from.y) * i) / count;
+      boxes.push({ x: cx - thick / 2, y: cy - thick / 2, w: thick, h: thick });
+    }
+  }
+  return boxes;
+}
+
 // 땅속에서 튀어나올 자리: 플레이어 근처, 싸움터 안쪽
 export function popUpX(playerX, minX, maxX, halfBody, rand = Math.random, spread = 60) {
   const x = playerX + (rand() * 2 - 1) * spread;

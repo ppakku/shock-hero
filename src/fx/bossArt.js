@@ -24,6 +24,18 @@ const LOOKS = {
   dragon_tailtip_3: { depth: 3.6, origin: [0.5, 0.5] },
 };
 
+// 변종 팔다리는 이름 끝(skin)만 달라서 원래 그림과 같은 자리에 놓는다
+const LIMB_LOOKS = {
+  watcher_arm_: LOOKS.watcher_arm_2,
+  watcher_claw_: LOOKS.watcher_claw_2,
+  dragon_tail_: LOOKS.dragon_tail_3,
+  dragon_tailtip_: LOOKS.dragon_tailtip_3,
+};
+
+export function lookOf(key) {
+  return LOOKS[key] || LIMB_LOOKS[key.slice(0, key.lastIndexOf('_') + 1)] || {};
+}
+
 const pools = new WeakMap(); // 장면마다 { 그림 이름: { list, used } }
 
 // 진짜 그림을 받았는지. 임시 도형도 같은 이름으로 있을 수 있어서 이름만으로는 모른다
@@ -53,7 +65,7 @@ function poolsOf(scene) {
 }
 
 function makeSprite(scene, key) {
-  const look = LOOKS[key] || {};
+  const look = lookOf(key);
   const s = scene.add.sprite(0, 0, key).setDepth(look.depth ?? 8);
   if (look.origin) s.setOrigin(look.origin[0], look.origin[1]);
   if (look.add) s.setBlendMode(Phaser.BlendModes.ADD);

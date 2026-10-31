@@ -462,7 +462,7 @@ export class DragonBoss extends BossBase {
     // 시트 그림에는 꼬리가 있으니, 꼬리 휘두르기 공격 중에만 휘두르는 꼬리를 따로 그린다
     const drawTail = !this.sheet || this.action?.type === 'tail';
     const tailFx = this.flashTail > 0 ? { tintFill: 0xffffff } : {};
-    if (drawTail && stampLimb(this.scene, 'dragon_tail_3', base, mid, 40, tailFx) && stampLimb(this.scene, 'dragon_tailtip_3', mid, tip, 40, { ...tailFx, overlap: 18 })) {
+    if (drawTail && stampLimb(this.scene, `dragon_tail_${this.skinKey}`, base, mid, 40, tailFx) && stampLimb(this.scene, `dragon_tailtip_${this.skinKey}`, mid, tip, 40, { ...tailFx, overlap: 18 })) {
       // 꼬리 그림 두 토막 (부서지면 짧아진 길이 그대로)
     } else if (drawTail) {
       const col = this.flashTail > 0 ? 0xffffff : this.colors.main;
