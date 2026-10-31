@@ -1,14 +1,13 @@
 // 파쇄자 행동 (화면과 상관없는 부분). 순찰, 조사, 추격, 수색, 멈춤 다섯 상태로 움직인다.
 import { cellOf, center, findPath, frontOf, lineOfSight, blocked } from './horrorGrid.js';
 
-const HEART_FAR = 14; // 이보다 멀면 심장 소리가 없다
-
 export function createStalker(map) {
   const c = center(map.stalker);
-  return { x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null };
+  return { x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null };
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const sameCell = (a, b) => !!b && a.cx === b.cx && a.cy === b.cy;
 
 export function seesPlayer(s, player, map, k) {
   if (player.hidden !== null) return false;
@@ -80,6 +79,20 @@ function wander(s, map, k, rand) {
   }
 }
 
+// 길이 있는 다음 사물함으로 간다. 길이 없는 사물함은 건너뛴다 (못 간 곳을 뒤진 것으로 치지 않는다)
+function nextLocker(s, map) {
+  while (s.lockers.length) {
+    const i = s.lockers.shift();
+    const path = findPath(map, cellOf(s), frontOf(map, map.lockers[i]));
+    if (path) {
+      s.checking = i;
+      s.path = path;
+      return true;
+    }
+  }
+  return false;
+}
+
 function tickSearch(s, world, k, dt, rand, events) {
   s.searchT -= dt;
   if (s.searchT <= 0) {
@@ -93,10 +106,7 @@ function tickSearch(s, world, k, dt, rand, events) {
     if (world.player.hidden === s.checking) events.push('found');
     s.checking = null;
   }
-  if (s.lockers.length) {
-    s.checking = s.lockers.shift();
-    goTo(s, world.map, world.map.lockers[s.checking]);
-  } else wander(s, world.map, k, rand);
+  if (!nextLocker(s, world.map)) wander(s, world.map, k, rand);
 }
 
 function tickPatrol(s, map, k, dt) {
@@ -105,6 +115,8 @@ function tickPatrol(s, map, k, dt) {
   goTo(s, map, map.patrol[s.patrolIndex]);
 }
 
+// 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.
+// 'found' 는 여기서 잡힘이 되지 않는다. 호출하는 쪽이 이 이벤트를 받아 잡힘으로 처리한다.
 export function tickStalker(s, world, k, dt, rand = Math.random) {
   const { map, player } = world;
   const events = [];
@@ -117,6 +129,7 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
     return events;
   }
   const sees = seesPlayer(s, player, map, k);
+  const heard = !sees && s.mode !== 'chase' && notices(s, player, map, k);
   if (sees) {
     if (s.mode !== 'chase') {
       events.push('chase');
@@ -125,10 +138,15 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
     s.mode = 'chase';
     s.lostT = 0;
     s.lastSeen = cellOf(player);
-  } else if (s.mode !== 'chase' && notices(s, player, map, k)) {
+  } else if (heard) {
+    // 조사 중이면 다시 알리지 않는다. 소리 난 칸이 바뀔 때만 길을 새로 찾는다
     if (s.mode !== 'investigate') events.push('notice');
+    const cell = cellOf(player);
+    if (s.mode !== 'investigate' || !sameCell(cell, s.target)) {
+      s.target = cell;
+      goTo(s, map, cell);
+    }
     s.mode = 'investigate';
-    goTo(s, map, cellOf(player));
   }
 
   if (s.mode === 'chase') {
@@ -146,7 +164,9 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
       }
     }
   } else if (s.mode === 'investigate') {
-    if (!walk(s, k.stalkerWalk, dt)) s.mode = 'patrol';
+    // 도착해도 소리가 이어지면 그 자리에 머문다. 순찰로 돌아갔다가 다시 알리는 일을 막는다
+    const moving = walk(s, k.stalkerWalk, dt);
+    if (!moving && !heard) s.mode = 'patrol';
   } else if (s.mode === 'search') tickSearch(s, world, k, dt, rand, events);
   else tickPatrol(s, map, k, dt);
 
@@ -170,11 +190,11 @@ export function sendAway(s, map, player) {
     }
   });
   const c = center(best);
-  Object.assign(s, { x: c.x, y: c.y, mode: 'patrol', path: [], lostT: 0, checking: null, lockers: [], lastSeen: null });
+  Object.assign(s, { x: c.x, y: c.y, mode: 'patrol', path: [], lostT: 0, checking: null, lockers: [], lastSeen: null, target: null });
 }
 
-// 심장이 뛰는 간격(초). 멀면 null
-export function heartInterval(d) {
-  if (d > HEART_FAR) return null;
-  return 0.35 + (d / HEART_FAR) * 0.85;
+// 심장이 뛰는 간격(초). 멀면 null. k 는 balance.horror
+export function heartInterval(d, k) {
+  if (d > k.heartFar) return null;
+  return k.heartFast + (d / k.heartFar) * k.heartSlow;
 }

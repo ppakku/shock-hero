@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createStalker, seesPlayer, tickStalker, stunStalker, sendAway, heartInterval } from '../src/logic/horrorStalker.js';
-import { parseMap, blocked } from '../src/logic/horrorGrid.js';
+import { parseMap, blocked, center } from '../src/logic/horrorGrid.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { balance } from '../src/config/balance.js';
 
@@ -89,6 +89,54 @@ describe('상태 변화', () => {
     expect(run(s, world, k.loseTime + 3, () => 0.9)).not.toContain('found');
   });
 
+  it('길이 없는 사물함은 뒤지지 않는다', () => {
+    const sealed = parseMap([
+      '#########',
+      '#M.....R#',
+      '#########',
+      '####L####',
+      '#########',
+    ]);
+    const s = { ...createStalker(sealed), mode: 'search', searchT: 99, lockers: [0] };
+    const world = { map: sealed, player: player({ x: 4.5, y: 3.5, hidden: 0 }) };
+    const events = run(s, world, 3, () => 0.1);
+    expect(events).not.toContain('locker');
+    expect(events).not.toContain('found');
+    expect(s.checking).toBeNull();
+  });
+
+  it('소리가 계속 나도 알림은 한 번만 온다', () => {
+    const s = facing({ x: 6.5, y: 1.5 });
+    const world = { map: hall, player: player({ x: 3.5, y: 3.5, noise: 30 }) };
+    const events = run(s, world, 4);
+    expect(events.filter((e) => e === 'notice')).toHaveLength(1);
+    expect(s.mode).toBe('investigate');
+  });
+
+  it('조사 자리에 도착했는데 소리가 그치면 순찰로 돌아간다', () => {
+    const s = facing({ x: 6.5, y: 1.5, mode: 'investigate', target: { cx: 1, cy: 3 } });
+    run(s, { map: hall, player: player({ x: 1.5, y: 3.5, noise: 0 }) }, 0.1);
+    expect(s.mode).toBe('patrol');
+  });
+
+  it('조사 자리에 도착해도 소리가 이어지면 알림을 다시 보내지 않는다', () => {
+    // 파쇄자가 소리 난 칸 한가운데에 서 있고, 주인공은 같은 칸 안에서 움직이고 있다
+    const s = facing({ x: 1.5, y: 3.5, mode: 'investigate', target: { cx: 1, cy: 3 } });
+    const world = { map: hall, player: player({ x: 1.2, y: 3.2, noise: 30 }) };
+    const near = { ...k, catchDist: 0.1 }; // 잡힘 거리만 줄여서 이 테스트가 잡힘에 섞이지 않게 한다
+    const events = [];
+    for (let t = 0; t < 3; t += 0.05) events.push(...tickStalker(s, world, near, 0.05, () => 0.5));
+    expect(events).not.toContain('notice');
+    expect(s.mode).toBe('investigate');
+  });
+
+  it('숨은 주인공은 파쇄자가 바로 위에 서도 잡히지 않는다', () => {
+    const hidden = run(facing({ x: 6.5, y: 1.5 }), { map: hall, player: player({ x: 6.5, y: 1.5, hidden: 0 }) }, 1);
+    expect(hidden).not.toContain('caught');
+    const open = run(facing({ x: 6.5, y: 1.5 }), { map: hall, player: player({ x: 6.5, y: 1.5 }) }, 1);
+    expect(open).toContain('caught');
+  });
+
   it('쇼크 펀치를 맞으면 멈췄다가 수색한다', () => {
     const s = facing({ x: 6.5, y: 1.5, mode: 'chase' });
     stunStalker(s, k);
@@ -124,11 +172,27 @@ describe('잡힌 뒤', () => {
     expect(s.mode).toBe('patrol');
     expect(Math.hypot(s.x - 2.5, s.y - 16.5)).toBeGreaterThan(15);
   });
+
+  it('옮긴 자리는 막힌 칸이 아니다', () => {
+    for (const c of factoryMap.patrol) {
+      const s = createStalker(factoryMap);
+      const p = center(c);
+      sendAway(s, factoryMap, p);
+      expect(blocked(factoryMap, Math.floor(s.x), Math.floor(s.y))).toBe(false);
+    }
+  });
 });
 
 describe('심장 소리', () => {
   it('가까울수록 빨라진다', () => {
-    expect(heartInterval(1)).toBeLessThan(heartInterval(10));
-    expect(heartInterval(100)).toBeNull();
+    expect(heartInterval(1, k)).toBeLessThan(heartInterval(10, k));
+    expect(heartInterval(100, k)).toBeNull();
+  });
+
+  it('간격과 거리는 balance.horror 값으로 정해진다', () => {
+    const tuned = { ...k, heartFar: 10, heartFast: 0.5, heartSlow: 1 };
+    expect(heartInterval(0, tuned)).toBeCloseTo(0.5);
+    expect(heartInterval(10, tuned)).toBeCloseTo(1.5);
+    expect(heartInterval(11, tuned)).toBeNull();
   });
 });

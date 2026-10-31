@@ -756,6 +756,9 @@ export const balance = {
     runNoise: 9, // 달릴 때 소리가 들리는 거리
     stalkerWalk: 0.9, // 파쇄자 순찰, 조사 속도
     stalkerChase: 2.0, // 파쇄자 추격 속도
+    heartFar: 14, // 이보다 멀면 심장 소리가 없다 (칸)
+    heartFast: 0.35, // 가장 가까울 때 심장이 뛰는 간격 (초)
+    heartSlow: 0.85, // 멀어질수록 간격에 더해지는 시간 (초). 가장 먼 곳의 간격은 두 값의 합
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
     noticeLight: 10, // 손전등 빛을 알아채고 조사하러 오는 거리
