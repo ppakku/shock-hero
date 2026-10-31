@@ -784,6 +784,7 @@ export const balance = {
     shockRange: 2.5, // 쇼크 펀치가 닿는 거리
     useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
     fuseCount: 3, // 찾아야 하는 퓨즈 수
+    wingFuses: 1, // 잠긴 날개마다 꼭 들어가는 퓨즈 수. 그래서 문을 열어야만 끝낼 수 있다
     gemsEscape: 5, // 탈출 보석. 날마다 첫 탈출에만 준다
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석. 처음 한 번만 준다
     musicVolume: 0.7, // 배경 음악 크기
@@ -814,7 +815,7 @@ export const balance = {
     heatHalfLife: 150, // 주인공이 다닌 자리 기억이 절반으로 줄어드는 시간 (초)
     heatRadius: 3, // 순찰 지점 둘레 몇 칸의 기억을 더해 볼지
     patrolHeatPull: 4, // 가장 뜨거운 순찰 지점이 뽑히는 비율에 더해지는 값 (기본 1)
-    patrolMemory: 3, // 방금 다녀온 곳으로 치는 순찰 지점 수 (8 이하)
+    patrolMemory: 3, // 방금 다녀온 곳으로 치는 순찰 지점 수. 지금 있는 곳을 포함한다 (8 이하)
     patrolRecent: 0.1, // 방금 다녀온 곳이 다시 뽑히는 비율
     ambushChance: 0.35, // 추격 중 놓쳤을 때 수색 대신 매복할 확률. 사물함에 숨었으면 늘 수색한다
     ambushWaitChance: 0.5, // 매복 중 길목에서 기다릴 확률. 나머지는 돌아서 다가간다
