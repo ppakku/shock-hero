@@ -53,12 +53,15 @@ export class HorrorAudio {
     this.heartT = 0;
     this.mode = 'patrol';
     this.suspended = false;
+    this.active = true;
     this.panner = this.ctx.createPanner();
     this.panner.panningModel = 'HRTF';
     this.panner.distanceModel = 'inverse';
     this.panner.refDistance = this.k.stalkerRefDist;
     this.panner.rolloffFactor = 1;
-    this.panner.connect(this.out);
+    this.creatureOut = this.ctx.createGain(); // 추격 중에는 세이노 소리 전체를 키운다
+    this.panner.connect(this.creatureOut);
+    this.creatureOut.connect(this.out);
 
     const breath = this.ctx.createBufferSource();
     breath.buffer = sfx.noise;
@@ -80,7 +83,7 @@ export class HorrorAudio {
     depth.gain.value = 0.5;
     this.swellLfo.connect(depth).connect(this.swell.gain);
     this.swellLfo.start();
-    this.loops.push(breath, band, this.swell, this.breathLevel, this.swellLfo, depth, this.panner);
+    this.loops.push(breath, band, this.swell, this.breathLevel, this.swellLfo, depth, this.panner, this.creatureOut);
   }
 
   // 한 번 나는 짧은 소리. 오실레이터 하나가 높이를 미끄러뜨리며 사라진다.
@@ -183,6 +186,7 @@ export class HorrorAudio {
     const t = this.ctx.currentTime;
     if (mode !== this.mode) {
       this.mode = mode;
+      this.duckMusic(t);
       this.swellLfo.frequency.setTargetAtTime(1 / (this.k.breathSwellSec[mode] ?? 1.4), t, 0.2);
     }
     if (!this.suspended) this.breathLevel.gain.setTargetAtTime(this.k.breathLevel[mode] ?? 0.5, t, 0.2);
@@ -199,6 +203,17 @@ export class HorrorAudio {
       this.heartT = gap;
       this.heartbeat();
     }
+  }
+
+  // 추격 중에는 배경 음악을 낮춰서 숨소리와 발소리가 앞에 나오게 한다
+  musicLevel() {
+    return this.k.musicVolume * (this.mode === 'chase' ? this.k.musicChaseDuck : 1);
+  }
+
+  duckMusic(t) {
+    this.creatureOut.gain.setTargetAtTime(this.mode === 'chase' ? this.k.chaseCreatureGain : 1, t, 0.15);
+    if (!this.active) return;
+    this.music.gain.setTargetAtTime(this.musicLevel(), t, this.mode === 'chase' ? 0.15 : 0.8); // 쫓길 때는 빨리 낮추고, 놓치면 천천히 돌아온다
   }
 
   // 잡히는 장면: 숨소리와 발소리를 바로 끈다
@@ -308,7 +323,8 @@ export class HorrorAudio {
   setActive(on) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.music.gain.setTargetAtTime(on ? this.k.musicVolume : 0.0001, t, 0.1);
+    this.active = on;
+    this.music.gain.setTargetAtTime(on ? this.musicLevel() : 0.0001, t, 0.1);
     // 숨소리, 발소리, 심장 소리, 한 번 나는 소리까지 모두 out 을 지난다
     this.out.gain.setTargetAtTime(on && !this.muted ? 1 : 0, t, 0.1);
   }

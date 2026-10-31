@@ -3,13 +3,14 @@
 #   python3 tools/run_horror.py 출력폴더 --touch   (태블릿 손가락 입력을 진짜 터치 이벤트로 확인)
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
+#   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --play    (줍기, 숨기, 펀치, 일시정지, 잡힘, 봇의 탈출까지. 기본 실행에도 들어 있다)
 # 시스템 Chrome 으로 타이틀에서 공포 모드를 켜고 확인한다.
 import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'keys'
+MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
@@ -371,7 +372,8 @@ def play_bot(pw):
     b.close()
 
 
-# 세이노가 쫓아올 때와 멀리 있을 때 소리 크기를 잰다
+# 세이노가 가까울 때와 멀 때, 순찰과 추격에서 소리 크기를 잰다.
+# 세이노는 멈춰 세우고(행동 코드가 모드를 바꾸지 못하게), 소리 쪽에만 모드를 알려 준다.
 def play_sound(pw):
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     pg = b.new_page(viewport={'width': 640, 'height': 360})
@@ -381,15 +383,28 @@ def play_sound(pw):
     pg.evaluate(IDLE_INPUT)
     time.sleep(5)  # 음악이 차오르기를 기다린다
     pg.evaluate("Object.assign(window.__horror, { onStalkerEvents: () => {} })")
-    pg.evaluate("Object.assign(window.__horror.stalker, { x: 24.5, y: 4.5, mode: 'patrol', path: [] })")
-    far = pg.evaluate(AUDIO_PROBE, 6)
-    pg.evaluate("() => { const g = window.__horror; Object.assign(g.stalker, { x: g.p.x + 2.5, y: g.p.y, heading: -Math.PI / 2, mode: 'chase', path: [], repathT: 999, lastSeen: null }); }")
-    near = pg.evaluate(AUDIO_PROBE, 6)
-    print('sound far', far)
-    print('sound chase', near)
-    # 압축기가 평균 크기를 고르게 만들어서, 가까워진 숨소리와 발소리는 순간 최대값으로 본다
-    check('sound: louder when chased', near['rms'] > far['rms'] and near['peak'] > far['peak'] * 1.3, (far, near))
-    check('sound: not clipping', near['peak'] < 0.98, near)
+    pg.evaluate("""() => {
+      const a = window.__horror.audio, real = a.updateStalker.bind(a);
+      window.__soundMode = 'patrol';
+      a.updateStalker = (cam, pos, mode, d, dt) => real(cam, pos, window.__soundMode, d, dt);
+    }""")
+    res = {}
+    for mode in ('patrol', 'chase'):
+        for where, dx in (('far', None), ('near', 2.5)):
+            at = "x: 24.5, y: 4.5" if dx is None else f"x: g.p.x + {dx}, y: g.p.y"
+            pg.evaluate("(mode) => { window.__soundMode = mode; }", mode)
+            pg.evaluate("() => { const g = window.__horror; Object.assign(g.stalker, { %s, heading: -Math.PI / 2, mode: 'stunned', stunT: 9999, path: [] }); }" % at)
+            time.sleep(3)  # 소리 크기가 자리 잡기를 기다린다
+            res[f'{mode}_{where}'] = pg.evaluate(AUDIO_PROBE, 6)
+            print('sound', mode, where, res[f'{mode}_{where}'])
+    r = {k: v['rms'] for k, v in res.items()}
+    print('rms', {k: round(v, 3) for k, v in r.items()})
+    # 압축기가 평균 크기를 고르게 만들어도 추격은 멀 때보다 눈에 띄게 커야 한다
+    check('sound: chase near is clearly louder than chase far', r['chase_near'] > r['chase_far'] * 1.25, r)
+    # 압축기가 가까운 소리의 평균 크기를 한 선에 눌러서, 가까운 순찰과 가까운 추격은 비슷하게 나온다. 대신 추격 때 음악이 낮아진 것을 본다
+    check('sound: music ducks in chase', r['chase_far'] < r['patrol_far'] * 0.7, r)
+    check('sound: chase near is louder than patrol far', r['chase_near'] > r['patrol_far'] * 1.25, r)
+    check('sound: not clipping', max(v['peak'] for v in res.values()) < 0.98, res)
     print('errors', errs)
     b.close()
 
@@ -708,7 +723,7 @@ def run_touch(pw):
 
 
 with sync_playwright() as pw:
-    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play}[MODE](pw)
+    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound}[MODE](pw)
     if MODE == 'keys':
         run_play(pw)
 if fails:

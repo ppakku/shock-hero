@@ -123,6 +123,18 @@ describe('HorrorAudio 세이노 소리', () => {
     expect(set.mock.calls[1][0]).toBeGreaterThan(set.mock.calls[0][0]);
   });
 
+  it('추격에는 배경 음악을 낮추고 세이노 소리를 키우고, 놓치면 돌려놓는다', () => {
+    const a = new HorrorAudio({ muted: false });
+    const music = vi.spyOn(a.music.gain, 'setTargetAtTime');
+    const creature = vi.spyOn(a.creatureOut.gain, 'setTargetAtTime');
+    a.updateStalker(cam, pos, 'chase', 10, 0.1);
+    expect(music.mock.calls[0][0]).toBeCloseTo(a.k.musicVolume * a.k.musicChaseDuck);
+    expect(creature.mock.calls[0][0]).toBe(a.k.chaseCreatureGain);
+    a.updateStalker(cam, pos, 'search', 10, 0.1);
+    expect(music.mock.calls[1][0]).toBeCloseTo(a.k.musicVolume);
+    expect(creature.mock.calls[1][0]).toBe(1);
+  });
+
   it('suspend 후에는 숨소리가 0으로 가고 다시 올라오지 않는다', () => {
     const a = new HorrorAudio({ muted: false });
     const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');

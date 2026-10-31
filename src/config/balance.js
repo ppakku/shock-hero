@@ -782,7 +782,9 @@ export const balance = {
     fuseCount: 3, // 찾아야 하는 퓨즈 수
     gemsEscape: 5, // 탈출 보석
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
-    musicVolume: 1.6, // 배경 음악 크기
+    musicVolume: 0.7, // 배경 음악 크기
+    chaseCreatureGain: 3.5, // 추격 중에 세이노 숨소리와 발소리를 이 배로 키운다
+    musicChaseDuck: 0.3, // 추격 중에 배경 음악을 이 비율로 낮춘다 (숨소리와 발소리가 앞에 나오게)
     musicNoteMin: 7, // 쇳소리 음 사이 가장 짧은 시간 (초)
     musicNoteMax: 14, // 쇳소리 음 사이 가장 긴 시간 (초)
     musicClangMin: 18, // 멀리서 쇠 부딪히는 소리 사이 가장 짧은 시간 (초)
