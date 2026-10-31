@@ -745,6 +745,46 @@ export const balance = {
     gravity: 1500, // 중력 (클수록 빨리 떨어짐)
   },
 
+  // ---------- 공포 모드 (거리와 속도는 칸 단위, 칸 하나는 3미터) ----------
+  horror: {
+    walkSpeed: 1.3, // 걷는 속도 (1초에 몇 칸)
+    runSpeed: 2.3, // 달리는 속도. 파쇄자 추격 속도보다 빨라야 도망칠 수 있다
+    lookSpeed: 0.0025, // 마우스 시점 속도
+    touchLookSpeed: 0.005, // 화면 끌기 시점 속도
+    walkNoise: 3, // 걸을 때 소리가 들리는 거리
+    runNoise: 9, // 달릴 때 소리가 들리는 거리
+    stalkerWalk: 0.9, // 파쇄자 순찰, 조사 속도
+    stalkerChase: 2.0, // 파쇄자 추격 속도
+    seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
+    seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
+    noticeLight: 10, // 손전등 빛을 알아채고 조사하러 오는 거리
+    fov: 120, // 파쇄자 시야각 (도)
+    loseTime: 2.5, // 이만큼 못 보면 놓치고 수색을 시작한다
+    searchTime: 14, // 수색하는 시간
+    searchRadius: 5, // 수색할 때 뒤지는 사물함 거리
+    lockerCheckChance: 0.5, // 수색 범위 안의 사물함을 뒤질 확률
+    repathTime: 0.4, // 추격할 때 길을 다시 찾는 간격
+    catchDist: 0.7, // 이만큼 가까우면 잡힌다
+    stunTime: 5, // 쇼크 펀치로 멈추는 시간
+    shockRange: 2.5, // 쇼크 펀치가 닿는 거리
+    useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
+    fuseCount: 3, // 찾아야 하는 퓨즈 수
+    gemsEscape: 5, // 탈출 보석
+    gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
+    ambient: 0.9, // 손전등을 껐을 때 은은하게 보이는 윤곽 밝기 (0 은 완전히 캄캄함)
+    flashIntensity: 150, // 손전등 밝기
+    flashAngle: 0.55, // 손전등 빛이 퍼지는 각도의 절반 (라디안). 화면 높이의 3분의 2쯤을 덮는다
+    flashPenumbra: 0.6, // 빛 가장자리가 부드러운 정도 (0 은 칼같이, 1 은 가운데부터 흐려짐)
+    flashDistance: 26, // 손전등 빛이 닿는 거리 (미터)
+    flashDecay: 1.6, // 멀수록 어두워지는 정도
+    viewCells: 14, // 이보다 먼 구역은 그리지 않는다 (어둠에 묻혀 안 보임)
+    minRatio: 0.6, // 가장 낮은 화면 해상도 배율
+    maxRatio: 1.5, // 가장 높은 화면 해상도 배율
+    ratioStep: 0.1, // 한 번에 바꾸는 배율
+    lowFps: 28, // 초당 장수가 이보다 낮으면 해상도를 낮춘다
+    highFps: 55, // 초당 장수가 이보다 높으면 해상도를 높인다
+  },
+
   // ---------- 효과 ----------
   effects: {
     screenShake: true, // 화면 흔들림 (true = 켜기, false = 끄기)

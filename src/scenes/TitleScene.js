@@ -15,6 +15,7 @@ import { isTouchDevice, isPhone } from '../ui/touch.js';
 import { makeTitleTextures, drawCape, TITLE_FONT } from '../ui/titleArt.js';
 import { tokenizeControlLine } from '../ui/titleLayout.js';
 import { coop } from '../net/coop.js';
+import { startHorror } from '../horror/start.js';
 
 // 타이틀: 모험 지도 열기 + 설정(난이도, 조작, 상점, 레벨 초기화, 함께하기). 스테이지는 지도(src/scenes/MapScene.js)에서 고른다.
 // ↑ ↓ 로 줄을 옮기고, ← → 로 고르고, Enter 로 시작하거나 바꾼다. 마우스로 눌러도 된다.
@@ -116,6 +117,7 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-M', () => this.ready && !this.confirming && this.openWorkshop());
     kb.on('keydown-C', () => this.ready && !this.confirming && this.openRoom());
     kb.on('keydown-T', () => this.ready && !this.confirming && this.openDaily());
+    kb.on('keydown-H', () => this.ready && !this.confirming && this.openHorror());
     kb.on('keydown-Y', () => this.confirming && this.confirmBox.visible && this.doReset()); // 도감이나 보스 러시가 열려 있을 때 Y 로 지워지지 않게
     kb.on('keydown-ESC', () => this.confirming && this.closeConfirm());
   }
@@ -238,6 +240,22 @@ export class TitleScene extends Phaser.Scene {
       if (this.confirming) return;
       this.openDaily();
     });
+
+    // 공포 모드 (로고 오른쪽 빈 하늘, 검은 철판. 왼쪽 줄은 안내판에 닿아서 못 쓴다). 휴대폰에서는 작은 화면에서 안 보여서 뺀다
+    if (!isPhone()) {
+      this.horrorBtn = this.add.container(width / 2 + 140, 78).setDepth(15).setAngle(-1.5);
+      const plate = this.add.graphics();
+      plate.fillStyle(0x000000, 0.45).fillRoundedRect(-82, -22, 168, 50, 8);
+      plate.fillStyle(0x10161c, 1).fillRoundedRect(-88, -27, 176, 54, 10);
+      plate.fillStyle(0x1a0d0d, 1).fillRoundedRect(-84, -23, 168, 46, 7);
+      const horrorLabel = brushText(this, 0, -7, '공포 모드', 20, '#ff5a4a', { strokeThickness: 5 }).setOrigin(0.5);
+      const horrorInfo = makeText(this, 0, 13, '꽤 무서워요', 13, '#ffffff').setOrigin(0.5);
+      this.horrorBtn.add([plate, horrorLabel, horrorInfo]);
+      this.horrorBtn.setSize(176, 54).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+        if (this.confirming) return;
+        this.openHorror();
+      });
+    }
 
     // 설정 버튼 줄 (빨간 낙서, 파란 테이프, 회색 철판)
     const d = DIFFICULTY_INFO[save.settings.difficulty];
@@ -554,6 +572,24 @@ export class TitleScene extends Phaser.Scene {
     sfx.muted = s.muted;
     sfx.play('beep');
     this.build();
+  }
+
+  // 공포 모드는 타이틀을 멈추고 그 위에 3D 화면을 띄운다 (src/horror/start.js)
+  openHorror() {
+    if (this.started || !this.ready || isPhone()) return;
+    this.started = true;
+    this.input.keyboard.enabled = false; // 공포 모드에서 누른 키가 돌아왔을 때 타이틀에서 눌리지 않게
+    sfx.unlock();
+    sfx.muted = this.save.settings.muted;
+    startHorror(this.game, {
+      onExit: () => {
+        this.started = false;
+        this.build();
+        this.time.delayedCall(200, () => {
+          this.input.keyboard.enabled = true;
+        });
+      },
+    });
   }
 
   // 모험 지도로 (이어할 체크포인트가 있으면 그 스테이지를 골라 둔다)
