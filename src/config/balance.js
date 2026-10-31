@@ -795,6 +795,9 @@ export const balance = {
     flashPenumbra: 0.6, // 빛 가장자리가 부드러운 정도 (0 은 칼같이, 1 은 가운데부터 흐려짐)
     flashDistance: 26, // 손전등 빛이 닿는 거리 (미터)
     flashDecay: 1.6, // 멀수록 어두워지는 정도
+    emergencyHigh: 0.9, // 비상등 밝기 (0~1)
+    emergencyLow: 0.35, // 효과 줄이기를 켰을 때 멈춰 있는 비상등 밝기
+    machineDepth: 0.45, // 기계가 벽에서 나오는 길이 (미터). 주인공 몸 반지름(0.6미터)보다 작아야 몸이 파묻히지 않는다
     viewCells: 14, // 이보다 먼 구역은 그리지 않는다 (어둠에 묻혀 안 보임)
     minRatio: 0.6, // 가장 낮은 화면 해상도 배율
     maxRatio: 1.5, // 가장 높은 화면 해상도 배율

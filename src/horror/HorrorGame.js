@@ -53,6 +53,7 @@ export class HorrorGame {
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
     this.scaresLeft = [...this.map.scares];
     this.blink = null; // 손전등 깜빡임 진행 상태. 잡힘과 나가기에서 끊는다
+    this.playTime = 0;
     this.audio = null;
     this.fps = 60;
     this.fpsFrames = 0;
@@ -98,7 +99,7 @@ export class HorrorGame {
     this.flash.target.position.set(0.15, -0.2, -1);
     this.camera.add(this.flash, this.flash.target);
 
-    this.world = buildWorld(this.scene, this.map, this.factoryMaterials());
+    this.world = buildWorld(this.scene, this.map, this.k, this.factoryMaterials());
     this.stalker = createStalker(this.map);
     this.model = new CreatureModel(this.scene);
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
@@ -150,8 +151,8 @@ export class HorrorGame {
   factoryMaterials() {
     this.textures = [];
     let reported = false;
-    const make = (name, plain, repeat, roughness) => {
-      const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness });
+    const make = (name, plain, repeat) => {
+      const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
       const tex = new THREE.TextureLoader().load(
         `art/horror_${name}.jpg`,
         undefined,
@@ -174,9 +175,9 @@ export class HorrorGame {
     };
     // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
     return {
-      wall: make('wall', 0x5a5148, 1, 0.9),
-      floor: make('floor', 0x35312d, 7, 1),
-      locker: make('locker', 0x4a5a58, 1, 0.8),
+      wall: make('wall', 0x5a5148, 1),
+      floor: make('floor', 0x35312d, 7),
+      locker: make('locker', 0x4a5a58, 1),
     };
   }
 
@@ -218,10 +219,13 @@ export class HorrorGame {
 
   update(dt) {
     const inp = this.readInput();
-    if (this.state === 'play') this.playFrame(inp, dt);
+    if (this.state === 'play') {
+      this.playTime += dt;
+      this.playFrame(inp, dt);
+    }
     else if (this.state === 'caught') this.caughtFrame(dt);
     this.placeCamera();
-    this.world.update(this.p, this.k.viewCells);
+    this.world.update(this.p, this.k.viewCells, this.playTime, this.lowFx);
     if (this.state !== 'play') return;
     this.camera.updateMatrixWorld();
     const s = this.stalker;
