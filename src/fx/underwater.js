@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { makeCanvas } from '../enemies/seaTextures.js';
+import { make } from './textures.js';
 
 // 수중 던전 배경 (stage.theme.scenery === 'underwater'). GameScene.drawBackground 가 부른다.
 // 아들이 그린 물속 동굴 그림(public/art/underwater_bg.jpg)을 가장 먼 곳에 깔고,
@@ -268,30 +269,45 @@ export function drawUnderwater(scene) {
   }
 
   // 7) 이끼 낀 돌바닥 (기본 땅 그림 위에 덮어 그림)
-  const bed = scene.add.graphics().setDepth(0.2);
-  bed.fillStyle(0x1c3a40, 1).fillRect(0, gy, W, 60);
-  for (let row = 0; row < 3; row++) {
-    const y = gy + 4 + row * 19;
-    const off = row % 2 ? 30 : 0;
-    for (let x = -off; x < W; x += 60) {
-      const shade = [0x2e5258, 0x355c62, 0x29494f][(x / 60 + row) % 3 | 0] ?? 0x2e5258;
-      bed.fillStyle(shade, 1).fillRoundedRect(x + 2, y, 56, 16, 4);
+  // Graphics 는 그린 내용을 매 프레임 다시 계산한다. 돌바닥처럼 도형이 많고 안 움직이는 것은 그림으로 구워 둔다.
+  const BED_W = 540; // 돌 색 무늬가 딱 맞게 이어지는 폭
+  const BED_TOP = 2; // 이끼가 땅 위로 삐져나오는 높이
+  make(scene, 'sea_bed', BED_W, 64, (g) => {
+    g.fillStyle(0x1c3a40, 1).fillRect(0, BED_TOP, BED_W, 60);
+    for (let row = 0; row < 3; row++) {
+      const y = BED_TOP + 4 + row * 19;
+      const off = row % 2 ? 30 : 0;
+      for (let x = -off; x < BED_W; x += 60) {
+        const shade = [0x2e5258, 0x355c62, 0x29494f][(x / 60 + row) % 3 | 0] ?? 0x2e5258;
+        g.fillStyle(shade, 1).fillRoundedRect(x + 2, y, 56, 16, 4);
+      }
     }
-  }
-  bed.fillStyle(0x4f8a5a, 1).fillRect(0, gy, W, 5);
-  for (let x = 0; x < W; x += 22) bed.fillStyle(0x6fb85a, 0.9).fillEllipse(x + rng.between(0, 10), gy + 2, rng.between(14, 26), 7);
-  for (let x = 80; x < W; x += rng.between(120, 260)) bed.fillStyle(0x9dff6a, 0.7).fillCircle(x, gy + rng.between(18, 50), 2);
+    g.fillStyle(0x4f8a5a, 1).fillRect(0, BED_TOP, BED_W, 5);
+    for (let x = 0; x < BED_W; x += 22) {
+      const ex = x + rng.between(0, 10);
+      const ew = rng.between(14, 26);
+      // 조각 끝에 걸친 이끼가 잘리지 않게 양옆에도 그린다
+      for (const shift of [-BED_W, 0, BED_W]) g.fillStyle(0x6fb85a, 0.9).fillEllipse(ex + shift, BED_TOP + 2, ew, 7);
+    }
+    for (let x = 80; x < BED_W; x += rng.between(120, 260)) g.fillStyle(0x9dff6a, 0.7).fillCircle(x, BED_TOP + rng.between(18, 50), 2);
+  });
+  scene.add.tileSprite(W / 2, gy - BED_TOP + 32, W, 64, 'sea_bed').setDepth(0.2);
 
-  // 발판: 이끼 낀 돌판으로 덮어 그림
-  const slabs = scene.add.graphics().setDepth(0.3);
+  // 발판: 이끼 낀 돌판으로 덮어 그림 (폭이 같으면 같은 그림을 쓴다)
+  const SLAB_PAD = 2; // 테두리와 이끼가 잘리지 않을 여백
   for (const p of st.platforms) {
-    const l = p.x - p.w / 2;
-    slabs.fillStyle(0x2e5258, 1).fillRoundedRect(l, p.y, p.w, 20, 6);
-    slabs.fillStyle(0x4a7a80, 1).fillRoundedRect(l + 2, p.y + 2, p.w - 4, 7, 4);
-    slabs.lineStyle(2, 0x14262a, 1).strokeRoundedRect(l, p.y, p.w, 20, 6);
-    slabs.fillStyle(0x6fb85a, 0.9);
-    for (let x = l + 8; x < l + p.w - 6; x += 16) slabs.fillEllipse(x, p.y + 1, 12, 5);
-    slabs.fillStyle(0x4f8a5a, 0.8).fillRect(l + p.w * 0.3, p.y + 18, 4, 10).fillRect(l + p.w * 0.7, p.y + 18, 4, 14);
+    const key = `sea_slab_${p.w}`;
+    make(scene, key, p.w + SLAB_PAD * 2, 36, (g) => {
+      const l = SLAB_PAD;
+      const y = SLAB_PAD;
+      g.fillStyle(0x2e5258, 1).fillRoundedRect(l, y, p.w, 20, 6);
+      g.fillStyle(0x4a7a80, 1).fillRoundedRect(l + 2, y + 2, p.w - 4, 7, 4);
+      g.lineStyle(2, 0x14262a, 1).strokeRoundedRect(l, y, p.w, 20, 6);
+      g.fillStyle(0x6fb85a, 0.9);
+      for (let x = l + 8; x < l + p.w - 6; x += 16) g.fillEllipse(x, y + 1, 12, 5);
+      g.fillStyle(0x4f8a5a, 0.8).fillRect(l + p.w * 0.3, y + 18, 4, 10).fillRect(l + p.w * 0.7, y + 18, 4, 14);
+    });
+    scene.add.image(p.x - p.w / 2 - SLAB_PAD, p.y - SLAB_PAD, key).setOrigin(0, 0).setDepth(0.3);
   }
 
   // 8) 일렁이는 물빛 (화면 위쪽에 물결 무늬)
