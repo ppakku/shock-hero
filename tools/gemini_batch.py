@@ -58,12 +58,13 @@ def images():
 
 # 그림 위 '원본 크기 이미지 다운로드' 버튼으로 원본 PNG 를 받는다 (화면의 그림은 blob 이라 페이지 안에서 꺼낼 수 없다)
 def save_last(path):
-    box = page("""(()=>{const im=[...document.querySelectorAll('img')].filter(i=>i.naturalWidth>300).pop();
-      im.scrollIntoView({block:'center'});const r=im.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()""")
-    cdp('Input.dispatchMouseEvent', session_id=sid, type='mouseMoved', x=box[0], y=box[1])
+    # 보이지 않는 탭에서는 마우스 명령이 끝나지 않아 페이지 안에서 마우스를 올린 신호를 보낸다
+    page("""(()=>{const im=[...document.querySelectorAll('img')].filter(i=>i.naturalWidth>300).pop();
+      for(const t of ['pointerover','mouseover','mouseenter'])im.dispatchEvent(new MouseEvent(t,{bubbles:true}))})()""")
     time.sleep(1)
     before = set(os.listdir(DOWNLOADS))
-    page("""[...document.querySelectorAll('button')].filter(b=>/다운로드|download/i.test(b.getAttribute('aria-label')||'')).pop().click()""")
+    if not page("""(()=>{const b=[...document.querySelectorAll('button')].filter(b=>/다운로드|download/i.test(b.getAttribute('aria-label')||'')).pop();b?.click();return !!b})()"""):
+        return False
     for _ in range(60):  # 원본이 커서 몇십 초 걸릴 수 있다
         time.sleep(1)
         got = [f for f in set(os.listdir(DOWNLOADS)) - before if not f.endswith('.crdownload')]
@@ -75,7 +76,11 @@ def save_last(path):
 
 def make(o):
     go_gemini()
-    page("document.querySelector('.ql-editor').focus()")
+    for _ in range(20):  # 페이지가 뜨는 동안에는 입력칸이 다시 그려져 초점이 빠질 수 있다
+        page("document.querySelector('.ql-editor')?.focus()")
+        time.sleep(0.5)
+        if page("!!document.activeElement?.closest?.('.ql-editor')"):
+            break
     check_ready()
     text = '이미지를 만들어 줘. ' + o['prompt']
     cdp('Input.insertText', session_id=sid, text=text)
