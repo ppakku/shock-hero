@@ -181,28 +181,30 @@ function recentlyVisited(s, i, k) {
 
 // 주인공이 자주 다니는 곳일수록, 방금 다녀온 곳이 아닐수록 잘 뽑힌다
 function pickPatrol(s, map, k, rand) {
+  const n = map.patrol.length;
+  if (s.weights.length < n) s.weights = new Float32Array(n); // 문이 열리면 순찰 지점이 늘어난다
   const w = s.weights;
   let top = 0;
-  for (let i = 0; i < w.length; i++) {
+  for (let i = 0; i < n; i++) {
     w[i] = heatAround(s, map, map.patrol[i], k.heatRadius);
     top = Math.max(top, w[i]);
   }
   let total = 0;
-  for (let i = 0; i < w.length; i++) {
+  for (let i = 0; i < n; i++) {
     const pull = i === s.patrolIndex ? 0 : 1 + (top > 0 ? (k.patrolHeatPull * w[i]) / top : 0);
     w[i] = recentlyVisited(s, i, k) ? pull * k.patrolRecent : pull;
     total += w[i];
   }
   let left = rand() * total;
-  for (let i = 0; i < w.length; i++) {
+  for (let i = 0; i < n; i++) {
     left -= w[i];
     if (w[i] > 0 && left < 0) return i;
   }
-  return (s.patrolIndex + 1) % w.length;
+  return (s.patrolIndex + 1) % n;
 }
 
 function tickPatrol(s, map, k, dt, rand) {
-  if (walk(s, walkSpeed(s, k), dt)) return;
+  if (walk(s, walkSpeed(s, k), dt) || !map.patrol.length) return;
   s.recent[s.recentAt] = s.patrolIndex;
   s.recentAt = (s.recentAt + 1) % s.recent.length;
   // 잠긴 곳처럼 길이 없는 지점을 뽑으면 다시 뽑는다

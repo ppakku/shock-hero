@@ -320,6 +320,31 @@ describe('주인공이 다닌 자리 기억', () => {
     expect(order(1)).not.toBe(order(2));
   });
 
+  it('문이 열려 순찰 지점이 늘어나도 새 지점으로 간다', () => {
+    const rand = seeded(5);
+    const s = createStalker(ring);
+    const world = { map: { ...ring, patrol: ring.patrol.slice(0, 2) }, player: { ...far, x: 1.5, y: 2.5 } };
+    s.weights = new Float32Array(2);
+    const quiet = { ...k, seeLight: 0, seeDark: 0, catchDist: 0 };
+    for (let t = 0; t < 30; t += 0.1) tickStalker(s, world, quiet, 0.1, rand);
+    world.map = ring;
+    const seen = new Set();
+    for (let t = 0; t < 200; t += 0.1) {
+      tickStalker(s, world, quiet, 0.1, rand);
+      expect(Number.isNaN(s.x)).toBe(false);
+      seen.add(s.patrolIndex);
+    }
+    expect(seen.has(2) || seen.has(3)).toBe(true);
+  });
+
+  it('순찰 지점이 줄어도 없는 번호로 멈추지 않는다', () => {
+    const s = { ...createStalker(ring), patrolIndex: 3 };
+    const small = { ...ring, patrol: ring.patrol.slice(0, 2) };
+    const quiet = { ...k, seeLight: 0, seeDark: 0, catchDist: 0 };
+    for (let t = 0; t < 40; t += 0.1) tickStalker(s, { map: small, player: { ...far, x: 1.5, y: 2.5 } }, quiet, 0.1, () => 0.5);
+    expect(s.patrolIndex).toBeLessThan(2);
+  });
+
   it('길이 없는 순찰 지점만 있어도 멈추거나 오류가 나지 않는다', () => {
     const sealed = parseMap(['#######', '#M....#', '#######', '#R#R###', '#######']);
     const s = createStalker(sealed);
