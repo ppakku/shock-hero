@@ -814,7 +814,7 @@ export const balance = {
     respawnGrace: 8, // 잡힌 뒤 세이노가 주인공을 보지도 듣지도 잡지도 않는 시간 (초)
     heatHalfLife: 150, // 주인공이 다닌 자리 기억이 절반으로 줄어드는 시간 (초)
     heatRadius: 3, // 순찰 지점 둘레 몇 칸의 기억을 더해 볼지
-    patrolHeatPull: 4, // 가장 뜨거운 순찰 지점이 뽑히는 비율에 더해지는 값 (기본 1)
+    patrolHeatPull: 2, // 가장 뜨거운 순찰 지점이 뽑히는 비율에 더해지는 값 (기본 1)
     patrolMemory: 3, // 방금 다녀온 곳으로 치는 순찰 지점 수. 지금 있는 곳을 포함한다 (8 이하)
     patrolRecent: 0.1, // 방금 다녀온 곳이 다시 뽑히는 비율
     ambushChance: 0.35, // 추격 중 놓쳤을 때 수색 대신 매복할 확률. 사물함에 숨었으면 늘 수색한다
