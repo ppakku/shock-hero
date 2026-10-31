@@ -24,6 +24,14 @@ describe('필요한 그림만 받기', () => {
     expect(missing).toEqual([]);
   });
 
+  it('변종 스테이지도 팔, 손, 덩굴, 꼬리 그림을 자기 이름으로 받는다', () => {
+    const parts = { watcher: ['watcher_arm', 'watcher_claw', 'watcher_vine'], dragon: ['dragon_tail', 'dragon_tailtip'] };
+    stages.forEach((st, i) => {
+      const skin = st.boss?.skin || i + 1;
+      for (const part of parts[st.boss?.type] || []) expect(bossArtKeys(st, i + 1, customArt), `${i + 1}`).toContain(`${part}_${skin}`);
+    });
+  });
+
   it('도감의 몬스터가 나오는 스테이지에서는 그 몬스터 그림을 받는다', () => {
     for (const [id, nums] of Object.entries(monsterStages(stages))) {
       if (!customArt[id]) continue;

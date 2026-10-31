@@ -112,6 +112,23 @@ export const customArt = {
   fx_rocket_trail: 'fx_rocket_trail.png', // 로켓 주먹 불꽃 꼬리 (왼쪽이 주먹 쪽)
   fx_whirl: 'fx_whirl.png', // 빨아들이기 소용돌이 (돌려서 씀)
   fx_portal: 'fx_portal.png', // 킹이 부하를 부르는 보라색 구멍
+  // 보스 공격 그림 (Gemini 그림. fx_ 는 검은 배경 효과라 더하기 합성으로 그린다)
+  boss_boulder: 'boss_boulder.png', // 암석룡이 굴리는 바위 (돌려서 씀)
+  dark_orb: 'dark_orb.png', // 흑룡의 어둠 구슬
+  dirt_mound: 'dirt_mound.png', // 드릴이 땅속을 달릴 때 솟는 흙더미 (아래쪽이 땅)
+  ice_wall_block: 'ice_wall_block.png', // 얼음벽 조각 (세로로 쌓아 씀, 아래쪽이 땅)
+  mud_wave: 'mud_wave.png', // 땅을 달리는 진흙 파도 (높은 앞쪽이 오른쪽)
+  phantom_shade: 'phantom_shade.png', // 유령 왕의 그림자 분신
+  snowball: 'snowball.png', // 눈보라 눈덩이 (돌려서 씀)
+  spore_cloud: 'spore_cloud.png', // 독 포자 구름
+  storm_lance: 'storm_lance.png', // 폭풍 왕의 전기 창 (끝이 오른쪽)
+  volt_post: 'volt_post.png', // 전기 기둥 (아래쪽이 땅)
+  fx_arc: 'fx_arc.png', // 가로로 뻗은 전기 띠 (전기 사슬, 전기 고리)
+  fx_bolt: 'fx_bolt.png', // 위에서 땅으로 내리치는 번개
+  fx_flame_stream: 'fx_flame_stream.png', // 용의 입에서 땅으로 쏟아지는 불줄기 (좁은 위쪽이 입)
+  fx_frost_pool: 'fx_frost_pool.png', // 냉기 브레스가 얼린 바닥
+  fx_frost_puff: 'fx_frost_puff.png', // 급강하 뒤에 남는 냉기 구름
+  fx_slash: 'fx_slash.png', // 초승달 칼바람
   fx_star: 'fx_star.png', // 어지러울 때 도는 별 (Gemini 그림, 투명 배경)
   // 특별한 힘 아이콘 5개와 레벨 업 카드 아이콘 4개 (Gemini 그림, 80x80 정사각형)
   pw_speed: 'icon_pw_speed.png', // 번개 신발

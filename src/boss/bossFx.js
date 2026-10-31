@@ -30,6 +30,7 @@ export function drawRageAura(g, x, y, w, h, t) {
 
 // 얼음 조각 하나 (마름모). angle 은 뾰족한 쪽 방향(라디안)
 export function drawIceShard(g, x, y, size, angle, color = 0xe8fbff, alpha = 1) {
+  if (stamp(g.scene, 'ice_icicle', x, y, size * 0.8, size * 2, { rotation: angle - Math.PI / 2, alpha })) return; // 그림은 끝이 아래
   const c = Math.cos(angle);
   const s = Math.sin(angle);
   const L = size;
@@ -53,7 +54,7 @@ export function drawFrostCone(g, mx, my, x0, x1, gy, t, power = 1) {
   const reach = Math.hypot(cx - mx, gy - my);
   const lean = Math.atan2(gy - my, cx - mx) - Math.PI / 2;
   if (stamp(g.scene, 'fx_frost_cone', mx, my, Math.abs(x1 - x0) * 1.15, reach * 1.1, { rotation: lean, alpha: power })) {
-    g.fillStyle(0xf0fbff, 0.7 * power).fillEllipse(cx, gy, Math.abs(x1 - x0) * 1.05, 26);
+    if (!stamp(g.scene, 'fx_frost_pool', cx, gy, Math.abs(x1 - x0) * 1.1, 34, { alpha: power })) g.fillStyle(0xf0fbff, 0.7 * power).fillEllipse(cx, gy, Math.abs(x1 - x0) * 1.05, 26);
     return;
   }
   const wob = Math.sin(t * 30) * 6;

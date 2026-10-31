@@ -27,6 +27,8 @@ const SAW_BIG = 150; // 돌진할 때 톱니 지름
 const BLADE = 64; // 던지는 톱날 지름
 const BLADE_LOW_H = 54; // 낮은 톱날 높이 (점프로 넘음)
 const FIN_H = 46; // 땅 위로 나온 톱날 높이
+const FIN_DEPTH = -0.1; // 바닥 그림 뒤에 그려서 땅 위로 나온 절반만 보인다
+const CHAIN_PIECE = 64; // 쇠줄 그림 한 토막 길이
 const DASH_H = 170; // 돌진이 닿는 높이 (더블 점프로 넘거나 대시로 통과)
 const FIST = { w: 96, h: 66 };
 
@@ -615,6 +617,10 @@ export class ShredderBoss extends BossBase {
     const r = 46;
     const g = this.fxG;
     const y = this.groundY + 6;
+    if (stamp(this.scene, 'shredder_saw', f.x, y, (r + 12) * 2, (r + 12) * 2, { rotation: f.rot, depth: FIN_DEPTH })) {
+      this.sparksAt(f.x, this.groundY - 4, 3);
+      return;
+    }
     const teeth = 10;
     g.fillStyle(0xb7bec4, 1);
     for (let i = 0; i <= teeth; i++) {
@@ -863,8 +869,23 @@ export class ShredderBoss extends BossBase {
   drawChain() {
     if (!this.fist) return;
     const s = this.local(HALF - 30, 150);
+    if (this.stampChain(s)) return;
     this.linkG.lineStyle(10, 0x3a2a24, 1).lineBetween(s.x, s.y, this.fist.x, this.fist.y);
     this.linkG.lineStyle(4, 0x9a6a50, 1).lineBetween(s.x, s.y, this.fist.x, this.fist.y);
+  }
+
+  // 긴 쇠줄: 파이프 그림 토막을 이어 놓는다 (한 장을 늘리면 뭉개진다)
+  stampChain(s) {
+    const len = Math.hypot(this.fist.x - s.x, this.fist.y - s.y);
+    const n = Math.max(1, Math.ceil(len / CHAIN_PIECE));
+    const rotation = Math.atan2(this.fist.y - s.y, this.fist.x - s.x);
+    for (let i = 0; i < n; i++) {
+      const k = (i + 0.5) / n;
+      const x = s.x + (this.fist.x - s.x) * k;
+      const y = s.y + (this.fist.y - s.y) * k;
+      if (!stamp(this.scene, 'boss_link_1', x, y, len / n + 2, 16, { rotation, depth: 5.5 })) return false;
+    }
+    return true;
   }
 
   clearFist() {

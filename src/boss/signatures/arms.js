@@ -2,6 +2,7 @@ import { Rect, WAVE_H } from '../bossKit.js';
 import { Signature } from './Signature.js';
 import { driftToward } from '../../logic/signature.js';
 import { chainPosts, warnTime, zigzag } from '../../logic/sig_arms.js';
+import { stamp } from '../../fx/bossArt.js';
 
 const WARN_FLOOR = 0.6; // 보스가 아무리 빨라져도 경고는 이만큼 나온다
 
@@ -59,6 +60,7 @@ export class DrillBurrow extends Signature {
 
   drawMound(wobble) {
     const y = this.groundY;
+    if (stamp(this.scene, 'dirt_mound', this.x, y + 8, 112, 54 + wobble)) return;
     this.g.fillStyle(0x5a4028, 1).fillEllipse(this.x, y, 92, 44 + wobble);
     this.g.fillStyle(0x8a6a44, 1).fillEllipse(this.x - 8, y - 6, 56, 22 + wobble);
     this.g.fillStyle(0x3a2a1a, 1).fillCircle(this.x + 22, y - 8, 5).fillCircle(this.x - 26, y - 4, 4);
@@ -69,6 +71,7 @@ export class DrillBurrow extends Signature {
     const x = this.x;
     const y = this.groundY;
     const hw = 36;
+    if (stamp(this.scene, 'boss_fist_drill', x, y - height / 2, height, hw * 2.4, { rotation: Math.PI / 2, depth: 6.9 })) return; // 그림은 끝이 왼쪽
     this.g.fillStyle(0xb8bec8, 1).fillTriangle(x - hw, y, x + hw, y, x, y - height);
     this.g.lineStyle(5, 0x5a6270, 1);
     const shift = (this.t * 4) % 1;
@@ -186,8 +189,10 @@ export class VoltChain extends Signature {
   drawPost(x, up, lit) {
     const h = POST_H * up;
     const top = this.groundY - h;
-    this.g.fillStyle(0x2a3a5a, 1).fillRect(x - 10, top, 20, h);
-    this.g.fillStyle(0x6a8ac8, 1).fillRect(x - 15, top + h * 0.3, 30, 7).fillRect(x - 15, top + h * 0.6, 30, 7);
+    if (!stamp(this.scene, 'volt_post', x, this.groundY + 6, 40, h + 6)) {
+      this.g.fillStyle(0x2a3a5a, 1).fillRect(x - 10, top, 20, h);
+      this.g.fillStyle(0x6a8ac8, 1).fillRect(x - 15, top + h * 0.3, 30, 7).fillRect(x - 15, top + h * 0.6, 30, 7);
+    }
     this.g.fillStyle(lit ? 0xffffff : 0x9fd8ff, 1).fillCircle(x, top, 12);
     this.g.fillStyle(0x4ac8ff, 0.3 + 0.2 * Math.sin(this.t * 30)).fillCircle(x, top, 24);
   }
@@ -195,6 +200,7 @@ export class VoltChain extends Signature {
   drawChain(alpha) {
     const [a, b] = this.posts;
     const y = this.groundY - CHAIN_Y;
+    if (stamp(this.scene, 'fx_arc', (a + b) / 2, y, b - a, 64, { alpha, flipY: Math.floor(this.t * 24) % 2 === 0 })) return;
     for (const [width, color] of [[12, 0x2a8aff], [4, 0xeaffff]]) {
       const pts = zigzag(a, b, y, Math.round((b - a) / 34), 14);
       this.g.lineStyle(width, color, alpha).beginPath().moveTo(pts[0].x, pts[0].y);
