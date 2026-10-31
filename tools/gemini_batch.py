@@ -29,16 +29,19 @@ def on_gemini():
     return page("location.hostname") == 'gemini.google.com'
 
 
-def check_ready():
+def check_on_gemini():
     if not on_gemini():
         stop('tab left gemini.google.com')
+
+
+def check_ready():
+    check_on_gemini()
     if not page("!!document.activeElement?.closest?.('.ql-editor')"):
         stop('focus is not in the Gemini prompt box')
 
 
 def check_typed(text):
-    if not on_gemini():
-        stop('tab left gemini.google.com')
+    check_on_gemini()
     if page("document.querySelector('.ql-editor')?.innerText.trim()") != text.strip():
         stop('prompt box does not hold the prompt')
 
@@ -87,9 +90,13 @@ def make(o):
     time.sleep(0.8)
     check_typed(text)
     # 보이지 않는 탭에서는 Enter 가 먹지 않아 보내기 버튼을 이 탭 안에서 누른다
-    page("""[...document.querySelectorAll('button')].find(b=>/보내기|send/i.test(b.getAttribute('aria-label')||''))?.click()""")
-    time.sleep(2)
-    if page("document.querySelector('.ql-editor')?.innerText.trim()"):
+    for _ in range(15):  # 보내기 버튼이 늦게 켜지거나 전송이 늦을 수 있다
+        check_on_gemini()
+        page("""[...document.querySelectorAll('button')].find(b=>/보내기|send/i.test(b.getAttribute('aria-label')||''))?.click()""")
+        time.sleep(2)
+        if not page("document.querySelector('.ql-editor')?.innerText.trim()"):
+            break
+    else:
         stop('prompt was not sent')
     for _ in range(100):  # 최대 약 200 초
         time.sleep(2)
