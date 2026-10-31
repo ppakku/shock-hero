@@ -24,9 +24,9 @@ export class HorrorInput {
     this.lookTouch = null;
     this.off = [];
     this.buttons = [];
-    if (touch) this.bindTouch();
-    else this.bindMouse();
     this.bindKeys();
+    this.bindMouse(); // 터치 노트북도 마우스로 둘러볼 수 있게 항상 묶는다
+    if (touch) this.bindTouch();
   }
 
   on(target, type, fn, opts) {
@@ -42,10 +42,14 @@ export class HorrorInput {
     this.on(window, 'keyup', (e) => {
       if (KEYS[e.code]) this.keys[KEYS[e.code]] = false;
     });
+    this.on(window, 'blur', () => {
+      this.keys = {}; // 창을 나가면 키 떼는 소리를 못 받는다
+    });
   }
 
   bindMouse() {
-    this.on(this.el, 'mousedown', () => {
+    this.on(this.el, 'pointerdown', (e) => {
+      if (e.pointerType !== 'mouse') return; // 손가락은 bindTouch 가 맡는다
       if (document.pointerLockElement === this.el) this.pressed.punch = true;
       else this.el.requestPointerLock?.();
     });
@@ -61,6 +65,7 @@ export class HorrorInput {
 
   bindTouch() {
     this.on(this.el, 'pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return;
       if (e.clientX < window.innerWidth / 2) {
         if (!this.stick) this.stick = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY };
       } else if (!this.lookTouch) this.lookTouch = { id: e.pointerId, x: e.clientX, y: e.clientY };
@@ -84,6 +89,7 @@ export class HorrorInput {
       btn.textContent = b.label;
       btn.style.cssText = `position:absolute;right:${b.right}px;bottom:${b.bottom}px;width:92px;height:92px;border-radius:50%;border:2px solid #777;background:rgba(40,40,40,.55);color:#eee;font:16px sans-serif;z-index:3;touch-action:none`;
       this.on(btn, 'pointerdown', (e) => {
+        e.preventDefault(); // 손가락을 뗀 뒤 같은 자리로 마우스 클릭이 새어 나가 타이틀 버튼을 누르는 일을 막는다
         e.stopPropagation();
         this.pressed[b.id] = true;
       });

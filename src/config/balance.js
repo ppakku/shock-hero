@@ -771,6 +771,11 @@ export const balance = {
     fuseCount: 3, // 찾아야 하는 퓨즈 수
     gemsEscape: 5, // 탈출 보석
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
+    flashIntensity: 150, // 손전등 밝기
+    flashAngle: 0.55, // 손전등 빛이 퍼지는 각도의 절반 (라디안). 화면 높이의 3분의 2쯤을 덮는다
+    flashPenumbra: 0.6, // 빛 가장자리가 부드러운 정도 (0 은 칼같이, 1 은 가운데부터 흐려짐)
+    flashDistance: 26, // 손전등 빛이 닿는 거리 (미터)
+    flashDecay: 1.6, // 멀수록 어두워지는 정도
     viewCells: 14, // 이보다 먼 구역은 그리지 않는다 (어둠에 묻혀 안 보임)
     minRatio: 0.6, // 가장 낮은 화면 해상도 배율
     maxRatio: 1.5, // 가장 높은 화면 해상도 배율

@@ -31,6 +31,18 @@ export class HorrorGame {
     this.showFps = new URLSearchParams(window.location.search).has('fps');
 
     this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    try {
+      this.build(root, touch);
+    } catch (e) {
+      this.input?.destroy();
+      if (this.onResize) window.removeEventListener('resize', this.onResize);
+      this.renderer.dispose(); // 만들다 실패하면 WebGL 자리를 돌려준다
+      this.renderer.forceContextLoss();
+      throw e;
+    }
+  }
+
+  build(root, touch) {
     this.renderer.setPixelRatio(this.ratio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
@@ -46,7 +58,7 @@ export class HorrorGame {
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
     this.scene.add(this.camera);
-    this.flash = new THREE.SpotLight(0xfff2d8, 60, 26, 0.5, 0.5, 1.6);
+    this.flash = new THREE.SpotLight(0xfff2d8, this.k.flashIntensity, this.k.flashDistance, this.k.flashAngle, this.k.flashPenumbra, this.k.flashDecay);
     this.flash.castShadow = true;
     this.flash.shadow.mapSize.set(512, 512);
     this.flash.position.set(0.15, -0.2, 0);
@@ -75,6 +87,7 @@ export class HorrorGame {
       const real = (now - this.last) / 1000;
       this.last = now;
       this.update(Math.min(MAX_DT, real)); // 화면이 끊겨도 벽을 뚫지 않게 자른다
+      if (this.dead) return; // 이번 프레임에 나갔으면 그리지 않는다
       this.renderer.render(this.scene, this.camera);
       this.trackFps(real);
     });
@@ -87,7 +100,10 @@ export class HorrorGame {
 
   update(dt) {
     const inp = this.readInput();
-    if (inp.pause) return this.exit();
+    if (inp.pause) {
+      this.exit();
+      return;
+    }
     if (inp.light) this.lightOn = !this.lightOn;
     this.flash.visible = this.lightOn;
     this.yaw -= inp.lookX;
@@ -119,14 +135,19 @@ export class HorrorGame {
   }
 
   exit() {
+    if (this.dead) return;
+    this.dead = true;
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
     this.input.destroy();
     this.scene.traverse((o) => {
       o.geometry?.dispose();
       if (o.material) [o.material].flat().forEach((m) => m.dispose());
+      if (o.isInstancedMesh) o.dispose(); // 벽 인스턴스 버퍼
     });
+    this.flash.shadow.dispose(); // 손전등 그림자 지도
     this.renderer.dispose();
+    this.renderer.forceContextLoss(); // 태블릿은 WebGL 을 몇 개만 허용한다
     window.__horror = null;
     this.onExit();
   }

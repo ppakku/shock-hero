@@ -30,6 +30,33 @@ describe('벽 충돌', () => {
     expect(p.x).toBeCloseTo(2.5);
   });
 
+  it('옆걸음은 보는 방향의 오른쪽이다 (yaw 0 은 x 가 늘어난다)', () => {
+    const p = stepPlayer({ x: 2.5, y: 2.5 }, { x: 1, z: 0 }, 0, 1, 0.5, room, 0.2);
+    expect(p.x).toBeCloseTo(3);
+    expect(p.y).toBeCloseTo(2.5);
+  });
+
+  it('yaw 가 있으면 앞은 그 방향이다 (왼쪽으로 90도면 x 가 줄어든다)', () => {
+    const p = stepPlayer({ x: 2.5, y: 2.5 }, { x: 0, z: 1 }, Math.PI / 2, 1, 0.5, room, 0.2);
+    expect(p.x).toBeCloseTo(2);
+    expect(p.y).toBeCloseTo(2.5);
+  });
+
+  it('yaw 가 있으면 오른쪽도 같이 돈다 (왼쪽으로 90도면 오른쪽은 y 가 줄어든다)', () => {
+    const p = stepPlayer({ x: 2.5, y: 2.5 }, { x: 1, z: 0 }, Math.PI / 2, 1, 0.5, room, 0.2);
+    expect(p.x).toBeCloseTo(2.5);
+    expect(p.y).toBeCloseTo(2);
+  });
+
+  it('조이스틱 위로 밀면 앞, 오른쪽으로 밀면 오른쪽 옆걸음', () => {
+    const up = moveFromStick(0, -40, 70, 0.92);
+    const right = moveFromStick(40, 0, 70, 0.92);
+    expect(up.z).toBeGreaterThan(0);
+    expect(up.x).toBe(0);
+    expect(right.x).toBeGreaterThan(0);
+    expect(right.z).toBe(0);
+  });
+
   it('벽을 지나가지 못한다', () => {
     let p = { x: 2.5, y: 1.5 };
     for (let i = 0; i < 60; i++) p = stepPlayer(p, { x: 0, z: 1 }, 0, 2, 0.05, room, 0.2);

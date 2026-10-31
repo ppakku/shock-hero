@@ -29,27 +29,44 @@ function fail(root, text, onExit) {
 }
 
 // onExit: 공포 모드가 끝나고 타이틀로 돌아갈 때 부른다
-export async function startHorror(game, { onExit }) {
+// loadModule: 시험에서 바꿔 끼운다
+export async function startHorror(game, { onExit }, loadModule = () => import('./HorrorGame.js')) {
   const root = makeRoot();
   if (!canUseWebGL()) return fail(root, '이 기기에서는 공포 모드를 켤 수 없어요.', onExit);
   let HorrorGame;
   try {
-    ({ HorrorGame } = await import('./HorrorGame.js'));
-  } catch {
+    ({ HorrorGame } = await loadModule());
+  } catch (e) {
+    console.error('공포 모드 묶음을 불러오지 못했어요', e);
     return fail(root, '공포 모드를 불러오지 못했어요. 인터넷을 확인해 주세요.', onExit);
   }
   root.textContent = '';
   game.pause();
-  const { settings } = saveStore.load();
-  const horror = new HorrorGame(root, {
-    touch: isTouchDevice(),
-    lowFx: settings.lowFx,
-    muted: settings.muted,
-    onExit: () => {
-      root.remove();
-      game.resume();
-      onExit();
-    },
-  });
-  horror.start();
+  let horror = null;
+  try {
+    const { settings } = saveStore.load();
+    horror = new HorrorGame(root, {
+      touch: isTouchDevice(),
+      lowFx: settings.lowFx,
+      muted: settings.muted,
+      onExit: () => {
+        root.remove();
+        game.resume();
+        onExit();
+      },
+    });
+    horror.start();
+  } catch (e) {
+    console.error('공포 모드를 시작하지 못했어요', e);
+    try {
+      if (horror) {
+        horror.onExit = () => {}; // 안내 뒤에 한 번만 끝내려고 여기서는 알리지 않는다
+        horror.exit();
+      }
+    } catch {
+      // 정리 중 오류는 무시하고 아래 실패 안내로 간다
+    }
+    game.resume();
+    return fail(root, '공포 모드를 시작하지 못했어요. 다시 시도해 주세요.', onExit);
+  }
 }
