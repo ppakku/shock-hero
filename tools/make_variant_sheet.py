@@ -11,6 +11,7 @@ args = [a for a in sys.argv[1:] if not a.startswith('--')]
 src, dst = args[0], args[1]
 cell_w, cell_h = map(int, (args[2] if len(args) > 2 else '344x384').split('x'))
 foot = int(args[3]) if len(args) > 3 else 20
+flip = '--flip' in sys.argv  # 왼쪽을 보게 뒤집는다
 COLS, ROWS = 4, 2
 
 im = np.asarray(Image.open(src).convert('RGB')).astype(float)
@@ -22,6 +23,18 @@ rgb = np.stack([r - fix * (alpha < 1), g, b - fix * (alpha < 1)], -1).clip(0, 25
 rgba = np.dstack([rgb, alpha * 255]).astype('uint8')
 
 H, W = alpha.shape
+solid = alpha > 0.5
+for i in range(COLS + 1):  # 칸 경계 근처의 곧은 선을 지운다
+    near = range(max(0, i * W // COLS - W // 40), min(W, i * W // COLS + W // 40))
+    for x in near:
+        if solid[:, x].mean() > 0.85:
+            alpha[:, max(0, x - 3):x + 4] = 0
+for i in range(ROWS + 1):
+    near = range(max(0, i * H // ROWS - H // 30), min(H, i * H // ROWS + H // 30))
+    for y in near:
+        if solid[y, :].mean() > 0.85:
+            alpha[max(0, y - 3):y + 4, :] = 0
+rgba[..., 3] = (alpha * 255).astype('uint8')
 labels, count = ndimage.label(ndimage.binary_opening(alpha > 0.25, iterations=5))  # 칸 사이 가는 선을 끊는다
 areas = ndimage.sum_labels(np.ones_like(labels), labels, range(1, count + 1))
 centers = ndimage.center_of_mass(np.ones_like(labels), labels, range(1, count + 1))
@@ -45,6 +58,6 @@ for i, f in enumerate(frames):
     s = f.resize((max(1, round(f.width * k)), max(1, round(f.height * k))), Image.LANCZOS)
     x = (i % COLS) * cell_w + (cell_w - s.width) // 2
     y = (i // COLS) * cell_h + cell_h - foot - s.height
-    sheet.alpha_composite(s, (x, y))
+    sheet.alpha_composite(s.transpose(Image.FLIP_LEFT_RIGHT) if flip else s, (x, y))
 sheet.save(dst)
 print(dst, sheet.size, 'scale', round(k, 3))

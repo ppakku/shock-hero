@@ -49,7 +49,7 @@ export const customArt = {
   fx_frost_wall: 'fx_frost_wall.png', // 냉기 브레스 끝에서 바닥을 달리는 서리 벽 (Gemini 그림, 높은 앞쪽이 오른쪽)
   fx_frost_cone: 'fx_frost_cone.png', // 냉기 브레스 부채꼴 (Gemini 그림, 검은 배경, 뾰족한 위쪽이 입)
   watcher_2: { file: 'forest_watcher.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 포레스트 와처 (아들 그림, 8장, 오른쪽을 봄)
-  // watcher_flat_2: 'watcher_flat_2.png', // 지쳐서 엎드린 포레스트 와처 (왼쪽을 봄, 머리가 왼쪽). 넣으면 시트를 누르는 대신 이 그림을 쓴다
+  watcher_flat_2: 'watcher_flat_2.png', // 지쳐서 엎드린 포레스트 와처 (Gemini 그림, 왼쪽을 봄)
   watcher_blister: 'watcher_blister.png', // 와처 등의 초록 독혹 (Gemini 그림)
   slime_glob: 'slime_glob.png', // 와처가 뱉는 독 점액 (Gemini 그림)
   watcher_arm_2: 'watcher_arm.png', // 와처의 긴 팔 토막 (Gemini 그림, 가로로 길게, 팔꿈치 양쪽에 늘여 씀)
@@ -82,7 +82,7 @@ export const customArt = {
   boss_fist_10: 'emperor_fist.png', // 그림자 황제가 날리는 주먹 (Gemini 그림, 왼쪽을 봄)
   boss_link_10: 'boss_link_shadow.png', // 그림자 황제 몸통과 팔을 잇는 그림자 촉수 줄 (Gemini 그림, 가로로 이어 붙는 띠)
   dragon_3: { file: 'astranova.png', cols: 4, rows: 2, frameRate: 8 }, // 아스트라노바X (아들 그림, 8장 날갯짓, 왼쪽을 봄)
-  // dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X (왼쪽을 봄). 넣으면 시트를 누르는 대신 이 그림을 쓴다
+  dragon_tired_3: 'dragon_tired_3.png', // 날개를 늘어뜨리고 쉬는 아스트라노바X (Gemini 그림, 왼쪽을 봄)
   dragon_tail_3: 'dragon_tail.png', // 꼬리 휘두르기 때 몸 쪽 꼬리 토막 (Gemini 그림, 가로로 길게)
   dragon_tailtip_3: 'dragon_tailtip.png', // 꼬리 끝 토막 (Gemini 그림, 끝이 왼쪽)
   fx_puddle_fire: 'fx_puddle_fire.png', // 뜨거운 용암 웅덩이 (Gemini 그림, 가로로 늘여 씀)
@@ -104,7 +104,7 @@ export const customArt = {
   boss_sea_heart: 'boss_sea_heart.png', // 심해 아귀왕 심장 (Gemini 그림, 약점)
   boss_sea_bubble: 'boss_sea_bubble.png', // 심해 아귀왕 거품 폭탄 (Gemini 그림)
   fx_sand_wave: 'fx_sand_wave.png', // 꼬리 휩쓸기 모래 파도 (Gemini 그림, 구름이 앞, 오른쪽으로 감, 아래쪽이 바닥)
-  // fx_ink: 'fx_ink.png', // 먹물 구름
+  fx_ink: 'fx_ink.png', // 먹물 구름 (Gemini 그림)
   rock: 'rock.png', // 떨어지는 돌 (Gemini 그림)
   glob: 'glob.png', // 독침 (Gemini 그림)
   // 보스들이 같이 쓰는 공격 효과 (Gemini 그림, 검은 배경이라 더하기 합성으로 그림, src/fx/bossArt.js)
