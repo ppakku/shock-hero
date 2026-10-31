@@ -8,6 +8,8 @@ import { coreDamage, rockTargets, pickPattern, canSummon, summonSpots } from '..
 import { varyCount } from '../logic/bossVariety.js';
 import { sheetFacesRight } from '../fx/spriteSheets.js';
 import { stamp, stampWave } from '../fx/bossArt.js';
+import { SIGNATURES } from './signatures/index.js';
+import { needsSignature } from '../logic/sig_king.js';
 
 const Rect = Phaser.Geom.Rectangle;
 const intersects = Phaser.Geom.Intersects.RectangleToRectangle;
@@ -41,6 +43,7 @@ export class KingBoss extends ArmBoss {
     this.ky = this.groundY;
     this.face = -1;
     this.kwaves = [];
+    this.sigSeen = new Set(); // 이미 보여 준 전용 공격
   }
 
   layout() {
@@ -128,7 +131,50 @@ export class KingBoss extends ArmBoss {
       this.startSummon();
       return;
     }
+    if (type === 'signature') {
+      this.startKingSignature();
+      return;
+    }
     super.startAction(type, !forceType);
+  }
+
+  // 전용 공격 이름. 일어선 왕은 finalSignature 가 있으면 그것을 쓴다 (스테이지 40).
+  get signatureName() {
+    return (this.standing && this.def.finalSignature) || this.def.signature;
+  }
+
+  startKingSignature() {
+    this.lastType = 'signature';
+    this.justFeinted = false;
+    this.action = { type: 'signature', phase: 'aim', t: 0 };
+    this.sigSeen.add(this.signatureName);
+    this.startSignature();
+  }
+
+  startSignature() {
+    const name = this.signatureName;
+    const Sig = SIGNATURES[name];
+    this.sig = new Sig(this);
+    this.tip(name, Sig.tip);
+  }
+
+  // 전용 공격이 왕을 숨기거나 되돌릴 때 부른다
+  fadeBody(alpha) {
+    this.body.setAlpha(alpha);
+    this.core.setAlpha(alpha);
+    if (!this.standing) this.armor.setAlpha(alpha);
+  }
+
+  // 앉은 왕 대신 싸움터로 나가는 분신 (일어선 왕 그림)
+  makeDouble(x, face) {
+    const key = `boss_king_stand_${this.skin}`;
+    const img = this.scene.add.image(x, this.groundY, key).setDepth(this.body.depth);
+    img.setFlipX(sheetFacesRight(this.scene, key) ? face < 0 : face > 0);
+    if (this.scene.anims.exists(`${key}_anim`)) {
+      const h = STAND_H * 1.15;
+      return img.setOrigin(0.5, SHEET_ORIGIN_Y).setDisplaySize(Math.round((h * img.width) / img.height), h);
+    }
+    return img.setOrigin(0.5, 1).setDisplaySize(STAND_W, STAND_H);
   }
 
   pickSeated(avoid = null) {
@@ -136,6 +182,8 @@ export class KingBoss extends ArmBoss {
     const lost = this.totalArms - alive;
     const phases = this.def.phases;
     const list = (phases[Math.min(lost, phases.length - 1)] || []).filter((p) => p !== avoid && (p !== 'rocketPunch' || alive > 0));
+    // 팔이 하나 부서졌는데 전용 공격을 아직 안 보여 줬으면 지금 보여 준다
+    if (lost > 0 && needsSignature(list, this.sigSeen, this.signatureName)) return 'signature';
     return pickPattern(list, this.lastType, Math.random, 'slam');
   }
 
@@ -163,6 +211,7 @@ export class KingBoss extends ArmBoss {
     if (a.type === 'summon') this.runSummon(dt);
     else if (a.type === 'leap') this.runLeap(dt);
     else if (a.type === 'charge') this.runCharge(dt);
+    else if (a.type === 'signature') this.runSignature(dt);
     else super.runAction(dt);
   }
 
@@ -180,14 +229,7 @@ export class KingBoss extends ArmBoss {
       }
       this.label(0, '부하 소환!', this.arenaStart + 480, 120, 26, '#d08aff');
       if (a.t >= dur) {
-        const kinds = this.def.minions || ['basic', 'fast', 'jumper'];
-        for (const x of a.spots) {
-          if (!canSummon(this.liveMinions, this.kc.summonMax)) break;
-          const type = kinds[Math.floor(Math.random() * kinds.length)];
-          const m = this.scene.spawnMonster({ x, type });
-          this.minions.push(m);
-          this.scene.dustAt(x, this.groundY, 12);
-        }
+        this.spawnMinions(a.spots);
         a.phase = 'after';
         a.t = 0;
       }
@@ -196,10 +238,22 @@ export class KingBoss extends ArmBoss {
     if (a.t >= 0.4) this.endAction();
   }
 
+  spawnMinions(spots) {
+    const kinds = this.def.minions || ['basic', 'fast', 'jumper'];
+    for (const x of spots) {
+      if (!canSummon(this.liveMinions, this.kc.summonMax)) break;
+      const type = kinds[Math.floor(Math.random() * kinds.length)];
+      const m = this.scene.spawnMonster({ x, type });
+      this.minions.push(m);
+      this.scene.dustAt(x, this.groundY, 12);
+    }
+  }
+
   // ---------- 팔을 다 부수면: 왕좌에서 일어난다 ----------
 
   exposeCore() {
     this.coreExposed = true;
+    this.stopSignature(); // 전용 공격 중에 팔이 다 부서질 수 있다 (궁극기)
     this.scene.tweens.add({ targets: this.armor, x: this.armor.x - 70, y: this.groundY - 20, angle: -120, alpha: 0, duration: 800, ease: 'Quad.easeIn' });
     if (this.action) {
       const a = this.action;
@@ -341,10 +395,16 @@ export class KingBoss extends ArmBoss {
 
   startStandingAction(forceType = null) {
     const p = this.target;
-    let type = forceType || pickPattern(this.def.finalPhase, this.lastType, Math.random, 'leap');
+    // 일어선 뒤 전용 공격을 아직 안 보여 줬으면 먼저 보여 준다
+    const must = !forceType && needsSignature(this.def.finalPhase, this.sigSeen, this.signatureName);
+    let type = must ? 'signature' : forceType || pickPattern(this.def.finalPhase, this.lastType, Math.random, 'leap');
     if (type === 'summon' && !canSummon(this.liveMinions, this.kc.summonMax)) type = pickPattern(this.def.finalPhase.filter((x) => x !== 'summon'), this.lastType, Math.random, 'leap');
     if (type === 'summon') {
       this.startSummon();
+      return;
+    }
+    if (type === 'signature') {
+      this.startKingSignature();
       return;
     }
     this.lastType = type;
@@ -472,7 +532,7 @@ export class KingBoss extends ArmBoss {
 
   receiveAttack(rect, attack) {
     if (!this.standing) return super.receiveAttack(rect, attack);
-    if (this.defeated || this.standStage !== 'ready') return false;
+    if (this.defeated || this.standStage !== 'ready' || this.sig?.hidden) return false;
     if (!intersects(rect, this.standRect())) return false;
     const dmg = coreDamage(attack, this.c.chargedPunchCoreMultiplier);
     this.coreHealth.damage(dmg);
