@@ -122,13 +122,14 @@ export const stage26 = {
     type: 'sea',
     name: '소용돌이 아귀왕',
     skin: 'ray',
+    signature: 'shockRings',
     healthScale: 1.9,
     speedScale: 0.8,
     colors: { main: 0x1e4a7a, light: 0x3a7ab8, dark: 0x0e2440, belly: 0x90c0d8, lure: 0x8af0ff },
     phases: [
-      ['whirlpool', 'charge', 'bubbles', 'ink', 'sweep'],
-      ['charge', 'whirlpool', 'bubbles', 'sweep', 'ink'],
-      ['whirlpool', 'charge', 'sweep', 'bubbles', 'whirlpool'],
+      ['signature', 'charge', 'bubbles', 'ink', 'sweep'],
+      ['charge', 'whirlpool', 'bubbles', 'signature', 'ink'],
+      ['whirlpool', 'charge', 'sweep', 'bubbles', 'signature'],
     ],
   },
 };

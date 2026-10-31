@@ -127,13 +127,14 @@ export const stage36 = {
     type: 'sea',
     name: '어둠의 아귀왕',
     skin: 'abyss',
+    signature: 'blackout',
     healthScale: 2.1,
     speedScale: 0.76,
     colors: { main: 0x1a1a3a, light: 0x3a3a6a, dark: 0x0a0a1e, belly: 0x6a6a9a, lure: 0xff5ad5 },
     phases: [
-      ['ink', 'charge', 'whirlpool', 'bubbles', 'sweep'],
-      ['ink', 'whirlpool', 'charge', 'sweep', 'bubbles'],
-      ['charge', 'whirlpool', 'sweep', 'charge', 'bubbles'],
+      ['signature', 'charge', 'whirlpool', 'bubbles', 'sweep'],
+      ['ink', 'whirlpool', 'charge', 'sweep', 'signature'],
+      ['signature', 'whirlpool', 'sweep', 'charge', 'bubbles'],
     ],
   },
 };

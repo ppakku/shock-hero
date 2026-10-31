@@ -28,6 +28,8 @@ const LOOK = {
   hit: { w: 230, h: 140 }, // 주인공 공격이 맞는 몸 크기
 };
 
+const HEART = { x: 20, y: 30 }; // 심장 위치 (몸 가운데에서)
+
 const TIPS = {
   charge: '빨간 띠를 따라 돌진해 와! 위나 아래로 헤엄쳐서 띠 밖으로 피하거나 대시로 뚫어!',
   bubbles: '바닥에서 거품 폭탄이 올라와! 점선 밖으로 비켜. {atk}(으)로 터뜨려도 돼!',
@@ -328,6 +330,12 @@ export class SeaBoss extends BossBase {
     return { x: p.x + sway, y: p.y + Math.cos(this.t * 1.7) * 5 };
   }
 
+  // 지금 때려야 할 곳: 초롱불, 없으면 턱, 그것도 없으면 심장
+  get weakSpot() {
+    if (this.lure.alive) return this.lurePos;
+    return this.local(this.jaw.alive ? LOOK.jaw : HEART);
+  }
+
   bodyRect() {
     return new Rect(this.x - LOOK.hit.w / 2, this.y - LOOK.hit.h / 2, LOOK.hit.w, LOOK.hit.h);
   }
@@ -374,7 +382,7 @@ export class SeaBoss extends BossBase {
     }
     // 심장: 부위를 다 부수면 배에서 쿵쾅
     if (this.heartOpen && !this.defeated) {
-      const hp = this.local({ x: 20, y: 30 });
+      const hp = this.local(HEART);
       const s = 1 + Math.sin(this.t * 8) * 0.12;
       this.heart.setVisible(true).setPosition(hp.x, hp.y).setDisplaySize(34 * s * 1.4, 30 * s * 1.4);
     }
@@ -517,11 +525,14 @@ export class SeaBoss extends BossBase {
     } else if (type === 'rest') {
       a.phase = 'descend';
       a.tx = landingX(p.x, this.minX + 80, this.maxX - 80, 220);
+    } else if (type === 'signature') {
+      this.faceTo(p.x);
+      this.startSignature();
     }
     this.action = a;
     if (type !== 'rest') this.scene.sfxPlay('warn');
     this.tip(type);
-    if (type !== 'rest' && type !== 'ink') {
+    if (type !== 'rest' && type !== 'ink' && type !== 'signature') {
       // 겹쳐 쓰기는 지금 공격과 피하는 법이 겹치지 않게: 바닥 휩쓸기 중에는 돌, 거품 중에는 충격파
       const mainLike = type === 'sweep' ? 'shockwave' : type === 'bubbles' ? 'rocks' : type;
       this.combo.maybeStart(mainLike, this.diff.bossCombo);
@@ -559,6 +570,7 @@ export class SeaBoss extends BossBase {
     else if (a.type === 'ink') this.runInk(dt);
     else if (a.type === 'sweep') this.runSweep(dt);
     else if (a.type === 'rest') this.runRest(dt);
+    else if (a.type === 'signature') this.runSignature(dt);
     else this.endAction();
   }
 
@@ -747,9 +759,7 @@ export class SeaBoss extends BossBase {
       this.label(0, '먹물이다!', this.x, this.y - 110, 24, '#bfc7d5');
       if (a.t >= 0.8 * this.speed) {
         this.scene.sfxPlay('ink');
-        this.inkLeft = this.sc.inkTime;
-        this.dark.setVisible(true).setAlpha(0);
-        this.scene.tweens.add({ targets: this.dark, alpha: 1, duration: 300 });
+        this.startDark(this.sc.inkTime);
         this.scene.dustAt(this.mouth.x, this.mouth.y, 12);
         // 어둠 속에서 바로 돌진 (초롱불과 빨간 띠는 보임)
         this.action = null;
@@ -757,6 +767,14 @@ export class SeaBoss extends BossBase {
         this.lastType = 'ink';
       }
     }
+  }
+
+  // 화면을 어둡게 한다. 걷히던 어둠이 있어도 새 어둠이 꺼지지 않게 앞의 움직임을 멈춘다.
+  startDark(time) {
+    this.inkLeft = Math.max(this.inkLeft, time);
+    this.scene.tweens.killTweensOf(this.dark);
+    this.dark.setVisible(true);
+    this.scene.tweens.add({ targets: this.dark, alpha: 1, duration: 300 });
   }
 
   updateInk(dt) {
@@ -771,11 +789,14 @@ export class SeaBoss extends BossBase {
       const lp = this.lurePos;
       mg.fillCircle(lp.x - cam.scrollX, lp.y - cam.scrollY, 70);
     }
+    // 전용 공격이 보여 주는 불빛
+    for (const l of this.sig?.lights?.() ?? []) mg.fillCircle(l.x - cam.scrollX, l.y - cam.scrollY, l.r);
     if (this.inkLeft <= 0 || this.defeated) this.clearInk();
   }
 
   clearInk() {
     this.inkLeft = 0;
+    this.scene.tweens.killTweensOf(this.dark);
     this.scene.tweens.add({ targets: this.dark, alpha: 0, duration: 400, onComplete: () => this.dark.setVisible(false) });
   }
 
@@ -974,4 +995,6 @@ const SEA_DEFAULTS = {
   bubbleCount: 4, bubbleWarningTime: 0.9, bubbleRiseSpeed: 150, bubbleDamage: 12,
   whirlWarningTime: 1.0, whirlTime: 2.6, whirlPull: 130, whirlBiteDamage: 18, inkTime: 4.0,
   sweepWarningTime: 1.0, sweepSpeed: 520, sweepDamage: 16, sweepHeight: 100, rageAt: 0.5,
+  ringCount: 2, ringWarningTime: 1.0, ringSpeed: 300, ringLaneWidth: 130, ringDamage: 16,
+  blackoutWarningTime: 1.0, blackoutTime: 5.0, fakeLures: 3, fakeDrift: 30, fakeTrigger: 80, fakeFuse: 0.6, fakeBlast: 100, fakeDamage: 12,
 };
