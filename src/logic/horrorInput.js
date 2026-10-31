@@ -2,6 +2,20 @@
 import { blocked } from './horrorGrid.js';
 
 // keys: { up, down, left, right, run }
+// 달리기 체력. value 는 0 ~ 1 이고, 다 쓰면 tired 가 켜져 어느 만큼 찰 때까지 달릴 수 없다.
+export function createStamina() {
+  return { value: 1, tired: false };
+}
+
+export function canRun(stamina, wantRun) {
+  return Boolean(wantRun) && !stamina.tired && stamina.value > 0;
+}
+
+export function stepStamina(stamina, running, k, dt) {
+  const value = running ? Math.max(0, stamina.value - dt / k.staminaRunSec) : Math.min(1, stamina.value + dt / k.staminaFillSec);
+  return { value, tired: value <= 0 || (stamina.tired && value < k.staminaReady) };
+}
+
 // 좌우 방향키로 돌아보는 양 (라디안). 오른쪽이 양수로 마우스와 같다.
 export function keyTurn(keys, speed, dt) {
   return ((keys.turnRight ? 1 : 0) - (keys.turnLeft ? 1 : 0)) * speed * dt;

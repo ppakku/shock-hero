@@ -749,6 +749,9 @@ export const balance = {
   // ---------- 공포 모드 (거리와 속도는 칸 단위, 칸 하나는 3미터) ----------
   horror: {
     walkSpeed: 1.3, // 걷는 속도 (1초에 몇 칸)
+    staminaRunSec: 6, // 체력이 꽉 찬 채로 달릴 수 있는 시간 (초)
+    staminaFillSec: 12, // 빈 체력이 꽉 차는 시간 (초). 걷거나 서 있거나 숨어 있으면 찬다
+    staminaReady: 0.3, // 체력을 다 쓰면 이만큼 찰 때까지 달릴 수 없다
     runSpeed: 2.3, // 달리는 속도. 파쇄자 추격 속도보다 빨라야 도망칠 수 있다
     lookSpeed: 0.0025, // 마우스 시점 속도
     touchLookSpeed: 0.005, // 화면 끌기 시점 속도

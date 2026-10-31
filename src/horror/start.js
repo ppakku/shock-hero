@@ -1,6 +1,12 @@
 // 공포 모드 입구. 3D 묶음은 고를 때만 내려받는다 (이 파일은 three 를 import 하지 않는다).
-import { isTouchDevice } from '../ui/touch.js';
+import { isPhone, isTouchDevice } from '../ui/touch.js';
 import { saveStore } from '../save.js';
+
+// 안내 화면에 어느 기기의 조작법을 보여 줄지 고른다
+export function deviceKind(phone = isPhone(), touch = isTouchDevice()) {
+  if (phone) return 'phone';
+  return touch ? 'tablet' : 'pc';
+}
 
 export function canUseWebGL(doc = globalThis.document) {
   try {
@@ -49,6 +55,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     const { settings } = saveStore.load();
     horror = new HorrorGame(root, {
       touch: isTouchDevice(),
+      device: deviceKind(),
       lowFx: settings.lowFx,
       muted: settings.muted,
       onExit: () => {

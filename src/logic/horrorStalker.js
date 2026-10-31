@@ -193,15 +193,15 @@ export function stunStalker(s, k) {
 }
 
 // 잡은 뒤에는 멀리 옮겨서, 다시 시작하자마자 또 잡히지 않게 한다
-export function sendAway(s, map, player) {
-  let best = map.patrol[0];
-  map.patrol.forEach((c, i) => {
-    if (dist(center(c), player) >= dist(center(best), player)) {
-      best = c;
-      s.patrolIndex = i;
-    }
-  });
-  const c = center(best);
+// 멀리 있는 순찰 지점 몇 곳 중 하나로 보낸다. 늘 같은 곳이면 같은 길목에서 계속 마주친다.
+export function sendAway(s, map, player, rand = Math.random) {
+  const far = map.patrol
+    .map((c, i) => ({ c, i, d: dist(center(c), player) }))
+    .sort((a, b) => b.d - a.d)
+    .slice(0, Math.max(1, Math.min(3, map.patrol.length)));
+  const pick = far[Math.floor(rand() * far.length) % far.length];
+  s.patrolIndex = pick.i;
+  const c = center(pick.c);
   Object.assign(s, { x: c.x, y: c.y, mode: 'patrol', path: [], lostT: 0, checking: null, lockers: [], lastSeen: null, target: null });
 }
 

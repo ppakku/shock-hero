@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked } from '../src/logic/horrorGrid.js';
-import { stepPlayer, noiseFor } from '../src/logic/horrorInput.js';
+import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
 import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, nearestUse } from '../src/logic/horrorRun.js';
 import { factoryMap as map } from '../src/horror/maps/factory.js';
@@ -35,22 +35,26 @@ function playGame(seed, options, maxSeconds = 900) {
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight } };
   new Function('window', BOT)(window);
   const catches = [];
+  let stamina = createStamina();
   let hideFrom = null;
   let t = 0;
   for (; t < maxSeconds && !run.escaped; t += DT) {
     const inp = g.readInput();
     g.yaw -= inp.lookX;
     const before = g.p;
-    if (g.hidden === null) g.p = stepPlayer(g.p, inp.move, g.yaw, inp.move.run ? k.runSpeed : k.walkSpeed, DT, map, 0.2);
+    const running = canRun(stamina, inp.move.run);
+    if (g.hidden === null) g.p = stepPlayer(g.p, inp.move, g.yaw, running ? k.runSpeed : k.walkSpeed, DT, map, 0.2);
     const moving = g.p.x !== before.x || g.p.y !== before.y;
-    const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, inp.move.run, k) };
+    stamina = stepStamina(stamina, running && moving, k, DT);
+    const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
     const events = tickStalker(g.stalker, { map, player }, k, DT, rand);
     if (events.includes('caught') || events.includes('found')) {
       caught(run);
       catches.push(t);
       g.hidden = null;
+      stamina = createStamina();
       g.p = center(map.start);
-      sendAway(g.stalker, map, g.p);
+      sendAway(g.stalker, map, g.p, rand);
       continue;
     }
     const target = g.nearestUse();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { keyTurn, moveFromKeys, moveFromStick, stepPlayer, noiseFor, nextPixelRatio, startRatio } from '../src/logic/horrorInput.js';
+import { createStamina, canRun, stepStamina, keyTurn, moveFromKeys, moveFromStick, stepPlayer, noiseFor, nextPixelRatio, startRatio } from '../src/logic/horrorInput.js';
 import { parseMap } from '../src/logic/horrorGrid.js';
 import { balance } from '../src/config/balance.js';
 
@@ -106,5 +106,40 @@ describe('키보드로 둘러보기', () => {
   it('둘 다 누르거나 안 누르면 돌지 않는다', () => {
     expect(keyTurn({ turnLeft: true, turnRight: true }, 2, 0.5)).toBe(0);
     expect(keyTurn({}, 2, 0.5)).toBe(0);
+  });
+});
+
+describe('달리기 체력', () => {
+  const k = { staminaRunSec: 6, staminaFillSec: 12, staminaReady: 0.3 };
+
+  it('달리면 줄고 6초면 다 쓴다', () => {
+    let st = createStamina();
+    for (let i = 0; i < 59; i++) st = stepStamina(st, true, k, 0.1);
+    expect(canRun(st, true)).toBe(true);
+    for (let i = 0; i < 2; i++) st = stepStamina(st, true, k, 0.1);
+    expect(st.value).toBe(0);
+    expect(st.tired).toBe(true);
+    expect(canRun(st, true)).toBe(false);
+  });
+
+  it('걸으면 점점 차고 꽉 차면 멈춘다', () => {
+    let st = { value: 0.5, tired: false };
+    st = stepStamina(st, false, k, 1.2);
+    expect(st.value).toBeCloseTo(0.6);
+    st = stepStamina(st, false, k, 100);
+    expect(st.value).toBe(1);
+  });
+
+  it('다 쓰면 기준까지 찰 때까지 달릴 수 없다', () => {
+    let st = { value: 0, tired: true };
+    st = stepStamina(st, false, k, 3);
+    expect(st.value).toBeCloseTo(0.25);
+    expect(canRun(st, true)).toBe(false);
+    st = stepStamina(st, false, k, 1);
+    expect(canRun(st, true)).toBe(true);
+  });
+
+  it('달리려는 입력이 없으면 달리지 않는다', () => {
+    expect(canRun(createStamina(), false)).toBe(false);
   });
 });

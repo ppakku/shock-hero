@@ -12,17 +12,28 @@ const INTRO = [
   `${MONSTER_NAME}는 쓰러뜨릴 수 없다. 사물함에 숨어!`,
 ];
 
-// 기기에 맞는 조작 안내. 지금 실제로 되는 조작만 적는다.
-export function controlLines(touch) {
-  if (touch) {
-    return ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기', '손전등: 손전등 버튼', '줍기와 숨기: 사용 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
-  }
-  return ['이동: W A S D 또는 위아래 방향키', '둘러보기: 마우스 또는 좌우 방향키', '달리기: Shift 를 누른 채 이동', '손전등: F', '줍기와 숨기: E', '쇼크 펀치: J 또는 왼쪽 클릭', '일시정지: Esc'];
+const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기와 숨기, 충전: 사용 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
+
+const CONTROLS = {
+  pc: ['조작 방법 (PC)', '이동: W A S D 또는 위아래 방향키', '둘러보기: 마우스 또는 좌우 방향키', '달리기: Shift 를 누른 채 이동 (체력이 줄어요)', '손전등: F', '줍기와 숨기, 충전: E', '쇼크 펀치: J 또는 왼쪽 클릭', '일시정지: Esc'],
+  tablet: ['조작 방법 (태블릿)', ...TOUCH_CONTROLS],
+  phone: ['조작 방법 (휴대폰, 가로로 눕혀 주세요)', ...TOUCH_CONTROLS],
+};
+
+const HINTS = {
+  pc: 'W A S D 로 걷고 마우스나 좌우 방향키로 둘러봅니다',
+  tablet: '왼쪽을 끌면 걷고, 오른쪽을 끌면 둘러봅니다',
+  phone: '왼쪽을 끌면 걷고, 오른쪽을 끌면 둘러봅니다',
+};
+
+// 기기에 맞는 조작 안내. device: 'pc' | 'tablet' | 'phone'
+export function controlLines(device) {
+  return CONTROLS[device] ?? CONTROLS.pc;
 }
 
 // 시작한 뒤 잠깐 띄우는 알림
-export function startHint(touch) {
-  return touch ? '왼쪽을 끌면 걷고, 오른쪽을 끌면 둘러봅니다' : 'W A S D 로 걷고 마우스나 좌우 방향키로 둘러봅니다';
+export function startHint(device) {
+  return HINTS[device] ?? HINTS.pc;
 }
 
 // 끝 화면 글자. 이번에 실제로 받은 보석만 말한다 (reward: logic/horrorRun.js 의 escapeReward)
@@ -39,6 +50,13 @@ export class HorrorHud {
     this.box = document.createElement('div');
     this.box.style.cssText = 'position:absolute;inset:0;z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
     this.status = this.add('position:absolute;left:16px;top:12px;text-shadow:0 0 4px #000');
+    // 달리기 체력 막대. 다 쓰면 빨갛게 바뀐다
+    this.add('position:absolute;left:16px;top:35px;font-size:13px;text-shadow:0 0 4px #000').textContent = '체력';
+    this.staminaBar = this.add('position:absolute;left:52px;top:39px;width:130px;height:8px;border:1px solid rgba(255,255,255,.45);border-radius:4px;overflow:hidden;background:rgba(0,0,0,.5)');
+    this.staminaFill = document.createElement('div');
+    this.staminaFill.style.cssText = 'width:100%;height:100%;background:#e8b84a';
+    this.staminaBar.appendChild(this.staminaFill);
+    this.staminaShown = 100;
     this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;text-shadow:0 0 4px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
     this.dot = this.add('position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(255,255,255,.45)');
@@ -67,6 +85,14 @@ export class HorrorHud {
   }
 
   // 매 프레임 불린다. 글자가 같으면 화면을 건드리지 않는다
+  setStamina({ value, tired }) {
+    const shown = Math.round(value * 100) * (tired ? -1 : 1) - (tired ? 1 : 0);
+    if (shown === this.staminaShown) return; // 매 프레임 화면을 고치지 않는다
+    this.staminaShown = shown;
+    this.staminaFill.style.width = `${value * 100}%`;
+    this.staminaFill.style.background = tired ? '#d0402c' : '#e8b84a';
+  }
+
   setPrompt(text) {
     if (text === this.promptText) return;
     this.promptText = text;
@@ -125,9 +151,9 @@ export class HorrorHud {
     this.layer = null;
   }
 
-  showIntro(touch, onStart, onQuit) {
+  showIntro(device, onStart, onQuit) {
     this.openLayer(
-      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...INTRO, ' ', ...controlLines(touch)],
+      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...INTRO, ' ', ...controlLines(device)],
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
     );
   }
