@@ -42,6 +42,7 @@ const BOSS_PREFIXES = ['boss_', 'astra_', 'watcher_', 'dragon_'];
 const ARM_FX = ['rock', 'glob', 'fx_shockwave', 'fx_rocket_trail', 'fx_whirl'];
 const BOSS_FX = {
   arms: ARM_FX,
+  shredder: ['rock', 'fx_shockwave', 'fx_rocket_trail', 'fx_whirl', 'fx_puddle_fire'],
   king: [...ARM_FX, 'fx_portal'],
   dragon: ['fx_breath', 'fx_pillar', 'fx_explosion', 'fx_fireball', 'fx_shockwave', 'fx_puddle_fire'],
   watcher: ['watcher_blister', 'slime_glob', 'fx_puddle_poison', 'fx_star'],

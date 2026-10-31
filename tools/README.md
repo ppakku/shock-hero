@@ -14,6 +14,7 @@ Chrome 실행 예:
 browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포트> browser-harness <<'PY' ... PY`
 - `bot_stage6.js`: 스테이지 6(수중 던전) 봇. 헤엄쳐서 몬스터를 잡고 심해 아귀왕의 띠, 거품, 소용돌이를 피하며 싸운다 (`boss.dangers()` 를 읽음)
 - `bot_bossb.js`, `run_bossb.py`: 주먹 발사, 빨아들이기, 얼음, 킹 보스까지 대응하는 봇과 실행 도우미 (`exec(open("tools/run_bossb.py").read())`, `start_stage(n)`, `skip_to_boss()`, `run()`)
+- `bot_shredder.js`: 스테이지 1 파쇄자 봇. 톱니 돌진은 대시로 지나가고, 떨어진 주먹과 벽에 낀 톱니를 때린다 (scene.readInput 을 바꿔 끼움)
 - `bot_bossa.js`: 포레스트 와처, 아스트라노바X 보스 봇 (scene.readInput 을 바꿔 끼움)
 - `remove_checker_bg.py`: AI 그림에 체크무늬가 그려진 스프라이트 시트에서 체크무늬, 칸 글자, 점선을 지워 진짜 투명 PNG로 만드는 도구 (4x2 칸, 절반 크기로 저장)
 - `make_ground_tile.py`: AI 바닥 그림을 반복 바닥 타일로 (체크무늬 지우기, 위아래 자르기, 좌우 이음새 섞기)

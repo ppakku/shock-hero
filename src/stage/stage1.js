@@ -69,8 +69,8 @@ export const stage1 = {
       x: 2700,
       lines: [
         '체크포인트! 체력을 꽉 채웠어.',
-        '저 앞 괴물은 팔을 바닥에 찍고 나면 잠깐 못 움직여.',
-        '그때 {strong}(으)로 팔을 부숴!',
+        '저 앞 괴물은 배에 톱니가 달렸어. 쫓아다니니까 계속 움직여!',
+        '떨어진 주먹이랑, 톱니가 벽에 끼었을 때 배를 {strong}(으)로 때려!',
         '주먹이 날아오면 낮을 땐 점프, 높을 땐 가만히!',
       ],
     },
@@ -79,17 +79,16 @@ export const stage1 = {
   arena: { startX: 3000, endX: 3960 },
 
   boss: {
-    type: 'arms', // 보스 종류 (src/boss/index.js)
-    name: '파쇄자', // 녹슨 파쇄 기계 (아들이 이름 짓고 그림)
-    arms: 2, // 팔 개수 (2 또는 3)
-    healthScale: 1.6, // 체력 배수 (balance.js 보스 체력에 곱함)
+    type: 'shredder', // 보스 종류 (src/boss/index.js). 숫자는 balance.js 의 shredderBoss
+    name: '파쇄자', // 녹슨 파쇄 기계 (아들이 이름 짓고 그림). 배 톱니로 싸운다
+    healthScale: 1,
     speedScale: 1, // 공격 속도 (작을수록 빠름)
     colors: { main: 0x6e4232, light: 0x9a6a50, dark: 0x3a2a24, arm: 0x7a5444 }, // 녹슨 쇠 색
-    // [팔 다 있을 때, 팔 1개 부순 뒤, 팔 다 부순 뒤(코어)] 쓰는 공격
+    // [쇠팔과 덮개가 다 있을 때, 하나 부순 뒤, 둘 다 부순 뒤(코어)] 쓰는 공격
     phases: [
-      ['slam', 'multiSlam', 'rocketPunch', 'shockwave'],
-      ['slam', 'sweep', 'rocketPunch', 'inhale'],
-      ['rocks', 'shockwave', 'inhale', 'spit'],
+      ['sawDash', 'sawThrow', 'rocket', 'rocket', 'stomp'], // 두 번 적으면 두 배로 자주 나온다
+      ['sawDash', 'sawThrow', 'sawDive', 'rocket', 'rocket', 'crawl'],
+      ['sawDash', 'sawThrow', 'sawDive', 'crawl', 'stomp', 'grind'],
     ],
   },
 };
