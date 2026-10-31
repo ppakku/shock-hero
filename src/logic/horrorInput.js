@@ -2,6 +2,11 @@
 import { blocked } from './horrorGrid.js';
 
 // keys: { up, down, left, right, run }
+// 좌우 방향키로 돌아보는 양 (라디안). 오른쪽이 양수로 마우스와 같다.
+export function keyTurn(keys, speed, dt) {
+  return ((keys.turnRight ? 1 : 0) - (keys.turnLeft ? 1 : 0)) * speed * dt;
+}
+
 export function moveFromKeys(keys) {
   let x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   let z = (keys.up ? 1 : 0) - (keys.down ? 1 : 0);

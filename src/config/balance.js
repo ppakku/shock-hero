@@ -752,6 +752,7 @@ export const balance = {
     runSpeed: 2.3, // 달리는 속도. 파쇄자 추격 속도보다 빨라야 도망칠 수 있다
     lookSpeed: 0.0025, // 마우스 시점 속도
     touchLookSpeed: 0.005, // 화면 끌기 시점 속도
+    keyTurnSpeed: 2.2, // 좌우 방향키로 도는 속도 (라디안/초)
     walkNoise: 3, // 걸을 때 소리가 들리는 거리
     runNoise: 9, // 달릴 때 소리가 들리는 거리
     stalkerWalk: 0.9, // 파쇄자 순찰, 조사 속도
