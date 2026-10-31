@@ -417,6 +417,9 @@ export const balance = {
   // 둘 다 부수면 엎드릴 때마다 머리(약점)가 낮게 내려와요.
   // 체력은 stage2.js 의 boss.healthScale 과 난이도를 곱해요.
   watcherBoss: {
+    signatureDamage: 12, // 변종 전용 공격 피해
+    sporeSpeed: 70, // 포자 구름이 따라오는 빠르기
+    mudWaveSpeed: 340, // 진흙 파도 빠르기
     armHealth: 180, // 긴 팔 체력
     backHealth: 200, // 등 독혹 체력
     headHealth: 240, // 머리(약점) 체력

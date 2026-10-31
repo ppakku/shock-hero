@@ -126,7 +126,7 @@ export const stage31 = {
   boss: {
     type: 'watcher',
     name: '그림자 와처',
-    skin: 2,
+    skin: 'wraith',
     healthScale: 2.2,
     speedScale: 0.74,
     colors: { main: 0x2a1e3a, dark: 0x140e20, moss: 0x4a2a6a, slime: 0xd06aff },

@@ -109,7 +109,7 @@ export const stage17 = {
   boss: {
     type: 'watcher',
     name: '정글의 와처',
-    skin: 2,
+    skin: 'bog',
     healthScale: 1.9,
     speedScale: 0.75,
     colors: { main: 0x4a3526, dark: 0x2b1d14, moss: 0x55602a, slime: 0xb6ff2a },

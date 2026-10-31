@@ -120,7 +120,7 @@ export const stage22 = {
   boss: {
     type: 'watcher',
     name: '폭풍의 와처',
-    skin: 2,
+    skin: 'wraith',
     healthScale: 2.0,
     speedScale: 0.78,
     colors: { main: 0x3a4a3a, dark: 0x1e2a22, moss: 0x4a6a4a, slime: 0x8affd0 },

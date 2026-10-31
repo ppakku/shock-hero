@@ -135,7 +135,7 @@ export const stage39 = {
   boss: {
     type: 'ice',
     name: '얼음 여제 아스트라',
-    skin: 4,
+    skin: 'obsidian',
     healthScale: 2.7,
     speedScale: 0.7,
     colors: { bright: 0x8ab8ff, main: 0x3a4aa8, dark: 0x141a52, pale: 0xd8dcf0, light: 0xf0f8ff },

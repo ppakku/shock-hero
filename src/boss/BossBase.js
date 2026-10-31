@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { chooseBossAttack } from '../logic/boss.js';
 import { bossVarietyOf, jitterRest, lateWarning, shouldFeint, FEINT_AT } from '../logic/bossVariety.js';
 import { makeText } from '../ui/text.js';
+import { SIGNATURES } from './signatures/index.js';
 
 const FEINT_PAUSE = 0.35; // 속임 동작으로 취소한 뒤 다음 공격까지 시간
 
@@ -124,6 +125,26 @@ export class BossBase {
     this.scene.tweens.add({ targets: mark, y: y - 30, alpha: 0, duration: 650, onComplete: () => mark.destroy() });
   }
 
+  // 변종의 전용 공격 시작. 공격 목록의 'signature' 를 고르면 startAction 에서 부른다.
+  startSignature() {
+    const Sig = SIGNATURES[this.def.signature];
+    this.sig = new Sig(this);
+    this.tip(this.def.signature, Sig.tip);
+  }
+
+  // 전용 공격 한 프레임. 끝나면 보통 공격처럼 쉬는 시간으로 넘어간다.
+  runSignature(dt) {
+    if (this.sig?.update(dt)) {
+      this.stopSignature();
+      this.endAction();
+    }
+  }
+
+  stopSignature() {
+    this.sig?.destroy();
+    this.sig = null;
+  }
+
   // 체력 비율이 절반 아래로 내려가면 분노 모드 (한 번만)
   checkRage(ratio, sprites = []) {
     if (this.raging || ratio > 0.5 || this.defeated) return;
@@ -173,6 +194,7 @@ export class BossBase {
     if (this.defeated) return;
     this.defeated = true;
     this.state = 'dead';
+    this.stopSignature();
     this.clearFx();
     this.scene.onBossDefeated(this);
   }

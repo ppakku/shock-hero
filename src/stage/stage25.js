@@ -127,7 +127,7 @@ export const stage25 = {
   boss: {
     type: 'king',
     name: '폭풍 기사왕',
-    skin: 5,
+    skin: 'storm',
     arms: 3,
     healthScale: 2.4,
     speedScale: 0.75,

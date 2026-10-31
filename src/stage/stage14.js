@@ -100,7 +100,7 @@ export const stage14 = {
   boss: {
     type: 'ice',
     name: '눈보라의 아스트라',
-    skin: 4,
+    skin: 'blizzard',
     healthScale: 2.1,
     speedScale: 0.78,
     colors: { bright: 0x3d9be0, main: 0x2a5fa8, dark: 0x1a2552, pale: 0xc4cee0, light: 0xd8f6ff },

@@ -115,7 +115,7 @@ export const stage23 = {
   boss: {
     type: 'dragon',
     name: '천둥의 아스트라노바X',
-    skin: 3,
+    skin: 'thunder',
     healthScale: 2.0,
     speedScale: 0.76,
     colors: { main: 0x8a3a8a, dark: 0x4a1a5a, armor: 0x2a2a3a, lava: 0x8ad8ff, belly: 0xe0d8f0 },

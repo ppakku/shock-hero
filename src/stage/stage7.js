@@ -91,7 +91,7 @@ export const stage7 = {
   boss: {
     type: 'arms',
     name: '파쇄자 MK2', // 스테이지 1 파쇄자가 고쳐져서 더 세짐
-    skin: 1, // 스테이지 1 파쇄자 그림을 그대로 씀 (art.js 의 _1 그림)
+    skin: 'drill', // 스테이지 1 파쇄자 그림을 그대로 씀 (art.js 의 _1 그림)
     arms: 3,
     healthScale: 1.9,
     speedScale: 0.9,
