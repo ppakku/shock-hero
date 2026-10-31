@@ -25,18 +25,20 @@ export function boltSpots(zone, count) {
   return Array.from({ length: count }, (_, i) => zone.x0 + (zone.w * (i + 0.5)) / count);
 }
 
-// 불기둥 줄. rows 줄이 from 쪽에서 to 쪽으로 차례로 터진다. 뒷줄은 앞줄 빈틈에 선다.
+// 불기둥 줄. rows 줄이 from 끝에서 to 끝까지 차례로 터진다 (구석도 안전하지 않다). 뒷줄은 앞줄 빈틈에 선다.
 // 기둥 하나: { x, warnAt(경고 시작), at(터지는 때) }
 export function fireRows(from, to, { rows = 1, gap, warn, step, rest }) {
   const dir = to >= from ? 1 : -1;
-  const count = Math.floor(Math.abs(to - from) / gap) + 1;
+  const span = Math.abs(to - from);
+  const count = Math.max(1, Math.round(span / gap)) + 1;
+  const space = span / (count - 1); // 양 끝에 맞춘 실제 간격
   const list = [];
   let warnAt = 0;
   for (let r = 0; r < rows; r++) {
-    const shift = r % 2 ? gap / 2 : 0;
+    const shift = r % 2 ? space / 2 : 0;
     for (let i = 0; i < count; i++) {
-      const x = from + dir * (shift + i * gap);
-      if (Math.abs(x - from) <= Math.abs(to - from)) list.push({ x, warnAt, at: warnAt + warn + i * step });
+      const x = from + dir * (shift + i * space);
+      if (Math.abs(x - from) <= span) list.push({ x, warnAt, at: warnAt + warn + i * step });
     }
     warnAt += warn + count * step + rest;
   }

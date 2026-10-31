@@ -167,7 +167,7 @@ export class StormLance extends KingSignature {
 
   step() {
     const { boss, groundY, t, zone } = this;
-    this.warnAt(zone.x0, groundY - ZONE_H, zone.w, ZONE_H);
+    if (t < THROW + this.hold) this.warnAt(zone.x0, groundY - ZONE_H, zone.w, ZONE_H);
     if (t < THROW) {
       const k = t / THROW;
       const y = this.from.y + (groundY - 40 - this.from.y) * k - Math.sin(k * Math.PI) * 90;

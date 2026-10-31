@@ -27,10 +27,10 @@ describe('킹 전용 공격 계산', () => {
 
   it('불기둥은 앞에서부터 차례로 터지고 사이에 주인공이 설 빈틈이 있다', () => {
     const rows = fireRows(800, 100, { gap: 180, warn: 1, step: 0.16, rest: 0.3 });
-    expect(rows.map((p) => p.x)).toEqual([800, 620, 440, 260]);
-    expect(rows.map((p) => p.at)).toEqual([1, 1.16, 1.32, 1.48].map((v) => expect.closeTo(v)));
+    expect(rows.map((p) => p.x)).toEqual([800, 625, 450, 275, 100]);
+    expect(rows.map((p) => p.at)).toEqual([1, 1.16, 1.32, 1.48, 1.64].map((v) => expect.closeTo(v)));
     for (const p of rows) expect(p.warnAt).toBeLessThan(p.at);
-    expect(180 - 90).toBeGreaterThan(HERO);
+    expect(175 - 90).toBeGreaterThan(HERO);
   });
 
   it('둘째 줄은 첫 줄이 다 터진 뒤 경고가 나오고 빈틈에 선다', () => {
