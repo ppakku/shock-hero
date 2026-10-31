@@ -29,7 +29,7 @@ export function defaultSave() {
     rush: emptyRush(), // 보스 러시 가족 기록표 (src/logic/rush.js)
     workshop: emptyWorkshop(), // 몬스터 공방에서 만든 작품 (src/logic/workshop.js)
     daily: emptyDaily(), // 오늘의 도전 { done: [깬 날], count, pick } (src/logic/daily.js)
-    horror: emptyHorror(), // 공포 모드 기록 { escapes, cleanEscapes } (src/logic/horrorRun.js)
+    horror: emptyHorror(), // 공포 모드 기록 { escapes, cleanEscapes, gemDay } (src/logic/horrorRun.js)
     dex: emptyDex(), // 몬스터 도감 { monsters: { 그림 이름: 잡은 수 }, bosses: [스테이지 번호] } (src/logic/dex.js)
     // hero: 고른 주인공 (src/logic/heroes.js)
     // lowFx: 효과 줄이기 (빛 번짐, 멈칫, 확대, 번쩍임을 끄고 불꽃 수를 줄인다)

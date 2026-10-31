@@ -58,7 +58,7 @@ function playGame(seed, options, maxSeconds = 900) {
       if (target.kind === 'fuse') takeFuse(run, target.index);
       if (target.kind === 'box') chargeShock(run, target.index);
       if (target.kind === 'panel') insertFuses(run, k);
-      if (target.kind === 'gate') escape(run, k);
+      if (target.kind === 'gate') escape(run);
       if (target.kind === 'locker') {
         if (g.hidden === null) {
           hideFrom = g.p;

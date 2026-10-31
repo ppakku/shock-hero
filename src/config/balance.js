@@ -780,8 +780,8 @@ export const balance = {
     shockRange: 2.5, // 쇼크 펀치가 닿는 거리
     useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
     fuseCount: 3, // 찾아야 하는 퓨즈 수
-    gemsEscape: 5, // 탈출 보석
-    gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
+    gemsEscape: 5, // 탈출 보석. 날마다 첫 탈출에만 준다
+    gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석. 처음 한 번만 준다
     musicVolume: 0.7, // 배경 음악 크기
     chaseCreatureGain: 3.5, // 추격 중에 세이노 숨소리와 발소리를 이 배로 키운다
     musicChaseDuck: 0.3, // 추격 중에 배경 음악을 이 비율로 낮춘다 (숨소리와 발소리가 앞에 나오게)

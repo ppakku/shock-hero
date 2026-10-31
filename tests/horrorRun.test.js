@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, nearestUse, normalizeHorror, recordEscape, emptyHorror } from '../src/logic/horrorRun.js';
+import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, escapeReward, nearestUse, normalizeHorror, recordEscape, emptyHorror } from '../src/logic/horrorRun.js';
 import { reachable, parseMap } from '../src/logic/horrorGrid.js';
 import { createSaveStore } from '../src/logic/save.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { balance } from '../src/config/balance.js';
 
+const DAY1 = '2026-11-01';
+const DAY2 = '2026-11-02';
 const k = balance.horror;
 const fresh = () => createRun(factoryMap, k, () => 0.3);
 
@@ -103,34 +105,34 @@ describe('전원과 탈출', () => {
     expect(run.caughtCount).toBe(1);
   });
 
-  it('안 잡히고 탈출하면 추가 보석', () => {
-    expect(escape(poweredRun(), k)).toEqual({ gems: k.gemsEscape + k.gemsClean, clean: true });
+  it('안 잡히고 탈출하면 clean 이다', () => {
+    expect(escape(poweredRun())).toEqual({ clean: true });
   });
 
-  it('잡힌 적이 있으면 기본 보석만', () => {
+  it('잡힌 적이 있으면 clean 이 아니다', () => {
     const run = poweredRun();
     caught(run);
-    expect(escape(run, k)).toEqual({ gems: k.gemsEscape, clean: false });
+    expect(escape(run)).toEqual({ clean: false });
   });
 
-  it('전원이 없으면 탈출 보상이 없고 탈출 표시도 되지 않는다', () => {
+  it('전원이 없으면 탈출 표시가 되지 않는다', () => {
     const run = allFuses();
-    expect(escape(run, k)).toBeNull();
+    expect(escape(run)).toBeNull();
     expect(run.escaped).toBe(false);
   });
 
-  it('탈출 보상은 한 번만 준다', () => {
+  it('탈출은 한 번만 된다', () => {
     const run = poweredRun();
-    expect(escape(run, k)).toEqual({ gems: k.gemsEscape + k.gemsClean, clean: true });
-    expect(escape(run, k)).toBeNull();
+    expect(escape(run)).toEqual({ clean: true });
+    expect(escape(run)).toBeNull();
     expect(run.escaped).toBe(true);
   });
 });
 
 describe('저장', () => {
   it('기록을 더한다', () => {
-    expect(recordEscape(emptyHorror(), true)).toEqual({ escapes: 1, cleanEscapes: 1 });
-    expect(recordEscape({ escapes: 2, cleanEscapes: 1 }, false)).toEqual({ escapes: 3, cleanEscapes: 1 });
+    expect(recordEscape(emptyHorror(), true, DAY1)).toEqual({ escapes: 1, cleanEscapes: 1, gemDay: DAY1 });
+    expect(recordEscape({ escapes: 2, cleanEscapes: 1, gemDay: DAY1 }, false, DAY2)).toEqual({ escapes: 3, cleanEscapes: 1, gemDay: DAY2 });
   });
 
   it('이상한 값은 0 으로 읽는다', () => {
@@ -139,7 +141,7 @@ describe('저장', () => {
   });
 
   it('깨끗한 탈출 수는 전체 탈출 수를 넘지 않는다', () => {
-    expect(normalizeHorror({ escapes: 1, cleanEscapes: 5 })).toEqual({ escapes: 1, cleanEscapes: 1 });
+    expect(normalizeHorror({ escapes: 1, cleanEscapes: 5 })).toEqual({ escapes: 1, cleanEscapes: 1, gemDay: null });
     expect(normalizeHorror({ escapes: 0, cleanEscapes: 2 })).toEqual(emptyHorror());
   });
 
@@ -150,9 +152,54 @@ describe('저장', () => {
     box['shock-hero-save-v1'] = JSON.stringify({ level: 3 });
     const old = store.load();
     expect(old.horror).toEqual(emptyHorror());
-    old.horror = { escapes: 1, cleanEscapes: 1 };
+    old.horror = { escapes: 1, cleanEscapes: 1, gemDay: DAY1 };
     store.save(old);
-    expect(store.load().horror).toEqual({ escapes: 1, cleanEscapes: 1 });
+    expect(store.load().horror).toEqual({ escapes: 1, cleanEscapes: 1, gemDay: DAY1 });
+  });
+
+  it('날짜가 없는 예전 기록은 보석을 아직 안 받은 것으로 읽는다', () => {
+    const old = normalizeHorror({ escapes: 4, cleanEscapes: 1 });
+    expect(old.gemDay).toBeNull();
+    expect(escapeReward(old, false, DAY1, k).daily).toBe(k.gemsEscape);
+  });
+
+  it('이상한 날짜는 버린다', () => {
+    for (const gemDay of [20261101, 'tomorrow', '', {}]) expect(normalizeHorror({ gemDay }).gemDay).toBeNull();
+  });
+});
+
+describe('탈출 보석', () => {
+  const after = (record, clean, today) => recordEscape(record, clean, today);
+
+  it('처음 탈출은 탈출 보석을 받고, 안 잡혔으면 보너스도 받는다', () => {
+    expect(escapeReward(emptyHorror(), false, DAY1, k)).toEqual({ daily: k.gemsEscape, bonus: 0, gems: k.gemsEscape });
+    expect(escapeReward(emptyHorror(), true, DAY1, k)).toEqual({ daily: k.gemsEscape, bonus: k.gemsClean, gems: k.gemsEscape + k.gemsClean });
+  });
+
+  it('같은 날 두 번째 탈출은 보석이 없다', () => {
+    const r = after(emptyHorror(), true, DAY1);
+    expect(escapeReward(r, true, DAY1, k)).toEqual({ daily: 0, bonus: 0, gems: 0 });
+    expect(escapeReward(r, false, DAY1, k).gems).toBe(0);
+  });
+
+  it('다음 날에는 탈출 보석을 다시 받는다', () => {
+    const r = after(emptyHorror(), false, DAY1);
+    expect(escapeReward(r, false, DAY2, k).gems).toBe(k.gemsEscape);
+  });
+
+  it('안 잡힌 보너스는 처음 한 번뿐이다', () => {
+    const r = after(emptyHorror(), true, DAY1);
+    expect(escapeReward(r, true, DAY2, k)).toEqual({ daily: k.gemsEscape, bonus: 0, gems: k.gemsEscape });
+  });
+
+  it('탈출 보석을 이미 받은 날에도 처음 안 잡히면 보너스는 받는다', () => {
+    const r = after(emptyHorror(), false, DAY1);
+    expect(escapeReward(r, true, DAY1, k)).toEqual({ daily: 0, bonus: k.gemsClean, gems: k.gemsClean });
+  });
+
+  it('보석 없이 다시 탈출해도 횟수는 늘고 날짜는 그대로다', () => {
+    const r = after(after(emptyHorror(), true, DAY1), true, DAY1);
+    expect(r).toEqual({ escapes: 2, cleanEscapes: 2, gemDay: DAY1 });
   });
 });
 

@@ -72,25 +72,34 @@ export function caught(run) {
   run.caughtCount += 1;
 }
 
-// 전원이 들어와 있고 아직 탈출 전일 때만 보상을 준다. 아니면 null (HorrorGame 은 null 이면 보상을 주지 않는다).
-export function escape(run, k) {
+// 전원이 들어와 있고 아직 탈출 전일 때만 탈출이 된다. 아니면 null (HorrorGame 은 null 이면 보상을 주지 않는다).
+export function escape(run) {
   if (!run.powered || run.escaped) return null;
   run.escaped = true;
-  const clean = run.caughtCount === 0;
-  return { gems: k.gemsEscape + (clean ? k.gemsClean : 0), clean };
+  return { clean: run.caughtCount === 0 };
 }
 
+// 이번 탈출에 받을 보석. 탈출 보석은 날마다 첫 탈출에만, 안 잡힌 보너스는 처음 한 번만 준다.
+// today 는 기기 날짜 'YYYY-MM-DD' (src/logic/daily.js 의 todayKey). 시계를 재지 않도록 밖에서 받는다.
+export function escapeReward(record, clean, today, k) {
+  const daily = record.gemDay === today ? 0 : k.gemsEscape;
+  const bonus = clean && record.cleanEscapes === 0 ? k.gemsClean : 0;
+  return { daily, bonus, gems: daily + bonus };
+}
+
+// gemDay: 탈출 보석을 마지막으로 받은 날. 없으면 아직 받은 적이 없다
 export function emptyHorror() {
-  return { escapes: 0, cleanEscapes: 0 };
+  return { escapes: 0, cleanEscapes: 0, gemDay: null };
 }
 
 export function normalizeHorror(data) {
   const d = emptyHorror();
   if (Number.isInteger(data?.escapes) && data.escapes > 0) d.escapes = data.escapes;
   if (Number.isInteger(data?.cleanEscapes) && data.cleanEscapes > 0) d.cleanEscapes = Math.min(data.cleanEscapes, d.escapes);
+  if (typeof data?.gemDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.gemDay)) d.gemDay = data.gemDay;
   return d;
 }
 
-export function recordEscape(record, clean) {
-  return { escapes: record.escapes + 1, cleanEscapes: record.cleanEscapes + (clean ? 1 : 0) };
+export function recordEscape(record, clean, today) {
+  return { escapes: record.escapes + 1, cleanEscapes: record.cleanEscapes + (clean ? 1 : 0), gemDay: today };
 }

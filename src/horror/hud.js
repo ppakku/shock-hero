@@ -25,6 +25,14 @@ export function startHint(touch) {
   return touch ? '왼쪽을 끌면 걷고, 오른쪽을 끌면 둘러봅니다' : 'W A S D 로 걷고 마우스로 둘러봅니다';
 }
 
+// 끝 화면 글자. 이번에 실제로 받은 보석만 말한다 (reward: logic/horrorRun.js 의 escapeReward)
+export function escapeText({ gems, daily, bonus }, clean) {
+  if (!gems) return `탈출 성공! 오늘은 이미 보석을 받았어요${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
+  if (!daily) return `탈출 성공! 처음으로 한 번도 안 잡혔어요! 보석 ${bonus}개. 탈출 보석은 오늘 이미 받았어요`;
+  if (bonus) return `탈출 성공! 보석 ${gems}개 (처음으로 한 번도 안 잡혔어요!)`;
+  return `탈출 성공! 보석 ${gems}개${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
+}
+
 export class HorrorHud {
   constructor(root) {
     this.root = root;

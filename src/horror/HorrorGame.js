@@ -4,14 +4,15 @@ import { cfg } from '../config/index.js';
 import { CELL, center, cellOf, frontOf, findPath, lineOfSight } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
-import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, recordEscape, nearestUse } from '../logic/horrorRun.js';
+import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
+import { todayKey } from '../logic/daily.js';
 import { saveStore } from '../save.js';
 import { sfx } from '../audio/sfx.js';
 import { factoryMap } from './maps/factory.js';
 import { buildWorld } from './world.js';
 import { CreatureModel } from './creatureModel.js';
 import { HorrorInput } from './input.js';
-import { HorrorHud, MONSTER_NAME, startHint } from './hud.js';
+import { HorrorHud, MONSTER_NAME, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
 
 const EYE = 1.6; // 눈높이 (미터)
@@ -418,18 +419,20 @@ export class HorrorGame {
 
   win() {
     if (this.state !== 'play') return;
-    const result = escape(this.run, this.k);
+    const result = escape(this.run);
     if (!result) return;
     this.state = 'end';
     this.audio?.suspend();
     this.audio?.play('door');
     const save = saveStore.load();
-    save.gems += result.gems;
-    save.horror = recordEscape(save.horror, result.clean);
+    const today = todayKey();
+    const reward = escapeReward(save.horror, result.clean, today, this.k);
+    save.gems += reward.gems;
+    save.horror = recordEscape(save.horror, result.clean, today);
     saveStore.save(save);
     document.exitPointerLock?.();
     this.hud.setPrompt('');
-    this.hud.showEnd(`탈출 성공! 보석 ${result.gems}개${result.clean ? ' (한 번도 안 잡혔어요!)' : ''}`, () => this.exit());
+    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit());
   }
 
   pause() {
