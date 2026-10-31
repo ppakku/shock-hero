@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createStalker, seesPlayer, tickStalker, stunStalker, sendAway, heartInterval, noteTrail, MODES } from '../src/logic/horrorStalker.js';
-import { parseMap, blocked, center } from '../src/logic/horrorGrid.js';
+import { parseMap, blocked, center, findPath } from '../src/logic/horrorGrid.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { balance } from '../src/config/balance.js';
 
@@ -420,12 +420,14 @@ describe('매복', () => {
   it('공장 맵에서 오래 돌아도 매복은 언제나 끝난다', () => {
     const rand = seeded(3);
     const s = createStalker(factoryMap);
-    const world = { map: factoryMap, player: { x: 2.5, y: 16.5, hidden: null, lightOn: true, noise: 0 } };
+    const world = { map: factoryMap, player: { ...center(factoryMap.start), hidden: null, lightOn: false, noise: 0 } };
+    const trail = findPath(factoryMap, factoryMap.start, factoryMap.patrol.find((c) => findPath(factoryMap, factoryMap.start, c)?.length > 8));
+    trail.forEach((c) => noteTrail(s, c, 1));
     let ambushes = 0;
     let longest = 0;
     let t = 0;
     for (let i = 0; i < 60; i++) {
-      Object.assign(s, { mode: 'chase', lostT: k.loseTime, repathT: 9 });
+      Object.assign(s, center(trail[8]), { mode: 'chase', lostT: k.loseTime, repathT: 9, lastSeen: trail[0], path: [] });
       const ev = tickStalker(s, world, { ...k, ambushChance: 1 }, 0.05, rand);
       if (ev.includes('ambush')) ambushes++;
       for (t = 0; s.mode === 'ambush' && t < 120; t += 0.05) tickStalker(s, world, k, 0.05, rand);
