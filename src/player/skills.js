@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { gaugeAfterDealing, gaugeAfterHurt, isUltReady, shotAttack, shotDirection, ultimateAttack } from '../logic/combat.js';
 import { floatText, ring } from '../fx/effects.js';
+import { UltAura } from '../fx/ultAura.js';
 import { heroFistOffset } from '../fx/heroTextures.js';
 import { HERO_INFO, beamRect, smashRect, spinRect, rushAttack, rainStrikeXs, frostRect, blizzardSlow } from '../logic/heroes.js';
 
@@ -26,6 +27,7 @@ export class HeroSkills {
     this.quakes = []; // 강철 거인 대지진 뒤흔들림 남은 시각
     this.trailTimer = 0;
     this.fx = scene.add.graphics().setDepth(27);
+    this.aura = new UltAura(scene, player); // 궁극기가 차면 몸에 빛이 난다 (알아서 따라다님)
   }
 
   get player() {
