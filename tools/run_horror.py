@@ -368,8 +368,8 @@ def play_bot(pw):
     watch(pg, errs)
     pg.goto(URL)
     pg.evaluate("localStorage.removeItem('shock-hero-save-v1')")
+    open_horror(pg)  # 주소를 새로 열므로 잠금 흉내는 그 뒤에 한다
     pg.evaluate(FAKE_LOCK)
-    open_horror(pg)
     bot = open('tools/bot_horror.js', encoding='utf8').read()
     gems0 = pg.evaluate("JSON.parse(localStorage.getItem('shock-hero-save-v1') || '{}').gems || 0")
 
