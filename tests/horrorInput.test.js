@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { moveFromKeys, moveFromStick, stepPlayer, noiseFor, nextPixelRatio } from '../src/logic/horrorInput.js';
+import { moveFromKeys, moveFromStick, stepPlayer, noiseFor, nextPixelRatio, startRatio } from '../src/logic/horrorInput.js';
 import { parseMap } from '../src/logic/horrorGrid.js';
 import { balance } from '../src/config/balance.js';
 
@@ -82,6 +82,13 @@ describe('해상도 조절', () => {
     expect(nextPixelRatio(1.5, 20, k)).toBeCloseTo(1.5 - k.ratioStep);
     expect(nextPixelRatio(1, 58, k)).toBeCloseTo(1 + k.ratioStep);
     expect(nextPixelRatio(1, 40, k)).toBe(1);
+  });
+
+  it('태블릿은 낮은 배율로 시작한다', () => {
+    expect(startRatio(2, true, k)).toBe(k.touchRatio);
+    expect(startRatio(2, false, k)).toBe(k.maxRatio);
+    expect(startRatio(1, true, k)).toBe(1); // 화면보다 높이지는 않는다
+    expect(startRatio(undefined, false, k)).toBe(1);
   });
 
   it('범위를 넘지 않는다', () => {

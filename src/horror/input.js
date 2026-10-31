@@ -44,6 +44,7 @@ export class HorrorInput {
     });
     this.on(window, 'blur', () => {
       this.keys = {}; // 창을 나가면 키 떼는 소리를 못 받는다
+      this.clearTouch();
     });
   }
 
@@ -51,7 +52,7 @@ export class HorrorInput {
     this.on(this.el, 'pointerdown', (e) => {
       if (e.pointerType !== 'mouse') return; // 손가락은 bindTouch 가 맡는다
       if (document.pointerLockElement === this.el) this.pressed.punch = true;
-      else this.el.requestPointerLock?.();
+      else this.relock();
     });
     this.on(document, 'mousemove', (e) => {
       if (document.pointerLockElement !== this.el) return;
@@ -98,6 +99,12 @@ export class HorrorInput {
     }
   }
 
+  // 손가락을 뗀 소식을 못 받을 수 있을 때 부른다. 안 그러면 혼자 걷거나 시점이 튄다
+  clearTouch() {
+    this.stick = null;
+    this.lookTouch = null;
+  }
+
   read() {
     const s = this.stick;
     const out = {
@@ -115,8 +122,12 @@ export class HorrorInput {
   }
 
   // 마우스를 화면에 잠근다. 막히면 화면을 한 번 누르면 다시 잠긴다.
-  relock() {
-    if (!this.touch) this.el.requestPointerLock?.()?.catch?.(() => {});
+  locked() {
+    return document.pointerLockElement === this.el;
+  }
+
+  relock(onDenied = () => {}) {
+    if (!this.touch) this.el.requestPointerLock?.()?.catch?.(onDenied);
   }
 
   destroy() {

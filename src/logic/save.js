@@ -7,6 +7,7 @@ import { emptyDex, normalizeDex } from './dex.js';
 import { emptyRush, normalizeRush, COURSE_SIZE } from './rush.js';
 import { emptyWorkshop, normalizeWorkshop } from './workshop.js';
 import { emptyDaily, normalizeDaily } from './daily.js';
+import { emptyHorror, normalizeHorror } from './horrorRun.js';
 
 const KEY = 'shock-hero-save-v1';
 export const STAGE_COUNT = 40; // 스테이지 수 (src/stage/index.js 의 stages 와 같아야 함)
@@ -28,6 +29,7 @@ export function defaultSave() {
     rush: emptyRush(), // 보스 러시 가족 기록표 (src/logic/rush.js)
     workshop: emptyWorkshop(), // 몬스터 공방에서 만든 작품 (src/logic/workshop.js)
     daily: emptyDaily(), // 오늘의 도전 { done: [깬 날], count, pick } (src/logic/daily.js)
+    horror: emptyHorror(), // 공포 모드 기록 { escapes, cleanEscapes, gemDay } (src/logic/horrorRun.js)
     dex: emptyDex(), // 몬스터 도감 { monsters: { 그림 이름: 잡은 수 }, bosses: [스테이지 번호] } (src/logic/dex.js)
     // hero: 고른 주인공 (src/logic/heroes.js)
     // lowFx: 효과 줄이기 (빛 번짐, 멈칫, 확대, 번쩍임을 끄고 불꽃 수를 줄인다)
@@ -72,6 +74,7 @@ function normalize(data) {
   d.workshop = normalizeWorkshop(data.workshop, STAGE_COUNT);
   d.rush = normalizeRush(data.rush, Math.ceil(STAGE_COUNT / COURSE_SIZE));
   d.daily = normalizeDaily(data.daily, STAGE_COUNT);
+  d.horror = normalizeHorror(data.horror);
   if (data.settings && typeof data.settings === 'object') {
     if (typeof data.settings.shake === 'boolean') d.settings.shake = data.settings.shake;
     if (typeof data.settings.muted === 'boolean') d.settings.muted = data.settings.muted;

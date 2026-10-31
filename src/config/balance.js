@@ -756,6 +756,16 @@ export const balance = {
     runNoise: 9, // 달릴 때 소리가 들리는 거리
     stalkerWalk: 0.9, // 파쇄자 순찰, 조사 속도
     stalkerChase: 2.0, // 파쇄자 추격 속도
+    heartFar: 14, // 이보다 멀면 심장 소리가 없다 (칸)
+    heartFast: 0.35, // 가장 가까울 때 심장이 뛰는 간격 (초)
+    heartSlow: 0.85, // 멀어질수록 간격에 더해지는 시간 (초). 가장 먼 곳의 간격은 두 값의 합
+    breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1.1, stunned: 0.2 }, // 상태별 숨소리 크기
+    breathSwellSec: { patrol: 1.4, investigate: 1.4, search: 1.4, chase: 0.7, stunned: 1.4 }, // 상태별 들숨날숨 한 번 시간 (초)
+    stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0 }, // 상태별 발소리 간격 (초). 0 은 소리 없음
+    breathFreq: 1300, // 숨소리 중심 주파수 (Hz). 작은 스피커에도 들리게 300Hz 위만 쓴다
+    stalkerRefDist: 6, // 세이노 소리가 줄어들기 시작하는 거리 (미터)
+    scareVol: 0.77, // 놀람 소리 크기
+    caughtVol: 0.84, // 잡힘 소리 크기
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
     noticeLight: 10, // 손전등 빛을 알아채고 조사하러 오는 거리
@@ -770,9 +780,11 @@ export const balance = {
     shockRange: 2.5, // 쇼크 펀치가 닿는 거리
     useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
     fuseCount: 3, // 찾아야 하는 퓨즈 수
-    gemsEscape: 5, // 탈출 보석
-    gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
-    musicVolume: 1.6, // 배경 음악 크기
+    gemsEscape: 5, // 탈출 보석. 날마다 첫 탈출에만 준다
+    gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석. 처음 한 번만 준다
+    musicVolume: 0.7, // 배경 음악 크기
+    chaseCreatureGain: 3.5, // 추격 중에 세이노 숨소리와 발소리를 이 배로 키운다
+    musicChaseDuck: 0.3, // 추격 중에 배경 음악을 이 비율로 낮춘다 (숨소리와 발소리가 앞에 나오게)
     musicNoteMin: 7, // 쇳소리 음 사이 가장 짧은 시간 (초)
     musicNoteMax: 14, // 쇳소리 음 사이 가장 긴 시간 (초)
     musicClangMin: 18, // 멀리서 쇠 부딪히는 소리 사이 가장 짧은 시간 (초)
@@ -783,11 +795,16 @@ export const balance = {
     flashPenumbra: 0.6, // 빛 가장자리가 부드러운 정도 (0 은 칼같이, 1 은 가운데부터 흐려짐)
     flashDistance: 26, // 손전등 빛이 닿는 거리 (미터)
     flashDecay: 1.6, // 멀수록 어두워지는 정도
+    emergencyHigh: 0.9, // 비상등 밝기 (0~1)
+    emergencyLow: 0.35, // 효과 줄이기를 켰을 때 멈춰 있는 비상등 밝기
+    machineDepth: 0.45, // 기계가 벽에서 나오는 길이 (미터). 주인공 몸 반지름(0.6미터)보다 작아야 몸이 파묻히지 않는다
+    creatureNear: 4, // 이 칸 안의 세이노는 벽 너머여도 그린다. 더 멀고 벽에 가리면 그리지 않는다
     viewCells: 14, // 이보다 먼 구역은 그리지 않는다 (어둠에 묻혀 안 보임)
     minRatio: 0.6, // 가장 낮은 화면 해상도 배율
     maxRatio: 1.5, // 가장 높은 화면 해상도 배율
+    touchRatio: 1.1, // 태블릿이 시작하는 해상도 배율. 여유가 있으면 maxRatio 까지 오른다
     ratioStep: 0.1, // 한 번에 바꾸는 배율
-    lowFps: 28, // 초당 장수가 이보다 낮으면 해상도를 낮춘다
+    lowFps: 32, // 초당 장수가 이보다 낮으면 해상도를 낮춘다
     highFps: 55, // 초당 장수가 이보다 높으면 해상도를 높인다
   },
 
