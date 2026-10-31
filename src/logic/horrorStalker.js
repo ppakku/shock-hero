@@ -330,7 +330,7 @@ function tickAmbush(s, map, k, dt, rand) {
 
 // 들키지 않은 지 오래됐을 때만, 멀리서 볼 때만 멈춰 서서 바라본다
 function wantsToWatch(s, player, k, rand) {
-  if (s.mode === 'ambush' || s.calmT < k.watchCalm || dist(s, player) < k.watchMinDist) return false;
+  if (s.mode === 'ambush' || s.calmT < k.watchCalm || dist(s, player) < k.watchMinDist || hears(s, player, k)) return false;
   return rand() < k.watchChance;
 }
 

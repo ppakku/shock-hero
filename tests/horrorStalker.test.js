@@ -473,6 +473,8 @@ describe('바라보기', () => {
     expect(tickStalker(recent, { map: ring, player: lit }, k, 0.05, () => 0.1)).toEqual(['chase']);
     const near = calm();
     expect(tickStalker(near, { map: ring, player: { ...lit, x: 4.5 } }, k, 0.05, () => 0.1)).toEqual(['chase']);
+    const loud = calm();
+    expect(tickStalker(loud, { map: ring, player: { ...lit, noise: 9 } }, k, 0.05, () => 0.1)).toEqual(['chase']);
   });
 
   it('시선이 끊기거나 숨으면 바라보기를 멈추고 마지막 자리를 수색한다', () => {
