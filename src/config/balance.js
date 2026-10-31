@@ -396,6 +396,19 @@ export const balance = {
     hopWarningTime: 0.9, // 날개가 부서진 뒤 뛰어올라 내려찍기 경고 시간
     hopDamage: 20, // 뛰어 내려찍기 피해량
     rageAt: 0.5, // 전체 체력이 이 비율 아래면 분노 모드
+    signatureDamage: 14, // 변종 전용 공격 피해 (고드름과 같음)
+    galeWarningTime: 1.0, // 강풍 전 바람선 경고 시간
+    galeTime: 3.6, // 강풍이 부는 시간
+    galeSpeed: 130, // 강풍이 미는 빠르기 (걷기 260 의 절반이라 맞서 걸을 수 있음)
+    snowballCount: 3, // 강풍 중 눈덩이 수 (화나면 하나 더)
+    snowballGap: 1.0, // 눈덩이 사이 시간
+    snowballSpeed: 460, // 눈덩이 빠르기
+    iceWallWarningTime: 1.0, // 얼음벽이 솟기 전 경고 시간
+    iceWallGap: 300, // 두 얼음벽 사이 거리
+    iceWallHits: 4, // 얼음벽이 깨지는 데 드는 공격 수
+    iceWallVolleys: 2, // 벽이 서 있는 동안 얼음이 떨어지는 번 수 (화나면 한 번 더)
+    iceWallVolleyGap: 1.4, // 얼음이 떨어지는 간격
+    iceShardWarningTime: 0.9, // 얼음이 떨어지기 전 경고 시간
   },
 
   // ---------- 킹 돌연변이 (스테이지 5, 마지막 보스) ----------

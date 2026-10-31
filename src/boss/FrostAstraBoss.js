@@ -557,8 +557,12 @@ export class FrostAstraBoss extends BossBase {
         type = pickPattern(phases[Math.max(0, idx)], this.lastType, Math.random, fallback);
         if (this.mode === 'grounded' && type === 'dive') type = 'hop';
         if (this.mode === 'fly' && type === 'hop') type = 'dive';
+        // 변종은 세 번째 공격까지 전용 공격을 꼭 한 번 보여 준다
+        this.picks = (this.picks || 0) + 1;
+        if (this.def.signature && !this.sigShown && this.picks >= 3) type = 'signature';
       }
     }
+    if (type === 'signature') this.sigShown = true;
     this.lastType = type;
     const p = this.target;
     const a = { type, phase: 'aim', t: 0 };
@@ -602,12 +606,14 @@ export class FrostAstraBoss extends BossBase {
     } else if (type === 'land') {
       a.phase = 'descend';
       a.tx = landingX(p.x, this.minX + 40, this.maxX - 40, 190);
+    } else if (type === 'signature') {
+      this.startSignature();
     }
     this.action = a;
     if (type !== 'land') this.scene.sfxPlay('warn');
     this.tip(type);
-    // 빙천지락은 바닥 전체가 위험해서 다른 공격을 겹치지 않는다
-    if (type !== 'land' && type !== 'avalanche') this.combo.maybeStart(type, this.diff.bossCombo);
+    // 빙천지락과 전용 공격은 바닥 전체가 위험해서 다른 공격을 겹치지 않는다
+    if (type !== 'land' && type !== 'avalanche' && type !== 'signature') this.combo.maybeStart(type, this.diff.bossCombo);
   }
 
   clearSprites() {
@@ -648,6 +654,7 @@ export class FrostAstraBoss extends BossBase {
     else if (a.type === 'hop') this.runHop(dt);
     else if (a.type === 'land') this.runLand(dt);
     else if (a.type === 'crash') this.runCrash(dt);
+    else if (a.type === 'signature') this.runSignature(dt);
     else this.endAction();
   }
 
@@ -1095,6 +1102,7 @@ export class FrostAstraBoss extends BossBase {
   receiveAttack(rect, attack) {
     if (this.state !== 'fight' || this.defeated) return false;
     if (this.action && this.action.type === 'crash' && this.action.phase === 'aim') return false;
+    if (this.sig?.receiveAttack?.(rect, attack)) return true;
     if (!intersects(rect, this.hitRect())) return false;
     if (this.heartOpen) {
       const dmg = coreDamage(attack, this.c.chargedPunchCoreMultiplier);
@@ -1110,6 +1118,7 @@ export class FrostAstraBoss extends BossBase {
 
   receiveUltimate(damage) {
     if (this.state !== 'fight' || this.defeated) return false;
+    this.sig?.onUltimate?.();
     if (this.heartOpen) this.damageHeart(damage, '#3fd0ff');
     else {
       const wing = this.wingsAlive.sort((a, b) => a.health.current - b.health.current)[0];
@@ -1165,6 +1174,7 @@ export class FrostAstraBoss extends BossBase {
     // 날개가 다 부서지면 떨어진다 (지금 하던 공격은 멈춤)
     this.clearSprites();
     this.combo.clear();
+    this.stopSignature();
     this.mode = 'grounded';
     this.action = { type: 'crash', phase: 'aim', t: 0 };
     this.scene.robot.say(['날개가 다 부서졌어! 이제 못 날아!', '가슴의 얼음 심장을 때려! {strong}(이)가 제일 세!'], true);
