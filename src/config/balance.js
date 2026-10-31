@@ -771,6 +771,11 @@ export const balance = {
     fuseCount: 3, // 찾아야 하는 퓨즈 수
     gemsEscape: 5, // 탈출 보석
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
+    musicVolume: 1.6, // 배경 음악 크기
+    musicNoteMin: 7, // 쇳소리 음 사이 가장 짧은 시간 (초)
+    musicNoteMax: 14, // 쇳소리 음 사이 가장 긴 시간 (초)
+    musicClangMin: 18, // 멀리서 쇠 부딪히는 소리 사이 가장 짧은 시간 (초)
+    musicClangMax: 40, // 멀리서 쇠 부딪히는 소리 사이 가장 긴 시간 (초)
     ambient: 0.9, // 손전등을 껐을 때 은은하게 보이는 윤곽 밝기 (0 은 완전히 캄캄함)
     flashIntensity: 150, // 손전등 밝기
     flashAngle: 0.55, // 손전등 빛이 퍼지는 각도의 절반 (라디안). 화면 높이의 3분의 2쯤을 덮는다

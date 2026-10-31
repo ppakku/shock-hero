@@ -28,6 +28,37 @@ def open_horror(pg):
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
     pg.wait_for_function('window.__horror', timeout=20000)
     time.sleep(1)
+    pg.screenshot(path=f'{OUT}/intro.png')
+    check('intro: waits before play', pg.evaluate("window.__horror.state") == 'intro')
+    check('intro: shows controls', 'W A S D' in pg.inner_text('#horror'))
+    pg.click('#horror button:has-text("시작")')
+    time.sleep(0.5)
+    check('start button begins play', pg.evaluate("window.__horror.state") == 'play')
+
+
+# 배경 음악이 실제로 나오는지 잰다. 태블릿 스피커는 150Hz 아래를 거의 못 내므로 그 위 소리도 본다.
+AUDIO_PROBE = """async (secs) => {
+  const a = window.__horror.audio, an = a.ctx.createAnalyser();
+  an.fftSize = 8192;
+  a.out.connect(an);
+  const t = new Float32Array(an.fftSize), f = new Float32Array(an.frequencyBinCount);
+  let rms = 0, peak = 0, n = 0, high = 0;
+  const hz = a.ctx.sampleRate / an.fftSize;
+  for (const end = performance.now() + secs * 1000; performance.now() < end; ) {
+    await new Promise((r) => setTimeout(r, 200));
+    an.getFloatTimeDomainData(t);
+    an.getFloatFrequencyData(f);
+    let sum = 0;
+    for (const v of t) { sum += v * v; peak = Math.max(peak, Math.abs(v)); }
+    rms += Math.sqrt(sum / t.length);
+    let e = 0;
+    f.forEach((db, i) => { if (i * hz >= 150 && i * hz < 3000) e += 10 ** (db / 10); });
+    high += 10 * Math.log10(e || 1e-12);
+    n += 1;
+  }
+  a.out.disconnect(an);
+  return { state: a.ctx.state, rms: rms / n, peak, highDb: high / n };
+}"""
 
 
 def walk_script(forward_seconds):
@@ -49,6 +80,12 @@ def run_keys(pw):
     watch(pg, errs)
     open_horror(pg)
     print('start', pg.evaluate('({ p: window.__horror.p, fps: window.__horror.fps })'))
+    time.sleep(5)  # 음악이 차오르기를 기다린다
+    sound = pg.evaluate(AUDIO_PROBE, 12)
+    print('sound', sound)
+    check('music: audio running', sound['state'] == 'running', sound)
+    check('music: audible, not clipping', 0.01 < sound['rms'] and sound['peak'] < 0.95, sound)
+    check('music: audible on small speakers', sound['highDb'] > -45, sound)
     pg.screenshot(path=f'{OUT}/light_on.png')
     pg.evaluate(walk_script(3))
     time.sleep(3.5)
@@ -135,6 +172,10 @@ def title_tap(pg, t):
     t.up(1)
     pg.wait_for_function('window.__horror', timeout=20000)
     time.sleep(1)
+    check('intro: touch controls shown', '왼쪽' in pg.inner_text('#horror'))
+    pg.screenshot(path=f'{OUT}/touch_intro.png')
+    tap(t, button_xy(pg, '시작'))
+    check('intro: tap start begins play', pg.evaluate("window.__horror.state") == 'play')
 
 
 def button_xy(pg, label):
@@ -277,12 +318,23 @@ def run_touch(pw):
     time.sleep(1.5)
     check('second exit returns to title', pg.evaluate("window.__shockGame.scene.isActive('Title') && !window.__horror"))
 
+    # 안내 화면의 타이틀로 버튼도 돌아간다
+    pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.wait_for_function('window.__horror', timeout=20000)
+    time.sleep(0.6)
+    tap(t, button_xy(pg, '타이틀로'))
+    time.sleep(1.5)
+    check('intro: quit button returns to title', pg.evaluate("window.__shockGame.scene.isActive('Title') && !window.__horror"))
+
     # 12번 연속 들어가고 나가기: 오류와 WebGL 컨텍스트 경고가 없어야 한다
     n0 = len(errs)
     for i in range(12):
         pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
         pg.wait_for_function('window.__horror', timeout=20000)
         time.sleep(0.4)
+        if i % 2:
+            pg.evaluate('window.__horror.beginPlay()')  # 소리까지 켠 뒤에도 깨끗하게 나간다
+            time.sleep(0.3)
         pg.evaluate('window.__horror.exit()')
         pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
         time.sleep(0.5)
