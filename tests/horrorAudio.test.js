@@ -183,6 +183,15 @@ describe('HorrorAudio 세이노 소리', () => {
     expect(src.stopAt).toBeCloseTo(1.22);
   });
 
+  it('resume 하면 숨소리가 다시 올라온다', () => {
+    const a = new HorrorAudio({ muted: false });
+    a.suspend();
+    a.resume();
+    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    a.updateStalker(cam, pos, 'chase', 3, 0.016);
+    expect(set.mock.calls.some(([v]) => v > 0)).toBe(true);
+  });
+
   it('suspend 후에는 숨소리와 심장 소리가 모두 멈춘다', () => {
     const a = new HorrorAudio({ muted: false });
     const beat = vi.spyOn(a, 'blip');

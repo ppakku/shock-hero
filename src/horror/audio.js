@@ -207,6 +207,11 @@ export class HorrorAudio {
     if (this.ctx) this.breathLevel.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
   }
 
+  // 잡힌 뒤 다시 시작할 때 부른다. 숨소리는 다음 updateStalker 에서 돌아온다.
+  resume() {
+    this.suspended = false;
+  }
+
   // 지속음 묶음. 필터가 천천히 열리고 닫혀서 숨 쉬듯 움직인다.
   addTones(freqs, type, vol, cutoff, lfoRate, lfoDepth) {
     const filter = this.ctx.createBiquadFilter();
