@@ -7,11 +7,6 @@ const DRONE = [82.41, 82.9, 123.47]; // 살짝 어긋난 낮은 음이 천천히
 const PAD = [155.56, 164.81]; // 반음이 부딪혀 불안하게 들린다
 const NOTES = [196, 207.65, 293.66, 311.13, 392]; // 어둠 속에서 가끔 울리는 쇳소리 음
 const CLANG = [310, 467, 811]; // 멀리서 쇠가 부딪히는 소리
-// 세이노 소리 크기와 간격. 숨소리는 작은 태블릿 스피커에 들리도록 300Hz 위 대역만 쓴다.
-const BREATH_LEVEL = { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1.1, stunned: 0.2 };
-const SWELL_SEC = { patrol: 1.4, investigate: 1.4, search: 1.4, chase: 0.7, stunned: 1.4 };
-const STEP_EVERY = { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0 };
-
 export class HorrorAudio {
   constructor({ muted }) {
     sfx.unlock();
@@ -23,8 +18,12 @@ export class HorrorAudio {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.out = this.ctx.createGain();
+    this.muted = !!muted;
     this.out.gain.value = muted ? 0 : 1;
-    this.out.connect(sfx.master);
+    // 소리가 겹쳐도 찢어지지 않게 눌러 준다
+    this.comp = this.ctx.createDynamicsCompressor();
+    this.out.connect(this.comp);
+    this.comp.connect(sfx.master);
     // 처음에는 조용했다가 어둠과 함께 차오른다
     this.music = this.ctx.createGain();
     this.music.gain.setValueAtTime(0.001, t);
@@ -57,7 +56,7 @@ export class HorrorAudio {
     this.panner = this.ctx.createPanner();
     this.panner.panningModel = 'HRTF';
     this.panner.distanceModel = 'inverse';
-    this.panner.refDistance = 6;
+    this.panner.refDistance = this.k.stalkerRefDist;
     this.panner.rolloffFactor = 1;
     this.panner.connect(this.out);
 
@@ -66,7 +65,7 @@ export class HorrorAudio {
     breath.loop = true;
     const band = this.ctx.createBiquadFilter();
     band.type = 'bandpass';
-    band.frequency.value = 1300;
+    band.frequency.value = this.k.breathFreq;
     band.Q.value = 1.1; // 900~1800Hz 쯤이 넓게 남는다
     this.swell = this.ctx.createGain();
     this.swell.gain.value = 0.5;
@@ -76,7 +75,7 @@ export class HorrorAudio {
     breath.start();
     // 들숨 날숨: 이득이 천천히 오르내린다
     this.swellLfo = this.ctx.createOscillator();
-    this.swellLfo.frequency.value = 1 / SWELL_SEC.patrol;
+    this.swellLfo.frequency.value = 1 / this.k.breathSwellSec.patrol;
     const depth = this.ctx.createGain();
     depth.gain.value = 0.5;
     this.swellLfo.connect(depth).connect(this.swell.gain);
@@ -104,6 +103,7 @@ export class HorrorAudio {
     const t = this.ctx.currentTime + delay;
     const src = this.ctx.createBufferSource();
     src.buffer = sfx.noise;
+    src.loop = true; // 버퍼가 0.5초라 그냥 두면 긴 소리가 잘린다. stop 시각에 끝난다
     const filter = this.ctx.createBiquadFilter();
     filter.type = type;
     filter.Q.value = q;
@@ -127,6 +127,7 @@ export class HorrorAudio {
 
   // 두근두근. 120~180Hz 성분을 더해 작은 스피커에도 들린다.
   heartbeat() {
+    if (this.suspended) return;
     this.blip(this.out, { freq: 58, dur: 0.16, vol: 0.5 });
     this.blip(this.out, { freq: 150, dur: 0.12, vol: 0.4, slide: 0.7 });
     this.blip(this.out, { freq: 54, dur: 0.18, vol: 0.4, delay: 0.17 });
@@ -147,12 +148,12 @@ export class HorrorAudio {
     }
     if (name === 'scare') {
       // 올라가는 거친 숨소리
-      this.puffNoise(o, { dur: 0.9, vol: 1.1, freq: 700, freqTo: 2400, q: 2.5 });
-      this.blip(o, { freq: 95, dur: 0.9, vol: 0.7, slide: 0.6 });
+      this.puffNoise(o, { dur: 0.9, vol: this.k.scareVol, freq: 700, freqTo: 2400, q: 2.5 });
+      this.blip(o, { freq: 95, dur: 0.9, vol: this.k.scareVol * 0.64, slide: 0.6 });
     }
     if (name === 'caught') {
-      this.puffNoise(o, { dur: 1.2, vol: 1.2, freq: 600, freqTo: 3000, q: 3 });
-      this.blip(o, { freq: 150, dur: 1.1, vol: 0.8, slide: 0.4 });
+      this.puffNoise(o, { dur: 1.2, vol: this.k.caughtVol, freq: 600, freqTo: 3000, q: 3 });
+      this.blip(o, { freq: 150, dur: 1.1, vol: this.k.caughtVol * 0.67, slide: 0.4 });
     }
   }
 
@@ -182,11 +183,11 @@ export class HorrorAudio {
     const t = this.ctx.currentTime;
     if (mode !== this.mode) {
       this.mode = mode;
-      this.swellLfo.frequency.setTargetAtTime(1 / (SWELL_SEC[mode] ?? 1.4), t, 0.2);
+      this.swellLfo.frequency.setTargetAtTime(1 / (this.k.breathSwellSec[mode] ?? 1.4), t, 0.2);
     }
-    if (!this.suspended) this.breathLevel.gain.setTargetAtTime(BREATH_LEVEL[mode] ?? 0.5, t, 0.2);
+    if (!this.suspended) this.breathLevel.gain.setTargetAtTime(this.k.breathLevel[mode] ?? 0.5, t, 0.2);
 
-    const every = STEP_EVERY[mode] ?? 0;
+    const every = this.k.stepEvery[mode] ?? 0;
     this.stepT -= dt;
     if (every && this.stepT <= 0) {
       this.stepT = every;
@@ -194,7 +195,7 @@ export class HorrorAudio {
     }
     const gap = heartInterval(dist, this.k);
     this.heartT -= dt;
-    if (gap !== null && this.heartT <= 0) {
+    if (gap !== null && !this.suspended && this.heartT <= 0) {
       this.heartT = gap;
       this.heartbeat();
     }
@@ -300,7 +301,11 @@ export class HorrorAudio {
 
   // 다른 탭으로 나가면 소리를 끈다
   setActive(on) {
-    if (this.ctx) this.music.gain.setTargetAtTime(on ? this.k.musicVolume : 0.0001, this.ctx.currentTime, 0.1);
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.music.gain.setTargetAtTime(on ? this.k.musicVolume : 0.0001, t, 0.1);
+    // 숨소리, 발소리, 심장 소리, 한 번 나는 소리까지 모두 out 을 지난다
+    this.out.gain.setTargetAtTime(on && !this.muted ? 1 : 0, t, 0.1);
   }
 
   destroy() {
@@ -312,5 +317,6 @@ export class HorrorAudio {
     this.echoLoop.forEach((node) => node.disconnect());
     this.music.disconnect();
     this.out.disconnect();
+    this.comp.disconnect();
   }
 }

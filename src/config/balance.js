@@ -759,6 +759,13 @@ export const balance = {
     heartFar: 14, // 이보다 멀면 심장 소리가 없다 (칸)
     heartFast: 0.35, // 가장 가까울 때 심장이 뛰는 간격 (초)
     heartSlow: 0.85, // 멀어질수록 간격에 더해지는 시간 (초). 가장 먼 곳의 간격은 두 값의 합
+    breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1.1, stunned: 0.2 }, // 상태별 숨소리 크기
+    breathSwellSec: { patrol: 1.4, investigate: 1.4, search: 1.4, chase: 0.7, stunned: 1.4 }, // 상태별 들숨날숨 한 번 시간 (초)
+    stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0 }, // 상태별 발소리 간격 (초). 0 은 소리 없음
+    breathFreq: 1300, // 숨소리 중심 주파수 (Hz). 작은 스피커에도 들리게 300Hz 위만 쓴다
+    stalkerRefDist: 6, // 세이노 소리가 줄어들기 시작하는 거리 (미터)
+    scareVol: 0.77, // 놀람 소리 크기
+    caughtVol: 0.84, // 잡힘 소리 크기
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
     noticeLight: 10, // 손전등 빛을 알아채고 조사하러 오는 거리

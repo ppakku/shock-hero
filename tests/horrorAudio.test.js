@@ -11,12 +11,16 @@ function makeCtx(counts) {
   const node = (extra = {}) => {
     const n = {
       connect: (d) => d,
-      disconnect() {},
+      disconnect() {
+        n.disconnected = true;
+      },
       start() {
         counts.started++;
+        n.didStart = true;
       },
-      stop() {
+      stop(when) {
         counts.stopped++;
+        n.stopAt = when ?? 0;
       },
       gain: param(),
       frequency: param(),
@@ -32,13 +36,18 @@ function makeCtx(counts) {
     state: 'running',
     listener: { positionX: param(), positionY: param(), positionZ: param(), forwardX: param(), forwardY: param(), forwardZ: param(), upX: param(), upY: param(), upZ: param() },
     createGain: () => node(),
+    createDynamicsCompressor: () => node(),
     createOscillator: () => {
       counts.osc++;
-      return node();
+      const n = node();
+      counts.sources.push(n);
+      return n;
     },
     createBufferSource: () => {
       counts.noise++;
-      return node();
+      const n = node();
+      counts.sources.push(n);
+      return n;
     },
     createBiquadFilter: () => node(),
     createDelay: () => node(),
@@ -48,7 +57,7 @@ function makeCtx(counts) {
 }
 
 const counts = {};
-const reset = () => Object.assign(counts, { started: 0, stopped: 0, osc: 0, noise: 0 });
+const reset = () => Object.assign(counts, { started: 0, stopped: 0, osc: 0, noise: 0, sources: [] });
 let sfx;
 let HorrorAudio;
 const cam = { position: { x: 0, y: 1.5, z: 0 }, matrixWorld: { elements: new Array(16).fill(0) } };
@@ -131,9 +140,56 @@ describe('HorrorAudio 세이노 소리', () => {
     expect(counts.osc + counts.noise).toBeGreaterThan(before);
   });
 
-  it('destroy 는 반복음을 모두 멈춘다', () => {
+  it('destroy 는 반복음을 모두 멈추고 out 을 끊는다', () => {
     const a = new HorrorAudio({ muted: false });
+    const started = counts.sources.filter((n) => n.didStart);
+    expect(started.length).toBeGreaterThan(0);
     a.destroy();
-    expect(counts.stopped).toBeGreaterThanOrEqual(counts.started - 0);
+    for (const n of started) expect(n.stopAt).not.toBeUndefined();
+    expect(a.out.disconnected).toBe(true);
+    expect(a.comp.disconnected).toBe(true);
+  });
+
+  it('음소거면 out 이 0 이고 setActive(true) 해도 0 을 유지한다', () => {
+    const a = new HorrorAudio({ muted: true });
+    expect(a.out.gain.value).toBe(0);
+    const set = vi.spyOn(a.out.gain, 'setTargetAtTime');
+    a.setActive(false);
+    a.setActive(true);
+    expect(set.mock.calls.map((c) => c[0])).toEqual([0, 0]);
+  });
+
+  it('소리를 켠 상태면 setActive 가 out 을 끄고 되살린다', () => {
+    const a = new HorrorAudio({ muted: false });
+    const set = vi.spyOn(a.out.gain, 'setTargetAtTime');
+    a.setActive(false);
+    a.setActive(true);
+    expect(set.mock.calls.map((c) => c[0])).toEqual([0, 1]);
+  });
+
+  it('positionX 가 없는 사파리는 setPosition 을 쓴다', () => {
+    const a = new HorrorAudio({ muted: false });
+    const node = { setPosition: vi.fn() };
+    a.setPos(node, 1, 2, 3);
+    expect(node.setPosition).toHaveBeenCalledWith(1, 2, 3);
+  });
+
+  it('한 번 나는 잡음은 loop 로 이어 붙이고 stop 을 예약한다', () => {
+    const a = new HorrorAudio({ muted: false });
+    counts.sources.length = 0;
+    a.puffNoise(a.out, { dur: 1.2, vol: 1, freq: 600 });
+    const src = counts.sources.find((n) => n.loop !== undefined || n.didStart);
+    expect(src.loop).toBe(true);
+    expect(src.stopAt).toBeCloseTo(1.22);
+  });
+
+  it('suspend 후에는 숨소리와 심장 소리가 모두 멈춘다', () => {
+    const a = new HorrorAudio({ muted: false });
+    const beat = vi.spyOn(a, 'blip');
+    a.suspend();
+    a.heartbeat();
+    for (let i = 0; i < 30; i++) a.updateStalker(cam, pos, 'chase', 3, 0.1);
+    expect(beat).not.toHaveBeenCalled();
+    expect(a.breathLevel.gain.setTargetAtTime).toBeDefined();
   });
 });
