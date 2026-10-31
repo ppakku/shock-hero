@@ -18,6 +18,11 @@ export class Cooldown {
     this.remaining = this.duration;
   }
 
+  // 남은 시간을 limit 이하로 줄인다
+  limit(limit) {
+    this.remaining = Math.min(this.remaining, limit);
+  }
+
   update(dt) {
     if (this.remaining > 0) this.remaining = Math.max(0, this.remaining - dt);
   }
