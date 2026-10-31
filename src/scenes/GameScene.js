@@ -9,7 +9,7 @@ import { HeroSkills } from '../player/skills.js';
 import { sfx } from '../audio/sfx.js';
 import { saveStore } from '../save.js';
 import { clearStagePatch } from '../logic/save.js';
-import { shopBonuses, scalePowerTimes } from '../logic/shop.js';
+import { shopBonuses, scalePowerTimes, shopSpentRatio, heartDropChance } from '../logic/shop.js';
 import { treasureReward, clearReward, STAR_INFO } from '../logic/rewards.js';
 import { parseMonsterSpot } from '../logic/monsters.js';
 import { withDifficulty, adjustMonsters } from '../logic/difficulty.js';
@@ -87,7 +87,7 @@ export class GameScene extends Phaser.Scene {
     // 보스 러시: { course, stages, index, player, carry } 이면 바로 보스 방에서 시작하고, 이기면 다음 보스로 (src/logic/rush.js)
     this.rush = data.rush || null;
     this.stageNum = Phaser.Math.Clamp(data.stage || 1, 1, stages.length);
-    this.cfg = this.versus ? versusConfig(cfg) : withDifficulty(cfg, this.difficulty, this.stageNum, this.save.level); // 뒤 스테이지일수록, 내 레벨이 앞설수록 어려워짐
+    this.cfg = this.versus ? versusConfig(cfg) : withDifficulty(cfg, this.difficulty, this.stageNum, this.save.level, shopSpentRatio(this.save.shop, cfg.shop)); // 뒤 스테이지일수록, 내 레벨이 앞설수록, 상점을 많이 살수록 어려워짐
     this.stage = this.versus ? versusArena : getStage(this.stageNum);
     this.isLastStage = this.stageNum === stages.length;
     this.ended = false;
@@ -1272,7 +1272,7 @@ export class GameScene extends Phaser.Scene {
     this.gainXp(monster.m.xp, monster.x, monster.y - 40);
     if (monster.workshop) this.recordWorkshop(monster);
     else this.recordDex('monster', monster.dexId, monster.x, monster.y - 70);
-    if (Math.random() < cfg.monster.heartDropChance * this.cfg.difficulty.heartChance + this.bonus.heartChance) this.dropHeart(monster.x, monster.y - 10);
+    if (Math.random() < heartDropChance(cfg.monster.heartDropChance, this.cfg.difficulty.heartChance, this.bonus.heartChance)) this.dropHeart(monster.x, monster.y - 10);
   }
 
   // 하트: 먹으면 체력이 찬다. 10초 뒤 사라진다.

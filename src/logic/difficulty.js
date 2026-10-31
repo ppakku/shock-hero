@@ -5,17 +5,18 @@ export const DIFFICULTIES = ['easy', 'normal', 'hard'];
 export const DIFFICULTY_INFO = {
   easy: { name: '쉬움', desc: '몬스터가 적고 약해요. 때리면 잘 멈춰요.' },
   normal: { name: '보통', desc: '뒤 스테이지일수록 몬스터가 튼튼하고 아파요.' },
-  hard: { name: '어려움', desc: '몬스터가 많고 튼튼해요. 내 레벨만큼 같이 세져요.' },
+  hard: { name: '어려움', desc: '몬스터가 많고 튼튼해요. 내 레벨과 상점 강화만큼 같이 세져요.' },
 };
 
 // monsterHealth, monsterDamage, bossHealth, bossDamage: 체력과 공격력 배수
 // stunGuard: 몬스터가 한 번 비틀거린 뒤 이 초 동안은 맞아도 멈추지 않는다 (0 이면 때릴 때마다 멈춤)
 // heartChance: 하트가 떨어질 확률 배수
 // catchUp: 내 레벨이 스테이지보다 높을 때 몬스터가 따라오는 정도 (0 = 안 따라옴, 0.8 = 80% 따라옴)
+// shopCatchUp: 상점을 다 샀을 때 몬스터 피해가 늘어나는 양 (0.2 = 20%). 덜 샀으면 산 만큼만
 export const DIFFICULTY_VALUES = {
-  easy: { monsterHealth: 0.8, monsterDamage: 0.7, monsterSpeed: 0.9, monsterWindup: 1.3, bossHealth: 0.8, bossDamage: 0.8, bossSpeed: 1.2, bossCombo: 0, stunGuard: 0, heartChance: 1, catchUp: 0 },
-  normal: { monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 0.8, heartChance: 0.8, catchUp: 0.4 },
-  hard: { monsterHealth: 1.3, monsterDamage: 1.25, monsterSpeed: 1.15, monsterWindup: 0.8, bossHealth: 1.4, bossDamage: 1.3, bossSpeed: 0.8, bossCombo: 0.5, stunGuard: 1.4, heartChance: 0.55, catchUp: 0.8 },
+  easy: { monsterHealth: 0.8, monsterDamage: 0.75, monsterSpeed: 0.9, monsterWindup: 1.3, bossHealth: 0.8, bossDamage: 0.8, bossSpeed: 1.2, bossCombo: 0, stunGuard: 0, heartChance: 1, catchUp: 0, shopCatchUp: 0.1 },
+  normal: { monsterHealth: 1, monsterDamage: 0.85, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 0.8, heartChance: 0.8, catchUp: 0.4, shopCatchUp: 0.2 },
+  hard: { monsterHealth: 1.2, monsterDamage: 1, monsterSpeed: 1.15, monsterWindup: 0.8, bossHealth: 1.4, bossDamage: 1.3, bossSpeed: 0.8, bossCombo: 0.5, stunGuard: 1.4, heartChance: 0.55, catchUp: 0.8, shopCatchUp: 0.25 },
 };
 
 export function normalizeDifficulty(level) {
@@ -73,7 +74,8 @@ function scaleBossDamage(section, mul) {
 
 // 게임 설정(cfg)에 난이도 값을 붙인다. 몬스터와 보스는 cfg.difficulty 를 읽는다.
 // playerLevel 을 주면 그 레벨이 스테이지보다 앞선 만큼 몬스터와 보스도 따라온다.
-export function withDifficulty(cfg, level, stageNum = 1, playerLevel = null) {
+// shopRatio(0~1, shop.js 의 shopSpentRatio)를 주면 상점에서 산 만큼 일반 몬스터가 더 아프다. 보스는 그대로.
+export function withDifficulty(cfg, level, stageNum = 1, playerLevel = null, shopRatio = 0) {
   const lv = normalizeDifficulty(level);
   const base = DIFFICULTY_VALUES[lv];
   const r = stageRamp(stageNum);
@@ -84,6 +86,7 @@ export function withDifficulty(cfg, level, stageNum = 1, playerLevel = null) {
     else if (k === 'bossCombo') d[k] = Math.min(1, v + r[k]);
     else d[k] = v * r[k] * (1 + ahead * (LEVEL_CATCHUP[k] || 0));
   }
+  d.monsterDamage *= 1 + base.shopCatchUp * Math.min(1, Math.max(0, shopRatio || 0));
   const out = { ...cfg, difficulty: d };
   for (const key of BOSS_SECTIONS) if (cfg[key]) out[key] = scaleBossDamage(cfg[key], d.bossDamage);
   return out;
@@ -92,21 +95,38 @@ export function withDifficulty(cfg, level, stageNum = 1, playerLevel = null) {
 // 어려움에서 더할 몬스터 종류 (스테이지에 이미 나오는 종류 중에서 돌아가며)
 const HARD_EXTRA = ['fast', 'tank', 'jumper'];
 
+// 보스 문까지 1000 픽셀마다 나올 수 있는 몬스터 수. 뒤 스테이지에서 쉴 틈 없이 몰려오지 않게 한다
+export const MONSTER_DENSITY = { easy: 3.5, normal: 4.5, hard: 6 };
+
+// 고르게 솎아서 count 마리만 남긴다
+function thinOut(list, count) {
+  if (list.length <= count) return list;
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(list[Math.floor((i * list.length) / count)]);
+  return out;
+}
+
+function capDensity(spots, level, gateX) {
+  if (!(gateX > 0)) return spots;
+  return thinOut(spots, Math.max(1, Math.round((gateX / 1000) * MONSTER_DENSITY[level])));
+}
+
 // 스테이지 몬스터 목록을 난이도에 맞게 바꾼다. spots 는 { x, y, type } 목록.
 // 쉬움: 세 마리 중 한 마리를 빼고, 특수 몬스터 절반을 초록 몬스터로 바꾼다.
-// 어려움: 두 마리마다 한 마리를 더하고(스테이지에 나오는 종류로), 초록 몬스터 절반을 더 센 종류로 바꾼다.
+// 어려움: 세 마리마다 한 마리를 더하고(스테이지에 나오는 종류로), 초록 몬스터 절반을 더 센 종류로 바꾼다.
 export function adjustMonsters(spots, level, gateX) {
   const lv = normalizeDifficulty(level);
-  if (lv === 'normal') return spots.map((s) => ({ ...s }));
+  if (lv === 'normal') return capDensity(spots.map((s) => ({ ...s })), lv, gateX);
   if (lv === 'easy') {
     let special = 0;
-    return spots
+    const kept = spots
       .filter((_, i) => i % 3 !== 2)
       .map((s) => {
         if (s.type === 'basic') return { ...s };
         special += 1;
         return special % 2 === 0 ? { ...s, type: 'basic' } : { ...s };
       });
+    return capDensity(kept, lv, gateX);
   }
   const present = [...new Set(spots.map((s) => s.type).filter((t) => t !== 'basic'))];
   const pool = present.length ? present : HARD_EXTRA;
@@ -119,10 +139,10 @@ export function adjustMonsters(spots, level, gateX) {
       if (basics % 2 === 0) type = pool[basics % pool.length];
     }
     out.push({ ...s, type });
-    if (i % 2 === 1) {
+    if (i % 3 === 2) {
       const x = Math.min(s.x + 140, gateX - 80);
       out.push({ x, y: s.y, type: pool[i % pool.length] });
     }
   });
-  return out;
+  return capDensity(out, lv, gateX);
 }

@@ -52,7 +52,7 @@ describe('보물 자리 무작위', () => {
 describe('스테이지마다 조금씩 어려워짐', () => {
   it('스테이지 1 은 원래 난이도 그대로', () => {
     const d = withDifficulty({}, 'normal', 1).difficulty;
-    expect(d).toMatchObject({ level: 'normal', monsterHealth: 1, monsterDamage: 1, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 0.8 });
+    expect(d).toMatchObject({ level: 'normal', monsterHealth: 1, monsterDamage: 0.85, monsterSpeed: 1, monsterWindup: 1, bossHealth: 1, bossDamage: 1, bossSpeed: 1, bossCombo: 0.15, stunGuard: 0.8 });
   });
 
   it('스테이지가 오를수록 몬스터와 보스가 서서히 세진다', () => {
