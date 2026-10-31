@@ -1,5 +1,5 @@
 // 공포 모드 한 판의 규칙과 기록 (화면과 상관없는 부분)
-import { reachable } from './horrorGrid.js';
+import { reachable, center } from './horrorGrid.js';
 
 export function createRun(map, k, rand = Math.random) {
   const open = reachable(map, map.start);
@@ -47,6 +47,25 @@ export function insertFuses(run, k) {
   if (run.have < k.fuseCount) return false;
   run.powered = true;
   return true;
+}
+
+// 손이 닿는 가장 가까운 것. 없으면 null. hidden 은 숨어 있는 사물함 번호 (아니면 null)
+export function nearestUse(run, map, p, hidden, k) {
+  if (hidden !== null) return { kind: 'locker', index: hidden, label: '사물함에서 나오기' };
+  const list = [];
+  const add = (kind, index, label, cell) => {
+    const c = center(cell);
+    list.push({ kind, index, label, d: Math.hypot(c.x - p.x, c.y - p.y) });
+  };
+  run.fuses.forEach((f, i) => !f.taken && add('fuse', i, '퓨즈 줍기', f));
+  map.lockers.forEach((c, i) => add('locker', i, '사물함에 숨기', c));
+  if (!run.shock) map.boxes.forEach((c, i) => !run.usedBoxes.includes(i) && add('box', i, '쇼크 충전', c));
+  if (!run.powered) add('panel', 0, run.have >= k.fuseCount ? '퓨즈 꽂기' : `퓨즈가 ${k.fuseCount}개 필요해`, map.panel);
+  else add('gate', 0, '정문으로 탈출', map.gate);
+  const near = list.filter((t) => t.d <= k.useRange);
+  if (!near.length) return null;
+  const { kind, index, label } = near.reduce((a, b) => (b.d < a.d ? b : a));
+  return { kind, index, label };
 }
 
 export function caught(run) {

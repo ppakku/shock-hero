@@ -51,7 +51,7 @@ export class HorrorInput {
     this.on(this.el, 'pointerdown', (e) => {
       if (e.pointerType !== 'mouse') return; // 손가락은 bindTouch 가 맡는다
       if (document.pointerLockElement === this.el) this.pressed.punch = true;
-      else this.el.requestPointerLock?.();
+      else this.relock();
     });
     this.on(document, 'mousemove', (e) => {
       if (document.pointerLockElement !== this.el) return;
@@ -115,8 +115,8 @@ export class HorrorInput {
   }
 
   // 마우스를 화면에 잠근다. 막히면 화면을 한 번 누르면 다시 잠긴다.
-  relock() {
-    if (!this.touch) this.el.requestPointerLock?.()?.catch?.(() => {});
+  relock(onDenied = () => {}) {
+    if (!this.touch) this.el.requestPointerLock?.()?.catch?.(onDenied);
   }
 
   destroy() {

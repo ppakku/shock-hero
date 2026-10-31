@@ -1,15 +1,23 @@
 // 공포 모드 글자, 안내 화면. 어두운 화면에서 잘 보이도록 3D 위에 HTML 로 올린다.
-const LAYER = 'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;background:rgba(0,0,0,.82);color:#eee;font:19px sans-serif;padding:16px;box-sizing:border-box';
+const LAYER = 'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;text-align:center;background:rgba(0,0,0,.82);color:#eee;font:18px sans-serif;padding:12px;box-sizing:border-box;overflow:auto';
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
-const INTRO = ['아직 시험판이에요. 파쇄자와 퓨즈는 다음 작업에서 들어갑니다.', '지금은 밤의 고철 공장을 걸어 다닐 수 있어요.'];
+export const MONSTER_NAME = '세이노';
+
+const INTRO = [
+  '밤의 고철 공장을 조사하다가 문이 잠겼다.',
+  '볼트와의 통신도 끊겼다.',
+  '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자.',
+  '달리면 소리가 나고, 손전등 빛은 들킨다.',
+  `${MONSTER_NAME}는 쓰러뜨릴 수 없다. 사물함에 숨어!`,
+];
 
 // 기기에 맞는 조작 안내. 지금 실제로 되는 조작만 적는다.
 export function controlLines(touch) {
   if (touch) {
-    return ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기', '손전등: 손전등 버튼', '나가기: 멈춤 버튼'];
+    return ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기', '손전등: 손전등 버튼', '줍기와 숨기: 사용 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
   }
-  return ['이동: W A S D 또는 방향키', '둘러보기: 마우스', '달리기: Shift 를 누른 채 이동', '손전등: F', '나가기: Esc'];
+  return ['이동: W A S D 또는 방향키', '둘러보기: 마우스', '달리기: Shift 를 누른 채 이동', '손전등: F', '줍기와 숨기: E', '쇼크 펀치: 왼쪽 클릭', '일시정지: Esc'];
 }
 
 // 시작한 뒤 잠깐 띄우는 알림
@@ -22,9 +30,16 @@ export class HorrorHud {
     this.root = root;
     this.box = document.createElement('div');
     this.box.style.cssText = 'position:absolute;inset:0;z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
+    this.status = this.add('position:absolute;left:16px;top:12px;text-shadow:0 0 4px #000');
+    this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;text-shadow:0 0 4px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
     this.dot = this.add('position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(255,255,255,.45)');
+    this.black = this.add('position:absolute;inset:0;background:#000;opacity:0;transition:opacity .35s');
     root.appendChild(this.box);
+    // 틈 화면은 글자 밑, 터치 버튼 밑에 깐다. 숨은 채로도 사용 버튼이 보여야 나올 수 있다
+    this.slit = document.createElement('div');
+    this.slit.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;display:none;background:linear-gradient(90deg,#000 0 40%,transparent 44% 56%,#000 60% 100%)';
+    root.appendChild(this.slit);
     this.layer = null;
   }
 
@@ -35,12 +50,28 @@ export class HorrorHud {
     return el;
   }
 
+  setStatus({ have, need, shock, powered }) {
+    this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
+  }
+
+  setPrompt(text) {
+    this.prompt.textContent = text;
+  }
+
   say(text, seconds = 3) {
     this.message.textContent = text;
     clearTimeout(this.sayTimer);
     this.sayTimer = setTimeout(() => {
       this.message.textContent = '';
     }, seconds * 1000);
+  }
+
+  showSlit(on) {
+    this.slit.style.display = on ? 'block' : 'none';
+  }
+
+  fade(on) {
+    this.black.style.opacity = on ? '1' : '0';
   }
 
   openLayer(lines, buttons) {
@@ -82,9 +113,22 @@ export class HorrorHud {
     );
   }
 
+  showPause(onResume, onQuit) {
+    this.openLayer(['일시정지'], [{ text: '계속하기', onPress: onResume }, { text: '타이틀로', onPress: onQuit }]);
+  }
+
+  hidePause() {
+    this.closeLayer();
+  }
+
+  showEnd(text, onDone) {
+    this.openLayer([text], [{ text: '타이틀로', onPress: onDone }]);
+  }
+
   destroy() {
     clearTimeout(this.sayTimer);
     this.closeLayer();
     this.box.remove();
+    this.slit.remove();
   }
 }

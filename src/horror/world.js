@@ -76,8 +76,33 @@ export function buildWorld(scene, map, mats = {}) {
     gate: prop(props, map.gate, CELL, WALL_H, CELL, 0x7a6a30),
   };
 
+  // 어둠 속에서도 찾을 수 있게 전기 상자, 전원, 정문은 살짝 빛낸다
+  const glow = (m, color, power) => {
+    m.material.emissive.setHex(color);
+    m.material.emissiveIntensity = power;
+  };
+  parts.boxes.forEach((m) => glow(m, 0x3060c0, 0.5));
+  glow(parts.panel, 0xc03020, 0.6);
+  glow(parts.gate, 0x402808, 0.5);
+
+  // 퓨즈: 어둠 속에서 찾을 수 있게 스스로 살짝 빛난다
+  const addFuses = (fuses) =>
+    fuses.map((c) => {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), new THREE.MeshBasicMaterial({ color: 0xffc040 }));
+      mesh.position.set((c.cx + 0.5) * CELL, 0.75, (c.cy + 0.5) * CELL);
+      mesh.rotation.z = Math.PI / 2;
+      props.add(mesh);
+      return mesh;
+    });
+
   return {
     props: parts,
+    addFuses,
+    // 전원이 켜지면 전원은 초록으로, 정문은 밝게 바뀐다
+    setPowered() {
+      glow(parts.panel, 0x20c040, 0.8);
+      glow(parts.gate, 0xffc040, 0.7);
+    },
     update(p, viewCells) {
       for (const group of chunks.values()) {
         const c = group.userData.center;

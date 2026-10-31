@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, normalizeHorror, recordEscape, emptyHorror } from '../src/logic/horrorRun.js';
+import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, nearestUse, normalizeHorror, recordEscape, emptyHorror } from '../src/logic/horrorRun.js';
 import { reachable, parseMap } from '../src/logic/horrorGrid.js';
 import { createSaveStore } from '../src/logic/save.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
@@ -153,5 +153,46 @@ describe('저장', () => {
     old.horror = { escapes: 1, cleanEscapes: 1 };
     store.save(old);
     expect(store.load().horror).toEqual({ escapes: 1, cleanEscapes: 1 });
+  });
+});
+
+describe('손이 닿는 것 고르기', () => {
+  const beside = (c) => ({ x: c.cx - 0.5, y: c.cy + 0.5 }); // 왼쪽 칸 가운데
+
+  it('멀면 아무것도 없다', () => {
+    expect(nearestUse(fresh(), factoryMap, { x: 3.5, y: 15.5 }, null, k)).toBe(null);
+  });
+
+  it('숨어 있으면 나오기만 할 수 있다', () => {
+    expect(nearestUse(fresh(), factoryMap, { x: 3.5, y: 15.5 }, 2, k)).toEqual({ kind: 'locker', index: 2, label: '사물함에서 나오기' });
+  });
+
+  it('주운 퓨즈는 고르지 않는다', () => {
+    const run = fresh();
+    const f = run.fuses[0];
+    const p = { x: f.cx + 0.5, y: f.cy + 0.5 };
+    expect(nearestUse(run, factoryMap, p, null, k).kind).toBe('fuse');
+    takeFuse(run, 0);
+    expect(nearestUse(run, factoryMap, p, null, k)?.kind).not.toBe('fuse');
+  });
+
+  it('쇼크가 있거나 쓴 상자는 고르지 않는다', () => {
+    const run = fresh();
+    const p = { x: 2.5, y: 17.5 }; // 시작 방 전기 상자 옆
+    expect(nearestUse(run, factoryMap, p, null, k).kind).toBe('box');
+    chargeShock(run, factoryMap.boxes.findIndex((c) => c.cx === 1 && c.cy === 17));
+    expect(nearestUse(run, factoryMap, p, null, k)).toBe(null);
+    useShock(run);
+    expect(nearestUse(run, factoryMap, p, null, k)).toBe(null);
+  });
+
+  it('전원은 퓨즈가 모자라면 안내만, 켠 뒤에는 정문을 고른다', () => {
+    const run = fresh();
+    const p = beside(factoryMap.panel);
+    expect(nearestUse(run, factoryMap, p, null, k).label).toBe(`퓨즈가 ${k.fuseCount}개 필요해`);
+    run.have = k.fuseCount;
+    expect(nearestUse(run, factoryMap, p, null, k).label).toBe('퓨즈 꽂기');
+    insertFuses(run, k);
+    expect(nearestUse(run, factoryMap, beside(factoryMap.gate), null, k).kind).toBe('gate');
   });
 });
