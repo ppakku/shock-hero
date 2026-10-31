@@ -166,6 +166,7 @@ export function buildWorld(scene, map, k, mats = {}) {
   return {
     addFuses,
     counts,
+    lightMat,
     // 전원이 켜지면 전원은 초록으로, 정문은 밝게 바뀐다
     setPowered() {
       glow(panelMat, 0x20c040, 0.8);

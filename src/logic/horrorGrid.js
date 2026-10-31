@@ -73,6 +73,15 @@ export function lineOfSight(map, a, b) {
   return true;
 }
 
+// 몸 가운데와 둘레 네 점. 벽 모서리에 몸 일부만 걸쳐 보이는 때까지 친다
+const BODY = [[0, 0], [0.4, 0], [-0.4, 0], [0, 0.4], [0, -0.4]];
+
+// 이 몸이 화면에 보일 수 있는지. near 칸 안이면 벽 너머여도 그린다 (팔과 고개가 벽을 넘어올 수 있다)
+export function canSeeBody(map, from, to, near) {
+  if (Math.hypot(to.x - from.x, to.y - from.y) <= near) return true;
+  return BODY.some(([ox, oy]) => lineOfSight(map, from, { x: to.x + ox, y: to.y + oy }));
+}
+
 // from 에서 걸어갈 수 있는 칸들 ("x,y" 글자 묶음)
 export function reachable(map, from) {
   const seen = new Set([`${from.cx},${from.cy}`]);

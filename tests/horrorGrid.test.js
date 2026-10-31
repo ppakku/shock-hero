@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMap, blocked, cellOf, center, frontOf, findPath, lineOfSight, reachable } from '../src/logic/horrorGrid.js';
+import { parseMap, blocked, cellOf, center, frontOf, findPath, lineOfSight, reachable, canSeeBody } from '../src/logic/horrorGrid.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 
 const small = parseMap([
@@ -79,5 +79,31 @@ describe('공장 맵', () => {
   it('모든 목표에 걸어갈 수 있다', () => {
     for (const c of [...m.fuses, ...m.patrol, ...m.scares, m.stalker]) expect(canReach(c)).toBe(true);
     for (const c of [...m.lockers, ...m.boxes, m.panel, m.gate]) expect(canUse(c)).toBe(true);
+  });
+});
+
+describe('세이노를 그릴지', () => {
+  // 복도에서 멀리 보이는 자리, 벽 너머 자리를 공장 맵으로 확인한다
+  const NEAR = 4;
+
+  it('긴 복도 끝은 멀어도 보인다', () => {
+    expect(canSeeBody(factoryMap, { x: 1.5, y: 15.5 }, { x: 9.5, y: 15.5 }, NEAR)).toBe(true);
+  });
+
+  it('벽 너머 먼 곳은 안 그린다', () => {
+    expect(canSeeBody(factoryMap, { x: 1.5, y: 14.5 }, { x: 9.5, y: 14.5 }, NEAR)).toBe(false);
+    expect(canSeeBody(factoryMap, { x: 3.5, y: 15.5 }, { x: 24.5, y: 4.5 }, NEAR)).toBe(false);
+  });
+
+  it('가까우면 벽 너머여도 그린다', () => {
+    expect(canSeeBody(factoryMap, { x: 6.2, y: 14.5 }, { x: 8.5, y: 14.5 }, NEAR)).toBe(true);
+  });
+
+  it('몸 가운데가 가려져도 옆이 트였으면 그린다', () => {
+    // 가운데 시선은 문틀 모서리에 막히고 몸 옆쪽은 문을 지난다
+    const from = { x: 19.7, y: 16.49 };
+    const to = { x: 11.62, y: 14.1 };
+    expect(lineOfSight(factoryMap, from, to)).toBe(false);
+    expect(canSeeBody(factoryMap, from, to, NEAR)).toBe(true);
   });
 });

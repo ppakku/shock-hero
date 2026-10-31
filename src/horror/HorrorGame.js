@@ -1,7 +1,7 @@
 // 공포 모드 3D 화면 전체 흐름
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
-import { CELL, center, cellOf, frontOf, findPath, lineOfSight } from '../logic/horrorGrid.js';
+import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
@@ -208,6 +208,18 @@ export class HorrorGame {
     this.hud.say(startHint(this.touch), 6);
   }
 
+  // 세이노를 처음 볼 때와 손전등을 처음 끌 때 화면이 멈추지 않게, 안내 화면 뒤에서 한 장씩 그려 둔다
+  warmUp() {
+    this.warmed = true;
+    const m = this.model;
+    m.group.position.set(this.p.x * CELL, 0, (this.p.y - 1) * CELL); // 시작할 때 보는 쪽
+    this.renderer.render(this.scene, this.camera);
+    this.flash.visible = false;
+    this.renderer.render(this.scene, this.camera);
+    this.flash.visible = this.lightOn;
+    m.update(this.stalker, 0, this.p);
+  }
+
   // 봇은 이 함수를 바꿔 끼워서 진짜 입력처럼 조작한다
   readInput() {
     return this.input.read();
@@ -226,6 +238,7 @@ export class HorrorGame {
     else if (this.state === 'caught') this.caughtFrame(dt);
     this.placeCamera();
     this.world.update(this.p, this.k.viewCells, this.playTime, this.lowFx);
+    if (this.state === 'intro' && !this.warmed && this.model.textures.every((t) => t.image)) this.warmUp();
     if (this.state !== 'play') return;
     this.camera.updateMatrixWorld();
     const s = this.stalker;
@@ -251,12 +264,19 @@ export class HorrorGame {
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
+    this.cullCreature();
     this.checkScare();
     this.tickBlink(dt);
     const target = this.nearestUse();
     this.hud.setPrompt(target ? `${this.touch ? '사용' : 'E'}: ${target.label}` : '');
     if (inp.use) this.doUse(target);
     if (inp.punch) this.doPunch();
+  }
+
+  // 벽에 가린 세이노는 그리지 않는다. 몸이 무거워서 태블릿에서 크게 차이 난다.
+  // 사물함 안은 시선 계산의 출발 칸이 막혀 있어서 늘 그린다.
+  cullCreature() {
+    this.model.group.visible = this.hidden !== null || canSeeBody(this.map, this.p, this.stalker, this.k.creatureNear);
   }
 
   // 놀람 칸을 처음 밟으면 큰 소리가 나고 손전등이 깜빡인다. 효과 줄이기를 켜면 깜빡임은 뺀다
@@ -372,6 +392,7 @@ export class HorrorGame {
     const heading = Math.atan2(-dx, -dy); // 괴물이 주인공을 보는 쪽이자 주인공이 괴물을 보는 yaw
     this.lunge = { t: 0, faded: false, dir: heading, shown: { x: s.x, y: s.y, heading, mode: 'chase' } };
     this.model.yaw = heading;
+    this.model.group.visible = true; // 사물함 밖에서 벽 너머로 잡혀도 얼굴은 보여야 한다
     this.flash.visible = true;
     this.flash.intensity = this.k.flashIntensity * FACE_LIGHT;
   }
@@ -410,6 +431,7 @@ export class HorrorGame {
     this.pitch = 0;
     sendAway(this.stalker, this.map, this.p);
     this.model.update(this.stalker, 0, this.p);
+    this.cullCreature();
     this.flash.intensity = this.k.flashIntensity;
     this.flash.visible = this.lightOn;
     this.audio?.resume();
