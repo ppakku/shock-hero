@@ -1,11 +1,29 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { canUseWebGL, startHorror } from '../src/horror/start.js';
 
+const fakeCtx = (loseContext = () => {}) => ({ getExtension: () => ({ loseContext }) });
 const docWith = (ctx) => ({ createElement: () => ({ getContext: () => ctx }) });
 
 describe('WebGL 확인', () => {
   it('켜지면 true', () => {
-    expect(canUseWebGL(docWith({}))).toBe(true);
+    expect(canUseWebGL(docWith(fakeCtx()))).toBe(true);
+  });
+
+  it('webgl2 만 묻는다. webgl1 만 되는 기기는 false', () => {
+    const asked = [];
+    const doc = { createElement: () => ({ getContext: (name) => { asked.push(name); return name === 'webgl' ? fakeCtx() : null; } }) };
+    expect(canUseWebGL(doc)).toBe(false);
+    expect(asked).toEqual(['webgl2']);
+  });
+
+  it('확인에 쓴 자리를 돌려준다', () => {
+    const lose = vi.fn();
+    expect(canUseWebGL(docWith(fakeCtx(lose)))).toBe(true);
+    expect(lose).toHaveBeenCalledTimes(1);
+  });
+
+  it('돌려주는 확장이 없어도 true', () => {
+    expect(canUseWebGL(docWith({ getExtension: () => null }))).toBe(true);
   });
 
   it('없으면 false', () => {
@@ -27,7 +45,7 @@ describe('시작 실패', () => {
 
   function fakeDom() {
     const root = { style: {}, textContent: '', removed: false, remove() { this.removed = true; } };
-    const canvas = { getContext: () => ({}) };
+    const canvas = { getContext: () => fakeCtx() };
     vi.stubGlobal('document', {
       createElement: (tag) => (tag === 'canvas' ? canvas : root),
       body: { appendChild: () => {} },

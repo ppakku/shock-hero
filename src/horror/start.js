@@ -4,8 +4,10 @@ import { saveStore } from '../save.js';
 
 export function canUseWebGL(doc = globalThis.document) {
   try {
-    const canvas = doc.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    const ctx = doc.createElement('canvas').getContext('webgl2'); // three 는 webgl2 만 쓴다
+    if (!ctx) return false;
+    ctx.getExtension('WEBGL_lose_context')?.loseContext(); // 확인용 자리를 바로 돌려준다
+    return true;
   } catch {
     return false;
   }
