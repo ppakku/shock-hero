@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BossBase } from './BossBase.js';
 import { BossPart, Puddles, GroundWaves, Rect, intersects, damagePart, warnBox, WAVE_H } from './bossKit.js';
+import { signatureDue } from '../logic/sig_dragon.js';
 import { chooseDragonAttack, pillarWaves, flyLandingX, gustVelocity, gustPillarXs } from '../logic/dragon.js';
 import { spreadTargets } from '../logic/watcher.js';
 import { coreDamage } from '../logic/boss.js';
@@ -384,6 +385,7 @@ export class DragonBoss extends BossBase {
       else if (a.type === 'tail') this.runTail(dt);
       else if (a.type === 'fly') this.runFly(dt);
       else if (a.type === 'pillars') this.runPillars(dt);
+      else if (a.type === 'signature') this.runSignature(dt);
       else if (a.type === 'tired') this.runTired(dt);
     }
     if (this.side) this.runSide(dt);
@@ -475,7 +477,10 @@ export class DragonBoss extends BossBase {
   }
 
   startAction() {
-    const type = chooseDragonAttack(this.def.phases, this.tailPart.alive, this.wing.alive, this.lastType);
+    let type = chooseDragonAttack(this.def.phases, this.tailPart.alive, this.wing.alive, this.lastType);
+    this.attackCount = (this.attackCount || 0) + 1;
+    if (signatureDue(this.def.phases, this.sigUsed, this.attackCount)) type = 'signature'; // 변종은 전용 공격을 꼭 보여 준다
+    if (type === 'signature') this.sigUsed = true;
     this.lastType = type;
     const k = this.k;
     const a = { type, phase: 'aim', t: 0 };
@@ -509,6 +514,8 @@ export class DragonBoss extends BossBase {
       const step = warn + k.pillarWaveGap;
       a.waves = list.map((xs, i) => ({ xs, start: i * step, warn, hits: new Set(), burst: false }));
       a.end = (list.length - 1) * step + warn + 0.5;
+    } else if (type === 'signature') {
+      this.startSignature();
     }
     this.action = a;
     this.scene.sfxPlay('warn');
@@ -524,6 +531,14 @@ export class DragonBoss extends BossBase {
     this.lift = 0;
     if (this.bellyOpen) this.startTired(this.k.restTime);
     else this.endAction();
+  }
+
+  // 전용 공격도 다른 공격처럼, 배가 드러났으면 끝난 뒤 헉헉거린다
+  runSignature(dt) {
+    if (this.sig?.update(dt)) {
+      this.stopSignature();
+      this.afterAttack();
+    }
   }
 
   startTired(dur) {

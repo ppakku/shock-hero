@@ -502,6 +502,22 @@ export const balance = {
   // 둘 다 부수면 공격이 끝날 때마다 헉헉거려요. 그때 크림색 배(약점)를 때려요.
   // 체력은 stage3.js 의 boss.healthScale 과 난이도를 곱해요.
   dragonBoss: {
+    boulderWarningTime: 1.1, // 바위가 굴러오기 전 빨간 줄 경고 시간
+    boulderCount: 2, // 바위 개수 (화나면 1개 더)
+    boulderGap: 1.3, // 바위와 바위 사이 시간 (점프하고 내려올 시간)
+    boulderSpeed: 400, // 바위가 구르는 빠르기
+    boulderDamage: 18, // 바위 피해량 (꼬리와 같음)
+    lightningWarningTime: 1.0, // 낙뢰 표시가 뜬 뒤 첫 번개까지 시간
+    lightningCount: 4, // 낙뢰 개수 (화나면 1개 더)
+    lightningGap: 170, // 낙뢰 자리 간격 (번개 사이로 피할 수 있게)
+    lightningDelay: 0.3, // 번개와 번개 사이 시간
+    lightningDamage: 18, // 낙뢰 피해량 (불기둥과 같음)
+    orbWarningTime: 1.0, // 어둠 구슬이 나올 자리를 보여 주는 시간
+    orbCount: 2, // 어둠 구슬 개수 (화나면 1개 더)
+    orbSpeed: 95, // 구슬이 따라오는 빠르기 (걷는 속도 260 보다 훨씬 느림)
+    orbLife: 3, // 구슬이 따라오는 시간
+    orbDamage: 14, // 구슬 피해량 (불덩이와 같음)
+    orbDarkness: 0.45, // 화면이 어두워지는 정도 (0~1)
     tailHealth: 170, // 꼬리 체력
     wingHealth: 190, // 날개 체력
     bellyHealth: 300, // 배(약점) 체력
