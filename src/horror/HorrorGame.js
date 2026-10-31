@@ -6,6 +6,8 @@ import { stepPlayer, nextPixelRatio } from '../logic/horrorInput.js';
 import { factoryMap } from './maps/factory.js';
 import { buildWorld } from './world.js';
 import { HorrorInput } from './input.js';
+import { HorrorHud, startHint } from './hud.js';
+import { HorrorAudio } from './audio.js';
 
 const EYE = 1.6; // 눈높이 (미터)
 const RADIUS = 0.2; // 주인공 몸 반지름 (칸)
@@ -24,6 +26,8 @@ export class HorrorGame {
     this.yaw = 0;
     this.pitch = 0;
     this.lightOn = true;
+    this.state = 'intro'; // 'intro' | 'play'
+    this.audio = null;
     this.fps = 60;
     this.fpsFrames = 0;
     this.fpsTime = 0;
@@ -35,7 +39,9 @@ export class HorrorGame {
       this.build(root, touch);
     } catch (e) {
       this.input?.destroy();
+      this.hud?.destroy();
       if (this.onResize) window.removeEventListener('resize', this.onResize);
+      if (this.onVisibility) document.removeEventListener('visibilitychange', this.onVisibility);
       this.renderer.dispose(); // 만들다 실패하면 WebGL 자리를 돌려준다
       this.renderer.forceContextLoss();
       throw e;
@@ -67,6 +73,7 @@ export class HorrorGame {
 
     this.world = buildWorld(this.scene, this.map);
     this.input = new HorrorInput(root, { touch, k: this.k });
+    this.hud = new HorrorHud(root);
     if (this.showFps) {
       this.fpsLabel = document.createElement('div');
       this.fpsLabel.style.cssText = 'position:absolute;left:8px;top:8px;color:#8f8;font:14px monospace;z-index:4';
@@ -78,10 +85,13 @@ export class HorrorGame {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener('resize', this.onResize);
+    this.onVisibility = () => this.audio?.setActive(!document.hidden);
+    document.addEventListener('visibilitychange', this.onVisibility);
     window.__horror = this;
   }
 
   start() {
+    this.hud.showIntro(this.touch, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
       const real = (now - this.last) / 1000;
@@ -91,6 +101,15 @@ export class HorrorGame {
       this.renderer.render(this.scene, this.camera);
       this.trackFps(real);
     });
+  }
+
+  // 시작 버튼을 누른 순간에 부른다. 소리와 마우스 잠금은 이때만 허락된다.
+  beginPlay() {
+    this.hud.closeLayer();
+    this.state = 'play';
+    this.audio = new HorrorAudio({ muted: this.muted });
+    this.input.relock();
+    this.hud.say(startHint(this.touch), 6);
   }
 
   // 봇은 이 함수를 바꿔 끼워서 진짜 입력처럼 조작한다
@@ -104,12 +123,15 @@ export class HorrorGame {
       this.exit();
       return;
     }
-    if (inp.light) this.lightOn = !this.lightOn;
-    this.flash.visible = this.lightOn;
-    this.yaw -= inp.lookX;
-    this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - inp.lookY));
-    const speed = inp.move.run ? this.k.runSpeed : this.k.walkSpeed;
-    this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
+    if (this.state === 'play') {
+      if (inp.light) this.lightOn = !this.lightOn;
+      this.flash.visible = this.lightOn;
+      this.yaw -= inp.lookX;
+      this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - inp.lookY));
+      const speed = inp.move.run ? this.k.runSpeed : this.k.walkSpeed;
+      this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
+      this.audio.update(dt);
+    }
     this.placeCamera();
     this.world.update(this.p, this.k.viewCells);
   }
@@ -139,7 +161,10 @@ export class HorrorGame {
     this.dead = true;
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
+    document.removeEventListener('visibilitychange', this.onVisibility);
     this.input.destroy();
+    this.hud.destroy();
+    this.audio?.destroy();
     this.scene.traverse((o) => {
       o.geometry?.dispose();
       if (o.material) [o.material].flat().forEach((m) => m.dispose());

@@ -1640,6 +1640,8 @@ git commit -m "Horror mode: 3D Shredder walks the factory"
 
 ### Task 6: 공포 소리
 
+> **먼저 읽기:** 시험 플레이 요청으로 `src/horror/audio.js` 가 이미 들어갔다 (배경 음악, `HorrorAudio({ muted })`, `update(dt, rand)`, `setActive(on)`, `destroy()`). 아래 코드로 파일을 덮어쓰지 말고 톱날, 발소리, 심장 소리, `play(name)` 를 이 클래스에 더한다. 소리 객체는 생성자가 아니라 `beginPlay()` 에서 만들어지므로 `this.audio` 는 안내 화면 동안 `null` 이다. 위치를 받는 갱신은 `updateStalker(camera, stalkerPos, mode, dist, dt)` 로 따로 두고 `state === 'play'` 일 때만 부른다.
+
 **Files:**
 - Create: `src/horror/audio.js`
 - Modify: `src/horror/HorrorGame.js`
@@ -2071,6 +2073,8 @@ git commit -m "Horror mode run rules, rewards and save record"
 ---
 
 ### Task 8: 줍기, 숨기, 펀치, 잡힘, 탈출, 일시정지
+
+> **먼저 읽기:** 시험 플레이 요청으로 이미 들어간 것: `src/horror/hud.js` (`controlLines(touch)`, `startHint(touch)`, `say`, `openLayer`, `closeLayer`, `showIntro(touch, onStart, onQuit)`), `HorrorGame` 의 `state`, `beginPlay()`, 소리용 `onVisibility`, `input.relock()`. 아래 코드로 덮어쓰지 말고 없는 부분(`setStatus`, `setPrompt`, `showSlit`, `fade`, `showPause`, `showEnd`, 상태 글자)만 더한다. 버튼은 `click` 을 쓴다 (`pointerdown` 은 iPad 에서 소리를 켜지 못한다). `INTRO` 의 시험판 문구는 아래 이야기 문구로 바꾸고, `controlLines` 에 줍기와 숨기(E, 사용 버튼), 쇼크 펀치(왼쪽 클릭, 펀치 버튼)를 더한다. `onVisibility` 는 소리를 끄는 일과 `pause()` 를 함께 한다. 봇은 `pg.click` 으로 시작 버튼을 진짜로 누른다.
 
 **Files:**
 - Create: `src/horror/hud.js`

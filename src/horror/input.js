@@ -114,6 +114,11 @@ export class HorrorInput {
     return out;
   }
 
+  // 마우스를 화면에 잠근다. 막히면 화면을 한 번 누르면 다시 잠긴다.
+  relock() {
+    if (!this.touch) this.el.requestPointerLock?.()?.catch?.(() => {});
+  }
+
   destroy() {
     this.off.forEach((f) => f());
     this.buttons.forEach((b) => b.remove());
