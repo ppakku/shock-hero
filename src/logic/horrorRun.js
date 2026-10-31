@@ -4,6 +4,9 @@ import { reachable } from './horrorGrid.js';
 export function createRun(map, k, rand = Math.random) {
   const open = reachable(map, map.start);
   const spots = map.fuses.filter((c) => open.has(`${c.cx},${c.cy}`));
+  if (spots.length < k.fuseCount) {
+    throw new Error(`퓨즈 자리가 모자랍니다: ${spots.length} / ${k.fuseCount}`);
+  }
   for (let i = spots.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [spots[i], spots[j]] = [spots[j], spots[i]];
@@ -11,7 +14,6 @@ export function createRun(map, k, rand = Math.random) {
   return {
     fuses: spots.slice(0, k.fuseCount).map((c) => ({ ...c, taken: false })),
     have: 0,
-    inserted: false,
     shock: false,
     usedBoxes: [],
     caughtCount: 0,
@@ -43,7 +45,6 @@ export function useShock(run) {
 
 export function insertFuses(run, k) {
   if (run.have < k.fuseCount) return false;
-  run.inserted = true;
   run.powered = true;
   return true;
 }
@@ -52,7 +53,9 @@ export function caught(run) {
   run.caughtCount += 1;
 }
 
+// 전원이 들어와 있고 아직 탈출 전일 때만 보상을 준다. 아니면 null (HorrorGame 은 null 이면 보상을 주지 않는다).
 export function escape(run, k) {
+  if (!run.powered || run.escaped) return null;
   run.escaped = true;
   const clean = run.caughtCount === 0;
   return { gems: k.gemsEscape + (clean ? k.gemsClean : 0), clean };
@@ -65,7 +68,7 @@ export function emptyHorror() {
 export function normalizeHorror(data) {
   const d = emptyHorror();
   if (Number.isInteger(data?.escapes) && data.escapes > 0) d.escapes = data.escapes;
-  if (Number.isInteger(data?.cleanEscapes) && data.cleanEscapes > 0) d.cleanEscapes = data.cleanEscapes;
+  if (Number.isInteger(data?.cleanEscapes) && data.cleanEscapes > 0) d.cleanEscapes = Math.min(data.cleanEscapes, d.escapes);
   return d;
 }
 

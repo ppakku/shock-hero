@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, normalizeHorror, recordEscape, emptyHorror } from '../src/logic/horrorRun.js';
-import { reachable } from '../src/logic/horrorGrid.js';
+import { reachable, parseMap } from '../src/logic/horrorGrid.js';
 import { createSaveStore } from '../src/logic/save.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { balance } from '../src/config/balance.js';
@@ -26,6 +26,18 @@ describe('퓨즈', () => {
     for (let i = 0; i < 50; i++) {
       for (const f of createRun(factoryMap, k).fuses) expect(open.has(`${f.cx},${f.cy}`)).toBe(true);
     }
+  });
+
+  it('실제 공장 맵에는 퓨즈 자리 후보가 정해진 수 이상 걸어갈 수 있는 곳에 있다', () => {
+    const open = reachable(factoryMap, factoryMap.start);
+    const usable = factoryMap.fuses.filter((c) => open.has(`${c.cx},${c.cy}`));
+    expect(usable.length).toBeGreaterThanOrEqual(k.fuseCount);
+  });
+
+  it('자리 후보가 모자라면 판을 만들지 않고 오류를 낸다', () => {
+    // S 와 F 사이가 벽으로 막혀 있어 F 에 갈 수 없다
+    const broken = parseMap(['#####', '#S#F#', '#####']);
+    expect(() => createRun(broken, k, () => 0.3)).toThrow();
   });
 
   it('한 번만 주울 수 있다', () => {
@@ -60,6 +72,12 @@ describe('전원과 탈출', () => {
     return run;
   };
 
+  const poweredRun = () => {
+    const run = allFuses();
+    insertFuses(run, k);
+    return run;
+  };
+
   it('퓨즈가 다 있어야 전원이 들어온다', () => {
     const run = fresh();
     takeFuse(run, 0);
@@ -67,6 +85,14 @@ describe('전원과 탈출', () => {
     const full = allFuses();
     expect(insertFuses(full, k)).toBe(true);
     expect(full.powered).toBe(true);
+  });
+
+  it('전원을 여러 번 넣어도 그대로 켜져 있다', () => {
+    const run = allFuses();
+    expect(insertFuses(run, k)).toBe(true);
+    expect(insertFuses(run, k)).toBe(true);
+    expect(run.powered).toBe(true);
+    expect(run.have).toBe(k.fuseCount);
   });
 
   it('잡혀도 찾은 퓨즈는 남는다', () => {
@@ -78,13 +104,26 @@ describe('전원과 탈출', () => {
   });
 
   it('안 잡히고 탈출하면 추가 보석', () => {
-    expect(escape(allFuses(), k)).toEqual({ gems: k.gemsEscape + k.gemsClean, clean: true });
+    expect(escape(poweredRun(), k)).toEqual({ gems: k.gemsEscape + k.gemsClean, clean: true });
   });
 
   it('잡힌 적이 있으면 기본 보석만', () => {
-    const run = allFuses();
+    const run = poweredRun();
     caught(run);
     expect(escape(run, k)).toEqual({ gems: k.gemsEscape, clean: false });
+  });
+
+  it('전원이 없으면 탈출 보상이 없고 탈출 표시도 되지 않는다', () => {
+    const run = allFuses();
+    expect(escape(run, k)).toBeNull();
+    expect(run.escaped).toBe(false);
+  });
+
+  it('탈출 보상은 한 번만 준다', () => {
+    const run = poweredRun();
+    expect(escape(run, k)).toEqual({ gems: k.gemsEscape + k.gemsClean, clean: true });
+    expect(escape(run, k)).toBeNull();
+    expect(run.escaped).toBe(true);
   });
 });
 
@@ -97,6 +136,11 @@ describe('저장', () => {
   it('이상한 값은 0 으로 읽는다', () => {
     expect(normalizeHorror(null)).toEqual(emptyHorror());
     expect(normalizeHorror({ escapes: -1, cleanEscapes: 'a' })).toEqual(emptyHorror());
+  });
+
+  it('깨끗한 탈출 수는 전체 탈출 수를 넘지 않는다', () => {
+    expect(normalizeHorror({ escapes: 1, cleanEscapes: 5 })).toEqual({ escapes: 1, cleanEscapes: 1 });
+    expect(normalizeHorror({ escapes: 0, cleanEscapes: 2 })).toEqual(emptyHorror());
   });
 
   it('예전 저장을 읽고, 새 기록을 저장한다', () => {
