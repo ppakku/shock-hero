@@ -53,7 +53,7 @@ const OWN_ART = {
   astra_blizzard: sheet('astra_blizzard.png', 8),
   astra_obsidian: sheet('astra_obsidian.png', 8),
   boss_body_ghost: sheet('king_ghost_seated.png', 6),
-  boss_king_stand_ghost: sheet('king_ghost_stand.png', 8),
+  boss_king_stand_ghost: { file: 'king_ghost_stand.png', cols: 4, rows: 2, frameRate: 8 },
   boss_throne_ghost: 'king_ghost_throne.png',
   boss_arm_ghost: { file: 'boss_ghost_arm.png', armCut: 170 },
   boss_fist_ghost: 'boss_ghost_fist.png',
