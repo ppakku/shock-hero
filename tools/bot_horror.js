@@ -5,13 +5,13 @@
 //   없음                      세이노를 무시하고 목표로 달린다
 (() => {
   const g = window.__horror;
-  const { findPath, cellOf, frontOf, center, lineOfSight } = window.__horrorLogic;
+  const { findPath, cellOf, frontOf, center, lineOfSight, reachable } = window.__horrorLogic;
   const B = { path: [], goal: null, pressed: false, stuckT: 0, last: null };
   const same = (a, b) => a && b && a.cx === b.cx && a.cy === b.cy;
   const opts = () => window.__horrorBot || {};
   const blank = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false });
   const stalkerDist = () => Math.hypot(g.stalker.x - g.p.x, g.stalker.y - g.p.y);
-  const chased = () => g.stalker.mode === 'chase' && stalkerDist() < 7;
+  const chased = () => g.stalker.mode === 'chase' && stalkerDist() < 10;
 
   const press = (inp) => {
     B.pressed = true;
@@ -19,9 +19,28 @@
     return inp;
   };
 
+  // 갈 수 있는 곳은 문이 열릴 때만 달라진다
+  const canWalk = (c) => {
+    const opened = g.run.doors.filter((d) => d.open).length;
+    if (B.opened !== opened) {
+      B.opened = opened;
+      B.area = reachable(g.map, g.map.start);
+    }
+    return B.area.has(`${c.cx},${c.cy}`);
+  };
+
+  // 잠긴 문 앞의 이쪽 칸
+  const doorSide = (d) => [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([x, y]) => ({ cx: d.cx + x, cy: d.cy + y })).find(canWalk);
+
+  // 지금 걸어갈 수 있는 퓨즈, 쓸 수 있는 문, 열쇠 순서. 다 끝나면 전원, 정문
   const goalNow = () => {
-    const fuse = g.run.fuses.find((f) => !f.taken);
+    const fuse = g.run.fuses.find((f) => !f.taken && canWalk(f));
     if (fuse) return { cx: fuse.cx, cy: fuse.cy };
+    const door = g.run.doors.find((d, i) => !d.open && g.run.keys[i].taken);
+    const side = door && doorSide(door);
+    if (side) return side;
+    const key = g.run.keys.find((c) => !c.taken && canWalk(c));
+    if (key) return { cx: key.cx, cy: key.cy };
     return frontOf(g.map, g.run.powered ? g.map.gate : g.map.panel);
   };
 
@@ -29,9 +48,10 @@
   const hideGoal = () => {
     let best = null;
     for (const c of g.map.lockers) {
+      if (Math.hypot(c.cx + 0.5 - g.p.x, c.cy + 0.5 - g.p.y) > 9) continue;
       const f = frontOf(g.map, c);
       const path = findPath(g.map, cellOf(g.p), f);
-      if (!path || path.length > 6) continue;
+      if (!path || path.length > 9) continue;
       const toStalker = Math.hypot(f.cx + 0.5 - g.stalker.x, f.cy + 0.5 - g.stalker.y);
       if (toStalker > path.length && (!best || path.length < best.n)) best = { n: path.length, f };
     }
@@ -90,10 +110,9 @@
       const hide = hideGoal();
       if (hide) return walkTo(inp, hide, true);
     }
-    const wanted = ['fuse', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
+    const wanted = ['fuse', 'key', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
-    const near = careful && g.stalker.mode !== 'stunned' && stalkerDist() < g.k.runNoise + 1;
-    return walkTo(inp, goalNow(), !near || chased());
+    return walkTo(inp, goalNow(), !careful || chased());
   };
 
   g.readInput = brain;

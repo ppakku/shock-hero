@@ -23,8 +23,8 @@ describe('공장 꾸밀 자리', () => {
     }
   });
 
-  it('사물함, 전기 상자, 전원, 정문, 문 둘레는 비운다', () => {
-    const kept = new Set(['L', 'E', 'P', 'G', 'D']);
+  it('사물함, 전기 상자, 전원, 정문, 문, 열쇠, 쪽지 둘레는 비운다', () => {
+    const kept = new Set(['L', 'E', 'P', 'G', 'D', 'A', 'B', 'K', 'N']);
     for (const f of [...spots.machines, ...spots.lights]) {
       for (let y = f.cy - 1; y <= f.cy + 1; y++) {
         for (let x = f.cx - 1; x <= f.cx + 1; x++) expect(kept.has(map.rows[y][x]), `${x},${y}`).toBe(false);

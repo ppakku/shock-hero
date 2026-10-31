@@ -1,10 +1,10 @@
 // 공포 모드 3D 화면 전체 흐름
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
-import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody } from '../logic/horrorGrid.js';
+import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
-import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
+import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
 import { todayKey } from '../logic/daily.js';
 import { saveStore } from '../save.js';
 import { sfx } from '../audio/sfx.js';
@@ -46,7 +46,8 @@ export class HorrorGame {
     this.muted = muted;
     this.onExit = onExit;
     this.k = cfg.horror;
-    this.map = factoryMap;
+    this.run = createRun(factoryMap, this.k);
+    this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
@@ -105,9 +106,9 @@ export class HorrorGame {
     this.model = new CreatureModel(this.scene);
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
-    this.run = createRun(this.map, this.k);
     this.stamina = createStamina();
     this.fuseMeshes = this.world.addFuses(this.run.fuses);
+    this.keyMeshes = this.world.addKeys(this.run.keys);
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root);
     this.hud.setStatus(this.statusNow());
@@ -141,7 +142,7 @@ export class HorrorGame {
     this.canvas.addEventListener('webglcontextlost', this.onContextLost);
     this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     window.__horror = this;
-    window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight }; // 봇이 쓴다
+    window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight, reachable }; // 봇이 쓴다
   }
 
   unbindContext() {
@@ -266,16 +267,21 @@ export class HorrorGame {
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
-    this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player }, this.k, dt));
+    this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
     this.cullCreature();
     this.checkScare();
     this.tickBlink(dt);
     const target = this.nearestUse();
-    this.hud.setPrompt(target ? `${this.touch ? '사용' : 'E'}: ${target.label}` : '');
+    this.hud.setPrompt(this.promptFor(target));
     if (inp.use) this.doUse(target);
     if (inp.punch) this.doPunch();
+  }
+
+  promptFor(target) {
+    if (!target) return '';
+    return target.kind === 'locked' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
   }
 
   // 벽에 가린 세이노는 그리지 않는다. 몸이 무거워서 태블릿에서 크게 차이 난다.
@@ -322,7 +328,7 @@ export class HorrorGame {
   }
 
   statusNow() {
-    return { have: this.run.have, need: this.k.fuseCount, shock: this.run.shock, powered: this.run.powered };
+    return { have: this.run.have, need: this.k.fuseCount, shock: this.run.shock, powered: this.run.powered, keys: keysHeld(this.run) };
   }
 
   onStalkerEvents(events) {
@@ -341,6 +347,16 @@ export class HorrorGame {
       this.fuseMeshes[t.index].visible = false;
       this.audio?.play('fuse');
       if (this.run.have >= this.k.fuseCount) this.hud.say('퓨즈를 다 찾았다! 전원을 찾아 꽂자', 4);
+    }
+    if (t.kind === 'key' && takeKey(this.run, t.index)) {
+      this.keyMeshes[t.index].visible = false;
+      this.audio?.play('fuse');
+      this.hud.say(`${KEY_NAMES[t.index]} 열쇠를 찾았다! ${KEY_NAMES[t.index]} 문을 찾자`, 4);
+    }
+    if (t.kind === 'lock' && openDoor(this.run, t.index)) {
+      this.world.openDoor(t.index);
+      this.audio?.play('door');
+      this.hud.say('문이 열렸다. 세이노도 이제 들어올 수 있어!', 4);
     }
     if (t.kind === 'box' && chargeShock(this.run, t.index)) this.audio?.play('fuse');
     if (t.kind === 'panel' && insertFuses(this.run, this.k)) {
@@ -438,7 +454,7 @@ export class HorrorGame {
   }
 
   respawn() {
-    this.p = center(this.map.start);
+    this.p = center(respawnSpot(this.map, this.p));
     this.yaw = 0;
     this.pitch = 0;
     this.stamina = createStamina();
@@ -451,7 +467,7 @@ export class HorrorGame {
     this.audio?.resume();
     this.hud.fade(false);
     this.hud.setStatus(this.statusNow());
-    this.hud.say('다시 시작 지점이다. 찾은 퓨즈는 그대로야.', 4);
+    this.hud.say('안전한 곳으로 돌아왔다. 찾은 것은 그대로야.', 4);
     this.state = 'play';
     // 잡히는 동안 Esc 로 마우스가 풀렸거나 화면이 꺼졌으면 쫓기기 전에 멈춘다
     if (this.contextLost || (!this.touch && !this.input.locked())) this.pause();

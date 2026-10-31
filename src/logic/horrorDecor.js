@@ -2,7 +2,7 @@
 import { blocked } from './horrorGrid.js';
 
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const KEEP_CLEAR = new Set(['L', 'E', 'P', 'G', 'D']); // 이것들의 둘레는 비워 둔다
+const KEEP_CLEAR = new Set(['L', 'E', 'P', 'G', 'D', 'A', 'B', 'K', 'N']); // 이것들의 둘레는 비워 둔다
 const MACHINE_AT = [[0.2, 0.7], [0.35]]; // 방의 벽면 목록에서 고르는 위치 (방마다 번갈아)
 const LIGHT_AT = [0.45, 0.9];
 const PIPE_AT = 0.55;

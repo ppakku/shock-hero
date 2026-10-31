@@ -1,6 +1,6 @@
 // 공장 건물 3D. 7칸 묶음(구역)으로 나눠서 먼 구역은 통째로 그리지 않는다.
 import * as THREE from 'three';
-import { CELL } from '../logic/horrorGrid.js';
+import { CELL, chunksInSight } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
 
 const CHUNK = 7; // 구역 한 변의 칸 수
@@ -9,6 +9,8 @@ const LOCKER = { w: 1.3, h: 2.2, d: 1.1 };
 const LIGHT = { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }; // 비상등 크기와 높이 (미터)
 const LIGHT_COLOR = new THREE.Color(0xff3a14);
 const MACHINE_TINT = new THREE.Color(0xb4bcc4); // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
+const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
+const DOOR_COLORS = [0xc03020, 0x2060d0]; // 열쇠와 같은 색. map.locks 순서
 const PIPE = { r: 0.07, off: 0.12, ys: [2.62, 2.8] }; // 벽을 따라가는 배관 두 줄
 
 const lambert = (color) => new THREE.MeshLambertMaterial({ color });
@@ -44,6 +46,19 @@ function setOnWall(mesh, i, f, w, h, d, y) {
   place.scale.set(f.dx ? d : w, h, f.dx ? w : d);
   place.updateMatrix();
   mesh.setMatrixAt(i, place.matrix);
+}
+
+// 잠긴 문은 공장 셔터다. 양옆이 벽인 쪽으로 세운다
+function addShutter(group, c, map, color) {
+  const mat = lambert(color);
+  mat.emissive.setHex(color);
+  mat.emissiveIntensity = 0.35;
+  const across = map.rows[c.cy][c.cx - 1] === '#'; // 왼쪽이 벽이면 x 를 따라 놓는다
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(across ? CELL : DOOR.d, WALL_H, across ? DOOR.d : CELL), mat);
+  mesh.position.set((c.cx + 0.5) * CELL, WALL_H / 2, (c.cy + 0.5) * CELL);
+  mesh.castShadow = true;
+  group.add(mesh);
+  return { mesh, t: 0 };
 }
 
 // 비상등, 기계, 배관. 전부 벽에 붙어 있고 종류마다 한 번에 그린다
@@ -94,6 +109,7 @@ export function buildWorld(scene, map, k, mats = {}) {
     if (!chunks.has(key)) {
       const group = new THREE.Group();
       group.userData.center = { x: Math.floor(cx / CHUNK) * CHUNK + CHUNK / 2, y: Math.floor(cy / CHUNK) * CHUNK + CHUNK / 2 };
+      group.userData.index = Math.floor(cy / CHUNK) * Math.ceil(map.w / CHUNK) + Math.floor(cx / CHUNK);
       group.userData.walls = [];
       scene.add(group);
       chunks.set(key, group);
@@ -152,20 +168,43 @@ export function buildWorld(scene, map, k, mats = {}) {
 
   const { lightMat, counts } = addDecor(scene, map, k, wallMat);
   let lightLevel = -1;
+  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i]));
+  const rising = [];
+  let lastT = 0;
 
-  // 퓨즈: 어둠 속에서 찾을 수 있게 스스로 살짝 빛난다
-  const addFuses = (fuses) =>
-    fuses.map((c) => {
-      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), new THREE.MeshBasicMaterial({ color: 0xffc040 }));
-      mesh.position.set((c.cx + 0.5) * CELL, 0.75, (c.cy + 0.5) * CELL);
-      mesh.rotation.z = Math.PI / 2;
-      props.add(mesh);
-      return mesh;
-    });
+  // 구역 그리기 여부는 칸마다 한 번 계산해 둔다. 문이 열리면 지운다
+  const sight = new Map();
+  let shownCell = -1;
+  const sightFrom = (index, viewCells) => {
+    if (!sight.has(index)) {
+      const seen = new Set();
+      chunksInSight(map, { cx: index % map.w, cy: Math.floor(index / map.w) }, viewCells, CHUNK, (n) => seen.add(n));
+      sight.set(index, seen);
+    }
+    return sight.get(index);
+  };
+
+  // 퓨즈와 열쇠: 어둠 속에서 찾을 수 있게 스스로 살짝 빛난다
+  const pickup = (c, geometry, color) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
+    mesh.position.set((c.cx + 0.5) * CELL, 0.75, (c.cy + 0.5) * CELL);
+    mesh.rotation.z = Math.PI / 2;
+    props.add(mesh);
+    return mesh;
+  };
+  const addFuses = (fuses) => fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040));
+  const addKeys = (keys) => keys.map((c) => pickup(c, new THREE.BoxGeometry(0.1, 0.34, 0.04), DOOR_COLORS[c.lock]));
 
   return {
     addFuses,
+    addKeys,
     counts,
+    // 문을 열면 눈길이 달라지니 계산해 둔 구역도 버린다
+    openDoor(i) {
+      rising.push(doors[i]);
+      sight.clear();
+      shownCell = -1;
+    },
     lightMat,
     // 전원이 켜지면 전원은 초록으로, 정문은 밝게 바뀐다
     setPowered() {
@@ -174,9 +213,22 @@ export function buildWorld(scene, map, k, mats = {}) {
     },
     // t: 놀이 시간 (초). 일시정지 때는 비상등도 멈춘다
     update(p, viewCells, t, lowFx) {
-      for (const group of chunks.values()) {
-        const c = group.userData.center;
-        group.visible = Math.hypot(c.x - p.x, c.y - p.y) < viewCells + CHUNK;
+      const index = Math.floor(p.y) * map.w + Math.floor(p.x);
+      if (index !== shownCell) {
+        shownCell = index;
+        const seen = sightFrom(index, viewCells);
+        for (const group of chunks.values()) group.visible = seen.has(group.userData.index);
+      }
+      const dt = t - lastT;
+      lastT = t;
+      for (let i = rising.length - 1; i >= 0; i--) {
+        const d = rising[i];
+        d.t += dt;
+        d.mesh.position.y = WALL_H / 2 + WALL_H * Math.min(1, d.t / DOOR.sec);
+        if (d.t >= DOOR.sec) {
+          d.mesh.visible = false;
+          rising.splice(i, 1);
+        }
       }
       const level = emergencyGlow(t, lowFx, k);
       if (level !== lightLevel) {

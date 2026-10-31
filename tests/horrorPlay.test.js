@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked } from '../src/logic/horrorGrid.js';
+import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
-import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, nearestUse } from '../src/logic/horrorRun.js';
-import { factoryMap as map } from '../src/horror/maps/factory.js';
+import { createRun, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
+import { factoryMap } from '../src/horror/maps/factory.js';
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
@@ -23,7 +23,8 @@ function seeded(seed) {
 // HorrorGame.playFrame 과 같은 순서로 그림 없이 한 판을 돌린다. 봇은 진짜 bot_horror.js 다.
 function playGame(seed, options, maxSeconds = 900) {
   const rand = seeded(seed);
-  const run = createRun(map, k, rand);
+  const run = createRun(factoryMap, k, rand);
+  const map = run.level;
   const g = {
     map, run, k,
     p: center(map.start),
@@ -32,7 +33,7 @@ function playGame(seed, options, maxSeconds = 900) {
     stalker: createStalker(map),
     nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
   };
-  const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight } };
+  const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
   new Function('window', BOT)(window);
   const catches = [];
   let stamina = createStamina();
@@ -47,19 +48,21 @@ function playGame(seed, options, maxSeconds = 900) {
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
     const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
-    const events = tickStalker(g.stalker, { map, player }, k, DT, rand);
+    const events = tickStalker(g.stalker, { map, player, pressure: run.have / k.fuseCount }, k, DT, rand);
     if (events.includes('caught') || events.includes('found')) {
       caught(run);
       catches.push(t);
       g.hidden = null;
       stamina = createStamina();
-      g.p = center(map.start);
+      g.p = center(respawnSpot(map, g.p));
       sendAway(g.stalker, map, g.p, rand);
       continue;
     }
     const target = g.nearestUse();
     if (inp.use && target) {
       if (target.kind === 'fuse') takeFuse(run, target.index);
+      if (target.kind === 'key') takeKey(run, target.index);
+      if (target.kind === 'lock') openDoor(run, target.index);
       if (target.kind === 'box') chargeShock(run, target.index);
       if (target.kind === 'panel') insertFuses(run, k);
       if (target.kind === 'gate') escape(run);
@@ -76,7 +79,7 @@ function playGame(seed, options, maxSeconds = 900) {
     }
     if (inp.punch && useShock(run) && Math.hypot(g.stalker.x - g.p.x, g.stalker.y - g.p.y) <= k.shockRange) stunStalker(g.stalker, k);
   }
-  return { won: run.escaped, seconds: t, catches, powered: run.powered };
+  return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length };
 }
 
 const summary = (games) => ({
@@ -89,6 +92,7 @@ const summary = (games) => ({
 });
 
 describe('공장 맵을 끝까지 할 수 있다', () => {
+  const map = withOpen(factoryMap, factoryMap.locks.map((_, i) => i)); // 문을 다 연 뒤의 공장
   const open = reachable(map, map.start);
   const standable = (cell) => {
     // 그 칸 둘레의 걸을 수 있는 자리 중 손이 닿는 곳이 있는가
@@ -111,7 +115,7 @@ describe('공장 맵을 끝까지 할 수 있다', () => {
   it('벽 너머의 것은 집을 수 없다', () => {
     const run = createRun(map, k, () => 0.3);
     // 시작 방 오른쪽 벽 앞에서 벽 건너 칸의 물건은 닿지 않는다
-    expect(nearestUse({ ...run, fuses: [{ cx: 8, cy: 16, taken: false }] }, map, { x: 6.8, y: 16.5 }, null, k)).toBe(null);
+    expect(nearestUse({ ...run, fuses: [{ cx: 8, cy: 22, taken: false }] }, map, { x: 6.8, y: 22.5 }, null, k)).toBe(null);
   });
 });
 
@@ -122,7 +126,8 @@ describe('봇이 끝까지 한 판을 한다', () => {
     const s = summary(seeds.map((seed) => playGame(seed, { careful: true })));
     console.log('조심하는 봇', s);
     expect(s.won).toBe(seeds.length);
-    expect(s.meanCatches).toBeLessThan(3);
+    expect(s.meanCatches).toBeLessThan(4);
+    expect(s.meanSeconds).toBeGreaterThanOrEqual(150); // 찾아다녀야 하는 사람은 몇 배 더 걸린다
   });
 
   it('세이노를 무시하고 달리기만 해도 탈출할 수 있다 (잡혀도 퓨즈가 남는다)', () => {
@@ -134,6 +139,7 @@ describe('봇이 끝까지 한 판을 한다', () => {
   it('다시 시작하자마자 또 잡히지 않는다', () => {
     // 세이노 쪽으로 곧장 달려도 8초는 걸린다. 가만히 있으면 순찰 속도로 15칸을 와야 한다
     expect(summary(seeds.map((seed) => playGame(seed, null))).minGap).toBeGreaterThanOrEqual(8);
+    const map = factoryMap;
     const s = createStalker(map);
     const p = center(map.start);
     Object.assign(s, { x: p.x + 0.3, y: p.y, mode: 'chase', stunT: 0 });
