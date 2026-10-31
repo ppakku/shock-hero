@@ -92,7 +92,7 @@ PLACE_CREATURE = """({ at, heading, player, yaw, pitch, light, pose, speed, fov 
   const shown = { x: at.x, y: at.y, heading, mode: pose };
   const real = g.model.constructor.prototype.update.bind(g.model);
   g.model.update = (s, dt, p) => {
-    g.model.last = { x: at.x - speed * dt, y: at.y }; // 그만큼 걸었다고 알린다
+    g.model.hasLast = true; g.model.lastX = at.x - speed * dt; g.model.lastY = at.y; // 그만큼 걸었다고 알린다
     real(shown, dt, p);
   };
 }"""
