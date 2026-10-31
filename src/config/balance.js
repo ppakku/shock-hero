@@ -420,6 +420,11 @@ export const balance = {
     signatureDamage: 12, // 변종 전용 공격 피해
     sporeSpeed: 70, // 포자 구름이 따라오는 빠르기
     mudWaveSpeed: 340, // 진흙 파도 빠르기
+    cloneCount: 3, // 그림자 분신 수 (화나면 1개 더, 진짜는 따로)
+    cloneTime: 4.5, // 진짜를 찾을 수 있는 시간
+    cloneWarningTime: 1.0, // 분신이 달려들기 전 빨간 경고 시간
+    cloneRushSpeed: 760, // 분신이 달려드는 빠르기
+    cloneRushReach: 560, // 분신이 달려드는 거리
     armHealth: 180, // 긴 팔 체력
     backHealth: 200, // 등 독혹 체력
     headHealth: 240, // 머리(약점) 체력
