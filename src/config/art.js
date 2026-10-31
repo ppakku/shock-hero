@@ -63,7 +63,10 @@ export const customArt = {
   boss_arm_1: { file: 'shredder_arm.png', armCut: 130 }, // 파쇄자 쇠팔 (아들 그림, 주먹이 아래로). armCut: 210 높이 중 이 아래가 주먹이라 로켓 펀치 때 잘라 냄
   boss_fist_1: 'shredder_fist.png', // 파쇄자가 날리는 주먹 (아들 그림, 왼쪽을 봄)
   boss_link_1: 'boss_link_pipe.png', // 파쇄자 몸통과 팔을 잇는 녹슨 쇠 파이프 (Gemini 그림, 가로로 이어 붙는 띠)
-  boss_body_1: { file: 'shredder.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 스테이지 1 보스 파쇄자 (아들 그림, 8장, 오른쪽을 봄)
+  boss_body_1: { file: 'shredder.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 파쇄자 MK2 들이 쓰는 몸통 (아들 그림, 8장, 오른쪽을 봄)
+  shredder_body: { file: 'shredder_body.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 스테이지 1 파쇄자 몸통 (아들 그림을 Gemini 로 고침, 배에 둥근 톱날 구멍)
+  shredder_saw: 'shredder_saw.png', // 스테이지 1 파쇄자 배 톱날, 던지는 톱날 (Gemini 그림, 돌려서 씀)
+  shredder_guard: 'shredder_guard.png', // 스테이지 1 파쇄자 톱날 쇠창살 (Gemini 그림, 부서지는 덮개)
   boss_body_5: { file: 'king_seated.png', cols: 4, rows: 2, frameRate: 6, faces: 'right' }, // 킹 돌연변이 앉은 모습 (Gemini 그림, 8장 숨쉬기, 오른쪽을 봄)
   boss_king_stand_5: { file: 'king_stand.png', cols: 4, rows: 2, frameRate: 8, faces: 'right' }, // 킹 돌연변이 일어선 모습 (Gemini 그림, 8장 쿵쿵 걷기, 오른쪽을 봄)
   boss_throne_5: 'king_throne.png', // 킹 돌연변이 왕좌 (Gemini 그림)

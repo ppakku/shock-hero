@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  shredderPhaseIndex, chooseShredderAttack, SAW_PATTERNS, SHREDDER_PATTERNS, walkStep, dashEndX, finStep, rollBlade, bladeDone, sawSpin,
+  shredderPhaseIndex, chooseShredderAttack, SAW_PATTERNS, SHREDDER_PATTERNS, walkStep, dashEndX, finStep, rollBlade, bladeDone, sawSpin, holeSpot,
 } from '../src/logic/shredder.js';
 import { stage1 } from '../src/stage/stage1.js';
 import { balance } from '../src/config/balance.js';
@@ -93,7 +93,17 @@ describe('스테이지 1 보스', () => {
   });
 
   it('도감에 그림이 나온다', () => {
-    expect(bossDex([stage1])[0].portrait).toBe('boss_body_1');
+    expect(bossDex([stage1])[0].portrait).toBe('shredder_body');
+  });
+
+  it('배 구멍 자리는 시트 8칸 모두 몸통 앞쪽에 있다', () => {
+    for (let f = 0; f < 8; f++) {
+      const h = holeSpot(f);
+      expect(h.x).toBeGreaterThan(0.5);
+      expect(h.y).toBeGreaterThan(0.3);
+      expect(h.y).toBeLessThan(0.5);
+    }
+    expect(holeSpot('3')).toEqual(holeSpot(3)); // 시트 칸 이름은 글자로 올 수 있다
   });
 
   it('난이도가 피해량을 바꾼다', () => {
