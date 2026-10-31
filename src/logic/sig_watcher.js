@@ -23,6 +23,12 @@ export function rushDone(x, path) {
   return (x - path.to) * path.dir >= 0;
 }
 
+// 분신 찾기가 어떻게 되는지: 'found' 진짜를 찾아 바로 끝, 'rush' 시간이 다 돼 달려듦, null 계속
+export function huntResult(found, left) {
+  if (found) return 'found';
+  return left <= 0 ? 'rush' : null;
+}
+
 // 처음 지치기 전에 전용 공격을 꼭 한 번 쓰게 한다. 이번이 지치기 전 마지막 공격이면 true.
 export function owedSignature(def, seen, combo, tiredRoll) {
   if (seen || !def.signature || !def.phases.flat().includes('signature')) return false;

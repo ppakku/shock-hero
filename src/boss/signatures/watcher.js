@@ -1,7 +1,7 @@
 import { GroundWaves, Rect, intersects } from '../bossKit.js';
 import { Signature } from './Signature.js';
 import { driftToward, fanOut } from '../../logic/signature.js';
-import { cloneSlots, pickReal, rushDone, rushPath } from '../../logic/sig_watcher.js';
+import { cloneSlots, huntResult, pickReal, rushDone, rushPath } from '../../logic/sig_watcher.js';
 import { floatText } from '../../fx/effects.js';
 
 const AIM = 0.9; // 구름이 나올 자리를 보여 주는 시간
@@ -66,9 +66,9 @@ const EYE_Y = 0.4; // 그림 위쪽에서 아래로
 const EYE_GAP = 0.03; // 두 눈 사이의 절반
 
 // 그림자 와처: 사라진 뒤 분신이 나타난다. 눈이 빛나는 것이 진짜.
-// 가짜는 때리면 사라지고, 진짜를 때리거나 시간이 다 되면 남은 가짜가 경고 뒤 달려든다.
+// 가짜는 때리면 사라진다. 진짜를 때리면 남은 가짜도 모두 사라지고, 시간이 다 되면 남은 가짜가 경고 뒤 달려든다.
 export class Clones extends Signature {
-  static tip = '눈이 빛나는 진짜를 찾아 때려! 남은 가짜는 달려드니 뛰어넘어!';
+  static tip = '눈이 빛나는 진짜를 찾아 때리면 가짜가 다 사라져! 늦으면 가짜가 달려드니 뛰어넘어!';
 
   constructor(boss) {
     super(boss);
@@ -94,7 +94,7 @@ export class Clones extends Signature {
 
   step(dt) {
     if (this.phase === 'fade') this.stepFade();
-    else if (this.phase === 'hunt') this.stepHunt();
+    else if (this.phase === 'hunt') return this.stepHunt();
     else if (this.phase === 'warn') this.stepWarn();
     else return this.stepRush(dt);
     return false;
@@ -154,7 +154,17 @@ export class Clones extends Signature {
       if (f.real) this.drawEye(f);
     }
     this.boss.label(0, `진짜를 찾아라! ${Math.max(0, left).toFixed(1)}`, this.midX, 110, 22, '#ffd23f');
-    if (this.found || left <= 0) this.startWarn();
+    const result = huntResult(this.found, left);
+    if (result === 'rush') this.startWarn();
+    if (result === 'found') this.clearFigures();
+    return result === 'found';
+  }
+
+  // 진짜를 찾으면 분신이 한꺼번에 사라지고 공격이 바로 끝난다
+  clearFigures() {
+    for (const f of this.figs) this.poof(f);
+    this.figs = [];
+    this.scene.sfxPlay('break');
   }
 
   startWarn() {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { cloneSlots, owedSignature, pickReal, rushDone, rushPath } from '../src/logic/sig_watcher.js';
+import { cloneSlots, huntResult, owedSignature, pickReal, rushDone, rushPath } from '../src/logic/sig_watcher.js';
 import { WATCHER_PATTERNS } from '../src/logic/watcher.js';
 import { SIGNATURES } from '../src/boss/signatures/index.js';
 import { stages } from '../src/stage/index.js';
@@ -31,6 +31,18 @@ describe('그림자 분신 계산', () => {
     const path = rushPath(500, 300, 100, 0, 900);
     expect(rushDone(450, path)).toBe(false);
     expect(rushDone(399, path)).toBe(true);
+  });
+});
+
+describe('분신 찾기 결과', () => {
+  it('진짜를 찾으면 시간과 상관없이 달려들지 않고 끝난다', () => {
+    expect(huntResult(true, 3)).toBe('found');
+    expect(huntResult(true, -1)).toBe('found');
+  });
+
+  it('시간이 다 됐을 때만 달려든다', () => {
+    expect(huntResult(false, 0)).toBe('rush');
+    expect(huntResult(false, 0.1)).toBeNull();
   });
 });
 
