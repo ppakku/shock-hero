@@ -5,6 +5,7 @@ const STICK_MAX = 70; // 조이스틱 반지름 (px)
 const RUN_AT = 0.92; // 이만큼 밀면 달린다
 const KEYS = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'turnLeft', KeyD: 'right', ArrowRight: 'turnRight', ShiftLeft: 'run', ShiftRight: 'run' };
 const PRESS = { KeyF: 'light', KeyE: 'use', KeyJ: 'punch', Escape: 'pause' };
+const SMALL_BUTTONS = 0.68;
 const BUTTONS = [
   { id: 'light', label: '손전등', right: 150, bottom: 110 },
   { id: 'use', label: '사용', right: 40, bottom: 150 },
@@ -13,9 +14,10 @@ const BUTTONS = [
 ];
 
 export class HorrorInput {
-  constructor(el, { touch, k }) {
+  constructor(el, { touch, small, k }) {
     this.el = el;
     this.touch = touch;
+    this.small = small; // 휴대폰은 화면이 작아서 버튼을 줄인다
     this.k = k;
     this.keys = {};
     this.look = { x: 0, y: 0 };
@@ -88,7 +90,8 @@ export class HorrorInput {
     for (const b of BUTTONS) {
       const btn = document.createElement('button');
       btn.textContent = b.label;
-      btn.style.cssText = `position:absolute;right:${b.right}px;bottom:${b.bottom}px;width:92px;height:92px;border-radius:50%;border:2px solid #777;background:rgba(40,40,40,.55);color:#eee;font:16px sans-serif;z-index:3;touch-action:none`;
+      const scale = this.small ? SMALL_BUTTONS : 1;
+      btn.style.cssText = `position:absolute;right:calc(${b.right * scale}px + env(safe-area-inset-right, 0px));bottom:calc(${b.bottom * scale}px + env(safe-area-inset-bottom, 0px));width:${92 * scale}px;height:${92 * scale}px;border-radius:50%;border:2px solid #777;background:rgba(40,40,40,.55);color:#eee;font:16px sans-serif;z-index:3;touch-action:none`;
       this.on(btn, 'pointerdown', (e) => {
         e.preventDefault(); // 손가락을 뗀 뒤 같은 자리로 마우스 클릭이 새어 나가 타이틀 버튼을 누르는 일을 막는다
         e.stopPropagation();
