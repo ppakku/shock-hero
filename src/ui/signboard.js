@@ -1,4 +1,5 @@
 import { FONT } from './text.js';
+import { make } from '../fx/textures.js';
 
 // 길가 안내판: 배경 그림처럼 굵은 검은 테두리와 만화식 명암으로 그린다.
 // 스테이지 바닥 그림(theme.groundImage)에 맞춰 재질이 달라진다. theme.signStyle 로 직접 고를 수도 있다.
@@ -48,7 +49,18 @@ export function drawSignboard(scene, x, groundY, text, styleName = 'wood', board
   const left = x - w / 2;
   label.setY(top + h / 2);
 
-  const g = scene.add.graphics().setDepth(0.5);
+  // 판은 그림으로 구워 둔다. Graphics 로 두면 도형을 매 프레임 다시 계산해서 느린 기기에서 렉이 걸린다
+  const M = 16; // 그림자와 테두리가 잘리지 않을 여백
+  const key = `sign_${styleName}_${w}_${h}_${boardBottom}`;
+  make(scene, key, w + M * 2, h + boardBottom + M + 6, (g) => drawBoard(g, s, M, M, w, h, boardBottom));
+  const image = scene.add.image(Math.round(left - M), top - M, key).setOrigin(0, 0).setDepth(0.5);
+  return { label, image, left, right: left + w, top, bottom };
+}
+
+function drawBoard(g, s, left, top, w, h, boardBottom) {
+  const bottom = top + h;
+  const groundY = bottom + boardBottom;
+  const x = left + w / 2;
 
   // 기둥 두 개 (판이 좁으면 하나)
   const posts = w > 150 ? [left + 22, left + w - 22] : [x];
@@ -70,7 +82,6 @@ export function drawSignboard(scene, x, groundY, text, styleName = 'wood', board
   g.fillStyle(s.light, 1).fillRoundedRect(left + 4, top + 3, w - 8, 6, 3);
 
   decorate(g, s, left, top, w, h);
-  return { label, g, left, right: left + w, top, bottom };
 }
 
 function decorate(g, s, left, top, w, h) {
