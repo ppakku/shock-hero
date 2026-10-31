@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BossBase } from './BossBase.js';
 import { BossPart, Puddles, Rect, intersects, damagePart, warnBox } from './bossKit.js';
-import { chooseWatcherAttack, popUpX, spreadTargets, crawlPlan } from '../logic/watcher.js';
+import { armBoxes, armElbow, chooseWatcherAttack, popUpX, spreadTargets, crawlPlan } from '../logic/watcher.js';
 import { owedSignature } from '../logic/sig_watcher.js';
 import { coreDamage } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
@@ -222,6 +222,12 @@ export class WatcherBoss extends BossBase {
     return new Rect(x0, a.armY - ARM_T / 2 - 4, x1 - x0, ARM_T + 8);
   }
 
+  // 땅에 박힌 팔: 땅바닥 쪽 사각형 또는 그려진 팔 어디든 닿으면 맞는다
+  armTouched(rect, a) {
+    if (intersects(rect, this.armRect(a))) return true;
+    return armBoxes(this.shoulder, a.tipX, a.armY, ARM_T + 10).some((b) => intersects(rect, new Rect(b.x, b.y, b.w, b.h)));
+  }
+
   facePlayer() {
     const p = this.target;
     if (Math.abs(p.x - this.x) > 20) this.facing = p.x < this.x ? -1 : 1;
@@ -437,11 +443,12 @@ export class WatcherBoss extends BossBase {
     const sh = this.shoulder;
     const fullTip = sh.x + dir * a.len;
     const drawArm = (y) => {
-      const elbow = { x: (sh.x + a.tipX) / 2, y: Math.min(sh.y, y) - 30 };
+      const elbow = armElbow(sh, a.tipX, y);
       const tip = { x: a.tipX, y };
-      if (stampLimb(this.scene, 'watcher_arm_2', sh, elbow, ARM_T + 10) && stampLimb(this.scene, 'watcher_arm_2', elbow, tip, ARM_T + 6, { overlap: 12 })) {
+      const armArt = `watcher_arm_${this.skinKey}`;
+      if (stampLimb(this.scene, armArt, sh, elbow, ARM_T + 10) && stampLimb(this.scene, armArt, elbow, tip, ARM_T + 6, { overlap: 12 })) {
         const turn = Math.atan2(y - elbow.y, a.tipX - elbow.x) + Math.PI;
-        stamp(this.scene, 'watcher_claw_2', a.tipX, y, 74, 54, { rotation: turn, flipY: a.tipX > elbow.x });
+        stamp(this.scene, `watcher_claw_${this.skinKey}`, a.tipX, y, 74, 54, { rotation: turn, flipY: a.tipX > elbow.x });
         return;
       }
       this.armG.lineStyle(ARM_T, 0x2b1d14, 1).lineBetween(sh.x, sh.y, elbow.x, elbow.y).lineBetween(elbow.x, elbow.y, a.tipX, y);
@@ -847,7 +854,7 @@ export class WatcherBoss extends BossBase {
     const a = this.action;
     const opts = { charged: attack.kind === 'charged' };
     if (a?.type === 'signature' && this.sig?.takeHit?.(rect)) return true; // 그림자 분신
-    if (a?.type === 'claw' && a.phase === 'stuck' && this.arm.alive && intersects(rect, this.armRect(a))) {
+    if (a?.type === 'claw' && a.phase === 'stuck' && this.arm.alive && this.armTouched(rect, a)) {
       this.hitArm(attack.damage, opts);
       return true;
     }
