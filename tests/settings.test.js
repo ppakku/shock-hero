@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { adjustMonsters, withDifficulty, normalizeDifficulty, DIFFICULTY_VALUES } from '../src/logic/difficulty.js';
+import { adjustMonsters, withDifficulty, normalizeDifficulty, DIFFICULTY_VALUES, MONSTER_DENSITY } from '../src/logic/difficulty.js';
+import { shopSpentRatio, heartDropChance } from '../src/logic/shop.js';
+import { balance } from '../src/config/balance.js';
 import { CONTROL_KEYS, normalizeControls } from '../src/logic/controls.js';
 import { createSaveStore, defaultSave, resetProgress } from '../src/logic/save.js';
 
@@ -100,5 +102,47 @@ describe('안내 글 키 이름', async () => {
     expect(keyText('{punch} 를 꾹!', 'arrows')).toBe('A 를 꾹!');
     expect(keyText('{ult} 키', 'arrows')).toBe('D 키');
     expect(keyText('{모름} 그대로', 'classic')).toBe('{모름} 그대로');
+  });
+});
+
+describe('상점과 몬스터 수', () => {
+  const crowd = Array.from({ length: 40 }, (_, i) => ({ x: 100 + i * 100, y: 480, type: 'basic' }));
+
+  it('뒤 스테이지도 몬스터가 1000 픽셀당 정해진 수를 넘지 않고 고르게 남는다', () => {
+    const list = adjustMonsters(crowd, 'normal', 4100);
+    expect(list.length).toBe(Math.round(4.1 * MONSTER_DENSITY.normal));
+    expect(list[list.length - 1].x).toBeGreaterThan(3500);
+    for (const lv of ['easy', 'hard']) expect(adjustMonsters(crowd, lv, 4100).length).toBeLessThanOrEqual(Math.round(4.1 * MONSTER_DENSITY[lv]));
+  });
+
+  it('어려움은 세 마리마다 한 마리를 더한다', () => {
+    expect(adjustMonsters(crowd.slice(0, 9), 'hard', 9000).length).toBe(12);
+  });
+
+  it('상점을 많이 살수록 일반 몬스터만 더 아프고, 쉬움일수록 덜 늘어난다', () => {
+    for (const lv of ['easy', 'normal', 'hard']) {
+      const none = withDifficulty({}, lv, 5, null, 0).difficulty;
+      const half = withDifficulty({}, lv, 5, null, 0.5).difficulty;
+      const full = withDifficulty({}, lv, 5, null, 1).difficulty;
+      expect(full.monsterDamage / none.monsterDamage).toBeCloseTo(1 + DIFFICULTY_VALUES[lv].shopCatchUp);
+      expect(half.monsterDamage).toBeGreaterThan(none.monsterDamage);
+      expect(half.monsterDamage).toBeLessThan(full.monsterDamage);
+      expect(full.monsterHealth).toBe(none.monsterHealth);
+      expect(full.bossDamage).toBe(none.bossDamage);
+    }
+    const { easy, normal, hard } = DIFFICULTY_VALUES;
+    expect(easy.shopCatchUp).toBeLessThan(normal.shopCatchUp);
+    expect(normal.shopCatchUp).toBeLessThan(hard.shopCatchUp);
+  });
+
+  it('쓴 보석 비율은 0 에서 1 사이다', () => {
+    expect(shopSpentRatio({}, balance.shop)).toBe(0);
+    expect(shopSpentRatio({ hp: 1 }, balance.shop)).toBeCloseTo(8 / 134);
+    expect(shopSpentRatio({ hp: 3, heart: 2, powerTime: 2, startShield: 1, ultStart: 1, tripleJump: 1 }, balance.shop)).toBe(1);
+  });
+
+  it('하트 행운도 난이도 배수를 받는다', () => {
+    expect(heartDropChance(0.35, 0.55, 0.2)).toBeCloseTo(0.3025);
+    expect(heartDropChance(0.35, 1, 0)).toBeCloseTo(0.35);
   });
 });

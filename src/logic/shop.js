@@ -75,6 +75,24 @@ export function shopBonuses(shop, shopCfg) {
   };
 }
 
+// 상점을 얼마나 샀는지 (0 = 하나도 안 삼, 1 = 다 삼). 쓴 보석 기준이라 비싼 강화일수록 크게 친다.
+export function shopSpentRatio(shop, shopCfg) {
+  const s = normalizeShop(shop);
+  let spent = 0;
+  let total = 0;
+  for (const id of SHOP_IDS) {
+    const list = prices(shopCfg, id);
+    total += list.reduce((a, b) => a + b, 0);
+    spent += list.slice(0, s[id]).reduce((a, b) => a + b, 0);
+  }
+  return total > 0 ? spent / total : 0;
+}
+
+// 몬스터가 하트를 떨어뜨릴 확률. 상점 하트 행운도 난이도 배수를 받는다
+export function heartDropChance(baseChance, difficultyMul, shopBonus = 0) {
+  return (baseChance + shopBonus) * difficultyMul;
+}
+
 // 보물 힘 설정의 시간만 늘린 복사본
 export function scalePowerTimes(powersCfg, mul) {
   const out = {};
