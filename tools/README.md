@@ -30,3 +30,5 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `make_ground_strip.py`: 흰 배경 위 바닥 띠 그림을 좌우로 이어지는 바닥 타일로 (윗면 위 작은 돌은 남김, surface 값 출력)
 - `make_sheet.py`: 흰 배경 4x2 동작 그림(8장)을 칸마다 배경 지우고, 칸 크기와 발 위치를 맞춘 스프라이트 시트로 (몬스터 걷기)
 - `make_pose_sheets.py`: 4x2 그림에서 원하는 칸만 골라 걷기 시트와 한 장짜리 자세 그림을 같은 칸 크기로 만들고, 날아가는 조각(침 등)을 따로 잘라 낸다 (몸에서 떨어진 조각은 자세 그림에서 지움). 예: 침뱉기 `python3 -I tools/make_pose_sheets.py spitter_raw.png 128 public/art/monster_spitter.png=1,7,8,2,2,8,7,1@4x2 public/art/monster_spitter_aim.png=3 public/art/monster_spitter_spit.png=5 public/art/monster_spit.png=box:600,930,820,1090#1@64`
+- `run_horror.py`: 시스템 Chrome 으로 공포 모드를 켜서 확인한다. 기본(키보드)은 걷기, 소리, 괴물 장면, 줍기, 숨기, 펀치, 놀람 장면, 잡힘, 봇의 탈출까지 돌리고, `--touch` 는 진짜 터치 이벤트로, `--play` 는 조작과 탈출만, `--sound` 는 세이노가 가깝고 멀 때 순찰과 추격의 소리 크기만, `--shots` 는 벽 화면만, `--creature` 는 괴물 장면만 확인한다. `npx vite --port 5288 --strictPort` 를 켜 두고 쓴다 (`bot_horror.js` 를 씀)
+- `make_horror_art.py`: Gemini 로 받은 벽과 바닥 그림의 별 표시를 지우고 512 JPG 로 줄이고, 사물함 문 그림은 벽 철판에서 만든다. 세이노 그림은 `make_creature_art.py`
