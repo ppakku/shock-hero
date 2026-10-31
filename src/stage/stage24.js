@@ -114,13 +114,14 @@ export const stage24 = {
     type: 'ice',
     name: '눈폭풍의 아스트라',
     skin: 'obsidian',
+    signature: 'iceWalls',
     healthScale: 2.4,
     speedScale: 0.76,
     colors: { bright: 0x7ab8e8, main: 0x3a70b0, dark: 0x1c2c58, pale: 0xd0dcec, light: 0xe8faff },
     phases: [
-      ['dive', 'avalanche', 'freezeBreath', 'icicles', 'dive'],
-      ['freezeBreath', 'icicles', 'avalanche', 'dive', 'avalanche'],
-      ['hop', 'avalanche', 'freezeBreath', 'hop', 'icicles'],
+      ['dive', 'avalanche', 'freezeBreath', 'icicles', 'signature'],
+      ['freezeBreath', 'signature', 'avalanche', 'dive', 'avalanche'],
+      ['hop', 'avalanche', 'signature', 'hop', 'icicles'],
     ],
   },
 };

@@ -113,13 +113,14 @@ export const stage19 = {
     type: 'ice',
     name: '얼음 여왕 아스트라',
     skin: 'blizzard',
+    signature: 'gale',
     healthScale: 2.4,
     speedScale: 0.72,
     colors: { bright: 0x3d9be0, main: 0x2a5fa8, dark: 0x1a2552, pale: 0xc4cee0, light: 0xd8f6ff },
     phases: [
-      ['freezeBreath', 'dive', 'avalanche', 'icicles', 'avalanche'],
-      ['dive', 'freezeBreath', 'avalanche', 'icicles', 'dive'],
-      ['hop', 'freezeBreath', 'avalanche', 'hop', 'avalanche'],
+      ['freezeBreath', 'dive', 'avalanche', 'signature', 'avalanche'],
+      ['dive', 'signature', 'avalanche', 'icicles', 'dive'],
+      ['signature', 'freezeBreath', 'avalanche', 'hop', 'avalanche'],
     ],
   },
 };

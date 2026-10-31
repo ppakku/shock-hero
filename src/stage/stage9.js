@@ -98,14 +98,15 @@ export const stage9 = {
     type: 'ice',
     name: '사나운 혹한의 아스트라',
     skin: 'blizzard', // 스테이지 4 혹한의 아스트라 그림을 그대로 씀
+    signature: 'gale',
     healthScale: 1.9,
     speedScale: 0.8,
     colors: { bright: 0x3d9be0, main: 0x2a5fa8, dark: 0x1a2552, pale: 0xc4cee0, light: 0xd8f6ff },
     // icicles(고드름 비), dive(급강하), freezeBreath(냉기 브레스), avalanche(빙천지락), hop(뛰어 내려찍기, 땅에서만)
     phases: [
-      ['freezeBreath', 'dive', 'avalanche', 'icicles', 'dive'],
-      ['dive', 'freezeBreath', 'avalanche', 'icicles', 'avalanche'],
-      ['hop', 'freezeBreath', 'avalanche', 'hop'],
+      ['freezeBreath', 'signature', 'avalanche', 'icicles', 'dive'],
+      ['dive', 'freezeBreath', 'signature', 'icicles', 'avalanche'],
+      ['hop', 'freezeBreath', 'signature', 'hop'],
     ],
   },
 };
