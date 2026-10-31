@@ -45,3 +45,9 @@ describe('공포 모드 조작 안내', () => {
     expect(MONSTER_NAME).toBe('세이노');
   });
 });
+
+describe('쪽지 화면', () => {
+  it('조작 안내에 쪽지 읽기와 닫기가 있다', () => {
+    for (const d of ['pc', 'tablet', 'phone']) expect(controlLines(d).join(' ')).toContain('쪽지');
+  });
+});
