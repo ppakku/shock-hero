@@ -1,10 +1,10 @@
 // 공포 모드 입력. 키보드와 마우스, 터치를 같은 모양으로 읽는다.
-import { moveFromKeys, moveFromStick } from '../logic/horrorInput.js';
+import { moveFromKeys, moveFromStick, keyTurn } from '../logic/horrorInput.js';
 
 const STICK_MAX = 70; // 조이스틱 반지름 (px)
 const RUN_AT = 0.92; // 이만큼 밀면 달린다
-const KEYS = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', ShiftLeft: 'run', ShiftRight: 'run' };
-const PRESS = { KeyF: 'light', KeyE: 'use', Escape: 'pause' };
+const KEYS = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'turnLeft', KeyD: 'right', ArrowRight: 'turnRight', ShiftLeft: 'run', ShiftRight: 'run' };
+const PRESS = { KeyF: 'light', KeyE: 'use', KeyJ: 'punch', Escape: 'pause' };
 const BUTTONS = [
   { id: 'light', label: '손전등', right: 150, bottom: 110 },
   { id: 'use', label: '사용', right: 40, bottom: 150 },
@@ -105,11 +105,11 @@ export class HorrorInput {
     this.lookTouch = null;
   }
 
-  read() {
+  read(dt = 0) {
     const s = this.stick;
     const out = {
       move: s ? moveFromStick(s.x - s.x0, s.y - s.y0, STICK_MAX, RUN_AT) : moveFromKeys(this.keys),
-      lookX: this.look.x,
+      lookX: this.look.x + keyTurn(this.keys, this.k.keyTurnSpeed, dt),
       lookY: this.look.y,
       light: Boolean(this.pressed.light),
       use: Boolean(this.pressed.use),

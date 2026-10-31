@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { moveFromKeys, moveFromStick, stepPlayer, noiseFor, nextPixelRatio, startRatio } from '../src/logic/horrorInput.js';
+import { keyTurn, moveFromKeys, moveFromStick, stepPlayer, noiseFor, nextPixelRatio, startRatio } from '../src/logic/horrorInput.js';
 import { parseMap } from '../src/logic/horrorGrid.js';
 import { balance } from '../src/config/balance.js';
 
@@ -94,5 +94,17 @@ describe('해상도 조절', () => {
   it('범위를 넘지 않는다', () => {
     expect(nextPixelRatio(k.minRatio, 5, k)).toBe(k.minRatio);
     expect(nextPixelRatio(k.maxRatio, 60, k)).toBe(k.maxRatio);
+  });
+});
+
+describe('키보드로 둘러보기', () => {
+  it('오른쪽 방향키는 양수, 왼쪽은 음수로 돈다', () => {
+    expect(keyTurn({ turnRight: true }, 2, 0.5)).toBe(1);
+    expect(keyTurn({ turnLeft: true }, 2, 0.5)).toBe(-1);
+  });
+
+  it('둘 다 누르거나 안 누르면 돌지 않는다', () => {
+    expect(keyTurn({ turnLeft: true, turnRight: true }, 2, 0.5)).toBe(0);
+    expect(keyTurn({}, 2, 0.5)).toBe(0);
   });
 });

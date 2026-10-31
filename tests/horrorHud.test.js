@@ -4,7 +4,7 @@ import { controlLines, startHint, escapeText, MONSTER_NAME } from '../src/horror
 describe('공포 모드 조작 안내', () => {
   it('PC 는 키보드와 마우스를 알려 준다', () => {
     const text = controlLines(false).join(' ');
-    for (const word of ['W A S D', '마우스', 'Shift', 'F', 'Esc', '줍기와 숨기: E', '쇼크 펀치: 왼쪽 클릭']) expect(text).toContain(word);
+    for (const word of ['W A S D', '마우스', 'Shift', 'F', 'Esc', '줍기와 숨기: E', '쇼크 펀치: J 또는 왼쪽 클릭', '좌우 방향키']) expect(text).toContain(word);
     expect(text).not.toContain('버튼');
   });
 

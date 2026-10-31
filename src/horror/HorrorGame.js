@@ -221,8 +221,8 @@ export class HorrorGame {
   }
 
   // 봇은 이 함수를 바꿔 끼워서 진짜 입력처럼 조작한다
-  readInput() {
-    return this.input.read();
+  readInput(dt) {
+    return this.input.read(dt);
   }
 
   relock() {
@@ -230,7 +230,7 @@ export class HorrorGame {
   }
 
   update(dt) {
-    const inp = this.readInput();
+    const inp = this.readInput(dt);
     if (this.state === 'play') {
       this.playTime += dt;
       this.playFrame(inp, dt);
