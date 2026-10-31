@@ -5,6 +5,8 @@ import { isUltReady } from '../logic/combat.js';
 
 // 멈칫(히트 스톱) 길이 (밀리초). 효과 줄이기면 0.
 export const HIT_STOP_MS = {
+  punch: 40, // 일반 공격이 맞았을 때
+  chargedSmall: 55, // 덜 찬 충전 공격이 맞았을 때
   charged: 70, // 최대 충전 펀치가 맞았을 때
   ultimate: 90, // 궁극기 쿵
   bossSlam: 60, // 보스가 크게 내려찍을 때
@@ -16,6 +18,9 @@ export function hitStopMs(kind, lowFx = false) {
   const ms = HIT_STOP_MS[kind] || 0;
   return Math.max(0, Math.min(90, ms)); // 너무 길면 끊기는 느낌이라 90ms 를 넘지 않는다
 }
+
+// 공격이 맞았을 때 멈칫 종류. 최대 충전은 따로 크게 처리한다 (ImpactFx.chargedHit)
+export const landedStop = (attack) => (attack.full ? null : attack.kind === 'charged' ? 'chargedSmall' : 'punch');
 
 // 불꽃 알갱이 수. 효과 줄이기면 3분의 1, 언제나 cap 을 넘지 않는다.
 export function particleBudget(count, lowFx = false, cap = 40) {

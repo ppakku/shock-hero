@@ -1,7 +1,9 @@
 # Gemini 웹에서 그림을 차례로 만들어 파일로 저장한다. API 키 없이 Chrome 에 로그인된 Gemini 를 쓴다.
 # 쓰는 법: GEMINI_BATCH=주문서.json browser-harness < tools/gemini_batch.py
-# 주문서: [{ "prompt": "...", "out": "/절대/경로/그림.png" }, ...]. 이미 있는 파일은 건너뛴다.
+# 주문서: [{ "prompt": "...", "out": "/절대/경로/그림.png", "ref": "/절대/경로/참고그림.png" }, ...]. ref 는 없어도 된다. 이미 있는 파일은 건너뛴다.
 # 한 번에 하나씩만 돌린다 (주문이 많으면 Gemini 가 거절하기 쉽다).
+# GEMINI_MODEL=Pro 처럼 주면 그 이름이 든 모델로 바꾼다. 없으면 페이지 기본 모델을 쓴다.
+# 이미지 한도에 걸리면 그 자리에서 멈춘다 (계속 보내면 실패한 채팅만 기록에 쌓인다).
 #
 # 안전 규칙: 2026-10-31 공유 연결의 "현재 탭"이 다른 세션 탭으로 바뀌어 프롬프트가 Apps Script 편집기에 입력됐다.
 # 그래서 이 파일은 전용 탭을 직접 만들어 그 연결(sid)로만 명령을 보낸다.
@@ -77,8 +79,68 @@ def save_last(path):
     return False
 
 
+def overlay_click(pattern):
+    return page(f"""(()=>{{const b=[...document.querySelectorAll('.cdk-overlay-container button')].find(b=>/{pattern}/.test(b.getAttribute('aria-label')||b.innerText||''));b?.click();return !!b}})()""")
+
+
+# 도구 메뉴를 열고 pattern 버튼을 누른다. 페이지가 뜨는 중이면 메뉴가 안 열려서 몇 번 시도한다.
+def tool_click(pattern):
+    for _ in range(8):
+        if not page("!!document.querySelector('.cdk-overlay-container button')"):
+            page("""[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='업로드 및 도구')?.click()""")
+            time.sleep(1.5)
+        if overlay_click(pattern):
+            return True
+        time.sleep(1)
+    return False
+
+
+# 이미지 만들기를 켜고 참고 그림을 붙인다. 켜지 않으면 글로만 답한다.
+# 파일 고르는 창이 열리지 않게 페이지의 click 을 막고, 파일은 CDP 로 넣는다.
+def attach(path):
+    page("""(()=>{const o=HTMLInputElement.prototype.click;HTMLInputElement.prototype.click=function(){if(this.type==='file')return;return o.call(this)}})()""")
+    if not tool_click('이미지 만들기'):
+        stop('image tool button not found')
+    time.sleep(1)
+    if not tool_click('파일 업로드'):
+        stop('file upload button not found')
+    time.sleep(1.5)
+    check_on_gemini()
+    pick = "[...document.querySelectorAll('input[type=file]')].pop()"
+    for _ in range(10):
+        found = cdp('Runtime.evaluate', session_id=sid, expression=pick)['result']
+        if 'objectId' in found:
+            break
+        time.sleep(1)
+    else:
+        stop('no file input')
+    cdp('DOM.setFileInputFiles', session_id=sid, objectId=found['objectId'], files=[path])
+    for _ in range(20):
+        time.sleep(1)
+        if page("[...document.querySelectorAll('img')].some(i=>i.src.startsWith('blob:'))"):
+            time.sleep(1.5)
+            return
+    stop('reference image did not attach')
+
+
+def pick_model(name):
+    for _ in range(8):
+        page("""(()=>{const b=[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||'').includes('모드 선택'));b?.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));b?.click()})()""")
+        time.sleep(1.5)
+        done = page(f"""(()=>{{const m=document.querySelector('gem-menu');if(!m)return false;
+          const b=[...m.querySelectorAll('button,[role=menuitem],[role=menuitemradio]')].find(b=>b.innerText.includes({json.dumps(name)}));b?.click();return !!b}})()""")
+        if done:
+            time.sleep(1)
+            return
+    stop('model not found: ' + name)
+
+
 def make(o):
     go_gemini()
+    if os.environ.get('GEMINI_MODEL'):
+        pick_model(os.environ['GEMINI_MODEL'])
+    if o.get('ref'):
+        attach(o['ref'])
     for _ in range(20):  # 페이지가 뜨는 동안에는 입력칸이 다시 그려져 초점이 빠질 수 있다
         page("document.querySelector('.ql-editor')?.focus()")
         time.sleep(0.5)
@@ -97,16 +159,23 @@ def make(o):
         if not page("document.querySelector('.ql-editor')?.innerText.trim()"):
             break
     else:
+        print(page("""[...document.querySelectorAll('button')].slice(-10).map(b=>(b.getAttribute('aria-label')||b.innerText||'').slice(0,30)+':'+b.disabled).join(' | ')"""), flush=True)
+        print((page("document.querySelector('.ql-editor')?.innerText") or '')[:60], '|', (page("document.body.innerText") or '')[-300:], flush=True)
         stop('prompt was not sent')
-    for _ in range(100):  # 최대 약 200 초
+    time.sleep(3)
+    before = images()  # 참고 그림도 대화에 큰 그림으로 나온다
+    for _ in range(180):  # 최대 약 6 분 (그림을 많이 만들면 느려진다)
         time.sleep(2)
-        if images() > 0:
+        if images() > before:
             time.sleep(2)
             return save_last(o['out'])
+        if '까지 적용되는 이미지 생성 한도에 도달' in (page("document.body.innerText") or ''):  # 왼쪽 채팅 제목과 헷갈리지 않는 문구
+            stop('image limit reached')
     return False
 
 
 cdp('Page.enable', session_id=sid)
+cdp('Emulation.setFocusEmulationEnabled', session_id=sid, enabled=True)  # 뒤에 있는 탭이라도 참고 그림 올리기가 끝나게
 cdp('Page.setDownloadBehavior', session_id=sid, behavior='allow', downloadPath=DOWNLOADS)  # 이 탭의 다운로드만 따로 받는다
 try:
     for o in orders:

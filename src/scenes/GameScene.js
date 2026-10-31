@@ -1112,16 +1112,22 @@ export class GameScene extends Phaser.Scene {
 
     if (attack.kind === 'punch') {
       this.sfxPlay('punch');
-      const puff = this.add.ellipse(cx, cy, 34, 24, 0xffffff, 0.85).setDepth(24);
-      this.tweens.add({ targets: puff, scaleX: 1.5, scaleY: 1.3, alpha: 0, duration: 140, onComplete: () => puff.destroy() });
+      player.x += dir * 4; // 주먹을 뻗으며 살짝 앞으로
+      if (!this.impact.burst('fx_slash', cx, cy, 84, 46, { flipX: dir < 0, ms: 120 })) {
+        const puff = this.add.ellipse(cx, cy, 34, 24, 0xffffff, 0.85).setDepth(24);
+        this.tweens.add({ targets: puff, scaleX: 1.5, scaleY: 1.3, alpha: 0, duration: 140, onComplete: () => puff.destroy() });
+      }
     } else {
       // 파란 에너지 펀치
       this.sfxPlay('charged');
       const w = attack.range + 20;
       const h = 44 + 40 * attack.ratio;
-      const wave = this.add.ellipse(player.x + dir * (w / 2 + 6), cy, w, h, 0x3f8cff, 0.75).setDepth(24);
-      const core = this.add.ellipse(player.x + dir * (w / 2 + 6), cy, w * 0.7, h * 0.45, 0xe8f7ff, 0.9).setDepth(24);
-      this.tweens.add({ targets: [wave, core], scaleX: 1.4, scaleY: 1.2, alpha: 0, duration: 220, onComplete: () => { wave.destroy(); core.destroy(); } });
+      player.x += dir * 10;
+      if (!this.impact.burst('fx_charge_blast', player.x + dir * (w / 2 + 6), cy, w * 1.2, h * 1.5, { flipX: dir < 0, ms: 240 })) {
+        const wave = this.add.ellipse(player.x + dir * (w / 2 + 6), cy, w, h, 0x3f8cff, 0.75).setDepth(24);
+        const core = this.add.ellipse(player.x + dir * (w / 2 + 6), cy, w * 0.7, h * 0.45, 0xe8f7ff, 0.9).setDepth(24);
+        this.tweens.add({ targets: [wave, core], scaleX: 1.4, scaleY: 1.2, alpha: 0, duration: 220, onComplete: () => { wave.destroy(); core.destroy(); } });
+      }
       ring(this, cx, cy, 0x6fc0ff, 30 + 40 * attack.ratio, 220, 4);
       if (attack.full) {
         ring(this, cx, cy, 0x9fe8ff, 90, 320);
@@ -1157,14 +1163,17 @@ export class GameScene extends Phaser.Scene {
   // by: 공격한 주인공 (겨루기에서 상대에게도 닿는다). 볼트처럼 주인공이 아닌 공격은 넘기지 않는다.
   hitArea(rect, attack, dir, by = null) {
     let hitAny = this.hitRival(by, rect, attack, dir);
+    let spot = null; // 타격 그림이 터질 자리: 처음 맞은 적, 없으면 공격 칸 가운데
     for (const m of this.monsters) {
       if (!m.dead && intersects(rect, m.getBounds())) {
         m.takeHit(attack, dir);
         if (attack.slow) m.slowDown?.(attack.slow); // 얼음 마법사: 맞은 몬스터가 느려진다 (보스는 안 느려진다)
         hitAny = true;
+        spot ??= m;
       }
     }
     if (this.boss.receiveAttack(rect, attack)) hitAny = true;
+    if (hitAny) this.impact.landedHit(attack, spot?.x ?? rect.centerX, spot?.y ?? rect.centerY, dir);
     return hitAny;
   }
 

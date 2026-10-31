@@ -1,15 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { hitStopMs, HIT_STOP_MS, particleBudget, emitCount, surfaceBelow, shadowShape, foregroundAlpha, ultAuraOn, auraPulse, auraFlame } from '../src/fx/fxLogic.js';
+import { hitStopMs, HIT_STOP_MS, landedStop, particleBudget, emitCount, surfaceBelow, shadowShape, foregroundAlpha, ultAuraOn, auraPulse, auraFlame } from '../src/fx/fxLogic.js';
 import { createSaveStore, defaultSave } from '../src/logic/save.js';
 
 describe('멈칫 (히트 스톱)', () => {
-  it('센 공격만 50~90ms 멈춘다', () => {
+  it('맞은 공격은 40~90ms 멈춘다', () => {
     for (const kind of Object.keys(HIT_STOP_MS)) {
       const ms = hitStopMs(kind);
-      expect(ms).toBeGreaterThanOrEqual(50);
+      expect(ms).toBeGreaterThanOrEqual(40);
       expect(ms).toBeLessThanOrEqual(90);
     }
-    expect(hitStopMs('punch')).toBe(0);
+    expect(hitStopMs('없는 공격')).toBe(0);
+  });
+
+  it('약할수록 짧게 멈추고, 최대 충전은 따로 처리한다', () => {
+    expect(landedStop({ kind: 'punch' })).toBe('punch');
+    expect(landedStop({ kind: 'charged' })).toBe('chargedSmall');
+    expect(landedStop({ kind: 'charged', full: true })).toBe(null);
+    expect(HIT_STOP_MS.punch).toBeLessThan(HIT_STOP_MS.chargedSmall);
+    expect(HIT_STOP_MS.chargedSmall).toBeLessThan(HIT_STOP_MS.charged);
   });
 
   it('효과 줄이기면 멈추지 않는다', () => {

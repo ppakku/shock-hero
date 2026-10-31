@@ -1,14 +1,18 @@
 import Phaser from 'phaser';
 import { saveStore } from '../save.js';
-import { hitStopMs } from './fxLogic.js';
+import { hitStopMs, landedStop } from './fxLogic.js';
+import { hasArt } from './bossArt.js';
 
 // 때리는 맛 (주인공과 모든 보스가 같이 쓴다):
 //   멈칫(히트 스톱), 화면 확대 펀치, 한쪽으로 흔들기, 하얀 번쩍임, 궁극기 색 번쩍임.
 // GameScene 이 만들고(scene.impact) update 맨 앞에서 tick 을 부른다.
 // 효과 줄이기(save.settings.lowFx)가 켜져 있으면 멈칫, 확대, 번쩍임, 빛 번짐을 모두 끈다.
 // 화면 흔들림은 원래 있던 흔들림 설정(H)을 그대로 따른다.
+const LANDED_GAP = 130; // 맞았을 때 멈칫 사이의 간격 (밀리초)
+
 export class ImpactFx {
   constructor(scene) {
+    this.lastLanded = -1000;
     this.scene = scene;
     this.lowFx = !!saveStore.load().settings.lowFx;
     this.stopLeft = 0; // 멈칫이 남은 시간 (실제 밀리초)
@@ -131,6 +135,26 @@ export class ImpactFx {
   // ---------- 상황별 묶음 ----------
 
   // 최대 충전 펀치가 맞았을 때 (dir = 때린 방향)
+  // 공격이 맞은 순간: 맞은 자리에 타격 그림, 짧은 멈칫. 여러 번 빠르게 맞아도 끊겨 보이지 않게 멈칫은 간격을 둔다
+  landedHit(attack, x, y, dir = 1) {
+    const big = attack.kind === 'charged';
+    const size = (big ? 96 + 70 * (attack.ratio ?? 1) : 72) * (this.lowFx ? 0.75 : 1);
+    this.burst('fx_hit', x, y, size, size, { rotation: Math.random() * Math.PI * 2, tint: big ? 0xbfe6ff : 0xffffff, ms: big ? 170 : 110 });
+    const kind = landedStop(attack);
+    if (!kind || this.scene.time.now - this.lastLanded < LANDED_GAP) return;
+    this.lastLanded = this.scene.time.now;
+    this.hitStop(kind);
+    if (big) this.dirShake(0.006 * Math.abs(dir), 0.002, 90);
+  }
+
+  // 그림이 잠깐 터졌다 사라진다. 그림을 못 받았으면 false (원래 도형을 그린다)
+  burst(key, x, y, w, h, { rotation = 0, flipX = false, tint = 0xffffff, ms = 140, grow = 1.25 } = {}) {
+    if (!hasArt(this.scene, key)) return false;
+    const img = this.scene.add.image(x, y, key).setBlendMode(Phaser.BlendModes.ADD).setDepth(24).setDisplaySize(w, h).setRotation(rotation).setFlipX(flipX).setTint(tint);
+    this.scene.tweens.add({ targets: img, scaleX: img.scaleX * grow, scaleY: img.scaleY * grow, alpha: 0, duration: ms, ease: 'Quad.easeOut', onComplete: () => img.destroy() });
+    return true;
+  }
+
   chargedHit(dir = 1) {
     this.hitStop('charged');
     this.zoomPunch(0.03, 50, 180);

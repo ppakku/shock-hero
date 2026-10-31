@@ -3,7 +3,7 @@ import { Health } from '../logic/health.js';
 import { Cooldown } from '../logic/cooldown.js';
 import { jumpKind } from '../logic/jump.js';
 import { chargeRatio, resolveAttack, upperRect } from '../logic/combat.js';
-import { HERO_FRAME, HERO_ORIGIN_Y, HERO_LOOKS } from '../fx/heroTextures.js';
+import { HERO_LOOKS, frameOfWidth } from '../fx/heroTextures.js';
 import { normalizeHero, heroStats, gunnerAttack, giantAttack, ninjaAttack, mageAttack } from '../logic/heroes.js';
 import { NO_SLOW, SLOW_TINT, addSlow, tickSlow } from '../logic/slow.js';
 
@@ -30,11 +30,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.body.setSize(this.width * 0.7, this.height * 0.9, true);
     } else {
       // 그림은 2배로 촘촘하게 그렸으니 절반 크기로 보여 준다. 몸통 판정은 30 x 56
-      const k = this.width / HERO_FRAME.w;
+      const frame = frameOfWidth(this.width); // 도형 그림이나 Gemini 그림
+      const k = this.width / frame.w;
       this.setScale(this.stats.scale / k); // 강철 거인은 몸이 더 크다
-      this.setOrigin(0.5, HERO_ORIGIN_Y);
+      this.setOrigin(0.5, (frame.feetY - 31) / frame.h);
       this.body.setSize(30 * k, 56 * k, false);
-      this.body.setOffset((this.width - 30 * k) / 2, HERO_FRAME.feetY * k - 56 * k);
+      this.body.setOffset((this.width - 30 * k) / 2, frame.feetY * k - 56 * k);
     }
     this.setCollideWorldBounds(true);
     this.setDragX(1200);
@@ -69,6 +70,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.ultPose = null;
     this.poseName = null; // 잠깐 보여 줄 공격 자세
     this.poseTime = 0;
+    this.punchSide = false;
     this.lastMoving = false;
     this.spinLeft = 0; // 강철 거인 회오리가 남은 시간
     this.spinFlip = 0;
@@ -278,6 +280,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.lastMoving = Boolean(input.left || input.right);
     const glow = attack.kind === 'charged' && attack.style !== 'smash';
     this.poseName = attack.up ? (glow ? 'upperGlow' : 'upper') : glow ? 'punchGlow' : 'punch';
+    // 맨손 펀치는 양손을 번갈아 뻗는다
+    if (this.poseName === 'punch' && !attack.style) {
+      this.punchSide = !this.punchSide;
+      if (this.punchSide) this.poseName = 'punchB';
+    }
     this.poseTime = glow ? 0.26 : 0.16;
     if (attack.style === 'smash') {
       this.poseName = 'smash';
