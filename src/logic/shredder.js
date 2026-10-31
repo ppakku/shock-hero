@@ -69,6 +69,23 @@ export function bladeDone(blade, minX, maxX) {
   return blade.bounces <= 0 && ((blade.x <= minX && blade.dir < 0) || (blade.x >= maxX && blade.dir > 0));
 }
 
+// 몸통 시트(shredder_body.png) 8칸의 배 구멍 가운데. 칸 크기에 대한 비율이고 tools/make_shredder_saw.py 가 잰 값이다.
+const SHREDDER_HOLES = [
+  [0.596, 0.411],
+  [0.578, 0.411],
+  [0.637, 0.417],
+  [0.619, 0.427],
+  [0.613, 0.422],
+  [0.608, 0.38],
+  [0.602, 0.443],
+  [0.567, 0.438],
+];
+
+export function holeSpot(frame) {
+  const [x, y] = SHREDDER_HOLES[Number(frame) % SHREDDER_HOLES.length] ?? SHREDDER_HOLES[0];
+  return { x, y };
+}
+
 // 공격 하나에서 내려온 톱니 회전 속도 (단계: idle < rev < attack, 지치면 멈춘다)
 export function sawSpin(mode, raging = false) {
   const base = { stop: 0, idle: 2.5, rev: 16, attack: 28 }[mode] ?? 2.5;

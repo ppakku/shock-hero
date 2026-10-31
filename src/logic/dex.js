@@ -53,14 +53,14 @@ export function monsterStages(stages) {
 }
 
 // 보스 그림 이름 (보스 종류와 skin 으로 정해진다, src/boss/*.js)
-const BOSS_PORTRAIT = { arms: 'boss_body_', shredder: 'boss_body_', king: 'boss_body_', dragon: 'dragon_', ice: 'astra_', watcher: 'watcher_', sea: 'boss_sea_body_' };
+const BOSS_PORTRAIT = { arms: 'boss_body_', king: 'boss_body_', dragon: 'dragon_', ice: 'astra_', watcher: 'watcher_', sea: 'boss_sea_body_' };
 
 export function bossDex(stages) {
   return stages.map((st, i) => {
     const n = i + 1;
     const skin = st.boss?.skin || n;
     const pre = BOSS_PORTRAIT[st.boss?.type];
-    return { stage: n, name: st.boss?.name || `스테이지 ${n} 보스`, type: st.boss?.type, portrait: pre ? `${pre}${skin}` : null };
+    return { stage: n, name: st.boss?.name || `스테이지 ${n} 보스`, type: st.boss?.type, portrait: st.boss?.type === 'shredder' ? 'shredder_body' : pre ? `${pre}${skin}` : null };
   });
 }
 

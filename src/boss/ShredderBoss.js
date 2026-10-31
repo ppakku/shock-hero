@@ -3,7 +3,7 @@ import { BossBase } from './BossBase.js';
 import { BossPart, GroundWaves, Puddles, Rect, intersects, damagePart, warnBox } from './bossKit.js';
 import { ArmBoss } from './ArmBoss.js';
 import { drawSwirl } from './bossFx.js';
-import { chooseShredderAttack, SAW_PATTERNS, walkStep, dashEndX, finStep, rollBlade, bladeDone, sawSpin } from '../logic/shredder.js';
+import { chooseShredderAttack, SAW_PATTERNS, walkStep, dashEndX, finStep, rollBlade, bladeDone, sawSpin, holeSpot } from '../logic/shredder.js';
 import { crawlPlan, spreadTargets } from '../logic/watcher.js';
 import { coreDamage, inhaleStep, pickRocketHeight, rocketBand } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
@@ -19,9 +19,10 @@ const BODY_W = Math.round((BODY_H * 344) / 384);
 const FOOT = 0.9; // 시트 칸 아래 빈 공간만큼 기준점을 올림
 const HALF = 100; // 몸 반쪽 너비
 const CEIL = 430; // 천장을 기어갈 때 땅에서의 높이
-const BELLY_UP = 170; // 땅에서 배 톱니까지 높이
+const BELLY_UP = 158; // 땅에서 배 구멍까지 높이 (칸마다의 정확한 자리는 holeSpot)
 const KNEEL = 0.62; // 지치면 이만큼 주저앉아서 배가 펀치 높이로 내려온다
-const SAW_D = 100; // 평소 톱니 지름
+const SAW_D = 84; // 평소 톱니 지름 (구멍을 둘러싼 쇠고리 안에 들어간다)
+const GUARD_D = 104; // 쇠창살 지름 (쇠고리에 맞물린다)
 const SAW_BIG = 150; // 돌진할 때 톱니 지름
 const BLADE = 64; // 던지는 톱날 지름
 const BLADE_LOW_H = 54; // 낮은 톱날 높이 (점프로 넘음)
@@ -69,10 +70,12 @@ export class ShredderBoss extends BossBase {
 
     this.hazG = scene.add.graphics().setDepth(1);
     this.linkG = scene.add.graphics().setDepth(5.5);
-    this.body = scene.add.sprite(this.x, this.groundY, `boss_body_${skin}`).setDepth(5);
-    this.sheet = scene.anims.exists(`boss_body_${skin}_anim`);
-    this.sheetRight = sheetFacesRight(scene, `boss_body_${skin}`);
-    if (this.sheet) this.body.setOrigin(0.5, FOOT).play(`boss_body_${skin}_anim`);
+    // 배에 톱날 구멍이 있는 전용 몸통. 파쇄자 MK2 들은 예전 그림(boss_body_1)을 그대로 쓴다.
+    const bodyTex = scene.textures.exists('shredder_body') ? 'shredder_body' : `boss_body_${skin}`;
+    this.body = scene.add.sprite(this.x, this.groundY, bodyTex).setDepth(5);
+    this.sheet = scene.anims.exists(`${bodyTex}_anim`);
+    this.sheetRight = sheetFacesRight(scene, bodyTex);
+    if (this.sheet) this.body.setOrigin(0.5, FOOT).play(`${bodyTex}_anim`);
     else this.body.setOrigin(0.5, 1);
 
     // 쇠팔은 양옆에 달려 있다. 앞쪽 팔이 주먹을 날린다.
@@ -80,7 +83,7 @@ export class ShredderBoss extends BossBase {
     this.armSprites = [-1, 1].map((side) => ({ side, sprite: scene.add.image(this.x, this.groundY, tex).setOrigin(0.5, 0).setDepth(side > 0 ? 6 : 4.5).setDisplaySize(62, 186) }));
     this.core = scene.add.image(this.x, this.groundY, 'boss_core').setDepth(6.2).setDisplaySize(64, 64).setVisible(false);
     this.saw = scene.add.image(this.x, this.groundY, 'shredder_saw').setDepth(6.5).setDisplaySize(SAW_D, SAW_D);
-    this.guard = scene.add.image(this.x, this.groundY, 'shredder_guard').setDepth(6.6).setDisplaySize(110, 120);
+    this.guard = scene.add.image(this.x, this.groundY, 'shredder_guard').setDepth(6.6).setDisplaySize(GUARD_D, GUARD_D);
 
     const hp = this.hpScale;
     this.arm = new BossPart('쇠팔', Math.round(k.armHealth * hp));
@@ -110,7 +113,7 @@ export class ShredderBoss extends BossBase {
   static makeTextures(scene, stage, skin) {
     ArmBoss.makeTextures(scene, stage, skin); // 몸통, 쇠팔, 주먹은 팔 보스와 같은 이름
     const c = stage.boss.colors;
-    // 배 톱니와 던지는 톱날
+    // 그림(shredder_saw, shredder_guard)을 못 받았을 때 쓰는 임시 도형
     make(scene, 'shredder_saw', 128, 128, (g) => {
       const teeth = 14;
       g.fillStyle(0xcfd4d8);
@@ -165,8 +168,16 @@ export class ShredderBoss extends BossBase {
     return { x: this.x + ox * Math.cos(rad) - oy * Math.sin(rad), y: this.groundY - this.air + ox * Math.sin(rad) + oy * Math.cos(rad) };
   }
 
+  // 지금 시트 칸의 배 구멍 자리. 몸이 흔들려도 톱날과 쇠창살이 구멍에 붙어 있게 한다.
+  get holeLocal() {
+    if (!this.sheet) return { forward: 10, up: BELLY_UP };
+    const h = holeSpot(this.body.frame.name);
+    return { forward: (h.x - 0.5) * BODY_W, up: (FOOT - h.y) * BODY_H };
+  }
+
   get bellyPos() {
-    return this.local(10, BELLY_UP);
+    const { forward, up } = this.holeLocal;
+    return this.local(forward, up);
   }
 
   bellyRect() {
@@ -322,7 +333,7 @@ export class ShredderBoss extends BossBase {
     const want = this.sawMode === 'attack' && !this.exposed ? SAW_BIG : SAW_D * (this.coreOpen ? 1.15 : 1);
     this.sawSize += (want - this.sawSize) * Math.min(1, dt * 12);
     const out = this.sawMode === 'attack' && !this.exposed ? (this.sawSize - SAW_D) * 0.9 : 0; // 돌진 때는 몸 앞으로 튀어나온다
-    const sp = this.local(10 + out, BELLY_UP);
+    const sp = this.local(this.holeLocal.forward + out, this.holeLocal.up);
     this.saw.setVisible(open).setPosition(sp.x, sp.y).setDisplaySize(this.sawSize, this.sawSize).setRotation(this.sawAngle).setAlpha(this.alpha);
     if (this.flashT > 0) this.saw.setTintFill(0xffffff);
     else if (this.exposed && Math.floor(this.t * 8) % 2 === 0) this.saw.setTint(0xff6a3a);
@@ -338,7 +349,7 @@ export class ShredderBoss extends BossBase {
     const guardOn = this.guardPart.alive && open;
     this.guard.setVisible(guardOn);
     if (guardOn) {
-      this.guard.setPosition(b.x, b.y).setAngle(this.angle).setDisplaySize(110, 120 * (this.tired ? KNEEL + 0.2 : 1));
+      this.guard.setPosition(b.x, b.y).setAngle(this.angle).setDisplaySize(GUARD_D, GUARD_D * (this.tired ? KNEEL + 0.2 : 1));
       if (this.flashT > 0) this.guard.setTintFill(0xffffff);
       else if (this.exposed && Math.floor(this.t * 8) % 2 === 0) this.guard.setTint(0xfff3a0);
       else this.guard.clearTint();
@@ -1068,7 +1079,7 @@ export class ShredderBoss extends BossBase {
   }
 
   dropGuard() {
-    const g = this.scene.add.image(this.guard.x, this.guard.y, 'shredder_guard').setDepth(6.6).setDisplaySize(110, 120);
+    const g = this.scene.add.image(this.guard.x, this.guard.y, 'shredder_guard').setDepth(6.6).setDisplaySize(GUARD_D, GUARD_D);
     this.scene.tweens.add({ targets: g, angle: -90, alpha: 0, y: this.groundY - 20, duration: 800, ease: 'Quad.easeIn', onComplete: () => g.destroy() });
   }
 
