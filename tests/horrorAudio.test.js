@@ -123,6 +123,28 @@ describe('HorrorAudio 세이노 소리', () => {
     expect(set.mock.calls[1][0]).toBeGreaterThan(set.mock.calls[0][0]);
   });
 
+  it('숨소리 크기는 목표가 바뀔 때만 정한다', () => {
+    const a = new HorrorAudio({ muted: false });
+    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 10, 0.016);
+    expect(set).toHaveBeenCalledTimes(1);
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'chase', 10, 0.016);
+    expect(set).toHaveBeenCalledTimes(2);
+  });
+
+  it('suspend 와 resume 뒤에는 같은 상태여도 크기를 다시 정한다', () => {
+    const a = new HorrorAudio({ muted: false });
+    a.updateStalker(cam, pos, 'patrol', 10, 0.016);
+    a.suspend();
+    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    a.updateStalker(cam, pos, 'patrol', 10, 0.016);
+    expect(set).not.toHaveBeenCalled(); // 잡혀 있는 동안은 조용하다
+    a.resume();
+    a.updateStalker(cam, pos, 'patrol', 10, 0.016);
+    expect(set).toHaveBeenCalledTimes(1);
+    expect(set.mock.calls[0][0]).toBeGreaterThan(0);
+  });
+
   it('추격에는 배경 음악을 낮추고 세이노 소리를 키우고, 놓치면 돌려놓는다', () => {
     const a = new HorrorAudio({ muted: false });
     const music = vi.spyOn(a.music.gain, 'setTargetAtTime');

@@ -52,6 +52,7 @@ export class HorrorAudio {
     this.stepT = 0;
     this.heartT = 0;
     this.mode = 'patrol';
+    this.breathGoal = null; // 마지막으로 정한 숨소리 크기
     this.suspended = false;
     this.active = true;
     this.panner = this.ctx.createPanner();
@@ -189,7 +190,11 @@ export class HorrorAudio {
       this.duckMusic(t);
       this.swellLfo.frequency.setTargetAtTime(1 / (this.k.breathSwellSec[mode] ?? 1.4), t, 0.2);
     }
-    if (!this.suspended) this.breathLevel.gain.setTargetAtTime(this.k.breathLevel[mode] ?? 0.5, t, 0.2);
+    const level = this.k.breathLevel[mode] ?? 0.5;
+    if (!this.suspended && level !== this.breathGoal) { // 매 프레임 일정을 쌓지 않는다
+      this.breathGoal = level;
+      this.breathLevel.gain.setTargetAtTime(level, t, 0.2);
+    }
 
     const every = this.k.stepEvery[mode] ?? 0;
     this.stepT -= dt;
@@ -219,12 +224,14 @@ export class HorrorAudio {
   // 잡히는 장면: 숨소리와 발소리를 바로 끈다
   suspend() {
     this.suspended = true;
+    this.breathGoal = null;
     if (this.ctx) this.breathLevel.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
   }
 
   // 잡힌 뒤 다시 시작할 때 부른다. 숨소리는 다음 updateStalker 에서 돌아온다.
   resume() {
     this.suspended = false;
+    this.breathGoal = null;
   }
 
   // 지속음 묶음. 필터가 천천히 열리고 닫혀서 숨 쉬듯 움직인다.
