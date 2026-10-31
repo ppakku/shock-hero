@@ -60,13 +60,15 @@ const HIT_H = 170; // 분신을 때릴 수 있는 높이
 const LOW = 0.42; // 달려들 때 납작해지는 비율
 const RUSH_H = 64; // 달려드는 분신에 맞는 높이 (점프로 넘을 수 있음)
 const MIN_WARN = 0.6; // 분노해도 이만큼은 경고한다
-const EYE_X = 0.36; // 진짜 눈 자리: 몸 가운데에서 앞으로 (그림 너비 비율)
-const EYE_Y = 0.36; // 진짜 눈 자리: 머리 꼭대기에서 아래로 (그림 높이 비율)
+// 진짜 눈 자리 (시트 첫 칸 기준, 그림 크기 비율). 그림을 바꾸면 이 값도 맞춘다.
+const EYE_X = 0.18; // 몸 가운데에서 앞으로
+const EYE_Y = 0.4; // 그림 위쪽에서 아래로
+const EYE_GAP = 0.03; // 두 눈 사이의 절반
 
 // 그림자 와처: 사라진 뒤 분신이 나타난다. 눈이 빛나는 것이 진짜.
 // 가짜는 때리면 사라지고, 진짜를 때리거나 시간이 다 되면 남은 가짜가 경고 뒤 달려든다.
 export class Clones extends Signature {
-  static tip = '와처가 그림자로 나뉘었어! 가짜는 때리면 사라져. 눈이 빛나는 진짜를 때리면 끝! 남은 가짜는 달려드니 뛰어넘어!';
+  static tip = '눈이 빛나는 진짜를 찾아 때려! 남은 가짜는 달려드니 뛰어넘어!';
 
   constructor(boss) {
     super(boss);
@@ -122,8 +124,7 @@ export class Clones extends Signature {
     const sp = this.own(this.scene.add.sprite(x, b.sprite.y, key).setOrigin(0.5, 1).setDepth(5));
     const w = b.sprite.displayWidth;
     const h = b.sprite.displayHeight;
-    sp.setDisplaySize(w, h).setTint(FIG_TINT).setAlpha(0);
-    if (b.sheet) sp.play(`${key}_anim`);
+    sp.setFrame(0).setDisplaySize(w, h).setTint(FIG_TINT).setAlpha(0); // 눈 자리가 맞게 첫 칸에 멈춘다
     return { x, real, sp, w, h, foot: b.sprite.y - this.groundY, dir: -1, hits: new Set() };
   }
 
@@ -135,11 +136,13 @@ export class Clones extends Signature {
   }
 
   drawEye(f) {
-    const x = f.x + f.dir * f.w * EYE_X;
     const y = this.groundY + f.foot - f.h * (1 - EYE_Y);
     const glow = 0.55 + 0.35 * Math.sin(this.t * 7);
-    this.g.fillStyle(0xffe066, glow * 0.45).fillCircle(x, y, 11);
-    this.g.fillStyle(0xfff6c0, glow + 0.1).fillCircle(x, y, 4.5);
+    for (const side of [-1, 1]) {
+      const x = f.x + f.dir * f.w * EYE_X + side * f.w * EYE_GAP;
+      this.g.fillStyle(0xffe066, glow * 0.4).fillCircle(x, y, 8);
+      this.g.fillStyle(0xfff6c0, glow + 0.1).fillCircle(x, y, 3.5);
+    }
   }
 
   stepHunt() {
