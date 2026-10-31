@@ -2,9 +2,11 @@
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
 import { CELL, center } from '../logic/horrorGrid.js';
-import { stepPlayer, nextPixelRatio } from '../logic/horrorInput.js';
+import { stepPlayer, nextPixelRatio, noiseFor } from '../logic/horrorInput.js';
+import { createStalker, tickStalker } from '../logic/horrorStalker.js';
 import { factoryMap } from './maps/factory.js';
 import { buildWorld } from './world.js';
+import { CreatureModel } from './creatureModel.js';
 import { HorrorInput } from './input.js';
 import { HorrorHud, startHint } from './hud.js';
 import { HorrorAudio } from './audio.js';
@@ -72,6 +74,10 @@ export class HorrorGame {
     this.camera.add(this.flash, this.flash.target);
 
     this.world = buildWorld(this.scene, this.map);
+    this.stalker = createStalker(this.map);
+    this.model = new CreatureModel(this.scene);
+    this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
+    this.hidden = null;
     this.input = new HorrorInput(root, { touch, k: this.k });
     this.hud = new HorrorHud(root);
     if (this.showFps) {
@@ -129,11 +135,20 @@ export class HorrorGame {
       this.yaw -= inp.lookX;
       this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - inp.lookY));
       const speed = inp.move.run ? this.k.runSpeed : this.k.walkSpeed;
-      this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
+      const before = this.p;
+      if (this.hidden === null) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
+      const moving = this.p.x !== before.x || this.p.y !== before.y;
+      const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, inp.move.run, this.k) };
+      this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player }, this.k, dt));
+      this.model.update(this.stalker, dt, this.p);
       this.audio.update(dt);
     }
     this.placeCamera();
     this.world.update(this.p, this.k.viewCells);
+  }
+
+  onStalkerEvents(events) {
+    this.lastEvents = events;
   }
 
   placeCamera() {
@@ -165,6 +180,7 @@ export class HorrorGame {
     this.input.destroy();
     this.hud.destroy();
     this.audio?.destroy();
+    this.model.dispose();
     this.scene.traverse((o) => {
       o.geometry?.dispose();
       if (o.material) [o.material].flat().forEach((m) => m.dispose());

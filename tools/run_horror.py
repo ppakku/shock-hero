@@ -2,14 +2,17 @@
 #   python3 tools/run_horror.py 출력폴더           (키보드로 걷기, 화면 찍기)
 #   python3 tools/run_horror.py 출력폴더 --touch   (태블릿 손가락 입력을 진짜 터치 이벤트로 확인)
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
+#   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
 # 시스템 Chrome 으로 타이틀에서 공포 모드를 켜고 확인한다.
 import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'keys'
+MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
+if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
+    ARGS = ['--use-angle=metal', '--ignore-gpu-blocklist']
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 URL = 'http://localhost:5288/?timer&fps'
 os.makedirs(OUT, exist_ok=True)
@@ -73,6 +76,170 @@ def watch(pg, errs):
     pg.on('console', lambda m: errs.append(f'console {m.type}: ' + m.text[:300]) if m.type in ('error', 'warning') and 'goatcounter' not in m.text and 'GPU stall' not in m.text else None)
 
 
+IDLE_INPUT = "window.__horror.readInput = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false })"
+
+# 괴물을 자리에 세우고 주인공이 바라보게 한다.
+# 행동은 멈춰 두고, 모형에는 pose 상태를 보여 준다. speed 를 주면 그 자리에서 제자리걸음을 한다.
+PLACE_CREATURE = """({ at, heading, player, yaw, pitch, light, pose, speed, fov }) => {
+  const g = window.__horror;
+  g.lightOn = light;
+  g.p = player;
+  g.yaw = yaw;
+  g.pitch = pitch;
+  g.camera.fov = fov;
+  g.camera.updateProjectionMatrix();
+  Object.assign(g.stalker, { x: at.x, y: at.y, heading, mode: 'stunned', stunT: 999, path: [] });
+  const shown = { x: at.x, y: at.y, heading, mode: pose };
+  const real = g.model.constructor.prototype.update.bind(g.model);
+  g.model.update = (s, dt, p) => {
+    g.model.last = { x: at.x - speed * dt, y: at.y }; // 그만큼 걸었다고 알린다
+    real(shown, dt, p);
+  };
+}"""
+
+
+def creature_shot(pg, name, wait=0.8, pose='patrol', speed=0, fov=70, **place):
+    pg.evaluate(PLACE_CREATURE, {**place, 'pose': pose, 'speed': speed, 'fov': fov})
+    time.sleep(wait)
+    print('creature shot', name, pg.evaluate('window.__horror.stalker.mode'))
+    pg.screenshot(path=f'{OUT}/{name}.png')
+
+
+def measure_fps(pg, secs=6):
+    return pg.evaluate("""async (secs) => {
+      const g = window.__horror, end = performance.now() + secs * 1000;
+      g.renderer.info.autoReset = true;
+      let frames = 0;
+      await new Promise((done) => {
+        const tick = () => { frames += 1; performance.now() < end ? requestAnimationFrame(tick) : done(); };
+        requestAnimationFrame(tick);
+      });
+      return { fps: frames / secs, calls: g.renderer.info.render.calls, triangles: g.renderer.info.render.triangles };
+    }""", secs)
+
+
+def creature_checks(pg):
+    # 사진이 흔들리지 않게 해상도를 고정한다
+    pg.evaluate('(() => { const g = window.__horror; g.trackFps = () => {}; g.ratio = 1.5; g.renderer.setPixelRatio(1.5); })()')
+    # 시작 방에서 오른쪽을 보면 문(7, 15)을 지나 8칸까지 트여 있다
+    east = -math.pi / 2
+    near = {'x': 2.5, 'y': 15.5}
+    front = {'at': {'x': 5.0, 'y': 15.5}, 'heading': -math.pi / 2, 'player': near, 'yaw': east, 'pitch': 0.05, 'light': True}
+    side = {**front, 'heading': 0}
+    zoom = {'fov': 22, 'pitch': -0.04}
+    creature_shot(pg, 'stalker', **front)
+    creature_shot(pg, 'creature_side', **side)
+    creature_shot(pg, 'zoom_front', **front | zoom)
+    creature_shot(pg, 'zoom_side', **side | zoom)
+    creature_shot(pg, 'zoom_back', **{**front, 'heading': math.pi / 2} | zoom)
+    creature_shot(pg, 'zoom_walk_side', **side | zoom, speed=0.9, wait=1.1)
+    creature_shot(pg, 'zoom_chase_side', **side | zoom, pose='chase', speed=2, wait=1.4)
+    creature_shot(pg, 'zoom_chase_front', **front | zoom, pose='chase', speed=2, wait=1.4)
+    creature_shot(pg, 'zoom_stunned', **front | zoom, pose='stunned')
+    creature_shot(pg, 'creature_face', **{**front, 'player': {'x': 3.8, 'y': 15.5}, 'pitch': 0.42})
+    creature_shot(pg, 'creature_dark', **{**front, 'at': {'x': 9.5, 'y': 15.5}, 'player': {'x': 1.5, 'y': 15.5}, 'light': False, 'pitch': 0.05})
+    creature_shot(pg, 'creature_dark_chase', **{**front, 'at': {'x': 9.5, 'y': 15.5}, 'player': {'x': 1.5, 'y': 15.5}, 'light': False, 'pitch': 0.05}, pose='chase')
+    box = pg.evaluate("""() => {
+      const g = window.__horror;
+      g.model.group.updateMatrixWorld(true);
+      let tris = 0, meshes = 0;
+      const seen = new Set();
+      g.model.group.traverse((o) => {
+        if (!o.isMesh) return;
+        meshes += 1;
+        if (seen.has(o.geometry)) return;
+        seen.add(o.geometry);
+      });
+      g.model.group.traverse((o) => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+      return { tris, meshes, shared: seen.size };
+    }""")
+    print('creature size', box)
+    check('creature: under 6000 triangles', box['tris'] < 6000, box)
+
+    creature_motion(pg, front)
+
+    # 괴물이 화면에 있을 때와 없을 때를 같은 자리에서 잰다
+    pg.evaluate('window.__horror.renderer.setPixelRatio(1)')
+    creature_shot(pg, 'fps_view', **front, speed=0.9)
+    runs = {True: [], False: []}
+    for shown in [True, False] * 3:  # 번갈아 재서 컴퓨터 부하가 한쪽에만 쏠리지 않게 한다
+        pg.evaluate('(v) => { window.__horror.model.group.visible = v; }', shown)
+        runs[shown].append(measure_fps(pg, 4))
+    pg.evaluate('window.__horror.model.group.visible = true')
+    print('fps with creature', [round(r['fps'], 1) for r in runs[True]], runs[True][-1])
+    print('fps without creature', [round(r['fps'], 1) for r in runs[False]], runs[False][-1])
+
+
+# 진짜 행동 코드로 걷게 해서 앞면이 가는 쪽을 보는지, 머리가 움찔하는지, 눈이 상태를 따르는지 잰다
+def creature_motion(pg, front):
+    pg.evaluate(PLACE_CREATURE, {**front, 'at': {'x': 6.5, 'y': 15.5}, 'pose': 'patrol', 'speed': 0, 'fov': 70})
+    pg.evaluate("""() => {
+      const g = window.__horror;
+      g.model.update = g.model.constructor.prototype.update;
+      g.p = { x: 1.5, y: 15.5 };
+      Object.assign(g.stalker, { mode: 'investigate', stunT: 0, target: { cx: 2, cy: 15 }, path: [{ cx: 5, cy: 15 }, { cx: 4, cy: 15 }, { cx: 3, cy: 15 }] });
+    }""")
+    time.sleep(1.2)
+    go = pg.evaluate("""() => {
+      const g = window.__horror, s = g.stalker;
+      const d = new g.model.group.position.constructor(0, 0, 1).applyQuaternion(g.model.group.quaternion);
+      return { mode: s.mode, forwardX: d.x, forwardZ: d.z, x: s.x };
+    }""")
+    print('walking', go)
+    check('creature: walks with its front toward travel (-x)', go['forwardX'] < -0.95, go)
+    pg.screenshot(path=f'{OUT}/creature_real_walk.png')
+
+    # 움찔: 15초 동안 머리 기울기가 한 번 이상 크게 튀어야 한다
+    twitch = pg.evaluate("""async () => {
+      const g = window.__horror, m = g.model;
+      Object.assign(g.stalker, { x: 5.5, y: 15.5, mode: 'stunned', stunT: 999, path: [] });
+      const shown = { x: 5.5, y: 15.5, heading: 0, mode: 'search' }; // 주인공이 옆에 있다
+      const real = m.constructor.prototype.update.bind(m);
+      m.update = (s, dt, p) => real(shown, dt, p);
+      let peak = 0, jumps = 0, last = 0;
+      for (const end = performance.now() + 15000; performance.now() < end; ) {
+        await new Promise((r) => requestAnimationFrame(r));
+        const z = m.head.rotation.z;
+        peak = Math.max(peak, Math.abs(z));
+        if (Math.abs(z - last) > 0.15) jumps += 1;
+        last = z;
+      }
+      return { peak, jumps, turn: m.head.rotation.y, glow: m.glow };
+    }""")
+    print('twitch', twitch)
+    check('creature: head twitches', twitch['peak'] > 0.2 and twitch['jumps'] > 0, twitch)
+    check('creature: head turns toward player', twitch['turn'] < -1, twitch)
+
+    glow = pg.evaluate("""async () => {
+      const g = window.__horror, m = g.model, out = { search: m.glow };
+      const shown = { x: 5.5, y: 15.5, heading: -Math.PI / 2, mode: 'chase' };
+      const real = m.constructor.prototype.update.bind(m);
+      m.update = (s, dt, p) => real(shown, dt, p);
+      await new Promise((r) => setTimeout(r, 1200));
+      out.chase = m.glow;
+      shown.mode = 'stunned';
+      await new Promise((r) => setTimeout(r, 2500));
+      out.stunned = m.glow;
+      return out;
+    }""")
+    print('eye glow', glow)
+    check('creature: eyes follow mode', glow['chase'] > 0.8 and glow['stunned'] < 0.12 < glow['search'], glow)
+
+
+def run_creature(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 1280, 'height': 720})
+    errs = []
+    watch(pg, errs)
+    open_horror(pg)
+    pg.evaluate(IDLE_INPUT)
+    time.sleep(2)  # 그림을 다 받기를 기다린다
+    creature_checks(pg)
+    print('errors', errs)
+    check('creature: no errors', not errs, errs)
+    b.close()
+
+
 def run_keys(pw):
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     pg = b.new_page(viewport={'width': 1280, 'height': 720})
@@ -93,6 +260,7 @@ def run_keys(pw):
     pg.evaluate('window.__horror.lightOn = false')
     time.sleep(0.5)
     pg.screenshot(path=f'{OUT}/light_off.png')
+    creature_checks(pg)
     pg.evaluate('window.__horror.exit()')
     time.sleep(1.5)
     print('title back', pg.evaluate("window.__shockGame.scene.isActive('Title')"), 'errors', errs)
@@ -348,7 +516,7 @@ def run_touch(pw):
 
 
 with sync_playwright() as pw:
-    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch}[MODE](pw)
+    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature}[MODE](pw)
 if fails:
     print('FAILED:', fails)
     sys.exit(1)
