@@ -328,6 +328,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.dead || this.ultActive || this.picking) return 'ignored'; // picking: 함께하기에서 레벨 업 카드를 고르는 중
     if (this.invincible) return 'ignored'; // 무적 별
     if (this.dashInvuln > 0) {
+      this.dashCd.limit(this.cfg.dash.dodgeCooldown); // 연속 충격파도 대시만으로 피할 수 있게
       this.scene.onDodge(this);
       return 'dodged';
     }
