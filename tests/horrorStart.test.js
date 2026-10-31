@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { canUseWebGL, startHorror } from '../src/horror/start.js';
+import { canUseWebGL, startHorror, deviceKind } from '../src/horror/start.js';
 
 const fakeCtx = (loseContext = () => {}) => ({ getExtension: () => ({ loseContext }) });
 const docWith = (ctx) => ({ createElement: () => ({ getContext: () => ctx }) });
@@ -95,5 +95,13 @@ describe('시작 실패', () => {
     vi.advanceTimersByTime(2600);
     expect(console.error).toHaveBeenCalled();
     expect(onExit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('기기 고르기', () => {
+  it('휴대폰, 태블릿, PC 를 구분한다', () => {
+    expect(deviceKind(true, true)).toBe('phone');
+    expect(deviceKind(false, true)).toBe('tablet');
+    expect(deviceKind(false, false)).toBe('pc');
   });
 });

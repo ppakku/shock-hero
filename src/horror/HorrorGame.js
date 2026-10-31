@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
 import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody } from '../logic/horrorGrid.js';
-import { stepPlayer, nextPixelRatio, startRatio, noiseFor } from '../logic/horrorInput.js';
+import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
 import { todayKey } from '../logic/daily.js';
@@ -38,9 +38,10 @@ const BLINK_DIM = 0.1; // 꺼진 순간에 남는 밝기 비율
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class HorrorGame {
-  constructor(root, { touch, lowFx, muted, onExit }) {
+  constructor(root, { touch, device, lowFx, muted, onExit }) {
     this.root = root;
     this.touch = touch;
+    this.device = device;
     this.lowFx = lowFx;
     this.muted = muted;
     this.onExit = onExit;
@@ -105,13 +106,14 @@ export class HorrorGame {
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
     this.run = createRun(this.map, this.k);
+    this.stamina = createStamina();
     this.fuseMeshes = this.world.addFuses(this.run.fuses);
     this.input = new HorrorInput(root, { touch, k: this.k });
     this.hud = new HorrorHud(root);
     this.hud.setStatus(this.statusNow());
     if (this.showFps) {
       this.fpsLabel = document.createElement('div');
-      this.fpsLabel.style.cssText = 'position:absolute;left:16px;top:36px;color:#8f8;font:14px monospace;z-index:4';
+      this.fpsLabel.style.cssText = 'position:absolute;left:16px;top:56px;color:#8f8;font:14px monospace;z-index:4';
       root.appendChild(this.fpsLabel);
     }
     this.onResize = () => {
@@ -182,7 +184,7 @@ export class HorrorGame {
   }
 
   start() {
-    this.hud.showIntro(this.touch, () => this.beginPlay(), () => this.exit());
+    this.hud.showIntro(this.device, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
       const real = (now - this.last) / 1000;
@@ -205,7 +207,7 @@ export class HorrorGame {
       console.error('공포 모드 소리를 켜지 못해 소리 없이 합니다', e);
     }
     this.relock();
-    this.hud.say(startHint(this.touch), 6);
+    this.hud.say(startHint(this.device), 6);
   }
 
   // 세이노를 처음 볼 때와 손전등을 처음 끌 때 화면이 멈추지 않게, 안내 화면 뒤에서 한 장씩 그려 둔다
@@ -256,11 +258,13 @@ export class HorrorGame {
     this.yaw -= inp.lookX;
     if (this.hidden !== null) this.yaw = this.hideYaw + Math.max(-HIDE_LOOK, Math.min(HIDE_LOOK, wrapAngle(this.yaw - this.hideYaw)));
     this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - inp.lookY));
-    const speed = inp.move.run ? this.k.runSpeed : this.k.walkSpeed;
+    const running = canRun(this.stamina, inp.move.run);
+    const speed = running ? this.k.runSpeed : this.k.walkSpeed;
     const before = this.p;
     if (this.hidden === null) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
     const moving = this.p.x !== before.x || this.p.y !== before.y;
-    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, inp.move.run, this.k) };
+    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
+    this.tickStamina(running && moving, dt);
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
@@ -307,6 +311,13 @@ export class HorrorGame {
   cancelBlink() {
     this.blink = null;
     this.flash.intensity = this.k.flashIntensity;
+  }
+
+  tickStamina(running, dt) {
+    const wasTired = this.stamina.tired;
+    this.stamina = stepStamina(this.stamina, running, this.k, dt);
+    if (this.stamina.tired && !wasTired) this.hud.say('숨이 찼다! 잠깐 걸어야 해', 2);
+    this.hud.setStamina(this.stamina);
   }
 
   statusNow() {
@@ -429,6 +440,8 @@ export class HorrorGame {
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
+    this.stamina = createStamina();
+    this.hud.setStamina(this.stamina);
     sendAway(this.stalker, this.map, this.p);
     this.model.update(this.stalker, 0, this.p);
     this.cullCreature();

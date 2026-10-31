@@ -3,20 +3,21 @@ import { controlLines, startHint, escapeText, MONSTER_NAME } from '../src/horror
 
 describe('공포 모드 조작 안내', () => {
   it('PC 는 키보드와 마우스를 알려 준다', () => {
-    const text = controlLines(false).join(' ');
-    for (const word of ['W A S D', '마우스', 'Shift', 'F', 'Esc', '줍기와 숨기: E', '쇼크 펀치: J 또는 왼쪽 클릭', '좌우 방향키']) expect(text).toContain(word);
+    const text = controlLines('pc').join(' ');
+    for (const word of ['(PC)', 'W A S D', '마우스', 'Shift', '체력', 'F', 'Esc', '충전: E', '쇼크 펀치: J 또는 왼쪽 클릭', '좌우 방향키']) expect(text).toContain(word);
     expect(text).not.toContain('버튼');
   });
 
   it('태블릿은 손가락 조작과 화면 버튼을 알려 준다', () => {
-    const text = controlLines(true).join(' ');
-    for (const word of ['왼쪽', '오른쪽', '손전등 버튼', '멈춤 버튼', '사용 버튼', '펀치 버튼']) expect(text).toContain(word);
+    const text = controlLines('tablet').join(' ');
+    for (const word of ['(태블릿)', '체력', '왼쪽', '오른쪽', '손전등 버튼', '멈춤 버튼', '사용 버튼', '펀치 버튼']) expect(text).toContain(word);
     expect(text).not.toContain('Esc');
   });
 
   it('기기마다 다른 시작 알림을 준다', () => {
-    expect(startHint(true)).toContain('왼쪽');
-    expect(startHint(false)).toContain('마우스');
+    expect(startHint('tablet')).toContain('왼쪽');
+    expect(startHint('phone')).toContain('왼쪽');
+    expect(startHint('pc')).toContain('마우스');
   });
 
   it('끝 화면은 실제로 받은 보석만 말한다', () => {
@@ -31,6 +32,13 @@ describe('공포 모드 조작 안내', () => {
       expect(none).toContain('오늘은 이미 보석을 받았어요');
       expect(none).not.toMatch(/보석 \d/);
     }
+  });
+
+  it('휴대폰은 눕혀 달라고 알려 주고, 조작은 터치로 알려 준다', () => {
+    const text = controlLines('phone').join(' ');
+    expect(text).toContain('가로로');
+    expect(text).toContain('펀치 버튼');
+    expect(text).not.toContain('Esc');
   });
 
   it('괴물 이름은 세이노다', () => {

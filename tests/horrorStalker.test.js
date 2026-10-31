@@ -206,3 +206,17 @@ describe('심장 소리', () => {
     expect(heartInterval(11, tuned)).toBeNull();
   });
 });
+
+describe('잡힌 뒤 괴물 보내기', () => {
+  it('늘 같은 곳으로 가지 않고, 언제나 멀리 간다', () => {
+    const p = { x: 2.5, y: 16.5 };
+    const spots = new Set();
+    for (const r of [0, 0.4, 0.9]) {
+      const s = createStalker(factoryMap);
+      sendAway(s, factoryMap, p, () => r);
+      spots.add(`${s.x},${s.y}`);
+      expect(Math.hypot(s.x - p.x, s.y - p.y)).toBeGreaterThanOrEqual(15);
+    }
+    expect(spots.size).toBeGreaterThan(1);
+  });
+});
