@@ -44,6 +44,11 @@ export function noiseFor(moving, running, k) {
   return running ? k.runNoise : k.walkNoise;
 }
 
+// 처음 해상도 배율. 태블릿은 화면이 촘촘해서 낮게 시작하고 여유가 있으면 올린다
+export function startRatio(deviceRatio, touch, k) {
+  return Math.min(deviceRatio || 1, touch ? k.touchRatio : k.maxRatio);
+}
+
 // 느린 기기는 해상도를 낮추고, 여유가 있으면 다시 높인다
 export function nextPixelRatio(ratio, fps, k) {
   if (fps < k.lowFps) return Math.max(k.minRatio, ratio - k.ratioStep);
