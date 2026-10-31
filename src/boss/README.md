@@ -36,3 +36,4 @@
 - 전용 공격은 `src/boss/signatures/<계열>.js` 에 `Signature` 를 상속해 만든다. `step(dt)` 가 true 를 돌려주면 끝이다.
 - 스테이지에 `signature: '이름'` 을 적고 `phases` 의 공격 하나를 `'signature'` 로 바꾼다.
 - 보스의 `startAction` 은 `type === 'signature'` 일 때 `startSignature()`, 공격 진행에서는 `runSignature(dt)` 를 부른다.
+- 왕 계열은 `boss.finalSignature` 로 일어선 뒤 전용 공격을 따로 고를 수 있다 (스테이지 40).

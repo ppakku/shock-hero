@@ -29,16 +29,19 @@ def on_gemini():
     return page("location.hostname") == 'gemini.google.com'
 
 
-def check_ready():
+def check_on_gemini():
     if not on_gemini():
         stop('tab left gemini.google.com')
+
+
+def check_ready():
+    check_on_gemini()
     if not page("!!document.activeElement?.closest?.('.ql-editor')"):
         stop('focus is not in the Gemini prompt box')
 
 
 def check_typed(text):
-    if not on_gemini():
-        stop('tab left gemini.google.com')
+    check_on_gemini()
     if page("document.querySelector('.ql-editor')?.innerText.trim()") != text.strip():
         stop('prompt box does not hold the prompt')
 
@@ -58,12 +61,13 @@ def images():
 
 # 그림 위 '원본 크기 이미지 다운로드' 버튼으로 원본 PNG 를 받는다 (화면의 그림은 blob 이라 페이지 안에서 꺼낼 수 없다)
 def save_last(path):
-    box = page("""(()=>{const im=[...document.querySelectorAll('img')].filter(i=>i.naturalWidth>300).pop();
-      im.scrollIntoView({block:'center'});const r=im.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()""")
-    cdp('Input.dispatchMouseEvent', session_id=sid, type='mouseMoved', x=box[0], y=box[1])
+    # 보이지 않는 탭에서는 마우스 명령이 끝나지 않아 페이지 안에서 마우스를 올린 신호를 보낸다
+    page("""(()=>{const im=[...document.querySelectorAll('img')].filter(i=>i.naturalWidth>300).pop();
+      for(const t of ['pointerover','mouseover','mouseenter'])im.dispatchEvent(new MouseEvent(t,{bubbles:true}))})()""")
     time.sleep(1)
     before = set(os.listdir(DOWNLOADS))
-    page("""[...document.querySelectorAll('button')].filter(b=>/다운로드|download/i.test(b.getAttribute('aria-label')||'')).pop().click()""")
+    if not page("""(()=>{const b=[...document.querySelectorAll('button')].filter(b=>/다운로드|download/i.test(b.getAttribute('aria-label')||'')).pop();b?.click();return !!b})()"""):
+        return False
     for _ in range(60):  # 원본이 커서 몇십 초 걸릴 수 있다
         time.sleep(1)
         got = [f for f in set(os.listdir(DOWNLOADS)) - before if not f.endswith('.crdownload')]
@@ -75,16 +79,24 @@ def save_last(path):
 
 def make(o):
     go_gemini()
-    page("document.querySelector('.ql-editor').focus()")
+    for _ in range(20):  # 페이지가 뜨는 동안에는 입력칸이 다시 그려져 초점이 빠질 수 있다
+        page("document.querySelector('.ql-editor')?.focus()")
+        time.sleep(0.5)
+        if page("!!document.activeElement?.closest?.('.ql-editor')"):
+            break
     check_ready()
     text = '이미지를 만들어 줘. ' + o['prompt']
     cdp('Input.insertText', session_id=sid, text=text)
     time.sleep(0.8)
     check_typed(text)
     # 보이지 않는 탭에서는 Enter 가 먹지 않아 보내기 버튼을 이 탭 안에서 누른다
-    page("""[...document.querySelectorAll('button')].find(b=>/보내기|send/i.test(b.getAttribute('aria-label')||''))?.click()""")
-    time.sleep(2)
-    if page("document.querySelector('.ql-editor')?.innerText.trim()"):
+    for _ in range(15):  # 보내기 버튼이 늦게 켜지거나 전송이 늦을 수 있다
+        check_on_gemini()
+        page("""[...document.querySelectorAll('button')].find(b=>/보내기|send/i.test(b.getAttribute('aria-label')||''))?.click()""")
+        time.sleep(2)
+        if not page("document.querySelector('.ql-editor')?.innerText.trim()"):
+            break
+    else:
         stop('prompt was not sent')
     for _ in range(100):  # 최대 약 200 초
         time.sleep(2)
