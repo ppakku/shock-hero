@@ -35,10 +35,10 @@
 
 ## 구조
 
-- 스테이지 파일의 `boss.variant` 한 줄로 변종을 고릅니다. `src/boss/variants.js` 가 변종 표(그림 키, 빠지는 공격, 들어오는 공격, 말풍선 안내)를 가집니다.
-- 전용 공격은 계열별 파일(`src/boss/variants/watcher.js` 등)에 둡니다. 큰 보스 파일을 더 키우지 않기 위해서입니다.
-- 보스 클래스는 그림 키를 `skin` 대신 변종 값으로 고르고, 변종의 공격을 `phases` 에 넣습니다.
-- 그림은 `src/config/art.js` 에 넣고, `src/logic/stageArt.js` 가 그 스테이지에 필요한 것만 받습니다. 보스 도감과 러시도 같은 경로를 씁니다.
+- 스테이지 파일의 `boss.skin` 에 변종 이름을 적습니다(예: `skin: 'bog'`). 그림 이름이 모두 skin 으로 정해지므로 도감과 러시도 그대로 따라옵니다.
+- `src/config/variantArt.js` 가 변종별 그림을 정합니다. 새 그림이 없는 부위는 원래 보스 그림을 빌려 씁니다.
+- 전용 공격은 `src/boss/signatures/<계열>.js` 에 둡니다. 큰 보스 파일을 더 키우지 않기 위해서입니다.
+- 스테이지의 `boss.signature` 로 전용 공격을 고르고, `phases` 에서 기존 공격 하나를 `signature` 로 바꿉니다.
 
 ## 지키는 규칙
 

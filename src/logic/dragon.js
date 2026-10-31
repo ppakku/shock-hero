@@ -1,6 +1,6 @@
 // 아스트라노바X(붉은 용) 보스 계산 (화면과 상관없는 부분)
 
-export const DRAGON_PATTERNS = ['breath', 'wing', 'tail', 'fly', 'pillars'];
+export const DRAGON_PATTERNS = ['breath', 'wing', 'tail', 'fly', 'pillars', 'signature'];
 
 // 단계: 0 = 꼬리와 날개가 다 있음, 1 = 하나 부서짐, 2 = 둘 다 부서져서 배가 약점
 export function dragonPhaseIndex(tailAlive, wingAlive) {

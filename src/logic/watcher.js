@@ -1,6 +1,6 @@
 // 포레스트 와처 보스 계산 (화면과 상관없는 부분)
 
-export const WATCHER_PATTERNS = ['claw', 'burrow', 'spit', 'vines', 'crawl'];
+export const WATCHER_PATTERNS = ['claw', 'burrow', 'spit', 'vines', 'crawl', 'signature'];
 
 // 단계: 0 = 긴 팔과 등 독혹이 다 있음, 1 = 하나 부서짐, 2 = 둘 다 부서져서 머리가 약점
 export function watcherPhaseIndex(armAlive, backAlive) {
