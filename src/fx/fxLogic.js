@@ -1,5 +1,7 @@
+import { isUltReady } from '../logic/combat.js';
+
 // 효과 계산만 모아 둔 곳 (Phaser 없이 테스트할 수 있게).
-// 그림은 impact.js, fireFx.js, shadows.js, foreground.js 가 그린다.
+// 그림은 impact.js, fireFx.js, shadows.js, foreground.js, ultAura.js 가 그린다.
 
 // 멈칫(히트 스톱) 길이 (밀리초). 효과 줄이기면 0.
 export const HIT_STOP_MS = {
@@ -55,4 +57,24 @@ export function foregroundAlpha(screenX, width = 960, tall = false) {
   const e = Math.max(0, Math.min(1, edge));
   if (tall) return 0.62 * (1 - e) * (1 - e); // 키 큰 조각은 가운데에서 사라진다
   return 0.85 - 0.25 * e;
+}
+
+// 궁극기 아우라를 보여 줄지: 게이지가 꽉 찼고 쓰러지지 않았을 때
+export const ultAuraOn = (p) => isUltReady(p.ultGauge) && !p.dead;
+
+// 아우라 뒤쪽 빛의 숨쉬기 (0.7 ~ 1, 약 1초에 한 번). t 는 초.
+export const auraPulse = (t) => 0.85 + 0.15 * Math.sin(t * Math.PI * 2);
+
+// 몸 둘레로 피어오르는 불꽃 하나의 모습. 위치는 몸 크기 기준 비율이다.
+// x: 왼쪽 -1 ~ 오른쪽 1, y: 발 1 ~ 머리 -1 (머리 위로 조금 넘어감), size: 1 ~ 0.25, alpha: 0 ~ 1
+export function auraFlame(i, count, t, life = 0.8) {
+  const q = (t / life + i / count) % 1;
+  const side = i % 2 === 0 ? -1 : 1;
+  const spread = 0.45 + 0.5 * ((i * 7) % count) / count; // 불꽃마다 몸에서 떨어진 정도가 다르다
+  return {
+    x: side * spread * (1 - 0.45 * q) + 0.1 * Math.sin(t * 7 + i * 2),
+    y: 1 - 2.5 * q,
+    size: 1 - 0.75 * q,
+    alpha: Math.sin(q * Math.PI),
+  };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hitStopMs, HIT_STOP_MS, particleBudget, emitCount, surfaceBelow, shadowShape, foregroundAlpha } from '../src/fx/fxLogic.js';
+import { hitStopMs, HIT_STOP_MS, particleBudget, emitCount, surfaceBelow, shadowShape, foregroundAlpha, ultAuraOn, auraPulse, auraFlame } from '../src/fx/fxLogic.js';
 import { createSaveStore, defaultSave } from '../src/logic/save.js';
 
 describe('멈칫 (히트 스톱)', () => {
@@ -90,5 +90,36 @@ describe('효과 줄이기 설정', () => {
     const s = createSaveStore(storage).load().settings;
     expect(s.lowFx).toBe(false);
     expect(s.shake).toBe(false);
+  });
+});
+
+describe('궁극기 아우라', () => {
+  it('게이지가 꽉 찼을 때만 켜지고, 궁극기를 쓰면 게이지가 0 이 되어 꺼진다', () => {
+    expect(ultAuraOn({ ultGauge: 0.99, dead: false })).toBe(false);
+    expect(ultAuraOn({ ultGauge: 1, dead: false })).toBe(true);
+    expect(ultAuraOn({ ultGauge: 0, dead: false })).toBe(false);
+  });
+
+  it('쓰러지면 게이지가 차 있어도 꺼진다', () => {
+    expect(ultAuraOn({ ultGauge: 1, dead: true })).toBe(false);
+  });
+
+  it('빛은 사라지지 않고 숨쉬듯 밝아졌다 어두워진다', () => {
+    const values = Array.from({ length: 100 }, (_, i) => auraPulse(i / 100));
+    expect(Math.min(...values)).toBeCloseTo(0.7, 2);
+    expect(Math.max(...values)).toBeCloseTo(1, 2);
+  });
+
+  it('불꽃은 발에서 태어나 작아지며 머리 위에서 사라지고, 좌우 양쪽에 나온다', () => {
+    const count = 8;
+    const start = auraFlame(0, count, 0);
+    const end = auraFlame(0, count, 0.799);
+    expect(start.y).toBeCloseTo(1);
+    expect(start.alpha).toBeCloseTo(0);
+    expect(end.y).toBeLessThan(-1);
+    expect(end.alpha).toBeLessThan(0.05);
+    expect(end.size).toBeLessThan(start.size);
+    const sides = Array.from({ length: count }, (_, i) => Math.sign(auraFlame(i, count, 0).x));
+    expect(new Set(sides)).toEqual(new Set([-1, 1]));
   });
 });
