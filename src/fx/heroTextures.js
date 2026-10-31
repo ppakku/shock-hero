@@ -11,6 +11,34 @@ const CX = 36;
 // 스프라이트 기준점: 몸 한가운데 (발에서 31 위)
 export const HERO_ORIGIN_Y = (HERO_FRAME.feetY - 31) / HERO_FRAME.h;
 
+// Gemini 그림(heroart_<주인공>, tools/make_hero_sheet.py)의 한 장면. 뻗은 팔과 무기가 잘리지 않게 도형 그림보다 넓고 3배로 촘촘하다.
+export const ART_FRAME = { w: 120, h: 104, feetY: 100 };
+const ART_S = 3;
+const ART_COLS = 5;
+export const HERO_ART_POSES = [
+  'idle0', 'idle1', 'idle2', 'run0', 'run1', 'run2', 'run3', 'run4', 'run5', 'jump',
+  'fall', 'dash0', 'charge0', 'punch', 'upper', 'hurt', 'punchB', 'smash', 'spin', 'slam',
+];
+const ART_SAME = { dash1: 'dash0', charge1: 'charge0', punchGlow: 'punch', upperGlow: 'upper' }; // 같은 그림을 쓰는 자세
+// 그림의 주먹 위치 (기준점에서, 오른쪽을 볼 때)
+const ART_FIST = {
+  charge0: { x: -6, y: -14 }, charge1: { x: -6, y: -14 },
+  punch: { x: 36, y: -14 }, punchGlow: { x: 36, y: -14 }, punchB: { x: 30, y: -14 },
+  upper: { x: 8, y: -46 }, upperGlow: { x: 8, y: -46 }, slam: { x: 10, y: 24 },
+};
+
+// 이 그림 폭의 장면 크기 (주인공 그림이 Gemini 그림이면 ART_FRAME)
+export const frameOfWidth = (width) => (width === ART_FRAME.w * ART_S ? ART_FRAME : HERO_FRAME);
+
+// 카드와 아이콘의 주인공 그림 크기를 맞춘다. Gemini 그림은 칸에 여백이 많아서 몸 높이(ART_BODY)로 재고 발을 기준으로 놓는다.
+const ART_BODY = 66;
+export function fitHero(img, h) {
+  if (!img.height) return;
+  const art = frameOfWidth(img.width) === ART_FRAME;
+  if (art) img.setOrigin(0.5, ART_FRAME.feetY / ART_FRAME.h);
+  img.setScale(art ? (h * 0.8) / (ART_BODY * ART_S) : h / img.height);
+}
+
 // 쇼크 히어로 색
 const SHOCK = {
   suit: 0x2b2b31,
@@ -341,6 +369,7 @@ export const HERO_POSES = {
   charge0: { lean: 16, hipY: 1.5, frontLeg: [32, 4], backLeg: [-32, -12], frontArm: [-50, 40], backArm: [45, 120], glow: 'front' },
   charge1: { lean: 17, hipY: 2, frontLeg: [33, 4], backLeg: [-33, -12], frontArm: [-52, 38], backArm: [47, 122], glow: 'front', glowSize: 2 },
   punch: { lean: 20, frontLeg: [40, 8], backLeg: [-40, -30], frontArm: [88, 90], backArm: [-40, 45] },
+  punchB: { lean: 18, frontLeg: [36, 8], backLeg: [-36, -26], frontArm: [-30, 50], backArm: [88, 90] },
   punchGlow: { lean: 22, frontLeg: [42, 8], backLeg: [-42, -30], frontArm: [88, 90], backArm: [-40, 45], glow: 'front', glowSize: 2 },
   upper: { lean: -6, hipY: -1, frontLeg: [14, 2], backLeg: [-16, -28], frontArm: [165, 172], backArm: [-35, 40], headTilt: -15 },
   upperGlow: { lean: -6, hipY: -1, frontLeg: [14, 2], backLeg: [-16, -28], frontArm: [165, 172], backArm: [-35, 40], headTilt: -15, glow: 'front', glowSize: 2 },
@@ -360,6 +389,7 @@ const ANIMS = {
   dash: { frames: ['dash0', 'dash1'], rate: 20, repeat: -1 },
   charge: { frames: ['charge0', 'charge1'], rate: 8, repeat: -1 },
   punch: { frames: ['punch'] },
+  punchB: { frames: ['punchB'] },
   punchGlow: { frames: ['punchGlow'] },
   upper: { frames: ['upper'] },
   upperGlow: { frames: ['upperGlow'] },
@@ -374,6 +404,24 @@ export const HERO_ANIMS = Object.keys(ANIMS);
 const fistAt = {};
 export function heroFistOffset(pose) {
   return fistAt[pose] || { x: 14, y: -4 };
+}
+
+// 받은 Gemini 그림을 자세별 그림으로 자른다. 이름이 같은 도형 그림은 이제 안 그린다 (drawFrame 이 건너뜀)
+function cutHeroArt(scene, prefix) {
+  const sheetKey = `heroart_${prefix}`;
+  if (!scene.textures.exists(sheetKey)) return false;
+  const src = scene.textures.get(sheetKey).getSourceImage();
+  const w = ART_FRAME.w * ART_S;
+  const h = ART_FRAME.h * ART_S;
+  const cut = (key, i) => {
+    const tex = scene.textures.createCanvas(key, w, h);
+    tex.getContext().drawImage(src, (i % ART_COLS) * w, Math.floor(i / ART_COLS) * h, w, h, 0, 0, w, h);
+    tex.refresh();
+  };
+  HERO_ART_POSES.forEach((pose, i) => cut(`${prefix}_${pose}`, i));
+  for (const [pose, same] of Object.entries(ART_SAME)) cut(`${prefix}_${pose}`, HERO_ART_POSES.indexOf(same));
+  scene.textures.remove(sheetKey);
+  return true;
 }
 
 function drawFrame(scene, key, pose) {
@@ -395,6 +443,8 @@ export function makeHeroTextures(scene) {
     C = look.colors;
     PROP = look.prop;
     HAT = look.hat ?? null;
+    const art = cutHeroArt(scene, look.prefix);
+    if (art && look.prefix === 'hero') Object.assign(fistAt, ART_FIST);
     for (const [name, pose] of Object.entries(HERO_POSES)) {
       const fist = drawFrame(scene, `${look.prefix}_${name}`, pose);
       if (fist && look.prefix === 'hero') fistAt[name] = { x: fist.x - CX, y: fist.y - HERO_ORIGIN_Y * HERO_FRAME.h };

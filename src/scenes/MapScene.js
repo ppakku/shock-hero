@@ -7,7 +7,7 @@ import { nodePosition, roadPoints, locateStage, chapterUnlocked, mapStartStage }
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText, formatTime, FONT } from '../ui/text.js';
 import { HERO_IDS, HERO_INFO, normalizeHero, cycleHero } from '../logic/heroes.js';
-import { HERO_LOOKS } from '../fx/heroTextures.js';
+import { HERO_LOOKS, fitHero } from '../fx/heroTextures.js';
 
 // 모험 지도: 냥코대전쟁처럼 길 위의 스테이지 점을 골라서 들어간다.
 // ← → 로 스테이지 고르기 (장 끝에서 넘어가면 다음 장), Q / E 로 장 넘기기, Enter 로 시작, Esc 로 타이틀.
@@ -124,7 +124,7 @@ export class MapScene extends Phaser.Scene {
 
     // 주인공 표시 (고른 점 위에서 통통)
     this.heroIcon = this.add.image(0, 0, this.heroTexture(this.hero)).setOrigin(0.5, 1).setDepth(30);
-    if (this.heroIcon.height) this.heroIcon.setScale(56 / this.heroIcon.height);
+    fitHero(this.heroIcon, 56);
     this.drawHeroPicker();
 
     // 위: 장 이름, 장 넘기기 화살표, 별과 보석
@@ -254,7 +254,7 @@ export class MapScene extends Phaser.Scene {
       bg.fillStyle(0x0c0e14, 0.85).fillRoundedRect(-28, -32, 56, 64, 10);
       const ring = this.add.graphics();
       const img = this.add.image(0, 28, this.heroTexture(id)).setOrigin(0.5, 1);
-      if (img.height) img.setScale(58 / img.height);
+      fitHero(img, 58);
       c.add([bg, img, ring]);
       c.setSize(56, 64).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.pickHero(id));
       return { id, c, ring };
@@ -282,7 +282,7 @@ export class MapScene extends Phaser.Scene {
     this.save.settings.hero = id;
     sfx.play('cardMove');
     this.heroIcon.setTexture(this.heroTexture(id));
-    if (this.heroIcon.height) this.heroIcon.setScale(56 / this.heroIcon.height);
+    fitHero(this.heroIcon, 56);
     this.refreshHero();
   }
 

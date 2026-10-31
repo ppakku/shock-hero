@@ -5,7 +5,7 @@ import { coop } from '../net/coop.js';
 import { CONTROL_KEYS } from '../logic/controls.js';
 import { HERO_IDS, HERO_INFO, cycleHero, normalizeHero } from '../logic/heroes.js';
 import { newMatch, sideName } from '../logic/versus.js';
-import { HERO_LOOKS } from '../fx/heroTextures.js';
+import { HERO_LOOKS, fitHero } from '../fx/heroTextures.js';
 import { isTouchDevice } from '../ui/touch.js';
 import { makeText } from '../ui/text.js';
 
@@ -68,7 +68,7 @@ export class VersusPickScene extends Phaser.Scene {
     const key = `${HERO_LOOKS[id].prefix}_idle0`;
     const custom = id === 'shock' && this.registry.get('heroCustomArt');
     const img = this.add.image(0, 20, custom || !this.textures.exists(key) ? 'player' : key).setOrigin(0.5, 1);
-    if (img.height) img.setScale(120 / img.height);
+    fitHero(img, 120);
     const name = makeText(this, 0, 44, info.name, 22, info.color, { strokeThickness: 5 }).setOrigin(0.5);
     const short = makeText(this, 0, 86, info.short, 14, '#dddddd', { wordWrap: { width: CARD_W - 18 } }).setOrigin(0.5);
     const ring = this.add.graphics();

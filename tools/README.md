@@ -22,7 +22,8 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `make_shredder_saw.py`: Gemini 로 그린 파쇄자 몸통 시트, 톱날, 쇠창살의 마젠타 배경과 별 표시를 지우고, 시트 8칸의 배 구멍 자리를 재서 출력함 (`src/logic/shredder.js` 의 `SHREDDER_HOLES` 에 옮겨 적음). 다섯 번째 인자에 경로를 주면 잰 타원을 그린 확인용 그림을 저장
 - `make_arm_fist.py`: 흰 배경에 팔(왼쪽, 주먹이 아래)과 주먹(오른쪽, 왼쪽을 봄)이 나란히 있는 그림을 팔 280x840, 주먹 384x266 두 장으로 나누고 art.js 에 적을 armCut(금 팔찌 윗선)을 알려 줌 (킹 돌연변이)
 - `split_parts.py`: 흰 배경에 가로로 나란히 그린 부품 여러 개(예: 닫힌 상자, 열린 상자, 방패 조각)를 빈 세로줄에서 나눠 각각 배경을 지우고 정한 높이로 저장
-- `gemini_batch.py`: 사용 중지. 공유 브라우저 연결에서 다른 탭에 프롬프트를 입력한 사고가 있었다 (파일 맨 위 참고)
+- `gemini_batch.py`: Gemini 웹으로 그림을 차례로 만든다. 주문서의 `ref` 로 참고 그림을 붙이고, `GEMINI_MODEL` 로 모델을 고른다. 쓰는 법은 파일 맨 위 참고. 이미지 한도에 걸리면 멈춘다
+- `make_hero_sheet.py`: Gemini 주인공 시트 세 장을 게임이 읽는 한 장으로 합친다
 - `key_magenta.py`: Gemini 에게 단색 마젠타 배경으로 받은 그림을 투명 PNG 로 (별 표시도 함께 지워짐). `--main` 은 가장 큰 덩어리만 남긴다
 - `make_fx_sheet.py`: 검은 배경 효과 그림을 게임 크기로 줄이고 별 표시를 지움. 칸 수와 `--cells` 로 쓸 칸만 골라 시트를 만든다
 - `clean_gemini_bg.py`: Gemini 배경 그림의 오른쪽 아래 별 표시를 양옆 색으로 메워 지우고 높이 720 JPG 로 저장
