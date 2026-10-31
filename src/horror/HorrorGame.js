@@ -108,7 +108,7 @@ export class HorrorGame {
     this.run = createRun(this.map, this.k);
     this.stamina = createStamina();
     this.fuseMeshes = this.world.addFuses(this.run.fuses);
-    this.input = new HorrorInput(root, { touch, k: this.k });
+    this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root);
     this.hud.setStatus(this.statusNow());
     if (this.showFps) {
@@ -117,6 +117,7 @@ export class HorrorGame {
       root.appendChild(this.fpsLabel);
     }
     this.onResize = () => {
+      if (this.device === 'phone' && window.innerHeight > window.innerWidth) this.pause(); // 세로로 돌리면 '가로로 돌려 주세요' 화면이 덮는다
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);

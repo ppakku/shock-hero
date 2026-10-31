@@ -241,21 +241,19 @@ export class TitleScene extends Phaser.Scene {
       this.openDaily();
     });
 
-    // 공포 모드 (로고 오른쪽 빈 하늘, 검은 철판. 왼쪽 줄은 안내판에 닿아서 못 쓴다). 휴대폰에서는 작은 화면에서 안 보여서 뺀다
-    if (!isPhone()) {
-      this.horrorBtn = this.add.container(width / 2 + 140, 78).setDepth(15).setAngle(-1.5);
-      const plate = this.add.graphics();
-      plate.fillStyle(0x000000, 0.45).fillRoundedRect(-82, -22, 168, 50, 8);
-      plate.fillStyle(0x10161c, 1).fillRoundedRect(-88, -27, 176, 54, 10);
-      plate.fillStyle(0x1a0d0d, 1).fillRoundedRect(-84, -23, 168, 46, 7);
-      const horrorLabel = brushText(this, 0, -7, '공포 모드', 20, '#ff5a4a', { strokeThickness: 5 }).setOrigin(0.5);
-      const horrorInfo = makeText(this, 0, 13, '꽤 무서워요', 13, '#ffffff').setOrigin(0.5);
-      this.horrorBtn.add([plate, horrorLabel, horrorInfo]);
-      this.horrorBtn.setSize(176, 54).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-        if (this.confirming) return;
-        this.openHorror();
-      });
-    }
+    // 공포 모드 (로고 오른쪽 빈 하늘, 검은 철판. 왼쪽 줄은 안내판에 닿아서 못 쓴다)
+    this.horrorBtn = this.add.container(width / 2 + 140, 78).setDepth(15).setAngle(-1.5);
+    const horrorPlate = this.add.graphics();
+    horrorPlate.fillStyle(0x000000, 0.45).fillRoundedRect(-82, -22, 168, 50, 8);
+    horrorPlate.fillStyle(0x10161c, 1).fillRoundedRect(-88, -27, 176, 54, 10);
+    horrorPlate.fillStyle(0x1a0d0d, 1).fillRoundedRect(-84, -23, 168, 46, 7);
+    const horrorLabel = brushText(this, 0, -7, '공포 모드', 20, '#ff5a4a', { strokeThickness: 5 }).setOrigin(0.5);
+    const horrorInfo = makeText(this, 0, 13, '꽤 무서워요', 13, '#ffffff').setOrigin(0.5);
+    this.horrorBtn.add([horrorPlate, horrorLabel, horrorInfo]);
+    this.horrorBtn.setSize(176, 54).setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      if (this.confirming) return;
+      this.openHorror();
+    });
 
     // 설정 버튼 줄 (빨간 낙서, 파란 테이프, 회색 철판)
     const d = DIFFICULTY_INFO[save.settings.difficulty];
@@ -576,7 +574,7 @@ export class TitleScene extends Phaser.Scene {
 
   // 공포 모드는 타이틀을 멈추고 그 위에 3D 화면을 띄운다 (src/horror/start.js)
   openHorror() {
-    if (this.started || !this.ready || isPhone()) return;
+    if (this.started || !this.ready) return;
     this.started = true;
     this.input.keyboard.enabled = false; // 공포 모드에서 누른 키가 돌아왔을 때 타이틀에서 눌리지 않게
     sfx.unlock();

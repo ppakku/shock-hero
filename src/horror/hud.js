@@ -48,7 +48,8 @@ export class HorrorHud {
   constructor(root) {
     this.root = root;
     this.box = document.createElement('div');
-    this.box.style.cssText = 'position:absolute;inset:0;z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
+    // 휴대폰 노치에 글자가 가리지 않게 안전 여백만큼 안쪽에 놓는다
+    this.box.style.cssText = 'position:absolute;top:env(safe-area-inset-top,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
     this.status = this.add('position:absolute;left:16px;top:12px;text-shadow:0 0 4px #000');
     // 달리기 체력 막대. 다 쓰면 빨갛게 바뀐다
     this.add('position:absolute;left:16px;top:35px;font-size:13px;text-shadow:0 0 4px #000').textContent = '체력';
@@ -119,10 +120,11 @@ export class HorrorHud {
     this.black.style.opacity = on ? '1' : '0';
   }
 
-  openLayer(lines, buttons) {
+  // compact: 휴대폰 가로 화면에 다 들어가게 글자를 줄이고 버튼을 옆으로 놓는다
+  openLayer(lines, buttons, compact = false) {
     this.closeLayer();
     this.layer = document.createElement('div');
-    this.layer.style.cssText = LAYER;
+    this.layer.style.cssText = compact ? `${LAYER};gap:2px;font-size:14px;padding:6px` : LAYER;
     // 안내 화면을 누른 손가락이 뒤의 조이스틱이나 마우스 잠금으로 가지 않게 막는다
     this.layer.addEventListener('pointerdown', (e) => e.stopPropagation());
     for (const line of lines) {
@@ -130,6 +132,8 @@ export class HorrorHud {
       p.textContent = line;
       this.layer.appendChild(p);
     }
+    const row = document.createElement('div');
+    row.style.cssText = compact ? 'display:flex;gap:16px' : 'display:flex;flex-direction:column;align-items:center;gap:18px';
     const made = buttons.map((b) => {
       const btn = document.createElement('button');
       btn.textContent = b.text;
@@ -139,9 +143,10 @@ export class HorrorHud {
         e.stopPropagation();
         b.onPress();
       });
-      this.layer.appendChild(btn);
+      row.appendChild(btn);
       return btn;
     });
+    this.layer.appendChild(row);
     this.root.appendChild(this.layer);
     made[0]?.focus(); // Enter 로도 누를 수 있다
   }
@@ -153,8 +158,9 @@ export class HorrorHud {
 
   showIntro(device, onStart, onQuit) {
     this.openLayer(
-      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...INTRO, ' ', ...controlLines(device)],
+      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...(device === 'phone' ? INTRO.slice(2) : INTRO), ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
+      device === 'phone',
     );
   }
 
