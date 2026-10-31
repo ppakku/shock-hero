@@ -22,7 +22,7 @@ const LUNGE_TIME = 0.16;
 const FADE_AT = 0.8;
 const BACK_AT = 1.5;
 const FACE_FAR = 1.5; // 달려들기 시작하는 얼굴 거리 (미터)
-const FACE_NEAR = 0.5; // 화면을 채우는 얼굴 거리 (미터)
+const FACE_NEAR = 0.6; // 화면을 채우는 얼굴 거리 (미터)
 const FACE_UP = 0.2; // 머리 받침점에서 화면 가운데로 올 곳까지 높이 (미터). 웃는 입까지 보이게 낮춰 잡는다
 const FACE_LIGHT = 0.14; // 코앞의 얼굴이 하얗게 날아가지 않게 줄이는 손전등 비율
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));

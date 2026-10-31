@@ -42,9 +42,9 @@ def open_horror(pg):
 
 # 배경 음악이 실제로 나오는지 잰다. 태블릿 스피커는 150Hz 아래를 거의 못 내므로 그 위 소리도 본다.
 AUDIO_PROBE = """async (secs) => {
-  const a = window.__horror.audio, an = a.ctx.createAnalyser();
+  const a = window.__horror.audio, an = a.ctx.createAnalyser(), tap = a.comp || a.out; // 압축기를 지난 소리, 스피커로 가는 소리를 잰다
   an.fftSize = 8192;
-  a.out.connect(an);
+  tap.connect(an);
   const t = new Float32Array(an.fftSize), f = new Float32Array(an.frequencyBinCount);
   let rms = 0, peak = 0, n = 0, high = 0;
   const hz = a.ctx.sampleRate / an.fftSize;
@@ -60,7 +60,7 @@ AUDIO_PROBE = """async (secs) => {
     high += 10 * Math.log10(e || 1e-12);
     n += 1;
   }
-  a.out.disconnect(an);
+  tap.disconnect(an);
   return { state: a.ctx.state, rms: rms / n, peak, highDb: high / n };
 }"""
 
@@ -387,7 +387,8 @@ def play_sound(pw):
     near = pg.evaluate(AUDIO_PROBE, 6)
     print('sound far', far)
     print('sound chase', near)
-    check('sound: louder when chased', near['rms'] > far['rms'] and near['highDb'] > far['highDb'] + 1, (far, near))
+    # 압축기가 평균 크기를 고르게 만들어서, 가까워진 숨소리와 발소리는 순간 최대값으로 본다
+    check('sound: louder when chased', near['rms'] > far['rms'] and near['peak'] > far['peak'] * 1.3, (far, near))
     check('sound: not clipping', near['peak'] < 0.98, near)
     print('errors', errs)
     b.close()
