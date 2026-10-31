@@ -122,10 +122,14 @@ def title_tap(pg, t):
     # 타이틀 입구 버튼의 화면 좌표를 구해서 손가락으로 누른다
     xy = pg.evaluate("""() => {
       const s = window.__shockGame.scene.getScene('Title'), c = window.__shockGame.canvas.getBoundingClientRect();
+      const b = s.horrorBtn;
+      if (!b) return { has: false };
       const k = c.width / window.__shockGame.scale.gameSize.width;
-      return { x: c.left + s.horrorBtn.x * k, y: c.top + s.horrorBtn.y * k, has: Boolean(s.horrorBtn) };
+      return { x: c.left + b.x * k, y: c.top + b.y * k, has: true };
     }""")
     check('title: entrance visible on tablet', xy['has'], xy)
+    if not xy['has']:
+        raise SystemExit(1)
     t.down(1, xy['x'], xy['y'])
     time.sleep(0.08)
     t.up(1)

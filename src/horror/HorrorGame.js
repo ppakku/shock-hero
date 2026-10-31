@@ -54,7 +54,7 @@ export class HorrorGame {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
     this.scene.fog = new THREE.Fog(0x000000, 3, this.k.viewCells * CELL);
-    this.scene.add(new THREE.AmbientLight(0x8890a8, 0.05));
+    this.scene.add(new THREE.AmbientLight(0x8890a8, this.k.ambient));
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
     this.scene.add(this.camera);
@@ -62,7 +62,7 @@ export class HorrorGame {
     this.flash.castShadow = true;
     this.flash.shadow.mapSize.set(512, 512);
     this.flash.position.set(0.15, -0.2, 0);
-    this.flash.target.position.set(0, -0.2, -1);
+    this.flash.target.position.set(0.15, -0.2, -1);
     this.camera.add(this.flash, this.flash.target);
 
     this.world = buildWorld(this.scene, this.map);

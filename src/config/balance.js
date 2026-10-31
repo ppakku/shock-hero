@@ -771,6 +771,7 @@ export const balance = {
     fuseCount: 3, // 찾아야 하는 퓨즈 수
     gemsEscape: 5, // 탈출 보석
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석
+    ambient: 0.9, // 손전등을 껐을 때 은은하게 보이는 윤곽 밝기 (0 은 완전히 캄캄함)
     flashIntensity: 150, // 손전등 밝기
     flashAngle: 0.55, // 손전등 빛이 퍼지는 각도의 절반 (라디안). 화면 높이의 3분의 2쯤을 덮는다
     flashPenumbra: 0.6, // 빛 가장자리가 부드러운 정도 (0 은 칼같이, 1 은 가운데부터 흐려짐)
