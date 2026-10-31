@@ -112,13 +112,22 @@ describe('horror creature', () => {
     };
     const patrol = settle('patrol', true);
     const chase = settle('chase', true);
-    const stunned = settle('stunned', false);
+    // 기절은 걷다가 맞은 상황으로 본다: 먼저 걷게 한 뒤 같은 자리에서 멈춘다
+    const stunned = settle('patrol', true);
+    expect(stunned.gait).toBeGreaterThan(0.9);
+    const walkingPhase = stunned.phase;
+    const at = { x: 5 + 90 * 0.05, y: 5, heading: Math.PI / 2, mode: 'stunned' };
+    for (let i = 0; i < 90; i++) stunned.update(at, 1 / 30, P);
+    const frozen = stunned.phase;
+    for (let i = 0; i < 10; i++) stunned.update(at, 1 / 30, P);
+    expect(stunned.phase).toBeCloseTo(frozen, 5);
+    expect(walkingPhase).toBeGreaterThan(0.1); // 걷는 동안 걸음이 돌았다
+    expect(frozen).toBeCloseTo(walkingPhase, 3); // 맞은 뒤로는 더 돌지 않는다
     // 추격: 더 숙이고 목이 길어지고 팔을 들어 올린다
     expect(chase.pose.lean).toBeGreaterThan(patrol.pose.lean + 0.3);
     expect(chase.pose.stretch).toBeGreaterThan(patrol.pose.stretch + 0.15);
     expect(chase.arms[0].shoulder.rotation.x).toBeLessThan(patrol.arms[0].shoulder.rotation.x - 0.8);
-    // 기절: 걷지 않고 서서 잘게 떨며, 눈이 꺼진다
-    expect(stunned.gait).toBe(0);
+    // 기절: 맞은 자세로 굳어 잘게 떨며(걸음 위상은 위에서 멈춤을 확인했다), 눈이 꺼진다
     expect(stunned.glow).toBeLessThan(patrol.glow * 0.3);
     expect(stunned.group.rotation.y).toBeCloseTo(Math.PI / 2);
   });

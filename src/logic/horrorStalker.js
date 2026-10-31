@@ -51,6 +51,17 @@ function walk(s, speed, dt) {
   return s.path.length > 0;
 }
 
+// 같은 칸 안에서는 칸 가운데가 아니라 주인공에게 곧장 다가간다. 칸 모서리에 서 있어도 확실히 잡힌다
+function closeIn(s, player, step) {
+  const d = dist(s, player);
+  if (d < 0.001) return;
+  s.heading = Math.atan2(player.x - s.x, player.y - s.y);
+  const f = Math.min(1, step / d);
+  s.x += (player.x - s.x) * f;
+  s.y += (player.y - s.y) * f;
+  s.path = [];
+}
+
 function startSearch(s, map, k, rand) {
   s.mode = 'search';
   s.searchT = k.searchTime;
@@ -155,7 +166,8 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
       goTo(s, map, s.lastSeen);
       s.repathT = k.repathTime;
     }
-    walk(s, k.stalkerChase, dt);
+    if (sees && sameCell(cellOf(s), cellOf(player))) closeIn(s, player, k.stalkerChase * dt);
+    else walk(s, k.stalkerChase, dt);
     if (!sees) {
       s.lostT += dt;
       if (s.lostT >= k.loseTime) {

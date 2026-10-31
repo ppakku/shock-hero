@@ -63,6 +63,16 @@ describe('상태 변화', () => {
     expect(events).toContain('caught');
   });
 
+  it('같은 칸 모서리에 서 있어도 곧장 다가가 잡는다', () => {
+    // 칸 가운데에서 모서리까지는 0.707 이라 잡힘 거리 0.7 보다 멀다
+    const s = facing({ x: 3.5, y: 1.5, mode: 'chase', lastSeen: { cx: 3, cy: 1 } });
+    const world = { map: hall, player: player({ x: 3.999, y: 1.999 }) };
+    expect(Math.hypot(s.x - 3.999, s.y - 1.999)).toBeGreaterThan(k.catchDist);
+    const events = run(s, world, 1);
+    expect(events).toContain('caught');
+    expect(Math.hypot(s.x - 3.999, s.y - 1.999)).toBeLessThan(k.catchDist);
+  });
+
   it('놓치면 수색을 하고, 시간이 지나면 순찰로 돌아간다', () => {
     const s = facing({ x: 6.5, y: 1.5 });
     const world = { map: hall, player: player({ x: 8.5 }) };
