@@ -366,6 +366,15 @@ export const balance = {
     rageAt: 0.5, // 코어 체력이 이 비율 아래면 분노 모드 (0.5 = 절반)
     rageSpeed: 0.8, // 분노하면 공격 시간에 곱하는 값 (작을수록 빠름)
     rageChainGap: 0.3, // 분노 때 공격 두 개를 이어서 할 때 사이 시간
+    signatureBy: 2, // 변종은 이만큼 공격하기 전에 전용 공격을 꼭 한 번 쓴다
+    drillDamage: 22, // 드릴 땅파기 피해량
+    drillSpeed: 240, // 흙더미가 따라오는 빠르기 (걷는 속도 260 보다 작게)
+    drillChaseTime: 1.5, // 흙더미가 따라오는 시간
+    drillWarningTime: 0.9, // 드릴이 솟기 전 빨간 경고 시간
+    voltDamage: 16, // 번개 사슬 피해량
+    voltSpan: 460, // 전기 기둥 두 개 사이 거리
+    voltWarningTime: 1.2, // 번개 사슬 전 빨간 경고 시간
+    voltStrikeTime: 0.3, // 번개가 이어져 있는 시간 (대시 무적 0.35 보다 짧게)
   },
 
   // ---------- 혹한의 아스트라 (스테이지 4, 날아다니는 얼음 용, 아들 디자인) ----------

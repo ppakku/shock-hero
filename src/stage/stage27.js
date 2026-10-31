@@ -118,6 +118,7 @@ export const stage27 = {
     type: 'arms',
     name: '파쇄자 MK5',
     skin: 'volt',
+    signature: 'voltChain',
     arms: 3,
     healthScale: 2.4,
     speedScale: 0.76,
@@ -125,10 +126,10 @@ export const stage27 = {
     shockwaves: 3,
     colors: { main: 0x4a4a5a, light: 0x8a8aa0, dark: 0x22222e, arm: 0x5a5a70 },
     phases: [
-      ['doubleSlam', 'rocketPunch', 'sweep', 'shockwave', 'slam'],
-      ['multiSlam', 'rocketPunch', 'inhale', 'doubleSlam', 'rocks'],
-      ['multiSlam', 'rocketPunch', 'shockwave', 'rocks', 'sweep'],
-      ['rocketPunch', 'rocks', 'shockwave', 'inhale'],
+      ['doubleSlam', 'rocketPunch', 'signature', 'shockwave', 'slam'],
+      ['multiSlam', 'signature', 'inhale', 'doubleSlam', 'rocks'],
+      ['multiSlam', 'rocketPunch', 'shockwave', 'rocks', 'signature'],
+      ['rocketPunch', 'rocks', 'signature', 'inhale'],
     ],
   },
 };
