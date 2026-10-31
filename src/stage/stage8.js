@@ -96,14 +96,15 @@ export const stage8 = {
     type: 'dragon',
     name: '분노한 아스트라노바X',
     skin: 'rock', // 스테이지 3 아스트라노바X 그림을 그대로 씀
+    signature: 'boulders',
     healthScale: 1.45,
     speedScale: 0.85,
     colors: { main: 0xc8282a, dark: 0x7a1418, armor: 0x2e2a2c, lava: 0xff7a1f, belly: 0xf0d0a0 },
     // 공격: breath(불 뿜기), wing(날개 바람), tail(꼬리 휘두르기), fly(날아올라 불 폭격), pillars(용암 불기둥)
     phases: [
-      ['breath', 'tail', 'wing', 'pillars', 'fly'],
-      ['breath', 'tail', 'pillars', 'fly', 'wing'],
-      ['breath', 'pillars', 'fly', 'tail', 'pillars'],
+      ['breath', 'tail', 'wing', 'signature', 'fly'],
+      ['signature', 'tail', 'pillars', 'fly', 'wing'],
+      ['breath', 'pillars', 'fly', 'tail', 'signature'],
     ],
     intro: ['아스트라노바X! 아까보다 훨씬 화가 났어!', '꼬리가 땅에 떨어지거나 날개가 처지면 그때 때려!'],
   },
