@@ -35,7 +35,7 @@
 - [x] 2-7 아스트라노바X 꼬리 휘두르기 (`dragon_tail.png`, `dragon_tailtip.png`)
 - [x] 2-8 돌과 독침 (`rock.png`, `glob.png`). 팔 보스, 킹, 아귀왕이 같이 씀
 - [x] 2-9 공격 효과 (`fx_shockwave`, `fx_rocket_trail`, `fx_whirl`, `fx_portal`, `fx_frost_cone`, `fx_frost_wall`, `fx_sand_wave`, `fx_star`, `fx_puddle_poison`, `fx_puddle_fire`). `src/fx/bossArt.js` 의 stamp() 로 그린다. 그림을 못 받으면 원래 도형이 나온다
-- [x] 2-10 엎드린 와처, 날개 늘어뜨린 용, 먹물 구름 (`watcher_flat_2`, `dragon_tired_3`, `fx_ink` (`watcher_flat_2`, `dragon_tired_3`, `fx_ink`)
+- [x] 2-10 엎드린 와처, 날개 늘어뜨린 용, 먹물 구름 (`watcher_flat_2`, `dragon_tired_3`, `fx_ink`)
 
 ### 3. 일반 몬스터 (각각 4x2 걷기나 떠다니기 8장)
 - [x] 초록 몬스터, 빨강 날쌘돌이, 파랑 뚱보, 보라 뜀뛰기 (`monster_green/red/blue/purple.png`, Gemini 웹, `tools/make_sheet.py`)
