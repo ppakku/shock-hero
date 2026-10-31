@@ -25,6 +25,11 @@ const FACE_FAR = 1.5; // 달려들기 시작하는 얼굴 거리 (미터)
 const FACE_NEAR = 0.6; // 화면을 채우는 얼굴 거리 (미터)
 const FACE_UP = 0.2; // 머리 받침점에서 화면 가운데로 올 곳까지 높이 (미터). 웃는 입까지 보이게 낮춰 잡는다
 const FACE_LIGHT = 0.14; // 코앞의 얼굴이 하얗게 날아가지 않게 줄이는 손전등 비율
+// 놀람 장면 (map.scares) 에서 한 번씩 뜨는 글. 피나 다친 모습 없이 소리와 불빛으로만 놀라게 한다
+const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 발톱이 바닥을 긁는다', '불빛이 깜빡인다. 세이노가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
+const BLINK_STEP = 0.09; // 손전등이 켜졌다 꺼지는 간격 (초)
+const BLINK_COUNT = 7;
+const BLINK_DIM = 0.1; // 꺼진 순간에 남는 밝기 비율
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class HorrorGame {
@@ -41,6 +46,8 @@ export class HorrorGame {
     this.pitch = 0;
     this.lightOn = true;
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
+    this.scaresLeft = [...this.map.scares];
+    this.blink = null; // 손전등 깜빡임 진행 상태. 잡힘과 나가기에서 끊는다
     this.audio = null;
     this.fps = 60;
     this.fpsFrames = 0;
@@ -85,7 +92,7 @@ export class HorrorGame {
     this.flash.target.position.set(0.15, -0.2, -1);
     this.camera.add(this.flash, this.flash.target);
 
-    this.world = buildWorld(this.scene, this.map);
+    this.world = buildWorld(this.scene, this.map, this.factoryMaterials());
     this.stalker = createStalker(this.map);
     this.model = new CreatureModel(this.scene);
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
@@ -113,6 +120,40 @@ export class HorrorGame {
     document.addEventListener('visibilitychange', this.onVisibility);
     window.__horror = this;
     window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight }; // 봇이 쓴다
+  }
+
+  // 벽, 바닥, 사물함 문에 그림을 입힌다. 그림을 못 받으면 밋밋한 색으로 둔다
+  factoryMaterials() {
+    this.textures = [];
+    let reported = false;
+    const make = (name, plain, repeat, roughness) => {
+      const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness });
+      const tex = new THREE.TextureLoader().load(
+        `art/horror_${name}.jpg`,
+        undefined,
+        undefined,
+        () => {
+          if (!reported) console.error('공포 모드 재질 그림을 못 받아 밋밋한 색으로 둡니다:', name);
+          reported = true;
+          mat.map = null;
+          mat.color.setHex(plain);
+          mat.needsUpdate = true;
+        },
+      );
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeat, repeat);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      mat.map = tex;
+      this.textures.push(tex);
+      return mat;
+    };
+    // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
+    return {
+      wall: make('wall', 0x5a5148, 1, 0.9),
+      floor: make('floor', 0x35312d, 7, 1),
+      locker: make('locker', 0x4a5a58, 1, 0.8),
+    };
   }
 
   start() {
@@ -177,10 +218,42 @@ export class HorrorGame {
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
+    this.checkScare();
+    this.tickBlink(dt);
     const target = this.nearestUse();
     this.hud.setPrompt(target ? `${this.touch ? '사용' : 'E'}: ${target.label}` : '');
     if (inp.use) this.doUse(target);
     if (inp.punch) this.doPunch();
+  }
+
+  // 놀람 칸을 처음 밟으면 큰 소리가 나고 손전등이 깜빡인다. 효과 줄이기를 켜면 깜빡임은 뺀다
+  checkScare() {
+    const c = cellOf(this.p);
+    const i = this.scaresLeft.findIndex((s) => s.cx === c.cx && s.cy === c.cy);
+    if (i < 0) return;
+    this.scaresLeft.splice(i, 1);
+    this.audio.play('scare');
+    this.hud.say(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)], 3);
+    if (!this.lowFx) this.blink = { t: 0, n: 0 };
+  }
+
+  // 시간으로 깜빡임을 돌린다 (일시정지 때는 같이 멈춘다)
+  tickBlink(dt) {
+    const b = this.blink;
+    if (!b) return;
+    b.t += dt;
+    while (b.t >= BLINK_STEP && this.blink) {
+      b.t -= BLINK_STEP;
+      b.n += 1;
+      if (b.n >= BLINK_COUNT) this.cancelBlink();
+      else this.flash.intensity = b.n % 2 ? this.k.flashIntensity * BLINK_DIM : this.k.flashIntensity;
+    }
+  }
+
+  // 깜빡임을 끊고 손전등을 원래 밝기로 돌려놓는다 (밝기는 balance 에서 다시 읽는다)
+  cancelBlink() {
+    this.blink = null;
+    this.flash.intensity = this.k.flashIntensity;
   }
 
   statusNow() {
@@ -252,6 +325,7 @@ export class HorrorGame {
   getCaught() {
     if (this.state !== 'play') return;
     this.state = 'caught';
+    this.cancelBlink(); // 깜빡임이 잡히는 장면의 밝기를 덮어쓰지 않게 한다
     caught(this.run);
     this.audio.suspend();
     this.audio.play('caught');
@@ -331,6 +405,7 @@ export class HorrorGame {
   pause() {
     if (this.state !== 'play') return;
     this.state = 'paused';
+    this.cancelBlink();
     this.audio.suspend();
     document.exitPointerLock?.();
     this.hud.showPause(
@@ -367,6 +442,8 @@ export class HorrorGame {
   exit() {
     if (this.dead) return;
     this.dead = true;
+    this.blink = null;
+    this.textures.forEach((t) => t.dispose());
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibility);

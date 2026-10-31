@@ -64,11 +64,10 @@ export function buildWorld(scene, map, mats = {}) {
 
   const props = new THREE.Group();
   scene.add(props);
-  const lockerMat = mats.locker ? { map: mats.locker } : null;
   const parts = {
     lockers: map.lockers.map((c) => {
       const m = prop(props, c, LOCKER.w, LOCKER.h, LOCKER.d, 0x4a5a58);
-      if (lockerMat) m.material = new THREE.MeshStandardMaterial({ ...lockerMat, roughness: 0.8 });
+      if (mats.locker) m.material = mats.locker; // 문 그림이 입혀진 공용 재질
       return m;
     }),
     boxes: map.boxes.map((c) => prop(props, c, 0.9, 1.5, 0.5, 0x3a4a6a)),
