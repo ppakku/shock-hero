@@ -17,23 +17,30 @@ const LOOKS = {
   fx_sand_wave: { depth: 8, origin: [0.5, 1] },
   fx_star: { depth: 8, origin: [0.5, 0.5] },
   fx_ink: { depth: 8, origin: [0.5, 0.5] },
-  watcher_vine_2: { depth: 7, origin: [0.5, 1] },
-  watcher_arm_2: { depth: 6, origin: [0.5, 0.5] },
-  watcher_claw_2: { depth: 6.1, origin: [0.9, 0.5] },
-  dragon_tail_3: { depth: 3.5, origin: [0.5, 0.5] },
-  dragon_tailtip_3: { depth: 3.6, origin: [0.5, 0.5] },
+  fx_bolt: { depth: 8, origin: [0.5, 0], add: true },
+  fx_arc: { depth: 8, origin: [0.5, 0.5], add: true },
+  fx_slash: { depth: 8, origin: [0.5, 0.5], add: true },
+  fx_flame_stream: { depth: 8.3, origin: [0.5, 0.02], add: true },
+  fx_frost_puff: { depth: 8, origin: [0.5, 0.5], add: true },
+  fx_frost_pool: { depth: 1, origin: [0.5, 0.5] },
+  mud_wave: { depth: 8, origin: [0.5, 1] },
+  frost_spike: { depth: 8, origin: [0.5, 1] },
+  // 금이나 빛을 신호용 도형(깊이 7)으로 위에 그리는 것들
+  ice_wall_block: { depth: 6.9, origin: [0.5, 1] },
+  dirt_mound: { depth: 6.9, origin: [0.5, 1] },
+  volt_post: { depth: 6.9, origin: [0.5, 1] },
 };
-
-// 변종 팔다리는 이름 끝(skin)만 달라서 원래 그림과 같은 자리에 놓는다
-const LIMB_LOOKS = {
-  watcher_arm_: LOOKS.watcher_arm_2,
-  watcher_claw_: LOOKS.watcher_claw_2,
-  dragon_tail_: LOOKS.dragon_tail_3,
-  dragon_tailtip_: LOOKS.dragon_tailtip_3,
+// 변종마다 그림이 따로 있는 부위 (이름 뒤에 _<skin> 이 붙는다)
+const SKIN_LOOKS = {
+  watcher_vine: { depth: 7, origin: [0.5, 1] },
+  watcher_arm: { depth: 6, origin: [0.5, 0.5] },
+  watcher_claw: { depth: 6.1, origin: [0.9, 0.5] },
+  dragon_tail: { depth: 3.5, origin: [0.5, 0.5] },
+  dragon_tailtip: { depth: 3.6, origin: [0.5, 0.5] },
 };
 
 export function lookOf(key) {
-  return LOOKS[key] || LIMB_LOOKS[key.slice(0, key.lastIndexOf('_') + 1)] || {};
+  return LOOKS[key] || SKIN_LOOKS[key.slice(0, key.lastIndexOf('_'))] || {};
 }
 
 const pools = new WeakMap(); // 장면마다 { 그림 이름: { list, used } }
@@ -73,7 +80,7 @@ function makeSprite(scene, key) {
   return s;
 }
 
-// 그림 하나를 이번 프레임에 놓는다. o: rotation, flipX, flipY, alpha, tintFill
+// 그림 하나를 이번 프레임에 놓는다. o: rotation, flipX, flipY, alpha, tintFill, depth
 export function stamp(scene, key, x, y, w, h, o = {}) {
   if (!hasArt(scene, key)) return false;
   const map = poolsOf(scene);
@@ -84,6 +91,7 @@ export function stamp(scene, key, x, y, w, h, o = {}) {
   p.used += 1;
   s.setVisible(true).setPosition(x, y).setDisplaySize(w, h).setRotation(o.rotation || 0);
   s.setFlipX(Boolean(o.flipX)).setFlipY(Boolean(o.flipY)).setAlpha(o.alpha ?? 1);
+  if (o.depth !== undefined) s.setDepth(o.depth);
   if (o.tintFill !== undefined) s.setTintFill(o.tintFill);
   else s.clearTint();
   return true;

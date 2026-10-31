@@ -786,7 +786,9 @@ export class FrostAstraBoss extends BossBase {
   updateTrail(dt) {
     for (const tr of this.trail) {
       tr.life -= dt;
-      if (tr.life > 0) this.fxG.fillStyle(0xbfeeff, tr.life * 1.6).fillEllipse(tr.x, tr.y, 140 * tr.life * 3, 44 * tr.life * 3);
+      if (tr.life <= 0) continue;
+      const w = 140 * tr.life * 3;
+      if (!stamp(this.scene, 'fx_frost_puff', tr.x, tr.y, w, w * 0.6, { alpha: tr.life * 2 })) this.fxG.fillStyle(0xbfeeff, tr.life * 1.6).fillEllipse(tr.x, tr.y, w, 44 * tr.life * 3);
     }
     this.trail = this.trail.filter((tr) => tr.life > 0);
   }

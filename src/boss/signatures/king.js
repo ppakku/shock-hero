@@ -3,6 +3,7 @@ import { Signature } from './Signature.js';
 import { canSummon, summonSpots } from '../../logic/boss.js';
 import { driftToward } from '../../logic/signature.js';
 import { behindSpot, boltSpots, fireRows, mixPlan, zoneAround } from '../../logic/sig_king.js';
+import { stamp } from '../../fx/bossArt.js';
 
 const MIN_WARN = 0.6; // 아무리 화가 나도 이만큼은 경고를 보여 준다
 const BOSS_DIM = 0.15; // 왕이 사라졌을 때 몸의 진하기
@@ -117,12 +118,17 @@ export class PhantomStep extends KingSignature {
   drawShade(x, k) {
     const y = this.groundY - 70 - 30 * k;
     const r = 18 + 40 * k;
+    if (stamp(this.scene, 'phantom_shade', x, y, r * 2, r * 2.8, { alpha: 0.5 + 0.5 * k })) return;
     this.g.fillStyle(0x24103a, 0.45 + 0.4 * k).fillEllipse(x, y, r * 1.7, r * 2.6);
     this.g.fillStyle(0xd8b0ff, 0.5 + 0.5 * k).fillCircle(x - r * 0.3, y - r * 0.5, 3 + 3 * k).fillCircle(x + r * 0.3, y - r * 0.5, 3 + 3 * k);
   }
 
   drawSlash(alpha) {
     const y = this.groundY - STEP_H / 2;
+    const w = STEP_R * 1.3;
+    const h = w * 0.53; // 그림 비율
+    const slash = (dx, rotation) => stamp(this.scene, 'fx_slash', this.x + dx, y, w, h, { alpha, rotation });
+    if (slash(-STEP_R * 0.45, -0.7) && slash(STEP_R * 0.45, Math.PI - 0.7)) return;
     this.g.lineStyle(14, 0xd8b0ff, 0.8 * alpha).beginPath().arc(this.x, y, STEP_R - 14, -1.2, 1.2).strokePath();
     this.g.beginPath().arc(this.x, y, STEP_R - 14, Math.PI - 1.2, Math.PI + 1.2).strokePath();
     this.g.lineStyle(5, 0xffffff, alpha).beginPath().arc(this.x, y, STEP_R - 14, -1, 1).strokePath();
@@ -140,6 +146,7 @@ const ZONE_H = 220; // 번개 구역 높이
 
 // 위에서 아래로 내리치는 번개 한 줄기
 function drawBolt(g, x, top, bottom, seed, alpha = 1) {
+  if (stamp(g.scene, 'fx_bolt', x, top, 100, bottom - top + 8, { alpha, flipX: seed % 2 === 0 })) return;
   const n = 6;
   const points = [];
   for (let i = 0; i <= n; i++) {
@@ -202,6 +209,7 @@ export class StormLance extends KingSignature {
   }
 
   drawLance(x, y, angle) {
+    if (stamp(this.scene, 'storm_lance', x, y, LANCE_LEN * 1.3, LANCE_LEN * 0.26, { rotation: angle })) return;
     const dx = (Math.cos(angle) * LANCE_LEN) / 2;
     const dy = (Math.sin(angle) * LANCE_LEN) / 2;
     this.g.lineStyle(14, 0x6ab0ff, 0.45).lineBetween(x - dx, y - dy, x + dx, y + dy);
@@ -260,12 +268,15 @@ export class Hellfire extends KingSignature {
         p.lit = true;
         this.scene.sfxPlay('fire');
         this.scene.dustAt(p.x, groundY, 6);
+        p.art = this.playOnce('fx_pillar', p.x, groundY + 4, PILLAR_H, PILLAR_TIME, { originY: 1, add: true, fadeFrom: 6 });
       }
-      const alpha = 1 - since / PILLAR_TIME;
-      const wob = Math.sin(t * 40 + p.x) * 8;
-      this.g.fillStyle(0xd02000, 0.85 * alpha).fillRoundedRect(x0 + wob / 2, groundY - PILLAR_H, PILLAR_W - wob, PILLAR_H, 26);
-      this.g.fillStyle(0xff9a1f, 0.9 * alpha).fillRoundedRect(x0 + 16, groundY - PILLAR_H * 0.82, PILLAR_W - 32, PILLAR_H * 0.82, 18);
-      this.g.fillStyle(0xffe45a, alpha).fillRoundedRect(x0 + 30, groundY - PILLAR_H * 0.55, PILLAR_W - 60, PILLAR_H * 0.55, 12);
+      if (!p.art) {
+        const alpha = 1 - since / PILLAR_TIME;
+        const wob = Math.sin(t * 40 + p.x) * 8;
+        this.g.fillStyle(0xd02000, 0.85 * alpha).fillRoundedRect(x0 + wob / 2, groundY - PILLAR_H, PILLAR_W - wob, PILLAR_H, 26);
+        this.g.fillStyle(0xff9a1f, 0.9 * alpha).fillRoundedRect(x0 + 16, groundY - PILLAR_H * 0.82, PILLAR_W - 32, PILLAR_H * 0.82, 18);
+        this.g.fillStyle(0xffe45a, alpha).fillRoundedRect(x0 + 30, groundY - PILLAR_H * 0.55, PILLAR_W - 60, PILLAR_H * 0.55, 12);
+      }
       this.hurt(new Rect(x0 + 6, groundY - PILLAR_H, PILLAR_W - 12, PILLAR_H), this.boss.kc.hellfireDamage, p.x, this.hits);
     }
   }
@@ -283,6 +294,7 @@ export class Hellfire extends KingSignature {
     const left = this.summonAt - this.t;
     const k = 1 - Math.max(0, left) / boss.kc.summonWarningTime;
     for (const x of this.spots) {
+      if (stamp(this.scene, 'fx_portal', x, groundY - 40, 60 + 60 * k, 90 + 60 * k, { alpha: 0.5 + 0.5 * k })) continue;
       this.g.fillStyle(0x7a2aff, 0.25 + 0.3 * k).fillEllipse(x, groundY - 40, 40 + 50 * k, 80 + 40 * k);
       this.g.lineStyle(3, 0xd08aff, 0.8).strokeEllipse(x, groundY - 40, 90, 120);
     }
@@ -357,7 +369,7 @@ export class FinalMix extends KingSignature {
     }
     const up = Math.min(1, since / 0.1) * Math.min(1, (SPIKE_TIME - since) / 0.15);
     const tall = SPIKE_H * Math.max(0, up);
-    for (const off of [-34, 0, 34]) {
+    if (!stamp(this.scene, 'frost_spike', h.x, groundY + 4, SPIKE_W * 1.1, tall + 4)) for (const off of [-34, 0, 34]) {
       this.g.fillStyle(0x8fdcff, 0.95).fillTriangle(h.x + off - 16, groundY, h.x + off, groundY - tall, h.x + off + 16, groundY);
       this.g.fillStyle(0xeafaff, 1).fillTriangle(h.x + off - 6, groundY, h.x + off, groundY - tall * 0.7, h.x + off + 6, groundY);
     }
@@ -375,8 +387,10 @@ export class FinalMix extends KingSignature {
     const aim = this.scene.nearestPlayer(h.x);
     h.x = driftToward({ x: h.x, y }, { x: aim.x, y }, CLOUD_SPEED, dt, boss.minX, this.hi + 20).x;
     const alpha = Math.min(0.8, (CLOUD_TIME - since) * 2);
-    this.g.fillStyle(0x9acd32, alpha * 0.6).fillCircle(h.x, y, CLOUD_R);
-    this.g.fillStyle(0xd8ff6a, alpha * 0.8).fillCircle(h.x - 10, y - 7, CLOUD_R * 0.45).fillCircle(h.x + 12, y + 5, CLOUD_R * 0.35);
+    if (!stamp(this.scene, 'spore_cloud', h.x, y, CLOUD_R * 3, CLOUD_R * 1.9, { alpha: alpha * 1.2 })) {
+      this.g.fillStyle(0x9acd32, alpha * 0.6).fillCircle(h.x, y, CLOUD_R);
+      this.g.fillStyle(0xd8ff6a, alpha * 0.8).fillCircle(h.x - 10, y - 7, CLOUD_R * 0.45).fillCircle(h.x + 12, y + 5, CLOUD_R * 0.35);
+    }
     const r = CLOUD_R * 0.7;
     this.hurt(new Rect(h.x - r, y - r, r * 2, r * 2), boss.kc.mixDamage, h.x, h.hits);
     if (since >= CLOUD_TIME) h.done = true;

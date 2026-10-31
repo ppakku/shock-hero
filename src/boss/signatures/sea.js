@@ -3,6 +3,7 @@ import { Signature } from './Signature.js';
 import { driftToward } from '../../logic/signature.js';
 import { laneAngle, ringArcs, ringHits, ringReach, scatterLures } from '../../logic/sig_sea.js';
 import { SWIMMER_MIN_Y } from '../../logic/swim.js';
+import { stamp } from '../../fx/bossArt.js';
 
 const TOP = 30.5; // 어둠(30) 위에 그려서 경고가 늘 보이게
 const RING_START = 80; // 고리가 시작하는 반지름
@@ -10,6 +11,7 @@ const RING_BAND = 26; // 이만큼 가까우면 고리에 닿는다 (고리 절�
 const SWING = 0.6; // 틈이 주인공 자리에서 벗어나는 각도 (고리마다 좌우 번갈아)
 const SINK_Y = 300; // 어둠 동안 내려앉는 높이 (초롱불에 손이 닿게)
 const BOOM_TIME = 0.3; // 가짜 미끼가 터지는 불꽃 시간
+const RING_PIECE = 110; // 전기 고리 그림 한 조각 길이
 const LURE = 0x9dff6a; // 가짜 미끼도 진짜 초롱불과 같은 빛깔
 
 function waterBounds(boss) {
@@ -107,8 +109,26 @@ export class ShockRings extends Signature {
     }
   }
 
+  // 고리 그림: 전기 띠 조각을 원을 따라 잇는다. 틈(gaps)에는 놓지 않는다
+  stampRing(ring) {
+    let drawn = true;
+    for (const [from, to] of ringArcs(ring.r, ring.gaps, this.half)) {
+      const n = Math.max(1, Math.round(((to - from) * ring.r) / RING_PIECE));
+      const piece = ((to - from) * ring.r) / n;
+      for (let i = 0; i < n && drawn; i++) {
+        const a = from + ((to - from) * (i + 0.5)) / n;
+        drawn = stamp(this.scene, 'fx_arc', this.cx + Math.cos(a) * ring.r, this.cy + Math.sin(a) * ring.r, piece * 1.15, 40, {
+          rotation: a + Math.PI / 2,
+          flipY: Math.floor(this.t * 24 + i) % 2 === 0,
+        });
+      }
+    }
+    return drawn;
+  }
+
   // 찌릿찌릿한 고리
   drawRing(ring) {
+    if (this.stampRing(ring)) return;
     this.strokeArcs(ring.r, ring.gaps, 16, 0x2aa8ff, 0.45);
     this.strokeArcs(ring.r, ring.gaps, 6, 0xbff8ff, 0.95);
     this.g.lineStyle(2, 0xffffff, 0.9);
@@ -183,7 +203,8 @@ export class Blackout extends Signature {
     if (l.boom !== null) {
       l.boom = Math.max(0, l.boom - dt);
       const k = 1 - l.boom / BOOM_TIME;
-      this.g.fillStyle(0xffa040, 0.7 * (1 - k)).fillCircle(l.x, l.y, sc.fakeBlast * (0.5 + 0.5 * k));
+      if (!l.blasted) l.blasted = this.playOnce('fx_explosion', l.x, l.y, sc.fakeBlast * 2.4, BOOM_TIME);
+      if (!l.blasted) this.g.fillStyle(0xffa040, 0.7 * (1 - k)).fillCircle(l.x, l.y, sc.fakeBlast * (0.5 + 0.5 * k));
       return;
     }
     if (l.fuse === null) {
@@ -209,7 +230,7 @@ export class Blackout extends Signature {
   drawLure(l) {
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 7 + l.x);
     this.g.fillStyle(LURE, 0.3 + 0.2 * pulse).fillCircle(l.x, l.y, 26);
-    this.g.fillStyle(0xffffff, 0.9).fillCircle(l.x, l.y, 7);
+    if (!stamp(this.scene, 'boss_sea_lure', l.x, l.y, 36, 36)) this.g.fillStyle(0xffffff, 0.9).fillCircle(l.x, l.y, 7);
     if (l.fuse === null) {
       this.g.lineStyle(3, 0xff4444, 0.6 + 0.4 * pulse).strokeCircle(l.x, l.y, 40);
     } else {

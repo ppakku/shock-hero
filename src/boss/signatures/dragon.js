@@ -2,6 +2,7 @@ import { Rect } from '../bossKit.js';
 import { Signature } from './Signature.js';
 import { driftToward, fanOut } from '../../logic/signature.js';
 import { darkAlpha, lightningXs, releaseTimes, rollFrom, warnTime } from '../../logic/sig_dragon.js';
+import { stamp } from '../../fx/bossArt.js';
 
 const ROCK_R = 36; // 바위 반지름 (그림)
 const ROCK_HIT_W = 48; // 바위 맞는 칸
@@ -50,6 +51,7 @@ export class Boulders extends Signature {
     const g = this.g;
     const y = this.groundY - ROCK_R;
     g.fillStyle(0x000000, 0.3).fillEllipse(r.x, this.groundY, ROCK_R * 2, 12);
+    if (stamp(this.scene, 'boss_boulder', r.x, y, ROCK_R * 2.1, ROCK_R * 2.1, { rotation: r.roll * this.from.dir })) return;
     g.fillStyle(0x4a3c32, 1).fillCircle(r.x, y, ROCK_R);
     g.fillStyle(0x7a6654, 1).fillCircle(r.x, y, ROCK_R - 5);
     g.lineStyle(4, 0x4a3c32, 1);
@@ -113,6 +115,9 @@ export class Lightning extends Signature {
       this.scene.sparks.explode(12, s.x, gy - 10);
       this.scene.dustAt(s.x, gy, 6);
     }
+    this.g.fillStyle(0xeaf6ff, 0.8).fillEllipse(s.x, gy, BOLT_W + 20, 20);
+    this.hurt(new Rect(s.x - BOLT_W / 2 + 6, 0, BOLT_W - 12, gy), this.boss.k.lightningDamage, s.x, s.hits);
+    if (stamp(this.scene, 'fx_bolt', s.x, 0, BOLT_W * 1.6, gy + 8, { flipX: Math.floor(this.t * 30) % 2 === 0 })) return;
     // 구불구불한 번개 줄기 (굵고 푸른 빛 위에 가는 흰 줄)
     const pts = [];
     for (let y = 0; y < gy; y += 50) pts.push({ x: s.x + (Math.random() - 0.5) * 40, y });
@@ -123,8 +128,6 @@ export class Lightning extends Signature {
       for (const p of pts) this.g.lineTo(p.x, p.y);
       this.g.strokePath();
     }
-    this.g.fillStyle(0xeaf6ff, 0.8).fillEllipse(s.x, gy, BOLT_W + 20, 20);
-    this.hurt(new Rect(s.x - BOLT_W / 2 + 6, 0, BOLT_W - 12, gy), this.boss.k.lightningDamage, s.x, s.hits);
   }
 }
 
@@ -192,6 +195,7 @@ export class DarkOrbs extends Signature {
   drawOrb(o, rim) {
     const pulse = 1 + Math.sin(this.t * 10) * 0.08;
     this.g.fillStyle(rim, 0.35).fillCircle(o.x, o.y, ORB_R * 1.5 * pulse);
+    if (stamp(this.scene, 'dark_orb', o.x, o.y, ORB_R * 2.2 * pulse, ORB_R * 2.2 * pulse)) return;
     this.g.fillStyle(0x14081f, 1).fillCircle(o.x, o.y, ORB_R);
     this.g.lineStyle(3, rim, 1).strokeCircle(o.x, o.y, ORB_R);
     this.g.fillStyle(0xe8d0ff, 0.9).fillCircle(o.x - 7, o.y - 8, 4);
@@ -204,6 +208,7 @@ export class DarkOrbs extends Signature {
 
   explode(o) {
     this.pop(o);
+    this.playOnce('fx_explosion', o.x, this.groundY + 6, ORB_BURST * 2.6, 0.45, { originY: 1 });
     this.scene.sfxPlay('slam');
     this.scene.shake(0.006, 120);
     const r = new Rect(o.x - ORB_BURST, this.groundY - ORB_BURST * 2, ORB_BURST * 2, ORB_BURST * 2);

@@ -39,15 +39,15 @@ const MONSTER_EXTRA = {
 const BOSS_PREFIXES = ['boss_', 'astra_', 'watcher_', 'dragon_'];
 // 보스 종류마다 쓰는 효과 그림. 이름이 _<skin> 으로 끝나지 않는 보스 그림도 여기에 적는다.
 // (여기 빠지면 그림 대신 임시 도형이 조용히 나온다)
-const ARM_FX = ['rock', 'glob', 'fx_shockwave', 'fx_rocket_trail', 'fx_whirl'];
+const ARM_FX = ['rock', 'glob', 'fx_shockwave', 'fx_rocket_trail', 'fx_whirl', 'dirt_mound', 'volt_post', 'fx_arc'];
 const BOSS_FX = {
   arms: ARM_FX,
   shredder: ['shredder_body', 'shredder_saw', 'shredder_guard', 'rock', 'fx_shockwave', 'fx_rocket_trail', 'fx_whirl', 'fx_puddle_fire'],
-  king: [...ARM_FX, 'fx_portal'],
-  dragon: ['fx_breath', 'fx_pillar', 'fx_explosion', 'fx_fireball', 'fx_shockwave', 'fx_puddle_fire'],
-  watcher: ['watcher_blister', 'slime_glob', 'fx_puddle_poison', 'fx_star'],
-  ice: ['ice_heart', 'ice_icicle', 'frost_spike', 'fx_frost_cone', 'fx_frost_wall', 'fx_shockwave'],
-  sea: ['boss_sea_lure', 'boss_sea_heart', 'boss_sea_bubble', 'rock', 'fx_shockwave', 'fx_sand_wave', 'fx_star', 'fx_ink', 'fx_whirl'],
+  king: [...ARM_FX, 'fx_portal', 'fx_pillar', 'fx_bolt', 'fx_slash', 'storm_lance', 'phantom_shade', 'frost_spike', 'spore_cloud'],
+  dragon: ['fx_breath', 'fx_pillar', 'fx_explosion', 'fx_fireball', 'fx_shockwave', 'fx_puddle_fire', 'fx_flame_stream', 'fx_slash', 'fx_bolt', 'boss_boulder', 'dark_orb'],
+  watcher: ['watcher_blister', 'slime_glob', 'fx_puddle_poison', 'fx_star', 'spore_cloud', 'mud_wave'],
+  ice: ['ice_heart', 'ice_icicle', 'frost_spike', 'fx_frost_cone', 'fx_frost_wall', 'fx_shockwave', 'fx_frost_pool', 'fx_frost_puff', 'snowball', 'ice_wall_block'],
+  sea: ['boss_sea_lure', 'boss_sea_heart', 'boss_sea_bubble', 'rock', 'fx_shockwave', 'fx_sand_wave', 'fx_star', 'fx_ink', 'fx_whirl', 'fx_arc', 'fx_explosion'],
 };
 // 킹 보스가 따로 정하지 않았을 때 부르는 부하 (src/boss/KingBoss.js)
 const KING_MINIONS = ['basic', 'fast', 'jumper'];

@@ -664,7 +664,7 @@ export class WatcherBoss extends BossBase {
       }
       const grow = Math.min(1, (v.t - v.warn) / 0.12);
       const h = 130 * grow;
-      const vineArt = stamp(this.scene, 'watcher_vine_2', v.x, this.groundY + 4, 92, h + 8, { rotation: Math.sin(this.t * 6 + v.x) * 0.03 });
+      const vineArt = stamp(this.scene, `watcher_vine_${this.skinKey}`, v.x, this.groundY + 4, 92, h + 8, { rotation: Math.sin(this.t * 6 + v.x) * 0.03 });
       for (let i = -1; i <= 1 && !vineArt; i++) {
         const bx = v.x + i * 16;
         this.vineG.lineStyle(9, 0x2f6a14, 1).beginPath();
@@ -698,7 +698,7 @@ export class WatcherBoss extends BossBase {
     }
     p.x = g.x;
     p.body.velocity.x = 0;
-    if (!stamp(this.scene, 'watcher_vine_2', p.x, this.groundY + 4, 70, this.groundY - p.y + 34)) {
+    if (!stamp(this.scene, `watcher_vine_${this.skinKey}`, p.x, this.groundY + 4, 70, this.groundY - p.y + 34)) {
       this.vineG.lineStyle(7, 0x2f6a14, 1).lineBetween(p.x - 16, this.groundY, p.x + 10, p.y);
       this.vineG.lineStyle(7, 0x2f6a14, 1).lineBetween(p.x + 16, this.groundY, p.x - 10, p.y - 10);
     }

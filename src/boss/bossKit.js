@@ -100,7 +100,7 @@ export class Puddles {
 export class GroundWaves {
   constructor(scene, g, { damage, speed, color = 0xffb030, light = 0xfff3a0, art = false }) {
     this.scene = scene;
-    this.art = art; // true 면 충격파 그림 (없으면 도형)
+    this.art = art; // true 면 충격파 그림, 글자면 그 그림 (없으면 도형)
     this.g = g;
     this.damage = damage;
     this.speed = speed;
@@ -125,7 +125,10 @@ export class GroundWaves {
       w.left -= step;
       const s = Math.min(1, w.left / 60);
       const h = WAVE_H * Math.max(0.3, s);
-      if (!this.art || !stampWave(this.scene, w.x, groundY, h)) {
+      const drawn = typeof this.art === 'string'
+        ? stamp(this.scene, this.art, w.x, groundY + 3, h * 2.3, h * 1.1, { flipX: w.dir < 0 })
+        : this.art && stampWave(this.scene, w.x, groundY, h);
+      if (!drawn) {
         this.g.fillStyle(this.color, 0.85).fillTriangle(w.x - 26, groundY, w.x, groundY - h, w.x + 26, groundY);
         this.g.fillStyle(this.light, 0.9).fillTriangle(w.x - 12, groundY, w.x, groundY - h * 0.6, w.x + 12, groundY);
       }

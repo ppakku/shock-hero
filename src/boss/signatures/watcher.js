@@ -3,6 +3,7 @@ import { Signature } from './Signature.js';
 import { driftToward, fanOut } from '../../logic/signature.js';
 import { cloneSlots, huntResult, pickReal, rushDone, rushPath } from '../../logic/sig_watcher.js';
 import { floatText } from '../../fx/effects.js';
+import { stamp } from '../../fx/bossArt.js';
 
 const AIM = 0.9; // 구름이 나올 자리를 보여 주는 시간
 const LIFE = 3.2; // 구름이 떠다니는 시간
@@ -21,7 +22,7 @@ export class Spores extends Signature {
     this.clouds = fanOut(boss.x, dir, count, 150).map((x) => ({ x: Math.min(boss.maxX, Math.max(boss.minX, x)), y, hits: new Set() }));
     this.damage = boss.k.signatureDamage;
     this.drift = boss.k.sporeSpeed;
-    this.mud = new GroundWaves(this.scene, this.g, { damage: this.damage, speed: boss.k.mudWaveSpeed, color: 0x5a4a22, light: 0x9acd32 });
+    this.mud = new GroundWaves(this.scene, this.g, { damage: this.damage, speed: boss.k.mudWaveSpeed, color: 0x5a4a22, light: 0x9acd32, art: 'mud_wave' });
   }
 
   step(dt) {
@@ -43,8 +44,11 @@ export class Spores extends Signature {
     for (const c of this.clouds) {
       const aimAt = this.boss.scene.nearestPlayer(c.x);
       Object.assign(c, driftToward(c, { x: aimAt.x, y: this.groundY - CLOUD_Y }, this.drift, dt, this.boss.minX, this.boss.maxX));
-      this.g.fillStyle(0x9acd32, alpha * 0.55).fillCircle(c.x, c.y, R);
-      this.g.fillStyle(0xd8ff6a, alpha * 0.7).fillCircle(c.x - 12, c.y - 8, R * 0.45).fillCircle(c.x + 16, c.y + 6, R * 0.35);
+      this.g.fillStyle(0x9acd32, alpha * 0.35).fillCircle(c.x, c.y, R * 1.15); // 어두운 늪에서도 구름이 잘 보이게 뒤에 빛
+      if (!stamp(this.scene, 'spore_cloud', c.x, c.y, R * 3, R * 1.9, { alpha: Math.min(1, left * 2), rotation: Math.sin(this.t + c.x) * 0.15 })) {
+        this.g.fillStyle(0x9acd32, alpha * 0.55).fillCircle(c.x, c.y, R);
+        this.g.fillStyle(0xd8ff6a, alpha * 0.7).fillCircle(c.x - 12, c.y - 8, R * 0.45).fillCircle(c.x + 16, c.y + 6, R * 0.35);
+      }
       this.hurt(new Rect(c.x - R * 0.7, c.y - R * 0.7, R * 1.4, R * 1.4), this.damage, c.x, c.hits);
     }
     return false;

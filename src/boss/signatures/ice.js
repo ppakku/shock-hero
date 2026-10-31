@@ -3,6 +3,7 @@ import { drawIceShard } from '../bossFx.js';
 import { Signature } from './Signature.js';
 import { FROST } from '../../logic/boss.js';
 import { galeDir, pushOutOfWall, shardStrips, snowLanes, wallRooms, wallSpots, windPush } from '../../logic/sig_ice.js';
+import { stamp } from '../../fx/bossArt.js';
 
 const LANE_WARN = 0.7; // 눈덩이가 지나갈 줄을 먼저 보여 주는 시간
 const SNOW_R = 20; // 눈덩이 반지름
@@ -11,6 +12,7 @@ const WIND_EDGE = 24; // 바람이 밀어붙이는 싸움터 끝 여백
 const WALL_HALF = 22; // 얼음벽 반 폭
 const WALL_EDGE = 240; // 싸움터 끝에서 벽까지 최소 거리 (끝 방도 얼음을 피할 만큼 넓게)
 const WALL_RISE = 0.2; // 벽이 솟는 시간
+const WALL_BLOCK = 95; // 얼음벽 그림 한 조각 높이
 const VOLLEY_LEAD = 0.4; // 벽이 솟고 첫 얼음 경고까지
 const SHARD_FALL = 0.25; // 얼음이 떨어지는 시간 (경고 끝자락)
 const STRIP_GAP = 8; // 얼음 자리와 안전한 자리 사이 틈
@@ -108,9 +110,11 @@ export class Gale extends Signature {
     for (const s of this.balls) {
       s.x += this.dir * this.k.snowballSpeed * dt;
       this.g.fillStyle(0x7fb8e8, 0.35).fillCircle(s.x - this.dir * 26, s.y, SNOW_R * 0.7);
-      this.g.fillStyle(0xf4fcff).fillCircle(s.x, s.y, SNOW_R);
-      this.g.fillStyle(0xbfe4ff).fillCircle(s.x + 5, s.y + 6, SNOW_R * 0.55);
-      this.g.lineStyle(2, 0x2a5fa8).strokeCircle(s.x, s.y, SNOW_R);
+      if (!stamp(this.scene, 'snowball', s.x, s.y, SNOW_R * 2.3, SNOW_R * 2.3, { rotation: (s.x / SNOW_R) * 0.6 })) {
+        this.g.fillStyle(0xf4fcff).fillCircle(s.x, s.y, SNOW_R);
+        this.g.fillStyle(0xbfe4ff).fillCircle(s.x + 5, s.y + 6, SNOW_R * 0.55);
+        this.g.lineStyle(2, 0x2a5fa8).strokeCircle(s.x, s.y, SNOW_R);
+      }
       const r = SNOW_R * 0.8;
       this.hurt(new Rect(s.x - r, s.y - r, r * 2, r * 2), this.damage, s.x - this.dir * 40, s.hits);
     }
@@ -234,13 +238,15 @@ export class IceWalls extends Signature {
       w.flash = Math.max(0, w.flash - 1 / 30);
       const l = w.x - WALL_HALF;
       const h = this.groundY - top;
-      this.g.fillStyle(w.flash > 0 ? 0xffffff : 0x161a38, 0.92 * fade).fillRect(l, top, WALL_HALF * 2, h);
-      this.g.fillStyle(0x4a5f9a, 0.75 * fade);
-      for (let i = 0, y = top + 12; y < this.groundY - 30; i++, y += 58) {
-        const [a, c] = i % 2 ? [l + 40, l + 12] : [l + 4, l + 32];
-        this.g.fillTriangle(a, y, c, y + 16, a, y + 50);
+      if (!this.stampWall(w, top, h, fade)) {
+        this.g.fillStyle(w.flash > 0 ? 0xffffff : 0x161a38, 0.92 * fade).fillRect(l, top, WALL_HALF * 2, h);
+        this.g.fillStyle(0x4a5f9a, 0.75 * fade);
+        for (let i = 0, y = top + 12; y < this.groundY - 30; i++, y += 58) {
+          const [a, c] = i % 2 ? [l + 40, l + 12] : [l + 4, l + 32];
+          this.g.fillTriangle(a, y, c, y + 16, a, y + 50);
+        }
+        this.g.lineStyle(3, 0x9fd8ff, 0.9 * fade).strokeRect(l, top, WALL_HALF * 2, h);
       }
-      this.g.lineStyle(3, 0x9fd8ff, 0.9 * fade).strokeRect(l, top, WALL_HALF * 2, h);
       // 맞을수록 금이 늘어난다
       this.g.lineStyle(2, 0xe8fbff, fade);
       const cracks = Math.round((1 - w.hits / this.k.iceWallHits) * 6);
@@ -249,6 +255,18 @@ export class IceWalls extends Signature {
         this.g.lineBetween(w.x - 16, y, w.x + 6, y - 24).lineBetween(w.x + 6, y - 24, w.x - 4, y - 48).lineBetween(w.x + 6, y - 24, w.x + 18, y - 12);
       }
     }
+  }
+
+  // 얼음벽 그림: 조각을 땅에서부터 쌓는다 (솟는 동안은 조각 수가 늘어난다)
+  stampWall(w, top, h, fade) {
+    const n = Math.max(1, Math.ceil(h / WALL_BLOCK));
+    const step = h / n;
+    const o = { alpha: fade, ...(w.flash > 0 ? { tintFill: 0xffffff } : {}) };
+    let drawn = true;
+    for (let i = n - 1; i >= 0 && drawn; i--) {
+      drawn = stamp(this.scene, 'ice_wall_block', w.x, this.groundY + 4 - i * step, WALL_HALF * 3, step + 30, { ...o, flipX: i % 2 === 0 });
+    }
+    return drawn;
   }
 
   // 벽을 때렸으면 true. 공격을 벽이 받아서 뒤의 보스는 안 맞는다.

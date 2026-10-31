@@ -10,7 +10,7 @@ import { varyCount } from '../logic/bossVariety.js';
 import { floatText, ring } from '../fx/effects.js';
 import { FireFx } from '../fx/fireFx.js';
 import { make } from '../fx/textures.js';
-import { hasArt, stampLimb } from '../fx/bossArt.js';
+import { hasArt, stamp, stampLimb } from '../fx/bossArt.js';
 
 const lerp = Phaser.Math.Linear;
 const W = 320; // 서 있는 용 그림 크기
@@ -593,8 +593,12 @@ export class DragonBoss extends BossBase {
     }
     // 입에서 땅으로 불줄기
     if (a.spawned < a.count || a.t < a.next) {
-      this.fxG.fillStyle(0xff5a1f, 0.6).fillTriangle(mo.x, mo.y + 14, startX - 20, this.groundY, startX + f * 40, this.groundY);
-      this.fxG.fillStyle(0xffe08a, 0.6).fillTriangle(mo.x, mo.y + 18, startX - 8, this.groundY, startX + f * 16, this.groundY);
+      const reach = Math.hypot(startX - mo.x, this.groundY - mo.y);
+      const lean = Math.atan2(this.groundY - mo.y, startX - mo.x) - Math.PI / 2;
+      if (!stamp(this.scene, 'fx_flame_stream', mo.x, mo.y + 8, 96, reach * 1.05, { rotation: lean, flipX: Math.floor(this.t * 20) % 2 === 0 })) {
+        this.fxG.fillStyle(0xff5a1f, 0.6).fillTriangle(mo.x, mo.y + 14, startX - 20, this.groundY, startX + f * 40, this.groundY);
+        this.fxG.fillStyle(0xffe08a, 0.6).fillTriangle(mo.x, mo.y + 18, startX - 8, this.groundY, startX + f * 16, this.groundY);
+      }
       this.fire.jet(mo.x, mo.y + 16, startX + f * 10, this.groundY - 6, this.dt, this.t);
     }
     if (a.spawned < a.count && a.t >= a.next) {
@@ -718,7 +722,8 @@ export class DragonBoss extends BossBase {
       this.tail.lift = Math.max(0, 140 * (1 - a.t / 0.12));
       // 휘두른 자리에 남는 바람 자국
       const fade = 1 - Math.min(1, a.t / 0.18);
-      for (let i = 0; i < 3; i++) {
+      const swipe = stamp(this.scene, 'fx_slash', (reach0 + reach1) / 2, this.groundY - 26, Math.abs(reach1 - reach0), 80, { alpha: fade, rotation: Math.PI / 2, flipY: reach1 < reach0 });
+      for (let i = 0; i < 3 && !swipe; i++) {
         const y = this.groundY - 14 - i * 14;
         this.fxG.lineStyle(10 - i * 3, 0xfff0d0, 0.45 * fade).lineBetween(reach0, y, reach1 + f * i * 20, y + 4);
       }
