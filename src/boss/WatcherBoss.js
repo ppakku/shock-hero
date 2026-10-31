@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BossBase } from './BossBase.js';
 import { BossPart, Puddles, Rect, intersects, damagePart, warnBox } from './bossKit.js';
 import { chooseWatcherAttack, popUpX, spreadTargets, crawlPlan } from '../logic/watcher.js';
+import { owedSignature } from '../logic/sig_watcher.js';
 import { coreDamage } from '../logic/boss.js';
 import { difficultyOf, pickSideAttack } from '../logic/bossCombo.js';
 import { nextTiredAfter, varyCount } from '../logic/bossVariety.js';
@@ -368,7 +369,8 @@ export class WatcherBoss extends BossBase {
       this.startTired();
       return;
     }
-    const type = chooseWatcherAttack(this.def.phases, this.arm.alive, this.back.alive, this.lastType);
+    const picked = chooseWatcherAttack(this.def.phases, this.arm.alive, this.back.alive, this.lastType);
+    const type = owedSignature(this.def, this.sigSeen, this.combo, this.tiredRoll) ? 'signature' : picked;
     this.lastType = type;
     this.combo += 1;
     const a = { type, phase: 'aim', t: 0 };
@@ -395,6 +397,7 @@ export class WatcherBoss extends BossBase {
       a.drops = spreadTargets(this.target.x, count, this.arenaStart + 60, this.arenaEnd - 60).map((x) => ({ x, done: false }));
     } else if (type === 'signature') {
       this.facePlayer();
+      this.sigSeen = true;
       this.startSignature();
     }
     this.action = a;
@@ -770,6 +773,7 @@ export class WatcherBoss extends BossBase {
   // ---------- 지쳐서 엎드림 (때릴 기회) ----------
 
   startTired(extra = 0) {
+    this.stopSignature(); // 궁극기로 팔이 부서지면 전용 공격 도중에도 엎드린다
     this.combo = 0;
     this.tiredRoll = nextTiredAfter(this.k.comboLength, this.variety, Math.random, 1);
     this.side = null;
@@ -842,6 +846,7 @@ export class WatcherBoss extends BossBase {
     if (this.state !== 'fight' || this.defeated) return false;
     const a = this.action;
     const opts = { charged: attack.kind === 'charged' };
+    if (a?.type === 'signature' && this.sig?.takeHit?.(rect)) return true; // 그림자 분신
     if (a?.type === 'claw' && a.phase === 'stuck' && this.arm.alive && intersects(rect, this.armRect(a))) {
       this.hitArm(attack.damage, opts);
       return true;
