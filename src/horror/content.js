@@ -13,7 +13,7 @@ export const MAPS = {
 };
 
 // 마지막 밤의 맵. MAPS 는 고르기 화면과 도장판의 맵이라 따로 둔다. hint 의 {name} 은 첫째, {other} 는 둘째 괴물이다
-export const LAST_PLACE = { name: '막차를 기다리는 역', map: stationMap, theme: stationTheme, notes: NOTES[LAST_MAP_ID], blurb: '둘이 함께 기다려요', hint: '{other}를 보면 멈추지만 {name}는 계속 와요. 멈추지 말고 움직이세요' };
+export const LAST_PLACE = { name: '막차를 기다리는 역', map: stationMap, theme: stationTheme, notes: NOTES[LAST_MAP_ID], blurb: '둘이 함께 기다려요', hint: '{other}를 보면 멈춰도 {name}는 계속 와요. 계속 움직이세요' };
 
 export const ALL_MAPS = { ...MAPS, [LAST_MAP_ID]: LAST_PLACE };
 

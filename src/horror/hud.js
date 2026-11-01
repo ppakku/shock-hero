@@ -5,7 +5,7 @@ const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area
 const NOTE_PAPER = 'background:#c9b48a url(art/horror_note_paper.jpg) center/cover;color:#2a1c10;border:none;border-radius:2px;box-shadow:0 6px 30px #000';
 const NOTE_PAPER_WARN = '#7a2414';
 const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-width:min(24vw,calc(47vw - 280px));max-height:60vh;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent)'; // 글자 왼쪽 빈자리에 놓고 위아래 잘린 자리는 서서히 지운다
-const TAGS = 'position:absolute;left:16px;top:54px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:15px;text-shadow:0 0 4px #000,0 0 4px #000';
+const TAGS = 'position:absolute;left:192px;top:31px;display:flex;gap:14px;white-space:nowrap;font-size:15px;text-shadow:0 0 4px #000,0 0 4px #000'; // 체력 막대 오른쪽. 휴대폰에서도 알림 글과 겹치지 않는다
 const TAG_LOOK = { chase: { text: '쫓아온다!', color: '#ff7a60' }, still: { text: '멈췄다', color: '#9ad0ff' }, near: { text: '가까이 있다', color: '#ffd080' }, far: { text: '멀리 있다', color: '#9a9a9a' } };
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
