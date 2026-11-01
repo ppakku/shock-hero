@@ -57,8 +57,9 @@ function addShutter(group, c, map, color, wallMat) {
 }
 
 // 벽 등, 벽에 붙은 큰 물건, 배관. 전부 벽에 붙어 있고 종류마다 한 번에 그린다
-function addDecor(scene, map, k, wallMat, decor) {
-  const { light, machine, pipe } = decor;
+function addDecor(scene, map, k, mats, decor) {
+  const { wall: wallMat, board: boardMat } = mats;
+  const { light, machine, pipe, low, lintel } = decor;
   const spots = decorSpots(map, decor.tile);
   const box = new THREE.BoxGeometry(1, 1, 1);
   const group = new THREE.Group();
@@ -68,7 +69,7 @@ function addDecor(scene, map, k, wallMat, decor) {
   const lights = new THREE.InstancedMesh(box, lightMat, spots.lights.length);
   spots.lights.forEach((f, i) => setOnWall(lights, i, f, light.w, light.h, light.d, light.y));
 
-  const machines = new THREE.InstancedMesh(box, machine.color === undefined ? wallMat : lambert(machine.color), spots.machines.length);
+  const machines = new THREE.InstancedMesh(box, boardMat || wallMat, spots.machines.length);
   const tints = machine.tints.map((c) => new THREE.Color(c));
   spots.machines.forEach((f, i) => {
     const h = machine.h[i % machine.h.length];
@@ -88,7 +89,27 @@ function addDecor(scene, map, k, wallMat, decor) {
     pipes.setMatrixAt(i * pipe.ys.length + j, place.matrix);
   }));
 
-  for (const mesh of [lights, machines, pipes]) {
+  const meshes = [lights, machines, pipes];
+  if (low) {
+    const lows = new THREE.InstancedMesh(box, lambert(low.color), spots.lows.length);
+    spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
+    lows.castShadow = true;
+    meshes.push(lows);
+  }
+  if (lintel) {
+    const doors = [];
+    map.rows.forEach((row, cy) => [...row].forEach((ch, cx) => { if (ch === 'D') doors.push({ cx, cy }); }));
+    const tops = new THREE.InstancedMesh(box, wallMat, doors.length);
+    doors.forEach((c, i) => {
+      place.position.set((c.cx + 0.5) * CELL, WALL_H - lintel.h / 2, (c.cy + 0.5) * CELL);
+      place.rotation.set(0, 0, 0);
+      place.scale.set(CELL, lintel.h, CELL);
+      place.updateMatrix();
+      tops.setMatrixAt(i, place.matrix);
+    });
+    meshes.push(tops);
+  }
+  for (const mesh of meshes) {
     mesh.computeBoundingSphere();
     group.add(mesh);
   }
@@ -118,7 +139,7 @@ function themeMaterials(theme, onMissing) {
     textures[name] = tex;
     return mat;
   };
-  return { wall: make('wall'), floor: make('floor'), locker: make('locker'), textures };
+  return { wall: make('wall'), floor: make('floor'), locker: make('locker'), board: theme.board && make('board'), textures };
 }
 
 export function buildWorld(scene, map, k, theme) {
@@ -198,7 +219,7 @@ export function buildWorld(scene, map, k, theme) {
   glow(panelMat, 0xc03020, 0.6);
   glow(gateMat, 0x402808, 0.5);
 
-  const { lightMat, counts } = addDecor(scene, map, k, wallMat, theme.decor);
+  const { lightMat, counts } = addDecor(scene, map, k, mats, theme.decor);
   const lightColor = new THREE.Color(theme.lightColor);
   const flow = theme.floor.flow;
   let lightLevel = -1;

@@ -6,6 +6,7 @@ const KEEP_CLEAR = new Set(['L', 'E', 'P', 'G', 'D', 'A', 'B', 'K', 'N']); // �
 const MACHINE_AT = [[0.2, 0.7], [0.35]]; // 방의 벽면 목록에서 고르는 위치 (방마다 번갈아)
 const LIGHT_AT = [0.45, 0.9];
 const PIPE_AT = 0.55;
+const LOW_AT = [0.08, 0.5, 0.92]; // 낮은 가구를 놓는 위치
 const PIPE_CELLS = 2; // 고른 벽면에서 양쪽으로 잇는 칸 수
 
 const open = (map, cx, cy) => !blocked(map, cx, cy) && map.rows[cy][cx] !== 'D';
@@ -82,7 +83,7 @@ function split(cells, tile) {
 
 // 맵에서 항상 같은 자리가 나온다. tile 이 있으면 방을 그 크기로 쪼개서 고른다
 export function decorSpots(map, tile = 0) {
-  const out = { machines: [], lights: [], pipes: [] };
+  const out = { machines: [], lights: [], pipes: [], lows: [] };
   const rooms = roomsOf(map);
   (tile ? rooms.flatMap((cells) => split(cells, tile)) : rooms).forEach((cells, i) => {
     const faces = facesOf(map, cells);
@@ -91,6 +92,7 @@ export function decorSpots(map, tile = 0) {
     for (const part of MACHINE_AT[i % 2]) addOnce(out.machines, at(faces, part));
     if (i % 3 !== 2) for (const part of LIGHT_AT) addOnce(out.lights, at(faces, part));
     if (i % 2 === 0) out.pipes.push(...pipeRun(faces, at(faces, PIPE_AT)));
+    for (const part of LOW_AT) addOnce(out.lows, at(faces, part));
   });
   return out;
 }
