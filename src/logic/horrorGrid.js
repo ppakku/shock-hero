@@ -129,13 +129,14 @@ function clearView(map, a, x, y) {
 }
 
 // 주인공이 괴물 쪽을 보고 있는지. 손전등과 상관없이 고개 방향과 가린 것만 본다.
-// 몸 일부만 보여도 친다. 눈으로 보고 있는데 움직이면 안 되기 때문이다
-export function inPlayerView(p, yaw, s, map, k) {
+// 몸 일부만 보여도 친다. 눈으로 보고 있는데 움직이면 안 되기 때문이다.
+// hidden 이면 사물함 틈으로만 본다. 고개를 조금 돌리면 앞이 안 보여야 눈을 뗄 수 있다
+export function inPlayerView(p, yaw, s, map, k, hidden = false) {
   const dx = s.x - p.x;
   const dy = s.y - p.y;
   const d = Math.hypot(dx, dy);
-  if (d > k.viewCells) return false;
-  if (d > 0.001 && (-Math.sin(yaw) * dx - Math.cos(yaw) * dy) / d < Math.cos((k.viewFov / 2) * Math.PI / 180)) return false;
+  if (d > k.viewCells || d < 0.001) return false; // 몸이 겹치면 볼 방향이 없다. 눈을 뗄 수 없는 일이 없게 안 본 것으로 친다
+  if ((-Math.sin(yaw) * dx - Math.cos(yaw) * dy) / d < Math.cos(((hidden ? k.slitFov : k.viewFov) / 2) * Math.PI / 180)) return false;
   for (const [ox, oy] of BODY) {
     if (clearView(map, p, s.x + ox, s.y + oy)) return true;
   }

@@ -429,7 +429,8 @@ function tickGazer(s, world, m, k, dt, rand, events) {
       return;
     }
   }
-  if (near && sameCell(cellOf(s), cellOf(player))) closeIn(s, player, m.rushSpeed * dt);
+  // 같은 칸이면 곧장 다가가되 몸이 겹치기 전에 선다
+  if (near && sameCell(cellOf(s), cellOf(player))) closeIn(s, player, Math.max(0, Math.min(m.rushSpeed * dt, dist(s, player) - k.catchDist / 2)));
   else walk(s, near ? m.rushSpeed : m.creep * (1 + k.pressureWalk * s.pressure), dt);
   if (s.mode === 'chase' && s.warnT <= 0 && player.hidden === null && dist(s, player) < k.catchDist) events.push('caught');
 }
@@ -469,8 +470,10 @@ function turnAway(s, map, player, k, rand) {
   const avoid = new Uint8Array(map.w * map.h);
   const c = cellOf(player);
   avoid[c.cy * map.w + c.cx] = 1;
-  for (let tries = 0; tries < 4 && !s.path.length && map.patrol.length; tries++) {
-    s.patrolIndex = pickPatrol(s, map, k, rand);
+  const n = map.patrol.length;
+  const first = n ? pickPatrol(s, map, k, rand) : 0;
+  for (let i = 0; i < n && !s.path.length; i++) {
+    s.patrolIndex = (first + i) % n;
     s.path = pathAround(map, cellOf(s), frontOf(map, map.patrol[s.patrolIndex]), avoid) || [];
   }
 }
