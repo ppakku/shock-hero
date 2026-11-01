@@ -24,7 +24,7 @@ const HEAD_KEYS = [ // [높이, 반폭, 반두께, 앞뒤 치우침]
 // 목에서 바닥까지 넓어지는 고깔: [높이, 반폭, 반두께]
 const BODY_TOP = 1.75;
 const BODY_KEYS = [
-  [BODY_TOP + 0.02, 0.02], [BODY_TOP, 0.1], [1.62, 0.125], [1.52, 0.17], [1.42, 0.27], [1.3, 0.31], [1.1, 0.34], [0.9, 0.37], [0.7, 0.4], [0.5, 0.43], [0.3, 0.47], [0.12, 0.52], [0, 0.55],
+  [BODY_TOP + 0.02, 0.02], [BODY_TOP, 0.135], [1.62, 0.14], [1.52, 0.18], [1.42, 0.27], [1.3, 0.31], [1.1, 0.34], [0.9, 0.37], [0.7, 0.4], [0.5, 0.43], [0.3, 0.47], [0.12, 0.52], [0, 0.55],
 ].map(([y, hw]) => [y, hw, hw * 0.8, 0]);
 const FRONT_HEAD = 2 / 3; // 그림 폭 가운데 앞면이 차지하는 몫. 양쪽 끝이 뒷면이다
 const FRONT_BODY = 1 / 2;
@@ -153,8 +153,8 @@ export class GazerModel extends CreatureBase {
 
     const shell = shellHead({ keys: HEAD_KEYS, edgeU: mouthLine, edgeL: mouthLine, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 26, segs: 44 });
     const jaw = morphed(shell.jaw, jawMorph(shell.jaw));
-    const face = mergeGeometries([morphed(shell.skull), jaw, morphed(throat(0.12, 0.3, -0.03))]);
-    face.morphTargetsRelative = true; // 합치면 이 표시가 사라진다
+    const face = mergeGeometries([morphed(shell.skull), jaw, morphed(throat(0.12, 0.3, -0.03)), morphed(throat(0.125, 0.17, 0.03))]);
+    face.morphTargetsRelative = true; // 합치면 이 표시가 사라진다. 까만 덩어리 둘은 벌어진 입으로 목이 보이지 않게 막는다
     this.face = this.add(inner, face, skin, true);
 
     const eyes = eyeGeometries();

@@ -2,6 +2,7 @@
 # 사용법: python3 tools/make_gazer_art.py 머리앞.png 머리뒤.png 전신앞.png 전신뒤.png
 # 머리와 몸 모두 가운데가 앞면, 양쪽 끝이 뒷면이다. 앞면은 줄마다 윤곽을 재서 정면 그림 그대로 입히고,
 # 옆구리는 먹선을 지운 살빛으로 이어서 옆에서 봐도 스티커처럼 보이지 않게 한다.
+# 흰자와 고리 눈동자는 따로 떠서 눈동자만 움직이게 하고, 안내 화면 얼굴도 머리 그림에서 다시 만든다.
 # 끝에 머리와 몸의 높이별 반폭을 찍는다 (creatureGazer.js 의 키 표).
 import sys
 import numpy as np
@@ -59,12 +60,14 @@ def wrap(rows_f, rows_b, hw_f, hw_b, rgb_f, rgb_b, cx_f, cx_b, width, front, ins
     s = np.where(is_front, (u - 0.5) / (front / 2), np.sign(u - 0.5) * (1 - (np.abs(u - 0.5) - front / 2) / (0.5 - front / 2))) * SIDE
     fade = np.clip((1 - np.abs(s)) / 0.2, 0, 1)[:, None]
     fade = fade * fade * (3 - 2 * fade)
+    grain = rgb_b.astype(float) - np.asarray(Image.fromarray(rgb_b).filter(ImageFilter.GaussianBlur(30))).astype(float)  # 옆구리에 얹을 잔금
     shadow = np.where(is_front, 1, 0.68 + 0.32 * np.clip((1 - np.abs(s)) / 0.7, 0, 1))[:, None]  # 뒷면은 옆구리로 갈수록 앞면만큼 어두워진다
     for y, (rf, rb) in enumerate(zip(rows_f, rows_b)):
         xf = (cx_f + s * max(hw_f[rf] - inset, 1)).round().astype(int).clip(0, rgb_f.shape[1] - 1)
         xb = (cx_b - s * max(hw_b[rb] - inset, 1)).round().astype(int).clip(0, rgb_b.shape[1] - 1)
         row = np.where(is_front[:, None], rgb_f[rf, xf], rgb_b[rb, xb]).astype(float)
-        out[y] = row * shadow * fade + tone[y] * (1 - fade)
+        side = tone[y] + grain[rb, (cx_b - s * max(hw_b[rb] - inset, 1) * 0.6).round().astype(int).clip(0, rgb_b.shape[1] - 1)]
+        out[y] = row * shadow * fade + side * (1 - fade)
     return out.clip(0, 255).astype('uint8')
 
 
@@ -111,7 +114,6 @@ cx, cy = CX - EYE_DX, EYE_Y
 eye = front[cy - EYE_R:cy + EYE_R, cx - EYE_R:cx + EYE_R].astype(float)
 yy, xx = np.mgrid[-EYE_R:EYE_R, -EYE_R:EYE_R] + 0.5
 r = np.hypot(xx, yy)
-r_in = 82
 # 흰자는 눈동자 없이 새로 칠한다: 그림 속 흰자 빛에 위쪽 눈꺼풀 그늘을 얹는다
 band = eye[(r > 70) & (r < 92)]
 pale = np.percentile(band, 80, axis=0)
@@ -119,6 +121,17 @@ shade = (1 - 0.3 * np.clip((yy + EYE_R * 0.1) / -EYE_R, 0, 1) - 0.4 * np.clip(r 
 Image.fromarray((pale * shade).clip(0, 255).astype('uint8')).resize((256, 256), Image.LANCZOS).save(f'{OUT}/horror_gazer_white.jpg', quality=86)
 iris = front[cy - IRIS_R:cy + IRIS_R, cx - IRIS_R:cx + IRIS_R]
 Image.fromarray(iris).resize((192, 192), Image.LANCZOS).save(f'{OUT}/horror_gazer_iris.jpg', quality=86)
+
+# 안내 화면 얼굴: 다른 괴물과 같은 높이로, 마젠타를 빼고 아래쪽을 어둠에 녹인다
+a = front.astype(float)
+pink = np.minimum(a[..., 0], a[..., 2]) - a[..., 1]
+keep = 1 - np.clip((pink - 40) / 80, 0, 1)
+fade = np.clip((a.shape[0] * 0.97 - np.arange(a.shape[0])) / (a.shape[0] * 0.14), 0, 1)[:, None]
+for c in (0, 2):
+    a[..., c] -= pink.clip(0, 255) * (keep < 1)
+cutout = Image.fromarray(np.dstack([a.clip(0, 255), keep * fade * 255]).astype('uint8'), 'RGBA')
+cutout = cutout.crop(cutout.getbbox())
+cutout.resize((round(cutout.width * 512 / cutout.height), 512), Image.LANCZOS).save(f'{OUT}/horror_face_gazer.webp', quality=82, method=6)
 
 # 몸
 front = load(body_src)

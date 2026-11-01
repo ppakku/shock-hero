@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
 import { CreatureModel, createCreature, lookYaw } from '../src/horror/creatureModel.js';
@@ -217,6 +218,13 @@ describe('createCreature', () => {
     expect(() => stand(model, 'some-new-mode', 5)).not.toThrow();
   });
 
+  it.each(['gazer', 'maw', 'ward'])('%s only asks for pictures that exist', (id) => {
+    const urls = [];
+    createCreature(id, new THREE.Scene(), { load: (url) => { urls.push(url); return new THREE.Texture(); } });
+    expect(urls.length).toBeGreaterThan(0);
+    for (const url of urls) expect(existsSync(`public/${url}`), url).toBe(true);
+  });
+
   it.each(['gazer', 'maw', 'ward'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
     const fails = [];
     const failing = { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } };
@@ -275,6 +283,20 @@ describe('createCreature', () => {
     expect(chase.root.rotation.x).toBeGreaterThan(patrol.root.rotation.x);
     expect(stand(build('gazer'), 'stunned', 90).glow).toBeLessThan(patrol.glow * 0.5);
     rest.mockRestore();
+  });
+
+  it('gazer opens the painted mouth without moving the skull or the mouth corners', () => {
+    const model = build('gazer');
+    const g = model.face.geometry;
+    const pos = g.attributes.position;
+    const move = g.morphAttributes.position[0];
+    expect(g.morphTargetsRelative).toBe(true);
+    let drop = 0;
+    for (let i = 0; i < pos.count; i++) {
+      drop = Math.max(drop, -move.getY(i));
+      if (pos.getY(i) > 0.3) expect(move.getY(i)).toBe(0);
+    }
+    expect(drop).toBeGreaterThan(0.05);
   });
 
   it('gazer puts two ringed eyes on the front of the head', () => {
