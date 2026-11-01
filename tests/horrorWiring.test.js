@@ -3,9 +3,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { center, frontOf, reachable, lineOfSight, cellOf } from '../src/logic/horrorGrid.js';
-import { MAPS, MONSTERS } from '../src/horror/content.js';
+import { ALL_MAPS, MAPS, MONSTERS } from '../src/horror/content.js';
+import { LAST_ROUND, roundMonsters } from '../src/logic/horrorPick.js';
+import { boardCells, cellKey } from '../src/logic/horrorStamps.js';
+import { normalizeHorror } from '../src/logic/horrorRun.js';
 
-const fakes = vi.hoisted(() => ({ loads: [], failArt: null, audio: [], late: [] }));
+const fakes = vi.hoisted(() => ({ loads: [], failArt: null, audio: [], late: [], save: null }));
 
 vi.mock('three', async (original) => {
   const real = await original();
@@ -48,6 +51,7 @@ vi.mock('../src/horror/hud.js', () => {
     fade() {}
     setZapColor() {}
     setDread() {}
+    setHunters(list) { this.tags = list; }
     get keypadOpen() { return false; }
     closeKeypad() { return false; }
     closeLayer() {}
@@ -64,7 +68,7 @@ vi.mock('../src/horror/hud.js', () => {
       return was;
     }
   }
-  return { HorrorHud, startHint: () => '', escapeText: () => '탈출', stampLines: () => [] };
+  return { HorrorHud, startHint: () => '', escapeText: () => '탈출', lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
 });
 
 vi.mock('../src/horror/input.js', () => ({
@@ -97,8 +101,8 @@ vi.mock('../src/horror/audio.js', () => ({
 
 vi.mock('../src/save.js', () => ({
   saveStore: {
-    load: () => ({ gems: 0, horror: { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null }, settings: {} }),
-    save: () => {},
+    load: () => fakes.save ?? { gems: 0, horror: { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null }, settings: {} },
+    save: (s) => { if (fakes.save) fakes.save = s; },
   },
 }));
 
@@ -110,7 +114,7 @@ const idle = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, ligh
 function makeGame(mapId, monsterId, o = {}) {
   const onExit = vi.fn();
   const onAgain = vi.fn();
-  const g = new HorrorGame({ appendChild() {} }, { round: { mapId, monsterId }, touch: false, device: 'pc', lowFx: false, muted: true, onExit, onAgain, ...o });
+  const g = new HorrorGame({ appendChild() {} }, { round: o.round ?? { mapId, monsterId }, touch: false, device: 'pc', lowFx: false, muted: true, onExit, onAgain, ...o });
   fakes.late.splice(0).forEach((fail) => fail());
   g.start();
   g.hud.intro.onStart();
@@ -150,6 +154,7 @@ beforeEach(() => {
   fakes.loads.length = 0;
   fakes.failArt = null;
   fakes.audio.length = 0;
+  fakes.save = null;
   vi.stubGlobal('window', { innerWidth: 1280, innerHeight: 720, devicePixelRatio: 1, location: { search: '' }, addEventListener() {}, removeEventListener() {} });
   vi.stubGlobal('document', { addEventListener() {}, removeEventListener() {}, exitPointerLock() {}, hidden: false });
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -396,7 +401,7 @@ describe('놀람 장면', () => {
     expect(g.audio.play).not.toHaveBeenCalledWith('scare');
     expect(g.gun.root.visible).toBe(false);
     frames(g, k.dark / 2 + k.show / 2);
-    expect(g.audio.play).toHaveBeenCalledWith('scare');
+    expect(g.audio.play).toHaveBeenCalledWith('scare', 0);
     expect(g.model.group.visible).toBe(true);
     const head = g.model.head.getWorldPosition(new THREE.Vector3());
     expect(Math.hypot(head.x - g.p.x * 3, head.z - g.p.y * 3)).toBeLessThan(2);
@@ -457,7 +462,7 @@ describe('놀람 장면', () => {
     expect(g.audio.play).not.toHaveBeenCalled();
     expect(g.model.group.visible).toBe(false);
     frames(g, g.k.scare.hush + 0.05);
-    expect(g.audio.play).toHaveBeenCalledWith('caught');
+    expect(g.audio.play).toHaveBeenCalledWith('caught', 0);
     expect(g.model.group.visible).toBe(true);
     g.exit();
   });
@@ -471,6 +476,175 @@ describe('놀람 장면', () => {
     const head = g.model.head.getWorldPosition(new THREE.Vector3());
     const d = Math.hypot(head.x - g.p.x * 3, head.z - g.p.y * 3);
     expect(d).toBeCloseTo(g.model.faceNear ?? 0.6, 1);
+    g.exit();
+  });
+});
+
+describe('마지막 밤', () => {
+  const start = () => makeGame(null, null, { round: LAST_ROUND });
+  const ids = roundMonsters(LAST_ROUND);
+  const quiet = (g) => {
+    g.audio = { play: vi.fn(), hush() {}, update() {}, updateStalker() {}, suspend() {}, resume() {}, setHum() {}, setActive() {}, destroy() {} };
+    return g;
+  };
+
+  it('괴물마다 몸과 목소리가 따로 있고 맵의 다른 칸에서 시작한다', () => {
+    const g = start();
+    expect(g.stalkers.map((s) => s.monsterId)).toEqual(ids);
+    expect(new Set(g.hunters.map((h) => h.model)).size).toBe(2);
+    expect([fakes.audio.at(-1).options.voice, ...fakes.audio.at(-1).options.more]).toEqual(ids.map((id) => MONSTERS[id].voice));
+    expect(Math.hypot(g.stalkers[0].x - g.stalkers[1].x, g.stalkers[0].y - g.stalkers[1].y)).toBeGreaterThan(5);
+    g.exit();
+  });
+
+  it('안내와 쪽지에 두 괴물 이름이 들어가고 빈칸이 남지 않는다', () => {
+    const g = start();
+    const names = ids.map((id) => MONSTERS[id].name);
+    expect(g.hud.intro.round.monsterName).toContain(names[0]);
+    expect(g.hud.intro.round.monsterName).toContain(names[1]);
+    const all = [g.hud.intro.round.hint, ...g.noteTexts.flat()].join(' ');
+    expect(all).toContain(names[1]);
+    expect(all).not.toMatch(/\{(name|other)/);
+    g.exit();
+  });
+
+  it('둘 다 벽에 가리면 둘 다 그리지 않고, 한쪽만 보이면 그쪽만 그린다', () => {
+    const g = start();
+    g.cullCreature();
+    expect(g.hunters.map((h) => h.model.group.visible)).toEqual([false, false]);
+    Object.assign(g.stalkers[1], { x: g.p.x + 1, y: g.p.y });
+    g.cullCreature();
+    expect(g.hunters.map((h) => h.model.group.visible)).toEqual([false, true]);
+    g.exit();
+  });
+
+  it('둘째 괴물이 잡으면 그 얼굴이 나오고, 돌아오면 둘 다 멀리 가서 쉰다', () => {
+    const g = quiet(start());
+    Object.assign(g.stalkers[1], { x: g.p.x + 0.3, y: g.p.y, mode: 'chase' });
+    Object.assign(g.stalkers[0], { x: g.p.x + 2, y: g.p.y, mode: 'chase' });
+    g.getCaught(g.hunters[1]);
+    expect(g.lunge.model).toBe(g.hunters[1].model);
+    frames(g, g.k.scare.hush + 0.05);
+    expect(g.audio.play).toHaveBeenCalledWith('caught', 1);
+    expect(g.hunters.map((h) => h.model.group.visible)).toEqual([false, true]);
+    frames(g, 2.2);
+    expect(g.state).toBe('play');
+    for (const s of g.stalkers) {
+      expect(s.graceT).toBeGreaterThan(0);
+      expect(s.mode).not.toBe('chase');
+      expect(Math.hypot(s.x - g.p.x, s.y - g.p.y)).toBeGreaterThan(8);
+    }
+    expect(g.stalkers[0].patrolIndex).not.toBe(g.stalkers[1].patrolIndex);
+    g.exit();
+  });
+
+  it('두 알림이 한꺼번에 나도 앞 글을 지우지 않고 차례로 띄운다', () => {
+    const g = start();
+    g.hud.said.length = 0;
+    g.onStalkerEvents(['chase'], g.hunters[0]);
+    g.onStalkerEvents(['chase'], g.hunters[1]);
+    expect(g.hud.said).toHaveLength(1);
+    expect(g.hud.said[0]).toContain(MONSTERS[ids[0]].name);
+    g.playTime += g.k.lastNight.alarmHold;
+    g.showWarnings();
+    expect(g.hud.said).toHaveLength(2);
+    expect(g.hud.said[1]).toContain(MONSTERS[ids[1]].name);
+    g.exit();
+  });
+
+  it('이름표는 두 괴물의 상태를 보인다', () => {
+    const g = start();
+    g.stalkers[1].mode = 'chase';
+    g.showWarnings();
+    expect(g.hud.tags).toEqual([{ name: MONSTERS[ids[0]].name, state: 'far' }, { name: MONSTERS[ids[1]].name, state: 'chase' }]);
+    g.exit();
+  });
+
+  it('쇼크는 가까운 쪽만 맞히고 나머지는 계속 온다', () => {
+    const g = quiet(start());
+    g.state = 'play';
+    g.hud.flashShock = () => {};
+    g.run.shock = true;
+    Object.assign(g.stalkers[1], { x: g.p.x + 1, y: g.p.y });
+    Object.assign(g.stalkers[0], { x: g.p.x + 2, y: g.p.y });
+    g.doPunch();
+    expect(g.stalkers.map((s) => s.mode)).toEqual(['patrol', 'stunned']);
+    g.exit();
+  });
+
+  it('처음 깨면 보석을 주고, 도장과 오늘의 탈출 보석은 건드리지 않고, 다시 깨면 보석이 없다', () => {
+    fakes.save = { gems: 0, horror: normalizeHorror({ stamps: Object.fromEntries(boardCells({}).map((c) => [cellKey(c), 'plain'])) }), settings: {} };
+    const stamps = { ...fakes.save.horror.stamps };
+    const win = () => {
+      const g = quiet(start());
+      g.run.powered = true;
+      g.win();
+      return g;
+    };
+    const a = win();
+    expect(fakes.save.gems).toBe(a.k.lastNight.gems);
+    expect(fakes.save.horror.lastCleared).toBe(true);
+    expect(fakes.save.horror.stamps).toEqual(stamps);
+    expect(fakes.save.horror.gemDay).toBe(null);
+    expect(a.audio.play).toHaveBeenCalledWith('bell');
+    expect(a.hud.end.text).toBe(`끝 ${a.k.lastNight.gems}`);
+    a.exit();
+    const b = win();
+    expect(fakes.save.gems).toBe(b.k.lastNight.gems);
+    expect(b.hud.end.text).toBe('끝 0');
+    b.exit();
+  });
+
+  it('끝 화면에 쪽지 이야기의 끝이 두 괴물 이름으로 나온다', () => {
+    const g = quiet(start());
+    g.run.powered = true;
+    g.win();
+    const ending = g.hud.end.notes.ending;
+    expect(ending.length).toBeGreaterThan(2);
+    expect(ending.join(' ')).toContain(MONSTERS[ids[0]].name);
+    expect(ending.join(' ')).toContain(MONSTERS[ids[1]].name);
+    expect(ending.join(' ')).not.toContain('{');
+    g.exit();
+  });
+
+  it('두 몸을 모두 정리한다', () => {
+    const g = start();
+    const spies = g.hunters.map((h) => vi.spyOn(h.model, 'dispose'));
+    g.exit();
+    for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('한 마리 판은 그대로다', () => {
+  it('맵 목록은 그대로이고, 괴물도 몸도 하나다', () => {
+    expect(ALL_MAPS.factory).toBe(MAPS.factory);
+    expect(Object.keys(MAPS)).not.toContain(LAST_ROUND.mapId);
+    const g = makeGame('factory', 'seino');
+    expect(g.hunters).toHaveLength(1);
+    expect(fakes.audio.at(-1).options.more).toEqual([]);
+    g.showWarnings();
+    expect(g.hud.tags).toBeUndefined(); // 이름표가 없다
+    g.exit();
+  });
+
+  it('알림이 기다리지 않고 바로 뜬다', () => {
+    const g = makeGame('factory', 'seino');
+    g.hud.said.length = 0;
+    g.onStalkerEvents(['chase']);
+    g.onStalkerEvents(['chase']);
+    expect(g.hud.said).toHaveLength(2);
+    g.exit();
+  });
+
+  it('탈출 보석과 도장은 전처럼 준다', () => {
+    fakes.save = { gems: 0, horror: normalizeHorror({}), settings: {} };
+    const g = makeGame('factory', 'seino');
+    g.run.powered = true;
+    g.win();
+    expect(fakes.save.gems).toBeGreaterThan(0);
+    expect(fakes.save.horror.escapes).toBe(1);
+    expect(Object.keys(fakes.save.horror.stamps)).toHaveLength(1);
+    expect(fakes.save.horror.lastCleared).toBe(false);
     g.exit();
   });
 });
