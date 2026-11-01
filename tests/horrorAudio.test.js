@@ -265,7 +265,7 @@ describe('HorrorAudio 괴물 목소리', () => {
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 30, 0.1);
     expect(steps).toHaveBeenCalled();
     steps.mockClear();
-    for (let i = 0; i < 30; i++) a.updateStalker(cam, pos, 'frozen', 30, 0.1);
+    for (let i = 0; i < 30; i++) a.updateStalker(cam, pos, 'watch', 30, 0.1);
     expect(steps).not.toHaveBeenCalled();
     expect(set.mock.calls.at(-1)[0]).toBe(0);
   });
@@ -278,7 +278,7 @@ describe('HorrorAudio 괴물 목소리', () => {
     const walk = steps.mock.calls.length;
     steps.mockClear();
     a.stepT = 0;
-    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'rush', 30, 0.1);
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'chase', 30, 0.1);
     expect(steps.mock.calls.length).toBeGreaterThan(walk);
     expect(creature.mock.calls.at(-1)[0]).toBe(a.k.chaseCreatureGain);
   });

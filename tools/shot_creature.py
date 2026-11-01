@@ -20,8 +20,8 @@ SHOTS = {
     'darkchase': dict(cam=[0, 1.6, 7], at=[0, 1.5, 0], light=False, mode='chase'),
     'chase': dict(cam=[3, 1.6, 3.2], at=[0, 1.4, 0], mode='chase', walk=2),
     'stunned': dict(cam=[0, 1.6, 4.2], at=[0, 1.4, 0], mode='stunned'),
-    'rush': dict(cam=[0, 1.6, 4.2], at=[0, 1.4, 0], mode='rush', walk=2),
-    'sniff': dict(cam=[2.5, 1.6, 3.2], at=[0, 1.4, 0], mode='sniff'),
+    'search': dict(cam=[2.5, 1.6, 3.2], at=[0, 1.4, 0], mode='search'),
+    'frozen': dict(cam=[0, 1.6, 4.2], at=[0, 1.4, 0], mode='watch'),
     'walk': dict(cam=[4.2, 1.6, 0.2], at=[0, 1.4, 0], heading=0, walk=1),
     'catch': dict(cam=[0, 1.6, 0.6], at=[0, 1.6, 0], mode='chase', face=True),
 }

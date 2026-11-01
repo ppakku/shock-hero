@@ -50,11 +50,7 @@ const HEM_Y = 0.55; // 이 아래 옷자락이 흔들린다
 const POSE = {
   walk: { lean: 0.03, nod: 0.02, mouth: 0.2 },
   chase: { lean: 0.17, nod: 0.2, mouth: 1 },
-  search: { lean: 0.08, nod: 0.08, mouth: 0.45 },
-  watch: { lean: 0.02, nod: 0, mouth: 0.35 },
-  ambush: { lean: 0.06, nod: 0.12, mouth: 0.1 },
 };
-POSE.investigate = POSE.search;
 const POSE_KEYS = Object.keys(POSE.walk);
 const SKIN_COLOR = 0x4a4c42; // 그림이 없을 때 머리 색
 const ROBE_COLOR = 0x23272c; // 그림이 없을 때 몸 색
@@ -262,7 +258,7 @@ export class GazerModel extends CreatureBase {
   update(s, dt, player) {
     const first = !this.hasLast;
     const moved = this.track(s, dt, CELL);
-    this.frozen = s.mode === 'frozen' || s.frozen === true;
+    this.frozen = s.mode === 'watch'; // 주인공이 바라보는 동안
     if (s.mode === 'stunned') {
       this.shake(s, this.root, 0.012);
     } else if (!this.frozen) {

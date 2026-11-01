@@ -7,8 +7,6 @@ const DRONE = [82.41, 82.9, 123.47]; // 살짝 어긋난 낮은 음이 천천히
 const PAD = [155.56, 164.81]; // 반음이 부딪혀 불안하게 들린다
 const NOTES = [196, 207.65, 293.66, 311.13, 392]; // 어둠 속에서 가끔 울리는 쇳소리 음
 const CLANG = [310, 467, 811]; // 멀리서 쇠가 부딪히는 소리
-const HUNT = ['chase', 'rush']; // 음악을 낮추고 괴물 소리를 키우는 상태
-
 export class HorrorAudio {
   constructor({ muted, voice = 'seino' }) {
     sfx.unlock();
@@ -282,14 +280,13 @@ export class HorrorAudio {
 
   // 추격 중에는 배경 음악을 낮춰서 숨소리와 발소리가 앞에 나오게 한다
   musicLevel() {
-    return this.k.musicVolume * (HUNT.includes(this.mode) ? this.k.musicChaseDuck : 1);
+    return this.k.musicVolume * (this.mode === 'chase' ? this.k.musicChaseDuck : 1);
   }
 
   duckMusic(t) {
-    const hunting = HUNT.includes(this.mode);
-    this.creatureOut.gain.setTargetAtTime(hunting ? this.k.chaseCreatureGain : 1, t, 0.15);
+    this.creatureOut.gain.setTargetAtTime(this.mode === 'chase' ? this.k.chaseCreatureGain : 1, t, 0.15);
     if (!this.active) return;
-    this.music.gain.setTargetAtTime(this.musicLevel(), t, hunting ? 0.15 : 0.8); // 쫓길 때는 빨리 낮추고, 놓치면 천천히 돌아온다
+    this.music.gain.setTargetAtTime(this.musicLevel(), t, this.mode === 'chase' ? 0.15 : 0.8); // 쫓길 때는 빨리 낮추고, 놓치면 천천히 돌아온다
   }
 
   // 잡히는 장면: 숨소리와 발소리를 바로 끈다

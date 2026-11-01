@@ -248,20 +248,13 @@ describe('createCreature', () => {
       model.root.rotation.x, model.root.rotation.z, model.root.position.y, model.neck.rotation.z, model.jaw.rotation.x,
       model.head.rotation.x, model.head.rotation.y, model.yaw, ...model.bodyMesh.geometry.attributes.position.array.slice(-60),
     ];
-    const s = { x: 5, y: 5, heading: 0.7, mode: 'frozen' };
+    const s = { x: 5, y: 5, heading: 0.7, mode: 'watch' };
     model.update(s, 1 / 30, { x: 5, y: 8 });
     const held = snap();
     const eyeA = model.pupils[0].mesh.position.x;
     for (let i = 0; i < 40; i++) model.update(s, 1 / 30, { x: 7, y: 8 });
     expect(snap()).toEqual(held);
     expect(model.pupils[0].mesh.position.x).not.toBe(eyeA);
-  });
-
-  it('gazer also freezes on the s.frozen flag', () => {
-    const model = stand(build('gazer'), 'chase', 20);
-    const jaw = model.jaw.rotation.x;
-    for (let i = 0; i < 20; i++) model.update({ x: 5, y: 5, heading: 0, mode: 'chase', frozen: true }, 1 / 30, P);
-    expect(model.jaw.rotation.x).toBe(jaw);
   });
 
   it('gazer opens its mouth wider in a chase and dims when stunned', () => {
@@ -293,20 +286,28 @@ describe('createCreature', () => {
     rest.mockRestore();
   });
 
-  it('maw rushes low with its mouth wide and sniffs with its head swinging', () => {
+  it('maw rushes low with its mouth wide and searches with its head swinging', () => {
     const rest = vi.spyOn(Math, 'random').mockReturnValue(0.99);
     const walk = stand(build('maw'), 'patrol', 90);
-    const rush = stand(build('maw'), 'rush', 90);
+    const rush = stand(build('maw'), 'chase', 90);
     expect(rush.spine.rotation.x).toBeGreaterThan(walk.spine.rotation.x + 0.3);
     expect(rush.jaw.rotation.x).toBeGreaterThan(walk.jaw.rotation.x + 0.1);
     expect(rush.arms[0].shoulder.rotation.x).toBeLessThan(walk.arms[0].shoulder.rotation.x - 0.8);
     const sniff = build('maw');
     let swing = 0;
     for (let i = 0; i < 120; i++) {
-      stand(sniff, 'sniff');
+      stand(sniff, 'search');
       if (i > 60) swing = Math.max(swing, Math.abs(sniff.head.rotation.y));
     }
     expect(swing).toBeGreaterThan(0.45);
+    rest.mockRestore();
+  });
+
+  it('maw stops to sniff while pauseT runs, whatever its mode', () => {
+    const rest = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const model = build('maw');
+    for (let i = 0; i < 90; i++) model.update({ x: 5, y: 5, heading: 0, mode: 'patrol', pauseT: 1 }, 1 / 30, P);
+    expect(model.pose.lean).toBeGreaterThan(0.35);
     rest.mockRestore();
   });
 

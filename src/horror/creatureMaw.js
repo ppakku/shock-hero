@@ -43,20 +43,17 @@ const TORSO_KEYS = [
   [-0.18, 0.03, 0.03, 0],
 ];
 
+// 행동 코드의 chase 는 소리 난 곳으로 달려드는 것, search 는 코로 찾는 것이다
 const POSE = {
   walk: { lean: 0.1, spread: 1, reach: 0, amp: 0.4, knee: 0.7, stride: 2.8, mouth: 0.25, drop: 0, sweep: 0.3, rate: 0.9 },
-  rush: { lean: 0.62, spread: 0.55, reach: 1, amp: 0.8, knee: 1.15, stride: 3.8, mouth: 1, drop: 0.12, sweep: 0.08, rate: 7 },
-  sniff: { lean: 0.42, spread: 0.85, reach: 0.25, amp: 0.3, knee: 0.6, stride: 2.2, mouth: 0.45, drop: 0.06, sweep: 0.7, rate: 2.6 },
-  watch: { lean: 0.05, spread: 1, reach: 0, amp: 0.4, knee: 0.7, stride: 2.8, mouth: 0.1, drop: 0, sweep: 0.1, rate: 0.5 },
-  ambush: { lean: 0.3, spread: 0.3, reach: 0, amp: 0.4, knee: 0.7, stride: 2.8, mouth: 0.05, drop: 0.12, sweep: 0, rate: 0.5 },
+  chase: { lean: 0.62, spread: 0.55, reach: 1, amp: 0.8, knee: 1.15, stride: 3.8, mouth: 1, drop: 0.12, sweep: 0.08, rate: 7 },
+  search: { lean: 0.42, spread: 0.85, reach: 0.25, amp: 0.3, knee: 0.6, stride: 2.2, mouth: 0.45, drop: 0.06, sweep: 0.7, rate: 2.6 },
+  investigate: { lean: 0.26, spread: 0.9, reach: 0.15, amp: 0.45, knee: 0.8, stride: 2.8, mouth: 0.4, drop: 0.03, sweep: 0.5, rate: 2 },
 };
-POSE.chase = POSE.rush;
-POSE.search = POSE.sniff;
-POSE.investigate = POSE.sniff;
 const POSE_KEYS = Object.keys(POSE.walk);
 const SKIN_COLOR = 0x2e2522; // 그림이 없을 때 살색
 const HAIR_COLOR = 0x12160f; // 그림이 없을 때 머리털 색
-const TEETH_GLOW = { patrol: 0.3, investigate: 0.45, search: 0.45, sniff: 0.45, rush: 1, chase: 1, stunned: 0.05, ambush: 0.05, watch: 0.3 };
+const TEETH_GLOW = { patrol: 0.3, investigate: 0.45, search: 0.45, chase: 1, stunned: 0.05 };
 const TOOTH_LIGHT = 0.3; // 어둠 속에서 이빨이 뜨는 세기
 
 function edgeU(w) {
@@ -260,7 +257,7 @@ export class MawModel extends CreatureBase {
   }
 
   body(s, dt, moved) {
-    const goal = POSE[s.mode] ?? POSE.walk;
+    const goal = s.pauseT > 0 ? POSE.search : POSE[s.mode] ?? POSE.walk; // 코앞에서 멈춰 킁킁대는 동안
     const k = damp(5, dt);
     const p = this.pose;
     for (let i = 0; i < POSE_KEYS.length; i++) {
