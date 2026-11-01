@@ -47,6 +47,8 @@ vi.mock('../src/horror/hud.js', () => {
     showSlit() {}
     fade() {}
     setDread() {}
+    get keypadOpen() { return false; }
+    closeKeypad() { return false; }
     closeLayer() {}
     setNotice() {}
     showPause() {}
@@ -272,6 +274,100 @@ describe('호러워드', () => {
     const b = makeGame('factory', 'seino');
     expect(b.bulge).toBeNull();
     b.exit();
+  });
+});
+
+describe('정문 번호', () => {
+  const atGate = () => {
+    const g = makeGame('factory', 'seino');
+    g.state = 'play';
+    g.audio = { play: vi.fn(), hush() {}, update() {}, updateStalker() {}, suspend() {}, resume() {}, setHum() {}, setActive() {}, destroy() {} };
+    g.hud.showKeypad = vi.fn(function open(o) { this.keypad = o; });
+    g.hud.setKeypad = vi.fn();
+    g.hud.closeKeypad = vi.fn(function close() { const was = Boolean(this.keypad); this.keypad = null; return was; });
+    Object.defineProperty(g.hud, 'keypadOpen', { get() { return Boolean(this.keypad); } });
+    g.run.powered = true;
+    g.p = center(frontOf(g.map, g.map.gate));
+    Object.assign(g.stalker, { x: 1.5, y: 1.5, graceT: 99 });
+    return g;
+  };
+  const press = (g, key) => {
+    g.readInput = () => ({ ...idle(), ...key });
+    g.update(DT);
+    g.readInput = idle;
+  };
+  const code = (g) => g.run.code.digits.map(String);
+
+  it('정문은 바로 열리지 않고 입력 칸이 뜬다', () => {
+    const g = atGate();
+    press(g, { use: true });
+    expect(g.state).toBe('play');
+    expect(g.hud.showKeypad).toHaveBeenCalledTimes(1);
+    expect(g.hud.keypad.lines.join(' ')).toContain('붉은 쪽지가 3장');
+    expect(g.hud.keypad.lines.at(-1)).toContain(String(g.run.code.digits[3]));
+    g.exit();
+  });
+
+  it('찾은 단서는 입력 칸에 보인다', () => {
+    const g = atGate();
+    g.run.clues[1].taken = true;
+    press(g, { use: true });
+    expect(g.hud.keypad.lines.join(' ')).toContain(g.clueTexts[1].at(-1));
+    expect(g.hud.keypad.lines.join(' ')).toContain('2장');
+    g.exit();
+  });
+
+  it('맞히면 탈출하고 끝 화면에 맵 결말이 나온다', () => {
+    const g = atGate();
+    press(g, { use: true });
+    press(g, { typed: code(g) });
+    expect(g.state).toBe('end');
+    expect(g.hud.end.notes.ending).toContain('공장');
+    g.exit();
+  });
+
+  it('틀리면 경고음이 나고 그동안 괴물에게 달리는 소리처럼 들린다', () => {
+    const g = atGate();
+    press(g, { use: true });
+    press(g, { typed: code(g).map((d, i) => (i === 3 ? String((Number(d) + 1) % 10) : d)) });
+    expect(g.state).toBe('play');
+    expect(g.audio.play).toHaveBeenCalledWith('codeWrong');
+    expect(g.alarmT).toBeGreaterThan(0);
+    expect(g.hud.keypadOpen).toBe(true); // 다시 넣을 수 있다
+    frames(g, g.k.codeAlarm + 0.1);
+    expect(g.alarmT).toBe(0);
+    g.exit();
+  });
+
+  it('입력 칸이 닫혀 있으면 숫자 키는 아무 일도 하지 않는다', () => {
+    const g = atGate();
+    press(g, { typed: code(g) });
+    expect(g.run.code.entered).toBe('');
+    expect(g.state).toBe('play');
+    g.exit();
+  });
+
+  it('E 를 다시 누르면 닫히고, 멀어져도 닫힌다', () => {
+    const g = atGate();
+    press(g, { use: true });
+    press(g, { use: true });
+    expect(g.hud.keypadOpen).toBe(false);
+    press(g, { use: true });
+    g.p = center(g.map.start);
+    g.update(DT);
+    expect(g.hud.keypadOpen).toBe(false);
+    g.exit();
+  });
+
+  it('단서를 주우면 쪽지로 보여 주고 일시정지의 읽은 쪽지에 남는다', () => {
+    const g = atGate();
+    g.run.powered = false;
+    g.hud.showNote = vi.fn();
+    g.doUse({ kind: 'clue', index: 2 });
+    expect(g.run.clues[2].taken).toBe(true);
+    expect(g.clueMeshes[2].visible).toBe(false);
+    expect(g.hud.showNote).toHaveBeenCalledWith(g.clueTexts[2], false);
+    g.exit();
   });
 });
 

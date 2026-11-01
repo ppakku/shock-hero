@@ -1,6 +1,7 @@
 // 공포 모드 한 판의 규칙과 기록 (화면과 상관없는 부분)
 import { isRound } from './horrorPick.js';
 import { reachable, withOpen } from './horrorGrid.js';
+import { createCode, CLUE_COUNT } from './horrorCode.js';
 
 export const KEY_NAMES = ['빨간', '파란']; // 잠긴 문과 열쇠의 색. map.locks 순서
 
@@ -50,13 +51,22 @@ function refreshPatrol(level, all) {
   level.patrol = all.filter(inArea(area));
 }
 
+// 이번 판에 퓨즈가 없는 자리 가운데 열쇠 없이 갈 수 있는 곳에 놓는다. 다 끝난 날개로 다시 돌아가지 않게 한다
+function placeClues(map, fuses, rand) {
+  const open = inArea(reachable(withOpen(map), map.start));
+  return shuffled(map.fuses.filter((c) => open(c) && !fuses.includes(c)), rand).slice(0, CLUE_COUNT);
+}
+
 export function createRun(map, k, rand = Math.random) {
   const level = withOpen(map); // 판마다 따로 여는 맵 사본
   refreshPatrol(level, map.patrol);
+  const fuses = placeFuses(map, k, rand);
   return {
     level,
     allPatrol: map.patrol,
-    fuses: placeFuses(map, k, rand).map((c) => ({ ...c, taken: false })),
+    fuses: fuses.map((c) => ({ ...c, taken: false })),
+    clues: placeClues(map, fuses, rand).map((c) => ({ ...c, taken: false })),
+    code: createCode(rand),
     keys: placeKeys(map, rand),
     doors: map.locks.map((c) => ({ ...c, open: false })),
     have: 0,
@@ -75,6 +85,15 @@ export function takeFuse(run, i) {
   run.have += 1;
   return true;
 }
+
+export function takeClue(run, i) {
+  const clue = run.clues[i];
+  if (!clue || clue.taken) return false;
+  clue.taken = true;
+  return true;
+}
+
+export const cluesFound = (run) => run.clues.filter((c) => c.taken).length;
 
 export function takeKey(run, i) {
   const key = run.keys[i];
@@ -130,6 +149,7 @@ export function nearestUse(run, map, p, hidden, k, notes) {
   };
   run.fuses.forEach((f, i) => !f.taken && add('fuse', i, '퓨즈 줍기', f));
   run.keys.forEach((c, i) => !c.taken && add('key', i, `${KEY_NAMES[i]} 열쇠 줍기`, c));
+  run.clues.forEach((c, i) => !c.taken && add('clue', i, '붉은 쪽지 읽기', c));
   notes?.spots.forEach((s, i) => !notes.taken[i] && add('note', i, '쪽지 읽기', { cx: s.x - 0.5, cy: s.y - 0.5 }));
   run.doors.forEach((c, i) => {
     if (!c.open) add(run.keys[i].taken ? 'lock' : 'locked', i, run.keys[i].taken ? '문 열기' : `${KEY_NAMES[i]} 열쇠가 필요해`, c);
@@ -137,7 +157,7 @@ export function nearestUse(run, map, p, hidden, k, notes) {
   map.lockers.forEach((c, i) => add('locker', i, '사물함에 숨기', c));
   if (!run.shock) map.boxes.forEach((c, i) => !run.usedBoxes.includes(i) && add('box', i, '쇼크 충전', c));
   if (!run.powered) add('panel', 0, run.have >= k.fuseCount ? '퓨즈 꽂기' : `퓨즈가 ${k.fuseCount}개 필요해`, map.panel);
-  else add('gate', 0, '정문으로 탈출', map.gate);
+  else add('gate', 0, '정문 번호 넣기', map.gate);
   return best;
 }
 

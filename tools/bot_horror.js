@@ -42,6 +42,8 @@
     if (side) return side;
     const key = g.run.keys.find((c) => !c.taken && canWalk(c));
     if (key) return { cx: key.cx, cy: key.cy };
+    const clue = g.run.clues.find((c) => !c.taken && canWalk(c));
+    if (clue) return { cx: clue.cx, cy: clue.cy };
     return frontOf(g.map, g.run.powered ? g.map.gate : g.map.panel);
   };
 
@@ -112,6 +114,10 @@
     const careful = opts().careful;
     const kind = g.stalker.monsterId;
     const target = g.nearestUse();
+    if (g.hud?.keypadOpen) {
+      inp.typed = g.run.code.digits.map(String); // 단서를 다 모은 뒤라 번호를 안다
+      return inp;
+    }
     if (B.pressed) {
       B.pressed = false; // 한 번 누르면 한 프레임 쉰다
       return inp;
@@ -130,7 +136,7 @@
       const hide = hideGoal();
       if (hide) return walkTo(inp, hide, true);
     }
-    const wanted = ['fuse', 'key', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
+    const wanted = ['fuse', 'key', 'clue', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
     if (careful && kind === 'gazer') return gazerBrain(inp);
     return walkTo(inp, goalNow(), !careful || (chased() && kind !== 'maw'));

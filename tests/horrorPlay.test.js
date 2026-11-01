@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
-import { createRun, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
+import { createRun, takeClue, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { MAPS } from '../src/horror/content.js';
 import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
@@ -74,10 +74,11 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     if (inp.use && target) {
       if (target.kind === 'fuse') takeFuse(run, target.index);
       if (target.kind === 'key') takeKey(run, target.index);
+      if (target.kind === 'clue') takeClue(run, target.index);
       if (target.kind === 'lock') openDoor(run, target.index);
       if (target.kind === 'box') chargeShock(run, target.index);
       if (target.kind === 'panel') insertFuses(run, k);
-      if (target.kind === 'gate') escape(run);
+      if (target.kind === 'gate' && run.clues.every((c) => c.taken)) escape(run); // 단서를 다 찾아야 번호를 맞힌다
       if (target.kind === 'locker') {
         if (g.hidden === null) {
           hideFrom = g.p;
@@ -141,7 +142,7 @@ describe('봇이 끝까지 한 판을 한다', () => {
     const s = summary(seeds.map((seed) => playGame(seed, { careful: true })));
     console.log('조심하는 봇', s);
     expect(s.won).toBe(seeds.length);
-    expect(s.meanCatches).toBeLessThan(4);
+    expect(s.meanCatches).toBeLessThan(5);
     expect(s.meanSeconds).toBeGreaterThanOrEqual(150); // 찾아다녀야 하는 사람은 몇 배 더 걸린다
   }, 120000);
 
@@ -171,7 +172,7 @@ describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, 
     const s = summary(seeds.map((seed) => playGame(seed, { careful: true }, 900, mapId, monsterId)));
     console.log(mapId, monsterId, '조심하는 봇', s);
     expect(s.won).toBe(seeds.length);
-    expect(s.meanCatches).toBeLessThan(4);
+    expect(s.meanCatches).toBeLessThan(5); // 봇은 붉은 쪽지를 맨 마지막에 모아서 사람보다 오래 돌아다닌다
   });
 
   it('달리기만 하는 봇도 언제나 탈출한다', () => {
@@ -198,6 +199,6 @@ describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [ma
     expect(s.won).toBe(40);
     expect(s.meanCatches).toBeGreaterThanOrEqual(1);
     // 봇은 앞이 안 보이는 큰입이에게도 곧장 달려가 부딪힌다. 닿으면 잡히므로 큰입이만 여유를 둔다
-    expect(s.meanCatches).toBeLessThanOrEqual(monsterId === 'maw' ? 5 : 3);
+    expect(s.meanCatches).toBeLessThanOrEqual(monsterId === 'maw' ? 6 : 4.5);
   }, 120000);
 });

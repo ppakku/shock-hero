@@ -32,6 +32,7 @@ export class HorrorInput {
     this.keys = {};
     this.look = { x: 0, y: 0 };
     this.pressed = {};
+    this.typed = []; // 정문 번호로 누른 키. 입력 화면이 닫혀 있으면 버린다
     this.stick = null;
     this.lookTouch = null;
     this.stickMax = STICK_MAX * (small ? SMALL_BUTTONS : 1);
@@ -52,6 +53,9 @@ export class HorrorInput {
     this.on(window, 'keydown', (e) => {
       if (KEYS[e.code]) this.keys[KEYS[e.code]] = true;
       if (PRESS[e.code] && !e.repeat) this.pressed[PRESS[e.code]] = true;
+      const digit = /^(?:Digit|Numpad)(\d)$/.exec(e.code)?.[1];
+      if (digit && !e.repeat) this.typed.push(digit);
+      if (e.code === 'Backspace' && !e.repeat) this.typed.push('erase');
     });
     this.on(window, 'keyup', (e) => {
       if (KEYS[e.code]) this.keys[KEYS[e.code]] = false;
@@ -197,7 +201,9 @@ export class HorrorInput {
       use: Boolean(this.pressed.use),
       punch: Boolean(this.pressed.punch),
       pause: Boolean(this.pressed.pause),
+      typed: this.typed,
     };
+    this.typed = [];
     this.look = { x: 0, y: 0 };
     this.pressed = {};
     if (out.pause) this.clearTouch(); // 멈추면 조이스틱 그림도 접는다

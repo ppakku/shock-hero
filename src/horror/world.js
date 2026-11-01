@@ -8,6 +8,7 @@ const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
 const LOCKER = { w: 1.3, h: 2.2, d: 1.1 };
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
+const CLUE_COLOR = 0xe02828;
 const NOTE = { w: 0.4, h: 0.55, color: 0xe8dcc0, y: 0.03, turn: 1.1 }; // 쪽지 크기 (미터), 색, 바닥에서 높이 (미터), 자리마다 돌아가는 각도 (라디안)
 const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
 const LOCK_NAMES = ['red', 'blue']; // 그림 파일 이름. map.locks 순서
@@ -315,11 +316,20 @@ export function buildWorld(scene, map, k, theme) {
     return meshes;
   };
 
+  // 정문 번호 단서: 평범한 쪽지와 달리 붉고 어둠 속에서도 눈에 띈다
+  const addClues = (spots) => spots.map((c, i) => {
+    const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), CLUE_COLOR, chunkOf(c.cx, c.cy));
+    mesh.position.y = NOTE.y;
+    mesh.rotation.set(0, NOTE.turn * i, 0);
+    return mesh;
+  });
+
   return {
     wallMaterial: wallMat,
     addFuses,
     addKeys,
     addNotes,
+    addClues,
     counts,
     // 문을 열면 눈길이 달라지니 계산해 둔 구역도 버린다
     openDoor(i) {

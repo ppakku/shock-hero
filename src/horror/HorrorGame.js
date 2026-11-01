@@ -4,7 +4,8 @@ import { cfg } from '../config/index.js';
 import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable, playerSees } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
-import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
+import { codeDisplay, pressCode } from '../logic/horrorCode.js';
+import { createRun, takeClue, cluesFound, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
@@ -20,7 +21,7 @@ import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
 
 export { showChooser } from './chooser.js';
-import { FINAL_LINES, NOTE_DANGER_LINE, fillName } from './story.js';
+import { FINAL_LINES, NOTE_DANGER_LINE, ENDINGS, clueTexts, fillName } from './story.js';
 
 const EYE = 1.6; // 눈높이 (미터)
 const GUN_AIM_Y = 1.3; // 전기충격기 번개가 닿는 괴물 몸 높이 (미터)
@@ -66,6 +67,8 @@ export class HorrorGame {
     this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
     this.notes = createNotes(this.map.notes.map(center));
     this.noteTexts = fillName(this.place.notes, this.monster.name);
+    this.clueTexts = clueTexts(round.mapId, this.run.code);
+    this.alarmT = 0; // 번호가 틀려서 난 소리가 남은 시간
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
@@ -143,6 +146,7 @@ export class HorrorGame {
     this.fuseMeshes = this.world.addFuses(this.run.fuses);
     this.keyMeshes = this.world.addKeys(this.run.keys);
     this.noteMeshes = this.world.addNotes(this.notes.spots);
+    this.clueMeshes = this.world.addClues(this.run.clues);
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root, this.named(NOTE_DANGER_LINE), this.round);
     this.hud.setStatus(this.statusNow());
@@ -290,7 +294,9 @@ export class HorrorGame {
     if (this.hidden === null) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     this.walking = moving;
-    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
+    this.alarmT = Math.max(0, this.alarmT - dt);
+    const noise = this.alarmT > 0 ? this.k.runNoise : noiseFor(moving, running, this.k);
+    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise };
     this.tickStamina(running && moving, dt);
     const seen = playerSees(this, this.hud.noteOpen);
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, seen, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
@@ -307,12 +313,16 @@ export class HorrorGame {
     this.tickDread(dt);
     const target = this.nearestUse();
     this.hud.setPrompt(this.promptFor(target));
-    if (inp.use && !this.hud.closeNote()) this.doUse(target); // 쪽지가 열려 있으면 닫기만 한다
+    if (this.hud.keypadOpen && target?.kind !== 'gate') this.hud.closeKeypad(); // 정문에서 멀어지면 닫는다
+    if (this.hud.keypadOpen) inp.typed?.forEach((key) => this.keypadPress(key));
+    if (this.state !== 'play') return; // 번호를 맞혀 탈출했다
+    if (inp.use && !this.hud.closeNote() && !this.hud.closeKeypad()) this.doUse(target); // 쪽지나 입력 칸이 열려 있으면 닫기만 한다
     if (inp.punch) this.doPunch();
   }
 
   promptFor(target) {
     if (this.hud.noteOpen) return `${this.touch ? '사용' : 'E'}: 쪽지 닫기`;
+    if (this.hud.keypadOpen) return '';
     if (!target) return '';
     return target.kind === 'locked' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
   }
@@ -453,13 +463,14 @@ export class HorrorGame {
   }
 
   statusNow() {
-    return { have: this.run.have, need: this.k.fuseCount, shock: this.run.shock, powered: this.run.powered, keys: keysHeld(this.run), notesFound: this.notes.found, notesTotal: this.notes.total };
+    return { have: this.run.have, need: this.k.fuseCount, shock: this.run.shock, powered: this.run.powered, keys: keysHeld(this.run), notesFound: this.notes.found, notesTotal: this.notes.total, clues: cluesFound(this.run), cluesTotal: this.run.clues.length };
   }
 
   onStalkerEvents(events) {
     this.lastEvents = events;
     if (events.includes('chase')) {
       const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
+      this.hud.closeKeypad();
       this.hud.say(`${this.named(this.monster.alarm)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
     if (events.includes('wall')) this.onWall();
@@ -495,6 +506,11 @@ export class HorrorGame {
       this.hud.say(`${KEY_NAMES[t.index]} 열쇠를 찾았다! ${KEY_NAMES[t.index]} 문을 찾자`, 4);
     }
     if (t.kind === 'note') this.readNote(t.index);
+    if (t.kind === 'clue' && takeClue(this.run, t.index)) {
+      this.clueMeshes[t.index].visible = false;
+      this.audio?.play('fuse');
+      this.hud.showNote(this.clueTexts[t.index], this.device === 'phone');
+    }
     if (t.kind === 'lock' && openDoor(this.run, t.index)) {
       this.world.openDoor(t.index);
       this.audio?.play('door');
@@ -508,10 +524,10 @@ export class HorrorGame {
     if (t.kind === 'panel' && insertFuses(this.run, this.k)) {
       this.world.setPowered();
       this.audio?.play('door');
-      this.hud.say('전원이 켜졌다! 정문으로 가자!', 4);
+      this.hud.say(`전원이 켜졌다! 화면에 숫자 ${this.run.code.digits[3]}: 정문 번호 넷째 자리다!`, 6);
     }
     if (t.kind === 'locker') this.toggleLocker(t.index);
-    if (t.kind === 'gate') this.win();
+    if (t.kind === 'gate') this.openKeypad();
     this.hud.setStatus(this.statusNow());
   }
 
@@ -522,6 +538,39 @@ export class HorrorGame {
     this.noteMeshes[i].visible = false;
     this.audio?.play('fuse');
     this.hud.showNote(this.noteTexts[order], this.device === 'phone');
+  }
+
+  // 입력 칸에는 찾은 단서와 전원 화면의 숫자가 보여서 외우지 않아도 된다
+  openKeypad() {
+    const code = this.run.code;
+    const lines = this.run.clues.map((c, i) => (c.taken ? this.clueTexts[i].at(-1) : null)).filter(Boolean);
+    const missing = this.run.clues.length - lines.length;
+    if (missing) lines.push(`붉은 쪽지가 ${missing}장 더 있다`);
+    lines.push(`넷째 자리는 ${code.digits[3]}`);
+    this.hud.showKeypad({
+      lines,
+      shown: codeDisplay(code),
+      touch: this.touch,
+      compact: this.device === 'phone',
+      onKey: (key) => this.keypadPress(key),
+      onClose: () => this.hud.closeKeypad(),
+    });
+  }
+
+  keypadPress(key) {
+    if (this.state !== 'play') return;
+    const code = this.run.code;
+    const result = pressCode(code, key);
+    this.audio?.play(result === 'wrong' ? 'codeWrong' : 'codeKey');
+    this.hud.setKeypad(codeDisplay(code));
+    if (result === 'right') {
+      this.hud.closeKeypad();
+      this.win();
+    }
+    if (result === 'wrong') {
+      this.alarmT = this.k.codeAlarm;
+      this.hud.say(this.named('번호가 틀렸다! 경고음이 크게 울린다. {name}가 들었을지 몰라!'), 3);
+    }
   }
 
   toggleLocker(i) {
@@ -572,6 +621,7 @@ export class HorrorGame {
     this.cancelBlink(); // 깜빡임이 잡히는 장면의 밝기를 덮어쓰지 않게 한다
     this.figure = null;
     this.noteCut = this.hud.closeNote();
+    this.hud.closeKeypad();
     caught(this.run);
     this.audio?.suspend();
     this.audio?.hush(true); // 비명 전에 소리를 뚝 끊는다
@@ -675,7 +725,7 @@ export class HorrorGame {
     this.input.clearTouch();
     this.hud.closeNote();
     this.hud.setPrompt('');
-    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]) });
+    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) });
   }
 
   pause() {
@@ -685,6 +735,7 @@ export class HorrorGame {
     this.cancelBlink();
     this.noteAtPause = this.hud.noteLines; // 계속하기를 누르면 다시 펼친다
     this.hud.closeNote();
+    this.hud.closeKeypad();
     this.input.clearTouch();
     this.audio?.suspend();
     document.exitPointerLock?.();
@@ -692,7 +743,7 @@ export class HorrorGame {
   }
 
   openPause() {
-    const read = this.notes.read.map((order) => this.noteTexts[order]);
+    const read = [...this.notes.read.map((order) => this.noteTexts[order]), ...this.clueTexts.filter((_, i) => this.run.clues[i].taken)];
     const phone = this.device === 'phone';
     const onNotes = read.length ? () => this.hud.showReadNotes(read, () => this.openPause(), phone) : null;
     this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone);
