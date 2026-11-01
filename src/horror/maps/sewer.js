@@ -35,6 +35,7 @@ export const sewerMap = { ...parseMap([
 ]), solidLockers: true }; // 사물함이 칸을 꽉 채워서 눈을 막는다
 
 export const sewerTheme = {
+  doorSet: 'horror_door_sewer', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_sewer_wall', plain: 0x3f4a3e, repeat: 1 },
   floor: { art: 'horror_sewer_floor', plain: 0x1e2a28, repeat: 7, shiny: { color: 0x8aa8a0, power: 40 }, flow: [0.02, 0.05] }, // 젖은 바닥: 손전등이 비치고 천천히 흐른다
   locker: { art: 'horror_sewer_locker', plain: 0x4a4a38, repeat: 1, box: { w: 3, h: 3, d: 3 } }, // 벽을 파낸 칸을 꽉 채운다
