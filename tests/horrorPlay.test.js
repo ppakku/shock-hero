@@ -3,12 +3,14 @@ import { readFileSync } from 'node:fs';
 import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
-import { createStalkers, nearestStalker, sendAllAway } from '../src/logic/horrorHunters.js';
+import { anyChasing, createStalkers, nearestStalker, sendAllAway } from '../src/logic/horrorHunters.js';
+import { createNotes, takeNote } from '../src/logic/horrorNotes.js';
 import { createRun, takeClue, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { ALL_MAPS } from '../src/horror/content.js';
 import { LAST_ROUND, MAP_IDS, MONSTER_IDS, roundMonsters } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
+import { TONIGHT_RULES, tonightMet } from '../src/logic/horrorTonight.js';
 
 vi.setConfig({ testTimeout: 120000 }); // 봇이 한 판을 끝까지 돌아서 다른 시험과 함께 돌면 몇 초를 넘는다
 
@@ -34,14 +36,17 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
   const run = createRun(ALL_MAPS[mapId].map, k, rand);
   const map = run.level;
   const stalkers = createStalkers(map, k, rand, monsterIds);
+  const notes = createNotes(map.notes.map(center), seeded(seed + 500)); // 같은 씨앗의 판이 바뀌지 않게 난수를 나눈다
+  const lightOn = !options?.noLight;
+  let ranFor = 0;
   const g = {
-    map, run, k,
+    map, run, k, notes,
     p: center(map.start),
     yaw: 0,
     hidden: null,
     stalker: stalkers[0],
     stalkers,
-    nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
+    nearestUse: () => nearestUse(run, map, g.p, g.hidden, k, options?.notes && !anyChasing(stalkers) ? notes : undefined),
   };
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
   if (options?.child) {
@@ -62,7 +67,8 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     if (g.hidden === null) g.p = stepPlayer(g.p, inp.move, g.yaw, running ? k.runSpeed : k.walkSpeed, DT, map, 0.2);
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
-    const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
+    if (running && moving) ranFor += DT;
+    const player = { ...g.p, hidden: g.hidden, lightOn, noise: noiseFor(moving, running, k) };
     const pressure = run.have / k.fuseCount;
     let got = false;
     for (const s of stalkers) {
@@ -85,6 +91,7 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
       if (target.kind === 'fuse') takeFuse(run, target.index);
       if (target.kind === 'key') takeKey(run, target.index);
       if (target.kind === 'clue') takeClue(run, target.index);
+      if (target.kind === 'note') takeNote(notes, target.index);
       if (target.kind === 'lock') openDoor(run, target.index);
       if (target.kind === 'box') chargeShock(run, target.index);
       if (target.kind === 'panel') insertFuses(run, k);
@@ -108,7 +115,8 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
       if (Math.hypot(s.x - g.p.x, s.y - g.p.y) <= k.shockRange && lineOfSight(map, g.p, s)) stunStalker(s, k);
     }
   }
-  return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length };
+  const counts = { lit: lightOn, ranFor, shocks: run.shocks, catches: catches.length, notes: notes.found };
+  return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length, counts };
 }
 
 const summary = (games) => ({
@@ -250,4 +258,37 @@ describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [ma
     // 봇은 앞이 안 보이는 큰입이에게도 곧장 달려가 부딪힌다. 닿으면 잡히므로 큰입이만 여유를 둔다
     expect(s.meanCatches).toBeLessThanOrEqual(monsterId === 'maw' ? 6 : 4.5);
   }, 120000);
+});
+
+describe('오늘의 밤: 어느 판이든 조건을 지키고 탈출할 수 있다', () => {
+  const PAIRS = MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, monsterId]));
+  const OPTIONS = {
+    noLight: { careful: true, noLight: true },
+    noRun: { careful: true, noRun: true },
+    noShock: { careful: true, noShock: true },
+    notes: { careful: true, notes: k.tonight.notes },
+  };
+
+  it.each(PAIRS.flatMap((pair) => Object.keys(OPTIONS).map((rule) => [...pair, rule])))('%s 맵의 %s: %s', (mapId, monsterId, rule) => {
+    for (const seed of [1, 2, 3, 4]) {
+      const game = playGame(seed, OPTIONS[rule], 1500, mapId, monsterId);
+      expect(game.won, `씨앗 ${seed}`).toBe(true);
+      expect(tonightMet(rule, game.counts, k), `씨앗 ${seed}`).toBe(true);
+    }
+  });
+
+  // 안 잡히기는 어렵지만 살금살금 다니면 된다. 손전등을 끄고 걷고 괴물이 가까우면 먼저 숨는다
+  it.each(PAIRS)('%s 맵의 %s: 안 잡히기', (mapId, monsterId) => {
+    const games = Array.from({ length: 8 }, (_, i) => playGame(i + 1, { careful: true, sneak: true, noLight: true }, 1500, mapId, monsterId));
+    expect(games.every((r) => r.won)).toBe(true);
+    expect(games.filter((r) => tonightMet('noCatch', r.counts, k)).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(MAP_IDS)('%s 맵: 쪽지는 읽어야 하는 수보다 많고 모두 갈 수 있다', (mapId) => {
+    const { map } = ALL_MAPS[mapId];
+    const open = reachable(withOpen(map, map.locks.map((_, i) => i)), map.start);
+    const spots = map.notes.filter((c) => open.has(`${c.cx},${c.cy}`));
+    expect(spots.length).toBeGreaterThanOrEqual(k.tonight.notes);
+    expect(spots).toHaveLength(map.notes.length);
+  });
 });

@@ -3,6 +3,7 @@ import { isRound } from './horrorPick.js';
 import { reachable, withOpen } from './horrorGrid.js';
 import { createCode, CLUE_COUNT } from './horrorCode.js';
 import { normalizeStamps } from './horrorStamps.js';
+import { normalizeTonightDone } from './horrorTonight.js';
 
 export const KEY_NAMES = ['빨간', '파란']; // 잠긴 문과 열쇠의 색. map.locks 순서
 
@@ -72,6 +73,7 @@ export function createRun(map, k, rand = Math.random) {
     doors: map.locks.map((c) => ({ ...c, open: false })),
     have: 0,
     shock: false,
+    shocks: 0, // 이번 판에 쏜 수
     usedBoxes: [],
     caughtCount: 0,
     powered: false,
@@ -126,6 +128,7 @@ export function chargeShock(run, box) {
 export function useShock(run) {
   if (!run.shock) return false;
   run.shock = false;
+  run.shocks += 1;
   return true;
 }
 
@@ -201,9 +204,9 @@ export const recordLastNight = (record) => ({ ...record, lastCleared: true });
 // gemDay: 탈출 보석을 마지막으로 받은 날. 없으면 아직 받은 적이 없다
 // last: 지난 판의 { mapId, monsterId }. 다음 판을 다르게 고르는 데 쓴다
 // stamps: 도장판 { '맵/괴물': 'plain' | 'gold' }. bolt, light: 고른 번개와 손전등 색 id (logic/horrorStamps.js)
-// lastCleared: 마지막 밤을 깬 적이 있는지
+// lastCleared: 마지막 밤을 깬 적이 있는지. tonightDone: 오늘의 밤 보석을 받은 날 (logic/horrorTonight.js)
 export function emptyHorror() {
-  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null, lastCleared: false };
+  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null, lastCleared: false, tonightDone: [] };
 }
 
 export function normalizeHorror(data) {
@@ -216,6 +219,7 @@ export function normalizeHorror(data) {
   if (typeof data?.bolt === 'string') d.bolt = data.bolt;
   if (typeof data?.light === 'string') d.light = data.light;
   d.lastCleared = data?.lastCleared === true;
+  d.tonightDone = normalizeTonightDone(data?.tonightDone);
   return d;
 }
 

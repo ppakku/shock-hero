@@ -73,6 +73,7 @@ const fakeEl = () => ({
   on: {},
   addEventListener(type, fn) { this.on[type] = fn; },
   appendChild(k) { this.kids.push(k); },
+  get children() { return this.kids; },
   remove() { this.gone = true; },
   focus() {},
 });
@@ -141,6 +142,28 @@ describe('끝 화면', () => {
     expect(done).not.toHaveBeenCalled();
     press(layerButtons(hud)[1]);
     expect(done).toHaveBeenCalledOnce();
+  });
+});
+
+describe('오늘의 밤 줄', () => {
+
+  it('안내 화면에 조건이 나오고, 없으면 빠진다', () => {
+    const round = { mapName: '맵', monsterName: '괴물', hint: '힌트' };
+    for (const d of ['pc', 'phone']) {
+      expect(introLines(d, { ...round, tonight: '조건 줄' })).toContain('조건 줄');
+      expect(introLines(d, round).filter((l) => l === undefined)).toEqual([]);
+    }
+  });
+
+  it('끝 화면에 결과 아래로 조건 줄이 놓이고 못 지켰으면 색이 다르다', () => {
+    const hud = fakeHud();
+    hud.showEnd('탈출', vi.fn(), vi.fn(), null, ['도장'], false, { text: '성공', met: true });
+    const gold = hud.layer.children[1].style.color;
+    expect(layerText(hud)).toContain('성공');
+    hud.showEnd('탈출', vi.fn(), vi.fn(), null, ['도장'], false, { text: '실패', met: false });
+    expect(hud.layer.children[1].style.color).not.toBe(gold);
+    expect(hud.layer.children[2].textContent).toBe('도장');
+    expect(hud.layer.children[2].style.color).toBe(gold);
   });
 });
 

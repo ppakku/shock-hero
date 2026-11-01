@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { canUseWebGL, startHorror, deviceKind } from '../src/horror/start.js';
 import { saveStore } from '../src/save.js';
+import { tonightRound } from '../src/logic/horrorTonight.js';
 
 const fakeCtx = (loseContext = () => {}) => ({ getExtension: () => ({ loseContext }) });
 const docWith = (ctx) => ({ createElement: () => ({ getContext: () => ctx }) });
@@ -158,6 +159,35 @@ describe('한 판 더', () => {
     made[0].o.onAgain();
     expect(shown[1]).toEqual({ mapId: 'school', monsterId: 'maw' });
     expect(made[1].o.round).toEqual({ mapId: 'school', monsterId: 'maw' }); // 같은 판을 또 고르면 그대로 한다
+  });
+
+  it('오늘의 밤 칸은 누른 날의 판으로 시작하고, 고르기 화면의 지난 판은 그 판이 된다', async () => {
+    const { made, Fake, saved } = setup();
+    const opened = [];
+    const showChooser = (r, o) => {
+      opened.push(o);
+      if (opened.length === 1) o.onTonight();
+    };
+    vi.useFakeTimers({ now: new Date(2026, 10, 1, 23, 50), toFake: ['Date'] });
+    try {
+      await startHorror({ pause: vi.fn(), resume: vi.fn() }, { onExit: vi.fn() }, async () => ({ HorrorGame: Fake, showChooser }));
+      const first = tonightRound('2026-11-01');
+      expect(opened[0].tonight).toEqual(first);
+      expect(made[0].o.tonight).toEqual(first);
+      expect(made[0].o.round).toEqual({ mapId: first.mapId, monsterId: first.monsterId });
+      expect(saved().horror.last).toEqual(made[0].o.round);
+      vi.setSystemTime(new Date(2026, 10, 2, 0, 5));
+      opened[0].onTonight(); // 화면을 띄운 채 자정을 넘겼다
+      expect(made[1].o.tonight).toEqual(tonightRound('2026-11-02'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('보통 판에는 오늘의 밤이 없다', async () => {
+    const { made, Fake, showChooser } = setup();
+    await startHorror({ pause: vi.fn(), resume: vi.fn() }, { onExit: vi.fn() }, async () => ({ HorrorGame: Fake, showChooser }));
+    expect(made[0].o.tonight).toBe(null);
   });
 
   it('주소로 정한 판은 첫 판에만 쓴다', async () => {

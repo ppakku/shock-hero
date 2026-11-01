@@ -1,7 +1,9 @@
 // 공포 모드 입구. 3D 묶음은 고를 때만 내려받는다 (이 파일은 three 를 import 하지 않는다).
 import { isPhone, isTouchDevice } from '../ui/touch.js';
 import { saveStore } from '../save.js';
+import { todayKey } from '../logic/daily.js';
 import { LAST_ROUND, RANDOM, chooseRound, forcedRound, isRound } from '../logic/horrorPick.js';
+import { tonightRound } from '../logic/horrorTonight.js';
 
 // 안내 화면에 어느 기기의 조작법을 보여 줄지 고른다
 export function deviceKind(phone = isPhone(), touch = isTouchDevice()) {
@@ -58,7 +60,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     onExit();
   };
   // 판마다 HorrorGame 을 새로 만든다. 지난 판에서 남는 것이 없다
-  const play = (round) => {
+  const play = (round, tonight = null) => {
     let horror = null;
     try {
       const save = saveStore.load();
@@ -66,6 +68,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
       saveStore.save(save);
       horror = new HorrorGame(root, {
         round,
+        tonight,
         touch: isTouchDevice(),
         device: deviceKind(),
         lowFx: save.settings.lowFx,
@@ -89,8 +92,10 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     }
   };
   let choice = { mapId: RANDOM, monsterId: RANDOM }; // 한 판 더를 누르면 방금 고른 그대로 보여 준다
+  const today = () => tonightRound(todayKey());
   const choose = () => showChooser(root, {
     choice,
+    tonight: today(),
     compact: deviceKind() === 'phone',
     record: saveStore.load().horror,
     onLook: (key, id) => {
@@ -103,6 +108,11 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
       play(chooseRound(picked, saveStore.load().horror.last));
     },
     onLastNight: () => play(LAST_ROUND),
+    // 날짜는 누른 순간에 다시 본다. 고르기 화면을 띄운 채 자정을 넘겨도 어제 판이 시작되지 않는다
+    onTonight: () => {
+      const tonight = today();
+      play({ mapId: tonight.mapId, monsterId: tonight.monsterId }, tonight);
+    },
     onQuit: leave,
   });
   const forced = forcedRound(globalThis.location?.search ?? '');

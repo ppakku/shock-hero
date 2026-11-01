@@ -5,6 +5,7 @@
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
 #   python3 tools/run_horror.py 출력폴더 --rounds  (아홉 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
 #   python3 tools/run_horror.py 출력폴더 --last    (도장판을 채워 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
+#   python3 tools/run_horror.py 출력폴더 --tonight (오늘의 밤 카드로 시작해 다섯 조건을 봇으로 지키고 깨서 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --robust  (화면 꺼짐, 보석, 소리 실패, 나가기 실패, 세이노 숨기기, 비상등. --play 에도 들어 있다)
@@ -16,7 +17,7 @@ import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'last' if '--last' in sys.argv else 'replay' if '--replay' in sys.argv else 'rounds' if '--rounds' in sys.argv else 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
+MODE = 'tonight' if '--tonight' in sys.argv else 'last' if '--last' in sys.argv else 'replay' if '--replay' in sys.argv else 'rounds' if '--rounds' in sys.argv else 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
@@ -1818,8 +1819,252 @@ def run_last(pw):
     b.close()
 
 
+# 기기 시계를 며칠 옮긴다. window.__dayShift 를 바꾸면 게임 중에도 날이 바뀐다
+SHIFT_DATE = """(days) => {
+  const Real = Date;
+  window.__dayShift = days;
+  const now = () => Real.now() + window.__dayShift * 86400000;
+  window.Date = class extends Real {
+    constructor(...a) { if (a.length) super(...a); else super(now()); }
+    static now() { return now(); }
+  };
+}"""
+# 오늘부터 며칠 뒤에 그 조건이 나오는가
+DAY_FOR_RULE = """async (rule) => {
+  const { tonightRound } = await import('/src/logic/horrorTonight.js');
+  const { todayKey } = await import('/src/logic/daily.js');
+  for (let d = 0; d < 400; d++) {
+    const t = tonightRound(todayKey(new Date(Date.now() + d * 86400000)));
+    if (t.rule === rule) return { d, ...t };
+  }
+}"""
+TONIGHT_BOT = {
+    'noLight': '{ careful: true }',
+    'noRun': '{ careful: true, noRun: true }',
+    'noShock': '{ careful: true, noShock: true }',
+    'noCatch': '{ careful: true, sneak: true }',
+    'notes': '{ careful: true, notes: window.__horror.k.tonight.notes }',
+}
+# 조건을 깨는 입력을 봇 입력에 얹는다. 게임의 같은 길을 지난다
+TONIGHT_BREAK = {
+    'noRun': """() => { const g = window.__horror, read = g.readInput; let n = 0; g.readInput = (dt) => { const inp = read(dt); if (n++ < 300) { inp.move.run = true; inp.move.z = 1; } return inp; }; }""",
+    'noShock': """() => { const g = window.__horror, read = g.readInput; let n = 0; g.run.shock = true; g.readInput = (dt) => { const inp = read(dt); if (n++ === 2) inp.punch = true; return inp; }; }""",
+    'noCatch': """() => { const g = window.__horror; const s = g.stalker; s.x = g.p.x + 0.3; s.y = g.p.y; s.graceT = 0; s.warnT = 0; s.mode = 'chase'; }""",
+}
+TONIGHT_LINE = 'window.__horror.hud.tonightEl.textContent'
+
+
+def tonight_start(pg, tag, shot):
+    pg.locator('[data-tonight]').click()
+    pg.wait_for_function("window.__horror && window.__horror.state === 'intro'", timeout=20000)
+    time.sleep(0.6)
+    if shot:
+        pg.screenshot(path=f'{OUT}/{tag}_intro.png')
+    intro = pg.inner_text('#horror')
+    fit = pg.evaluate(FITS, '#horror > div[style*="z-index: 5"]')
+    check(f'{tag}: intro names the condition, buttons on screen', '오늘의 밤 조건' in intro and not fit['out'], fit)
+    pg.locator('#horror button:has-text("시작")').click()
+    pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+    pg.evaluate(FAKE_LOCK)
+
+
+def tonight_finish(pg, tag, shot):
+    res = pg.evaluate(FAST_PLAY, 1500)
+    print(tag, res)
+    check(f'{tag}: bot reaches the end', res.get('state') == 'end', res)
+    time.sleep(0.3)
+    if shot:
+        pg.screenshot(path=f'{OUT}/{tag}_end.png')
+    fit = pg.evaluate(FITS, '#horror > div[style*="z-index: 5"]')
+    check(f'{tag}: end screen buttons on screen', not fit['out'], fit)
+    text = pg.inner_text('#horror')
+    print(tag, 'end text:', text.replace('\n', ' / ')[:260])
+    return text
+
+
+def again(pg):
+    pg.locator('#horror button:has-text("한 판 더")').click()
+    pg.wait_for_selector('[data-chooser]', timeout=10000)
+
+
+def tonight_rule(pw, b, w, h, phone, rule, shot):
+    tag = f'tonight_{rule}_{w}x{h}'
+    o = {'viewport': {'width': w, 'height': h}}
+    if phone:
+        o.update(has_touch=True, is_mobile=True, user_agent=PHONE_UA, device_scale_factor=2, screen={'width': w, 'height': h})
+    ctx = b.new_context(**o)
+    pg = ctx.new_page()
+    errs = []
+    watch(pg, errs)
+    pg.goto(FREE_URL)
+    time.sleep(1.5)
+    day = pg.evaluate(DAY_FOR_RULE, rule)
+    print(tag, day)
+    ctx.add_init_script(f'({SHIFT_DATE})({day["d"]})')
+    pg.goto(FREE_URL)
+    time.sleep(1)
+    total = pg.evaluate("import('/src/logic/horrorStamps.js').then((m) => m.boardSize())")
+    pg.evaluate(SEED_STAMPS, total)  # 마지막 밤 칸까지 열린, 글이 가장 긴 고르기 화면
+    open_chooser(pg)
+    if shot:
+        pg.screenshot(path=f'{OUT}/{tag}_chooser.png')
+    fit = pg.evaluate(FITS, '[data-chooser]')
+    check(f'{tag}: chooser fits', fit['scroll'] <= fit['height'] + 1 and not fit['out'], fit)
+    card = pg.locator('[data-tonight]').inner_text()
+    print(tag, 'card:', card.replace('\n', ' / '))
+    box = pg.evaluate("(() => { const a = [...document.querySelectorAll('[data-tonight] div')]; return a.map((d) => d.getBoundingClientRect().height); })()")
+    check(f'{tag}: card lines stay on one row', all(x <= (15 if phone else 19) for x in box), box)
+    longest = pg.evaluate("""async () => {
+      const { MAPS, MONSTERS } = await import('/src/horror/content.js');
+      const { TONIGHT_RULES, tonightRuleText } = await import('/src/logic/horrorTonight.js');
+      const { balance } = await import('/src/config/balance.js');
+      const [top, low] = document.querySelectorAll('[data-tonight] div');
+      const keep = [top.textContent, low.textContent];
+      const seen = [];
+      for (const map of Object.values(MAPS)) for (const m of Object.values(MONSTERS)) { top.textContent = `오늘의 밤: ${map.name}, ${m.name}`; seen.push(top.getBoundingClientRect().height); }
+      for (const r of TONIGHT_RULES) { low.textContent = `${tonightRuleText(r, balance.horror)} (오늘 보석 받음)`; seen.push(low.getBoundingClientRect().height); }
+      [top.textContent, low.textContent] = keep;
+      return Math.max(...seen);
+    }""")
+    check(f'{tag}: every card text stays on one row', longest <= (15 if phone else 19), longest)
+    names = pg.evaluate("({ mapId, monsterId }) => import('/src/horror/content.js').then((m) => [m.MAPS[mapId].name, m.MONSTERS[monsterId].name])", day)
+    check(f'{tag}: card shows the map and monster', all(n in card for n in names), card)
+    tonight_start(pg, tag, shot)
+    check(f'{tag}: game got the round', pg.evaluate("(() => { const g = window.__horror; return [g.round.mapId, g.round.monsterId, g.tonight.rule, g.tonight.date]; })()") == [day['mapId'], day['monsterId'], rule, day['date']])
+    if rule == 'noLight':
+        check(f'{tag}: light starts off', pg.evaluate('window.__horror.lightOn') is False)
+    time.sleep(0.4)
+    if shot:
+        pg.screenshot(path=f'{OUT}/{tag}_play.png')
+    print(tag, 'line:', pg.evaluate(TONIGHT_LINE))
+    before = pg.evaluate(SAVED)
+    pg.evaluate(f'window.__horrorBot = {TONIGHT_BOT[rule]}')
+    pg.evaluate(open('tools/bot_horror.js', encoding='utf8').read())
+    text = tonight_finish(pg, f'{tag}_met', shot)
+    after = pg.evaluate(SAVED)
+    gain = after['gems'] - before['gems']
+    met = '조건 성공' in text
+    if rule == 'noCatch' and not met:  # 안 잡히기는 봇도 가끔 잡힌다. 그때는 다시 한다
+        again(pg)
+        tonight_start(pg, tag, False)
+        pg.evaluate(f'window.__horrorBot = {TONIGHT_BOT[rule]}')
+        pg.evaluate(open('tools/bot_horror.js', encoding='utf8').read())
+        text = tonight_finish(pg, f'{tag}_met2', shot)
+        after = pg.evaluate(SAVED)
+        gain = after['gems'] - before['gems']
+        met = '조건 성공' in text
+    check(f'{tag}: met, end says so', met and '보석 15개' in text, text[:200])
+    check(f'{tag}: pays tonight gems on top', gain >= 15 + 5, gain)
+    check(f'{tag}: day saved', after['horror']['tonightDone'] == [day['date']], after['horror'].get('tonightDone'))
+    again(pg)
+    pg.wait_for_selector('[data-tonight]')
+    check(f'{tag}: card says paid', '받음' in pg.locator('[data-tonight]').inner_text())
+    # 같은 날 다시: 이번에는 조건을 깬다
+    tonight_start(pg, f'{tag}_again', False)
+    if rule == 'noLight':  # 봇을 끼우기 전에 진짜 입력으로 켠다
+        if phone:
+            pg.locator('#horror button:has-text("손전등")').dispatch_event('pointerdown', {'pointerId': 7, 'bubbles': True})
+        else:
+            pg.keyboard.press('KeyF')
+        time.sleep(0.5)
+        check(f'{tag}: real press turned the light on', pg.evaluate('window.__horror.lightOn') is True)
+    pg.evaluate(f'window.__horrorBot = {TONIGHT_BOT[rule]}')
+    pg.evaluate(open('tools/bot_horror.js', encoding='utf8').read())
+    if rule == 'noLight':
+        pass
+    elif rule == 'notes':
+        pg.evaluate('window.__horrorBot = { careful: true }')
+    else:
+        pg.evaluate(TONIGHT_BREAK[rule])
+        time.sleep(0.2 if rule != 'noRun' else 1)
+    if rule != 'notes':
+        becomes(pg, f"{TONIGHT_LINE}.includes('깨졌어요')", 15000)
+        line = pg.evaluate(TONIGHT_LINE)
+        check(f'{tag}: line says broken', '깨졌어요' in line, line)
+        if shot:
+            pg.screenshot(path=f'{OUT}/{tag}_broken.png')
+    text = tonight_finish(pg, f'{tag}_broken', shot)
+    check(f'{tag}: end says not met', '못 지켰어요' in text, text[:200])
+    again2 = pg.evaluate(SAVED)
+    check(f'{tag}: broken round pays no tonight gems', again2['gems'] - after['gems'] < 15, again2['gems'] - after['gems'])
+    if pg.locator('#horror button:has-text("한 판 더")').count():
+        again(pg)
+    # 같은 날 또 지켜도 더 주지 않는다
+    tonight_start(pg, f'{tag}_third', False)
+    pg.evaluate("(() => { const g = window.__horror; g.notes.found = g.k.tonight.notes; g.run.powered = true; g.win(); })()")
+    time.sleep(0.3)
+    text = pg.inner_text('#horror')
+    extra = pg.evaluate(SAVED)['gems'] - again2['gems']  # 처음 안 잡힌 보너스는 따로 받을 수 있다
+    check(f'{tag}: replay met pays nothing', '오늘 보석은 이미 받았어요' in text and extra < 15, extra)
+    check(f'{tag}: no errors', not errs, errs)
+    ctx.close()
+
+
+# 자정을 넘긴 판은 시작한 날로 따지고, 한 번만 준다
+def tonight_midnight(pw, b):
+    tag = 'tonight_midnight'
+    ctx = b.new_context(viewport={'width': 1280, 'height': 720})
+    pg = ctx.new_page()
+    errs = []
+    watch(pg, errs)
+    ctx.add_init_script(f'({SHIFT_DATE})(0)')
+    pg.goto(FREE_URL)
+    time.sleep(1.5)
+    open_chooser(pg)
+    tonight_start(pg, tag, False)
+    date = pg.evaluate('window.__horror.tonight.date')
+    pg.evaluate('window.__dayShift = 1')
+    before = pg.evaluate(SAVED)
+    pg.evaluate("(() => { const g = window.__horror; g.notes.found = g.k.tonight.notes; g.run.powered = true; g.win(); })()")
+    time.sleep(0.3)
+    after = pg.evaluate(SAVED)
+    check(f'{tag}: paid by the day it started', after['horror']['tonightDone'] == [date] and after['gems'] - before['gems'] >= 15, after['horror'])
+    again(pg)
+    next_date = pg.evaluate("import('/src/logic/daily.js').then((m) => m.todayKey())")
+    check(f'{tag}: card moved to the new day', next_date != date)
+    tonight_start(pg, f'{tag}_next', False)
+    check(f'{tag}: next round is the new day', pg.evaluate('window.__horror.tonight.date') == next_date)
+    pg.evaluate("(() => { const g = window.__horror; g.notes.found = g.k.tonight.notes; g.run.powered = true; g.win(); })()")
+    time.sleep(0.3)
+    check(f'{tag}: new day pays again', pg.evaluate(SAVED)['horror']['tonightDone'] == [date, next_date])
+    check(f'{tag}: no errors', not errs, errs)
+    ctx.close()
+
+
+# 손전등 없이 괴물과 물건이 보이는지 사진으로 본다
+def tonight_dark(pw, b):
+    ctx = b.new_context(viewport={'width': 1280, 'height': 720})
+    pg = ctx.new_page()
+    for mapId in ('factory', 'sewer', 'school'):
+        for monster in ('gazer', 'seino'):
+            open_round(pg, mapId, monster)
+            pg.evaluate(IDLE_INPUT)
+            for d in (3, 6):
+                got = pg.evaluate(FACE_MONSTER, [d, d, 'stunned'])
+                pg.evaluate('window.__horror.lightOn = false')
+                time.sleep(0.5)
+                pg.screenshot(path=f'{OUT}/dark_{mapId}_{monster}_{d}.png')
+                print('dark', mapId, monster, d, got)
+    ctx.close()
+
+
+def run_tonight(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    only = os.environ.get('TONIGHT_ONLY')
+    if only == 'dark':
+        tonight_dark(pw, b)
+    else:
+        for rule in ([only] if only else ['noLight', 'noRun', 'noShock', 'noCatch', 'notes']):
+            tonight_rule(pw, b, 1280, 720, False, rule, True)
+            tonight_rule(pw, b, 568, 320, True, rule, True)
+        if not only:
+            tonight_midnight(pw, b)
+            tonight_dark(pw, b)
+    b.close()
+
+
 with sync_playwright() as pw:
-    {'last': run_last, 'replay': play_replay, 'rounds': run_rounds, 'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
+    {'tonight': run_tonight, 'last': run_last, 'replay': play_replay, 'rounds': run_rounds, 'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
     if MODE == 'keys':
         run_play(pw)
 if fails:
