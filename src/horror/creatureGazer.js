@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL } from '../logic/horrorGrid.js';
 import { CreatureBase, EYE_GLOW, damp, lookYaw, wrapAngle } from './creatureBase.js';
 import { TAU, clamp, lerp, sampleKeys, surface } from './creatureGeometry.js';
-import { disc, shellHead, throat } from './creatureShell.js';
+import { disc, shellHead, throat, warp } from './creatureShell.js';
 
 const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 
@@ -13,11 +13,11 @@ const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 const HEAD_H = 1.05;
 const CHIN_Y = 1.65; // 턱 끝 높이
 const PIVOT = 0.3; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 눈과 입이 함께 화면에 들어온다
-const MOUTH = { y: 0.277, w: 0.56, x: 0.128, drop: 0.13 }; // 그림 속 까만 입안을 가르는 선의 높이, 입꼬리 각도와 반폭, 쫓을 때 내려가는 턱
+const MOUTH = { y: 0.277, w: 0.56, x: 0.122, drop: 0.1 }; // 그림 속 까만 입안을 가르는 선의 높이, 입꼬리 각도와 반폭, 쫓을 때 내려가는 턱
 const EYE = { x: 0.14, y: 0.685, r: 0.056, iris: 0.034 };
 const NOSE = { y: 0.45, top: 0.71 };
 const HEAD_KEYS = [ // [높이, 반폭, 반두께, 앞뒤 치우침]
-  [HEAD_H, 0.02, 0.02, -0.03], [0.977, 0.184, 0.19, -0.03], [0.908, 0.238, 0.25, -0.03], [0.838, 0.265, 0.28, -0.03], [0.768, 0.275, 0.29, -0.03],
+  [HEAD_H, 0.01, 0.01, -0.03], [1.046, 0.05, 0.055, -0.03], [1.035, 0.09, 0.095, -0.03], [1.015, 0.13, 0.135, -0.03], [0.977, 0.184, 0.19, -0.03], [0.908, 0.238, 0.25, -0.03], [0.838, 0.265, 0.28, -0.03], [0.768, 0.275, 0.29, -0.03],
   [0.698, 0.276, 0.285, -0.03], [0.628, 0.271, 0.275, -0.025], [0.559, 0.28, 0.265, -0.02], [0.489, 0.253, 0.24, -0.01], [0.419, 0.228, 0.215, 0],
   [0.349, 0.212, 0.195, 0.01], [0.279, 0.202, 0.18, 0.02], [0.209, 0.187, 0.16, 0.03], [0.14, 0.157, 0.135, 0.04], [0.07, 0.127, 0.105, 0.045], [0, 0.03, 0.03, 0.05],
 ];
@@ -40,6 +40,9 @@ const SKIN_COLOR = 0x6a6e5e; // 그림이 없을 때 머리 색
 const ROBE_COLOR = 0x3f4238; // 그림이 없을 때 몸 색
 const WHITE_COLOR = 0xdfe6c4; // 그림이 없을 때 흰자 색
 const RING_COLOR = 0x0a0a08; // 그림이 없을 때 눈동자 색
+const TINT = 0x8c9a92; // 따뜻한 손전등 아래서도 그림의 회록색이 남게 붉은빛을 뺀다
+const HEAD_TINT = 0x626b66; // 머리 그림은 몸보다 훨씬 밝아서 더 누른다
+const FACE_GLOW = 0.1; // 어둠에서 얼굴이 희미하게 뜨는 세기
 const LIT = new THREE.Color(0xffffff);
 const PLAIN_WHITE = new THREE.Color(WHITE_COLOR);
 const PLAIN_RING = new THREE.Color(RING_COLOR);
@@ -54,7 +57,7 @@ function wrapU(w, front) {
   return 0.5 + Math.sign(w) * u;
 }
 
-const headUv = (p, t, w) => [wrapU(w, FRONT_HEAD), p.y / HEAD_H];
+const headUv = (p, t, u) => [wrapU(warp(u), FRONT_HEAD), p.y / HEAD_H];
 const mouthLine = () => MOUTH.y;
 
 // 코, 눈두덩, 광대, 턱. 옆에서 봐도 얼굴 윤곽이 보이게 한다
@@ -74,7 +77,8 @@ function jawMorph(g) {
   const pos = g.attributes.position;
   const d = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
-    const open = (1 - clamp(Math.abs(pos.getX(i)) / MOUTH.x, 0, 1) ** 2) ** 1.5 * clamp((pos.getZ(i) + 0.1) / 0.12, 0, 1);
+    const reach = MOUTH.x + 0.6 * (MOUTH.y - pos.getY(i)); // 입꼬리는 그대로 두고, 아래로 갈수록 턱 전체가 함께 내려간다
+    const open = (1 - clamp(Math.abs(pos.getX(i)) / reach, 0, 1) ** 4) * clamp((pos.getZ(i) + 0.1) / 0.12, 0, 1);
     d[i * 3 + 1] = -MOUTH.drop * open;
     d[i * 3 + 2] = -0.3 * MOUTH.drop * open;
   }
@@ -112,7 +116,7 @@ function eyeGeometries() {
       ry: EYE.r,
       rings: [[0, 1], [0.5, 1], [0.86, 0.96], [1, 0.45]],
       uv: (p) => [0.5 + (side * 0.42 * p.x) / EYE.r, 0.5 + (0.42 * p.y) / EYE.r],
-      depth: (x, y, r) => frontZ(side * EYE.x + x, EYE.y + y) + 0.02 * (1 - r * r) + 0.004,
+      depth: (x, y, r) => frontZ(side * EYE.x + x, EYE.y + y) + 0.007 * (1 - r * r) + 0.002,
     });
     g.translate(side * EYE.x, EYE.y, 0);
     return g;
@@ -122,7 +126,7 @@ function eyeGeometries() {
     ry: EYE.iris,
     rings: [[0, 1], [0.5, 1], [1, 1]],
     uv: (p) => [0.5 + (side * 0.5 * p.x) / EYE.iris, 0.5 + (0.5 * p.y) / EYE.iris],
-    depth: (x, y, r) => frontZ(side * EYE.x + x, EYE.y + y) - frontZ(side * EYE.x, EYE.y) + 0.02 * (1 - (r * EYE.iris / EYE.r) ** 2) + 0.012,
+    depth: (x, y, r) => frontZ(side * EYE.x + x, EYE.y + y) - frontZ(side * EYE.x, EYE.y) + 0.007 * (1 - (r * EYE.iris / EYE.r) ** 2) + 0.006,
   });
   return { white, ring };
 }
@@ -130,8 +134,12 @@ function eyeGeometries() {
 export class GazerModel extends CreatureBase {
   constructor(scene, loader) {
     super(scene, loader);
-    const skin = this.paper('art/horror_gazer_head.jpg', SKIN_COLOR);
-    const robe = this.paper('art/horror_gazer_body.jpg', ROBE_COLOR);
+    const matte = (o) => new THREE.MeshLambertMaterial(o); // 반사가 없어야 그림의 까만 입안과 먹선이 손전등 아래서도 까맣다
+    const skin = this.paper('art/horror_gazer_head.jpg', SKIN_COLOR, HEAD_TINT, matte);
+    skin.emissive = new THREE.Color(0xffffff);
+    skin.emissiveMap = skin.map;
+    this.faceMat = skin;
+    const robe = this.paper('art/horror_gazer_body.jpg', ROBE_COLOR, TINT, matte);
     const glow = (o) => new THREE.MeshBasicMaterial({ ...o, fog: false });
     this.whiteMat = this.paper('art/horror_gazer_white.jpg', WHITE_COLOR, 0xffffff, glow); // 흰자는 어둠에서도 희미하게 뜬다
     this.ringMat = this.paper('art/horror_gazer_iris.jpg', RING_COLOR, 0xffffff, glow);
@@ -145,7 +153,9 @@ export class GazerModel extends CreatureBase {
 
     const shell = shellHead({ keys: HEAD_KEYS, edgeU: mouthLine, edgeL: mouthLine, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 26, segs: 44 });
     const jaw = morphed(shell.jaw, jawMorph(shell.jaw));
-    this.face = this.add(inner, mergeGeometries([morphed(shell.skull), jaw, morphed(throat(0.12, 0.3, -0.03))]), skin, true);
+    const face = mergeGeometries([morphed(shell.skull), jaw, morphed(throat(0.12, 0.3, -0.03))]);
+    face.morphTargetsRelative = true; // 합치면 이 표시가 사라진다
+    this.face = this.add(inner, face, skin, true);
 
     const eyes = eyeGeometries();
     this.add(inner, mergeGeometries(eyes.white(shell.frontZ)), this.whiteMat, false).renderOrder = 1;
@@ -274,7 +284,8 @@ export class GazerModel extends CreatureBase {
   lightEyes(s, dt) {
     const goal = this.frozen ? 1 : EYE_GLOW[s.mode] ?? EYE_GLOW.patrol;
     this.glow += (goal - this.glow) * damp(s.mode === 'chase' || this.frozen ? 9 : 4, dt);
-    const light = 0.3 + 0.7 * this.glow;
+    const light = 0.3 + 0.6 * this.glow;
+    this.faceMat.emissiveIntensity = FACE_GLOW * (0.4 + this.glow);
     this.whiteMat.color.copy(this.whiteMat.map ? LIT : PLAIN_WHITE).multiplyScalar(light);
     this.ringMat.color.copy(this.ringMat.map ? LIT : PLAIN_RING).multiplyScalar(light);
     // 흥분할수록 눈동자가 바늘처럼 작아진다

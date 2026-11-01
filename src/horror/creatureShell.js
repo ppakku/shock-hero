@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { bone, clamp, knob, lerp, sampleKeys, surface } from './creatureGeometry.js';
 
 const INNER = 0.95; // 안쪽 면이 겉면보다 작은 비율 (입술 두께)
-const warp = (w) => w * (0.4 + (0.6 * Math.abs(w)) / Math.PI); // 얼굴 앞쪽에 그물을 촘촘히 모은다. 코처럼 가는 굴곡도 살아남는다
+export const warp = (w) => w * (0.4 + (0.6 * Math.abs(w)) / Math.PI); // 얼굴 앞쪽에 그물을 촘촘히 모은다. 코처럼 가는 굴곡도 살아남는다
 
 // 머리 그물 만들기.
 // keys: [높이, 반폭, 반두께, 앞뒤 치우침] 위에서 아래로. edgeU, edgeL: 각도 w 에서 윗입술과 아랫입술 높이.

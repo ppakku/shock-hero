@@ -57,13 +57,14 @@ def wrap(rows_f, rows_b, hw_f, hw_b, rgb_f, rgb_b, cx_f, cx_b, width, front, ins
     u = (np.arange(width) + 0.5) / width
     is_front = np.abs(u - 0.5) < front / 2
     s = np.where(is_front, (u - 0.5) / (front / 2), np.sign(u - 0.5) * (1 - (np.abs(u - 0.5) - front / 2) / (0.5 - front / 2))) * SIDE
-    fade = np.clip((1 - np.abs(s)) / 0.1, 0, 1)[:, None]
+    fade = np.clip((1 - np.abs(s)) / 0.2, 0, 1)[:, None]
     fade = fade * fade * (3 - 2 * fade)
+    shadow = np.where(is_front, 1, 0.68 + 0.32 * np.clip((1 - np.abs(s)) / 0.7, 0, 1))[:, None]  # 뒷면은 옆구리로 갈수록 앞면만큼 어두워진다
     for y, (rf, rb) in enumerate(zip(rows_f, rows_b)):
         xf = (cx_f + s * max(hw_f[rf] - inset, 1)).round().astype(int).clip(0, rgb_f.shape[1] - 1)
         xb = (cx_b - s * max(hw_b[rb] - inset, 1)).round().astype(int).clip(0, rgb_b.shape[1] - 1)
         row = np.where(is_front[:, None], rgb_f[rf, xf], rgb_b[rb, xb]).astype(float)
-        out[y] = row * fade + tone[y] * (1 - fade)
+        out[y] = row * shadow * fade + tone[y] * (1 - fade)
     return out.clip(0, 255).astype('uint8')
 
 
@@ -76,7 +77,7 @@ def side_tone(rgb, rows, hw, cx, inset, gain):
         xl = np.linspace(cx - w * 0.72, cx - w * 0.95, 24).astype(int).clip(0, rgb.shape[1] - 1)
         px = np.vstack([rgb[r, xs], rgb[r, xl]])
         tone[i] = np.percentile(px, 70, axis=0)
-    return np.stack([smooth(tone[:, c], 121) for c in range(3)], -1) * gain
+    return np.stack([smooth(tone[:, c], 601) for c in range(3)], -1) * gain
 
 
 def keys(name, base, rows, hw, m, n):
@@ -100,8 +101,8 @@ m = HEAD_H / (CHIN - top)
 print('head top', top, 'chin', CHIN, 'm per px', round(m, 6))
 rows = np.linspace(top + 4, CHIN - 1, HEAD_PX).astype(int)
 rows_b = np.linspace(top_b + 4, top_b + (CHIN - top) * 0.72, HEAD_PX).astype(int)  # 뒤 그림은 목덜미가 턱보다 위에서 시작한다
-tone = side_tone(front, rows, hw, CX, 16, 0.62)
-head = wrap(rows, rows_b, hw, hw, front, back, CX, CX, HEAD_W, FRONT_HEAD, 14, tone)
+tone = side_tone(front, rows, hw, CX, 16, 0.78)
+head = wrap(rows, rows_b, hw, hw, front, (back * 0.8).astype('uint8'), CX, CX, HEAD_W, FRONT_HEAD, 14, tone)
 Image.fromarray(head).save(f'{OUT}/horror_gazer_head.jpg', quality=84)
 keys('head keys (m above chin, half width)', 0, np.arange(top + 4, CHIN), hw, m, 16)
 
@@ -110,16 +111,12 @@ cx, cy = CX - EYE_DX, EYE_Y
 eye = front[cy - EYE_R:cy + EYE_R, cx - EYE_R:cx + EYE_R].astype(float)
 yy, xx = np.mgrid[-EYE_R:EYE_R, -EYE_R:EYE_R] + 0.5
 r = np.hypot(xx, yy)
-ang = np.arctan2(yy, xx)
-r_in = IRIS_R + 6
-# 눈동자 바로 바깥 고리를 안쪽으로 끌어와 흰자를 채운다
-sx = (EYE_R + np.cos(ang) * r_in).astype(int).clip(0, EYE_R * 2 - 1)
-sy = (EYE_R + np.sin(ang) * r_in).astype(int).clip(0, EYE_R * 2 - 1)
-white = np.where((r < r_in)[..., None], eye[sy, sx], eye)
-white = np.asarray(Image.fromarray(white.astype('uint8')).filter(ImageFilter.GaussianBlur(3))).astype(float)
-near = r < r_in - 6
-white_final = np.where(near[..., None], np.asarray(Image.fromarray(white.astype('uint8')).filter(ImageFilter.GaussianBlur(10))), eye)
-Image.fromarray(white_final.astype('uint8')).resize((256, 256), Image.LANCZOS).save(f'{OUT}/horror_gazer_white.jpg', quality=86)
+r_in = 82
+# 흰자는 눈동자 없이 새로 칠한다: 그림 속 흰자 빛에 위쪽 눈꺼풀 그늘을 얹는다
+band = eye[(r > 70) & (r < 92)]
+pale = np.percentile(band, 80, axis=0)
+shade = (1 - 0.3 * np.clip((yy + EYE_R * 0.1) / -EYE_R, 0, 1) - 0.4 * np.clip(r / EYE_R - 0.62, 0, 1))[..., None]
+Image.fromarray((pale * shade).clip(0, 255).astype('uint8')).resize((256, 256), Image.LANCZOS).save(f'{OUT}/horror_gazer_white.jpg', quality=86)
 iris = front[cy - IRIS_R:cy + IRIS_R, cx - IRIS_R:cx + IRIS_R]
 Image.fromarray(iris).resize((192, 192), Image.LANCZOS).save(f'{OUT}/horror_gazer_iris.jpg', quality=86)
 
