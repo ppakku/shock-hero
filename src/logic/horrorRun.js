@@ -116,7 +116,8 @@ export function insertFuses(run, k) {
 
 // 손이 닿는 가장 가까운 것. 없으면 null. hidden 은 숨어 있는 사물함 번호 (아니면 null).
 // 'locked' 는 맞는 열쇠가 없는 문이다. 누를 수 없고 안내만 보인다
-export function nearestUse(run, map, p, hidden, k) {
+// notes: logic/horrorNotes.js 의 쪽지 상태. 사물함과 거리로 겨뤄서, 쫓길 때 쪽지가 숨기를 가로막지 않는다
+export function nearestUse(run, map, p, hidden, k, notes) {
   if (hidden !== null) return { kind: 'locker', index: hidden, label: '사물함에서 나오기' };
   let best = null;
   let bestD = Infinity;
@@ -128,6 +129,7 @@ export function nearestUse(run, map, p, hidden, k) {
   };
   run.fuses.forEach((f, i) => !f.taken && add('fuse', i, '퓨즈 줍기', f));
   run.keys.forEach((c, i) => !c.taken && add('key', i, `${KEY_NAMES[i]} 열쇠 줍기`, c));
+  notes?.spots.forEach((s, i) => !notes.taken[i] && add('note', i, '쪽지 읽기', { cx: s.x - 0.5, cy: s.y - 0.5 }));
   run.doors.forEach((c, i) => {
     if (!c.open) add(run.keys[i].taken ? 'lock' : 'locked', i, run.keys[i].taken ? '문 열기' : `${KEY_NAMES[i]} 열쇠가 필요해`, c);
   });

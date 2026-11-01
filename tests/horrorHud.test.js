@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { controlLines, startHint, escapeText, MONSTER_NAME } from '../src/horror/hud.js';
+import { controlLines, introLines, startHint, escapeText, MONSTER_NAME } from '../src/horror/hud.js';
 
 describe('공포 모드 조작 안내', () => {
   it('PC 는 키보드와 마우스를 알려 준다', () => {
@@ -12,6 +12,18 @@ describe('공포 모드 조작 안내', () => {
     const text = controlLines('tablet').join(' ');
     for (const word of ['(태블릿)', '체력', '왼쪽', '오른쪽', '손전등 버튼', '멈춤 버튼', '사용 버튼', '펀치 버튼']) expect(text).toContain(word);
     expect(text).not.toContain('Esc');
+  });
+
+  it('어느 기기든 시작 안내가 퓨즈와 열쇠, 잠긴 문을 알려 준다', () => {
+    for (const d of ['pc', 'tablet', 'phone']) {
+      const text = introLines(d).join(' ');
+      for (const word of ['퓨즈', '열쇠', '잠긴 문']) expect(text).toContain(word);
+    }
+  });
+
+  it('문 여는 조작도 알려 준다', () => {
+    expect(controlLines('pc').join(' ')).toContain('문 열기');
+    expect(controlLines('tablet').join(' ')).toContain('문 열기');
   });
 
   it('기기마다 다른 시작 알림을 준다', () => {

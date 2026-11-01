@@ -5,6 +5,7 @@ import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reach
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
+import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { todayKey } from '../logic/daily.js';
 import { saveStore } from '../save.js';
 import { sfx } from '../audio/sfx.js';
@@ -14,6 +15,7 @@ import { CreatureModel } from './creatureModel.js';
 import { HorrorInput } from './input.js';
 import { HorrorHud, MONSTER_NAME, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
+import { NOTES } from './story.js';
 
 const EYE = 1.6; // 눈높이 (미터)
 const RADIUS = 0.2; // 주인공 몸 반지름 (칸)
@@ -48,6 +50,7 @@ export class HorrorGame {
     this.k = cfg.horror;
     this.run = createRun(factoryMap, this.k);
     this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
+    this.notes = createNotes(this.map.notes.map(center));
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
@@ -109,6 +112,7 @@ export class HorrorGame {
     this.stamina = createStamina();
     this.fuseMeshes = this.world.addFuses(this.run.fuses);
     this.keyMeshes = this.world.addKeys(this.run.keys);
+    this.noteMeshes = this.world.addNotes(this.notes.spots);
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root);
     this.hud.setStatus(this.statusNow());
@@ -275,11 +279,12 @@ export class HorrorGame {
     this.tickBlink(dt);
     const target = this.nearestUse();
     this.hud.setPrompt(this.promptFor(target));
-    if (inp.use) this.doUse(target);
+    if (inp.use && !this.hud.closeNote()) this.doUse(target); // 쪽지가 열려 있으면 닫기만 한다
     if (inp.punch) this.doPunch();
   }
 
   promptFor(target) {
+    if (this.hud.noteOpen) return `${this.touch ? '사용' : 'E'}: 쪽지 닫기`;
     if (!target) return '';
     return target.kind === 'locked' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
   }
@@ -328,17 +333,20 @@ export class HorrorGame {
   }
 
   statusNow() {
-    return { have: this.run.have, need: this.k.fuseCount, shock: this.run.shock, powered: this.run.powered, keys: keysHeld(this.run) };
+    return { have: this.run.have, need: this.k.fuseCount, shock: this.run.shock, powered: this.run.powered, keys: keysHeld(this.run), notesFound: this.notes.found, notesTotal: this.notes.total };
   }
 
   onStalkerEvents(events) {
     this.lastEvents = events;
-    if (events.includes('chase')) this.hud.say(`${MONSTER_NAME}에게 들켰다! 도망쳐!`, 2);
+    if (events.includes('chase')) {
+      this.hud.closeNote(false); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
+      this.hud.say(`${MONSTER_NAME}에게 들켰다! 도망쳐!`, 2);
+    }
     if (events.includes('caught') || events.includes('found')) this.getCaught();
   }
 
   nearestUse() {
-    return nearestUse(this.run, this.map, this.p, this.hidden, this.k);
+    return nearestUse(this.run, this.map, this.p, this.hidden, this.k, this.notes);
   }
 
   doUse(t) {
@@ -353,6 +361,7 @@ export class HorrorGame {
       this.audio?.play('fuse');
       this.hud.say(`${KEY_NAMES[t.index]} 열쇠를 찾았다! ${KEY_NAMES[t.index]} 문을 찾자`, 4);
     }
+    if (t.kind === 'note') this.readNote(t.index);
     if (t.kind === 'lock' && openDoor(this.run, t.index)) {
       this.world.openDoor(t.index);
       this.audio?.play('door');
@@ -367,6 +376,15 @@ export class HorrorGame {
     if (t.kind === 'locker') this.toggleLocker(t.index);
     if (t.kind === 'gate') this.win();
     this.hud.setStatus(this.statusNow());
+  }
+
+  // 세이노는 읽는 동안에도 움직인다
+  readNote(i) {
+    const order = takeNote(this.notes, i);
+    if (order < 0) return;
+    this.noteMeshes[i].visible = false;
+    this.audio?.play('fuse');
+    this.hud.showNote(NOTES[order], null, this.device === 'phone');
   }
 
   toggleLocker(i) {
@@ -407,6 +425,7 @@ export class HorrorGame {
     if (this.state !== 'play') return;
     this.state = 'caught';
     this.cancelBlink(); // 깜빡임이 잡히는 장면의 밝기를 덮어쓰지 않게 한다
+    this.hud.closeNote(false);
     caught(this.run);
     this.audio?.suspend();
     this.audio?.play('caught');
@@ -487,14 +506,16 @@ export class HorrorGame {
     save.horror = recordEscape(save.horror, result.clean, today);
     saveStore.save(save);
     document.exitPointerLock?.();
+    this.hud.closeNote(false);
     this.hud.setPrompt('');
-    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit());
+    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(), { found: this.notes.found, total: this.notes.total });
   }
 
   pause() {
     if (this.state !== 'play') return;
     this.state = 'paused';
     this.cancelBlink();
+    this.hud.closeNote(false);
     this.input.clearTouch();
     this.audio?.suspend();
     document.exitPointerLock?.();

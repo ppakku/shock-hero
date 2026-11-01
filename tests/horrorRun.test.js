@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { createNotes, takeNote } from '../src/logic/horrorNotes.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, nearestUse, normalizeHorror, recordEscape, emptyHorror } from '../src/logic/horrorRun.js';
 import { reachable, parseMap, blocked, lineOfSight, withOpen, findPath } from '../src/logic/horrorGrid.js';
 import { createSaveStore } from '../src/logic/save.js';
@@ -385,5 +386,18 @@ describe('손이 닿는 것 고르기', () => {
     expect(nearestUse(run, factoryMap, p, null, k).label).toBe('퓨즈 꽂기');
     insertFuses(run, k);
     expect(nearestUse(run, factoryMap, beside(factoryMap.gate), null, k).kind).toBe('gate');
+  });
+
+  it('쪽지는 거리로 겨루고, 주운 뒤나 숨은 동안에는 고르지 않는다', () => {
+    const run = createRun(factoryMap, k, () => 0.3);
+    const locker = factoryMap.lockers[0];
+    const spot = { x: locker.cx + 1.5, y: locker.cy + 0.5 };
+    const notes = createNotes([spot], () => 0);
+    expect(nearestUse(run, factoryMap, spot, null, k, notes)).toEqual({ kind: 'note', index: 0, label: '쪽지 읽기' });
+    // 사물함에 더 가까우면 쪽지가 숨기를 가로막지 않는다
+    expect(nearestUse(run, factoryMap, { x: locker.cx + 0.9, y: locker.cy + 0.5 }, null, k, notes).kind).toBe('locker');
+    expect(nearestUse(run, factoryMap, spot, 0, k, notes).kind).toBe('locker');
+    takeNote(notes, 0);
+    expect(nearestUse(run, factoryMap, spot, null, k, notes)?.kind).not.toBe('note');
   });
 });

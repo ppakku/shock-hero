@@ -10,6 +10,7 @@ const LIGHT = { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }; // 비상등 크기와 높�
 const LIGHT_COLOR = new THREE.Color(0xff3a14);
 const MACHINE_TINT = new THREE.Color(0xb4bcc4); // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
+const NOTE = { w: 0.3, h: 0.42, color: 0xe8dcc0, tilt: 0.5, turn: 0.4 }; // 쪽지 크기 (미터), 색, 기울기 (라디안)
 const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
 const PIPE = { r: 0.07, off: 0.12, ys: [2.62, 2.8] }; // 벽을 따라가는 배관 두 줄
 
@@ -183,19 +184,27 @@ export function buildWorld(scene, map, k, mats = {}) {
   };
 
   // 퓨즈와 열쇠: 어둠 속에서 찾을 수 있게 스스로 살짝 빛난다
-  const pickup = (c, geometry, color) => {
+  const pickup = (c, geometry, color, group = props) => {
     const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
     mesh.position.set((c.cx + 0.5) * CELL, 0.75, (c.cy + 0.5) * CELL);
     mesh.rotation.z = Math.PI / 2;
-    props.add(mesh);
+    group.add(mesh);
     return mesh;
   };
   const addFuses = (fuses) => fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040));
   const addKeys = (keys) => keys.map((c) => pickup(c, new THREE.BoxGeometry(0.1, 0.34, 0.04), DOOR_COLORS[c.lock]));
+  // 쪽지는 낡은 종이 한 장이다. 구역에 넣어서 벽 너머에 있으면 같이 그리지 않는다. spots: horrorNotes 의 자리 (칸 가운데 좌표)
+  const addNotes = (spots) => spots.map((s) => {
+    const c = { cx: Math.floor(s.x), cy: Math.floor(s.y) };
+    const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), NOTE.color, chunkOf(c.cx, c.cy));
+    mesh.rotation.set(NOTE.tilt, NOTE.turn, 0);
+    return mesh;
+  });
 
   return {
     addFuses,
     addKeys,
+    addNotes,
     counts,
     // 문을 열면 눈길이 달라지니 계산해 둔 구역도 버린다
     openDoor(i) {
