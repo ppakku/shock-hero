@@ -36,7 +36,7 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
   const run = createRun(ALL_MAPS[mapId].map, k, rand);
   const map = run.level;
   const stalkers = createStalkers(map, k, rand, monsterIds);
-  const notes = createNotes(map.notes.map(center), rand);
+  const notes = createNotes(map.notes.map(center), seeded(seed + 500)); // 같은 씨앗의 판이 바뀌지 않게 난수를 나눈다
   const lightOn = !options?.noLight;
   let ranFor = 0;
   const g = {
