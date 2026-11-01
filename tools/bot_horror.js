@@ -102,6 +102,7 @@
     return near ? keepWatching(out) : out;
   };
 
+  const HIDE_LIMIT = 1200; // 괴물이 곁을 맴돌아도 이만큼 숨었으면 나온다 (프레임). 사람도 끝없이 숨어 있지 않는다
   const brain = () => {
     const inp = blank();
     if (opts().caughtOnPurpose) {
@@ -123,7 +124,9 @@
       return inp;
     }
     if (g.hidden !== null) {
-      const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9);
+      B.hideFrames = (B.hideFrames || 0) + 1;
+      const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9) || B.hideFrames > HIDE_LIMIT;
+      if (safe) B.hideFrames = 0;
       return safe ? press(inp) : inp;
     }
     if (careful && kind !== 'gazer' && kind !== 'maw' && chased()) {
