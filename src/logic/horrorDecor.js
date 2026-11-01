@@ -1,4 +1,4 @@
-// 공장을 꾸밀 자리 고르기 (비상등, 기계, 배관). 벽에 붙이기만 하고 다니는 칸은 바꾸지 않는다.
+// 맵을 꾸밀 자리 고르기 (벽 등, 벽에 붙은 큰 물건, 배관). 벽에 붙이기만 하고 다니는 칸은 바꾸지 않는다.
 import { blocked } from './horrorGrid.js';
 
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -69,10 +69,22 @@ function pipeRun(faces, start) {
   return run;
 }
 
-// 맵에서 항상 같은 자리가 나온다
-export function decorSpots(map) {
+// 큰 방을 tile 칸 묶음으로 쪼갠다. 문이 적은 긴 굴도 고루 꾸미게 한다
+function split(cells, tile) {
+  const parts = new Map();
+  for (const c of cells) {
+    const key = `${Math.floor(c.cx / tile)},${Math.floor(c.cy / tile)}`;
+    if (!parts.has(key)) parts.set(key, []);
+    parts.get(key).push(c);
+  }
+  return [...parts.values()];
+}
+
+// 맵에서 항상 같은 자리가 나온다. tile 이 있으면 방을 그 크기로 쪼개서 고른다
+export function decorSpots(map, tile = 0) {
   const out = { machines: [], lights: [], pipes: [] };
-  roomsOf(map).forEach((cells, i) => {
+  const rooms = roomsOf(map);
+  (tile ? rooms.flatMap((cells) => split(cells, tile)) : rooms).forEach((cells, i) => {
     const faces = facesOf(map, cells);
     if (!faces.length) return;
     for (const part of MACHINE_AT[i % 2]) out.machines.push(at(faces, part));
