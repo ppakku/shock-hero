@@ -150,7 +150,62 @@ def maw(pw):
     b.close()
 
 
+def keypad(pw):
+    for name, w, h, ua in (('pc', 1280, 720, None), ('phone', 844, 390, PHONE_UA), ('small', 568, 320, PHONE_UA)):
+        b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+        opts = {'viewport': {'width': w, 'height': h}}
+        if ua:
+            opts.update(has_touch=True, is_mobile=True, user_agent=ua)
+        pg = b.new_context(**opts).new_page()
+        errs = []
+        pg.on('pageerror', lambda e: errs.append(str(e)))
+        open_title(pg, '?timer&fps&map=school&monster=seino')
+        pg.wait_for_function('window.__horror?.warmed', timeout=30000)
+        if ua:
+            pg.tap('#horror button:has-text("시작")')
+        else:
+            pg.click('#horror button:has-text("시작")')
+        pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+        pg.evaluate("""() => { const g = window.__horror, L = window.__horrorLogic; g.stalker.graceT = 999; g.run.powered = true; g.run.clues[0].taken = true; g.run.clues[1].taken = true; g.run.clues[2].taken = true; g.p = L.center(L.frontOf(g.map, g.map.gate)); }""")
+        time.sleep(0.4)
+        pg.evaluate("window.__horror.doUse(window.__horror.nearestUse())")
+        pg.wait_for_function('window.__horror.hud.keypadOpen', timeout=4000)
+        time.sleep(0.3)
+        pg.screenshot(path=f'{OUT}/keypad_{name}.png')
+        fit = pg.evaluate("(() => { const r = window.__horror.hud.keypad.getBoundingClientRect(); const bs = [...window.__horror.hud.keypad.querySelectorAll('button')].map((b) => b.getBoundingClientRect()); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, sh: window.__horror.hud.keypad.scrollHeight, ch: window.__horror.hud.keypad.clientHeight, lowest: Math.max(...bs.map((b) => b.bottom)), h: innerHeight }; })()")
+        check(f'입력 칸 {name}: 화면 안에 다 들어간다', fit['top'] >= 0 and fit['lowest'] <= fit['bottom'] and fit['bottom'] <= fit['h'] and fit['sh'] <= fit['ch'] + 1, fit)
+        code = pg.evaluate("window.__horror.run.code.digits.join('')")
+        wrong = ('0' if code[0] != '0' else '1') + code[1:]
+        if ua:
+            for d in wrong:
+                pg.evaluate("(d) => [...window.__horror.hud.keypad.querySelectorAll('button')].find((b) => b.textContent === d).click()", d)
+        else:
+            for d in wrong:
+                pg.keyboard.press(d)
+                time.sleep(0.12)
+        pg.wait_for_function('window.__horror.alarmT > 0', timeout=4000)
+        check(f'입력 칸 {name}: 틀리면 경고가 나고 그대로 열려 있다', pg.evaluate('window.__horror.hud.keypadOpen && window.__horror.state === "play"'))
+        time.sleep(0.2)
+        pg.screenshot(path=f'{OUT}/keypad_{name}_wrong.png')
+        if ua:
+            for d in code:
+                pg.evaluate("(d) => [...window.__horror.hud.keypad.querySelectorAll('button')].find((b) => b.textContent === d).click()", d)
+        else:
+            for d in code:
+                pg.keyboard.press(d)
+                time.sleep(0.12)
+        pg.wait_for_function("window.__horror.state === 'end'", timeout=4000)
+        text = pg.inner_text('#horror')
+        pg.screenshot(path=f'{OUT}/ending_{name}.png')
+        check(f'입력 칸 {name}: 맞히면 탈출하고 결말이 나온다', '교문' in text, text[:60])
+        check(f'입력 칸 {name}: 페이지 오류 없음', not errs, errs)
+        b.close()
+
+
 with sync_playwright() as pw:
+    keypad(pw)
+    if "--keypad" in sys.argv:
+        sys.exit(1 if fails else 0)
     if "--maw" not in sys.argv:
         chooser(pw)
     maw(pw)

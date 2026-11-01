@@ -42,6 +42,8 @@
     if (side) return side;
     const key = g.run.keys.find((c) => !c.taken && canWalk(c));
     if (key) return { cx: key.cx, cy: key.cy };
+    const clue = g.run.clues.find((c) => !c.taken && canWalk(c));
+    if (clue) return { cx: clue.cx, cy: clue.cy };
     return frontOf(g.map, g.run.powered ? g.map.gate : g.map.panel);
   };
 
@@ -100,6 +102,8 @@
     return near ? keepWatching(out) : out;
   };
 
+  const HIDE_TIRED = 12; // 이만큼 숨었다 나왔으면 더 숨지 않고 달려서 끝낸다. 숨기만 하면 판이 끝나지 않는다
+  const HIDE_LIMIT = 1200; // 괴물이 곁을 맴돌아도 이만큼 숨었으면 나온다 (프레임). 사람도 끝없이 숨어 있지 않는다
   const brain = () => {
     const inp = blank();
     if (opts().caughtOnPurpose) {
@@ -112,15 +116,24 @@
     const careful = opts().careful;
     const kind = g.stalker.monsterId;
     const target = g.nearestUse();
+    if (g.hud?.keypadOpen) {
+      inp.typed = g.run.code.digits.map(String); // 단서를 다 모은 뒤라 번호를 안다
+      return inp;
+    }
     if (B.pressed) {
       B.pressed = false; // 한 번 누르면 한 프레임 쉰다
       return inp;
     }
     if (g.hidden !== null) {
-      const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9);
+      B.hideFrames = (B.hideFrames || 0) + 1;
+      const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9) || B.hideFrames > HIDE_LIMIT;
+      if (safe) {
+        B.hideFrames = 0;
+        B.hides = (B.hides || 0) + 1;
+      }
       return safe ? press(inp) : inp;
     }
-    if (careful && kind !== 'gazer' && kind !== 'maw' && chased()) {
+    if (careful && kind !== 'gazer' && kind !== 'maw' && chased() && (B.hides || 0) < HIDE_TIRED) {
       const s = g.stalker;
       if (g.run.shock && stalkerDist() <= g.k.shockRange - 0.2 && lineOfSight(g.map, g.p, s)) {
         inp.punch = true;
@@ -130,7 +143,7 @@
       const hide = hideGoal();
       if (hide) return walkTo(inp, hide, true);
     }
-    const wanted = ['fuse', 'key', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
+    const wanted = ['fuse', 'key', 'clue', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
     if (careful && kind === 'gazer') return gazerBrain(inp);
     return walkTo(inp, goalNow(), !careful || (chased() && kind !== 'maw'));

@@ -230,6 +230,11 @@ export class HorrorAudio {
       this.blip(o, { freq: 140, dur: 0.5, vol: 0.5, type: 'sawtooth' });
       this.puffNoise(o, { dur: 0.4, vol: 0.4, freq: 900, freqTo: 200, type: 'lowpass' });
     }
+    if (name === 'codeKey') this.blip(o, { freq: 1200, dur: 0.05, vol: 0.14, type: 'square', slide: 1 });
+    if (name === 'codeWrong') {
+      this.blip(o, { freq: 160, dur: 0.5, vol: 0.5, type: 'sawtooth', slide: 0.9 });
+      this.blip(o, { freq: 170, dur: 0.5, vol: 0.4, type: 'square', slide: 0.9 });
+    }
     if (name === 'shockCharge') {
       // 치직 하며 전기가 차오른다
       this.blip(o, { freq: 220, dur: 0.4, vol: 0.22, type: 'sawtooth', slide: 3 });

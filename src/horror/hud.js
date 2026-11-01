@@ -13,6 +13,7 @@ const INTRO = [
   '조사하러 들어왔다가 문이 잠겼다.',
   '볼트와의 통신도 끊겼다.',
   '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자. 잠긴 문은 같은 색 열쇠로 연다.',
+  '정문은 4자리 번호로 잠겼다. 번호는 붉은 쪽지에 나뉘어 있다.',
   '{name}는 쓰러뜨릴 수 없다. 사물함에 숨어!',
 ];
 
@@ -108,10 +109,11 @@ export class HorrorHud {
   }
 
   // keys: 가진 열쇠 수 (맵이 알려 줄 때만 보인다). notesFound/notesTotal: 쪽지
-  setStatus({ have, need, shock, powered, keys, notesFound, notesTotal = 8 }) {
+  setStatus({ have, need, shock, powered, keys, notesFound, notesTotal = 8, clues, cluesTotal = 3 }) {
     const keyText = keys === undefined ? '' : `   열쇠 ${keys}`;
     const noteText = notesFound === undefined ? '' : `   쪽지 ${notesFound}/${notesTotal}`;
-    this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${keyText}${noteText}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
+    const clueText = clues === undefined ? '' : `   단서 ${clues}/${cluesTotal}`;
+    this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${keyText}${clueText}${noteText}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
   }
 
   // 쪽지 읽기. 세이노는 멈추지 않는다. Enter 나 버튼으로 닫고, 사용 키는 Game 이 closeNote 로 닫는다
@@ -264,6 +266,59 @@ export class HorrorHud {
     made[0]?.focus(); // Enter 로도 누를 수 있다
   }
 
+  get keypadOpen() {
+    return Boolean(this.keypad);
+  }
+
+  // 정문 번호 입력 칸. 쪽지처럼 게임은 멈추지 않는다. lines: 지금까지 찾은 단서
+  showKeypad({ lines, shown, touch, compact, onKey, onClose }) {
+    this.closeKeypad();
+    const box = document.createElement('div');
+    box.style.cssText = compact ? `${NOTE_BOX};${NOTE_PHONE};font-size:13px;padding:6px 10px;line-height:1.25` : NOTE_BOX;
+    const add = (text, css = '') => {
+      const el = document.createElement('div');
+      el.style.cssText = css;
+      el.textContent = text;
+      box.appendChild(el);
+      return el;
+    };
+    add('정문 번호 4자리', compact ? '' : 'font-size:20px');
+    this.keypadShown = add(shown, `font:bold ${compact ? 22 : 32}px monospace;color:#ffd080;letter-spacing:4px`);
+    lines.forEach((line) => add(line, `font-size:${compact ? 12 : 15}px`));
+    const grid = document.createElement('div');
+    grid.style.cssText = `display:grid;grid-template-columns:repeat(5,1fr);gap:${compact ? 3 : 6}px;margin-top:${compact ? 3 : 8}px`;
+    const key = (text, fn, span = 1) => {
+      const btn = document.createElement('button');
+      btn.textContent = text;
+      btn.style.cssText = `pointer-events:auto;grid-column:span ${span};padding:${compact ? '3px 0' : '8px 0'};font:${compact ? 14 : 18}px sans-serif;background:#2a1414;color:#fff;border:1px solid #a33;border-radius:6px;touch-action:manipulation`;
+      btn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fn();
+      });
+      grid.appendChild(btn);
+    };
+    for (const d of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']) key(d, () => onKey(d));
+    key('지우기', () => onKey('erase'), 3);
+    key('닫기', onClose, 2);
+    box.appendChild(grid);
+    if (!touch) add('숫자 키로 넣기, Backspace 지우기, E 닫기', 'margin-top:6px;font-size:14px;color:#aaa');
+    this.root.appendChild(box);
+    this.keypad = box;
+  }
+
+  setKeypad(shown) {
+    if (this.keypadShown) this.keypadShown.textContent = shown;
+  }
+
+  closeKeypad() {
+    if (!this.keypad) return false;
+    this.keypad.remove();
+    this.keypad = null;
+    this.keypadShown = null;
+    return true;
+  }
+
   closeLayer() {
     this.layer?.remove();
     this.layer = null;
@@ -303,7 +358,7 @@ export class HorrorHud {
 
   // notes: { found, total, final } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다
   showEnd(text, onAgain, onDone, notes) {
-    const lines = [text];
+    const lines = [...(notes?.ending ? [notes.ending] : []), text];
     if (notes) {
       lines.push(`쪽지 ${notes.found}/${notes.total}`);
       if (notes.total > 0 && notes.found >= notes.total) lines.push(notes.final);
@@ -315,6 +370,7 @@ export class HorrorHud {
   destroy() {
     clearTimeout(this.sayTimer);
     this.closeNote();
+    this.closeKeypad();
     this.closeLayer();
     this.box.remove();
     this.slit.remove();

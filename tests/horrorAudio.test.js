@@ -170,7 +170,7 @@ describe('HorrorAudio 세이노 소리', () => {
     const a = new HorrorAudio({ muted: false });
     a.play('nope');
     const before = counts.osc + counts.noise;
-    for (const n of ['fuse', 'shockCharge', 'shockHit', 'shockMiss', 'shockEmpty', 'scare', 'caught', 'door']) a.play(n);
+    for (const n of ['fuse', 'codeKey', 'codeWrong', 'shockCharge', 'shockHit', 'shockMiss', 'shockEmpty', 'scare', 'caught', 'door']) a.play(n);
     expect(counts.osc + counts.noise).toBeGreaterThan(before);
   });
 

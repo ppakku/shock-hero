@@ -40,6 +40,8 @@
     if (side) return side;
     const key = g.run.keys.find((c) => !c.taken && canWalk(c));
     if (key) return { cx: key.cx, cy: key.cy };
+    const clue = g.run.clues.find((c) => !c.taken && canWalk(c));
+    if (clue) return { cx: clue.cx, cy: clue.cy };
     return frontOf(g.map, g.run.powered ? g.map.gate : g.map.panel);
   };
 
@@ -132,6 +134,10 @@
 
   const brain = (dt = 1 / 30) => {
     const inp = blank();
+    if (g.hud?.keypadOpen) {
+      inp.typed = g.run.code.digits.map(String); // 단서를 다 모은 뒤라 번호를 안다
+      return inp;
+    }
     if (B.pressed) {
       B.pressed = false;
       return inp;
@@ -178,7 +184,7 @@
       if (!B.turnT) B.ignoreT = Math.max(B.ignoreT, between(1, 3)); // 봤으니 다시 가던 길을 간다
       return inp;
     }
-    const wanted = ['fuse', 'key', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
+    const wanted = ['fuse', 'key', 'clue', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
     if (target?.kind === 'locker' && B.panicT) {
       B.panicT = 0; // 나오자마자 다시 들어가지 않는다
