@@ -36,6 +36,23 @@ function glowTexture() {
   return tex;
 }
 
+// 찌를 때 소매 끝이 화면 안으로 들어와도 잘린 자리가 안 보이게, 오른쪽과 아래 끝을 서서히 지운다. fade: 그림 폭에 대한 비율
+function edgeFade(fade) {
+  const size = 32;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const a = Math.min(1, (1 - x / (size - 1)) / fade) * Math.min(1, y / (size - 1) / fade) * 255;
+      data.set([a, a, a, 255], (y * size + x) * 4);
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 // 번개 한 줄. 파란 번짐과 흰 심 두 겹이다
 class Arc {
   constructor(scene) {
@@ -176,8 +193,9 @@ export class StunGun {
   // 손 그림 두 장을 다 받아야 3D 손과 바꾼다. 충전하는 순간 그림만 갈아 끼우니 움직임은 그대로다
   buildArt(loader) {
     const { hand } = this.k;
-    this.artMat = new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, fog: false });
-    this.art = new THREE.Mesh(this.artPlane(hand), this.artMat);
+    this.fadeTex = edgeFade(hand.fade);
+    this.artMat = new THREE.MeshBasicMaterial({ alphaMap: this.fadeTex, transparent: true, depthTest: false, depthWrite: false, fog: false });
+    this.art = new THREE.Mesh(new THREE.PlaneGeometry(hand.w, hand.h), this.artMat);
     this.art.position.y = -hand.drop;
     this.art.rotation.set(-hand.turn[0], -hand.turn[1], 0);
     this.art.visible = false;
@@ -188,15 +206,6 @@ export class StunGun {
       if (got.cold && got.live) this.useArt(got);
     };
     this.artTex = [loadArt(loader, 'horror_hand_cold.png', ready('cold')), loadArt(loader, 'horror_hand_live.png', ready('live'))];
-  }
-
-  // 찌를 때 소매 끝이 화면 안으로 들어와도 잘린 자리가 안 보이게, 그림의 오른쪽과 아래 끝 줄을 판 밖으로 늘인다
-  artPlane({ w, h, spill }) {
-    const geo = new THREE.PlaneGeometry(w * (1 + spill), h * (1 + spill));
-    geo.translate((w * spill) / 2, (-h * spill) / 2, 0);
-    const uv = geo.getAttribute('uv');
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (1 + spill), 1 - (1 - uv.getY(i)) * (1 + spill));
-    return geo;
   }
 
   useArt(tex) {
@@ -329,6 +338,7 @@ export class StunGun {
       o.material?.dispose();
     });
     this.glowTex.dispose();
+    this.fadeTex.dispose();
     this.artTex.forEach((t) => t?.dispose());
   }
 }
