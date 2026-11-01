@@ -41,7 +41,7 @@ export const sewerTheme = {
   locker: { art: 'horror_sewer_locker', plain: 0x4a4a38, repeat: 1, tint: 0x8a8a8a, box: { w: 3, h: 3, d: 3 } }, // 벽을 파낸 칸을 꽉 채운다
   doorArt: 'locker', // 벽돌을 칠한 문은 벽처럼 보여서 철문 그림을 쓴다
   ceil: 0x111614,
-  ceilArt: { art: 'horror_ceil_sewer', repeat: 7, tint: 0x526f78 },
+  ceilArt: { art: 'horror_ceil_sewer', repeat: 7, tint: 0x526e77 },
   fog: 0x010302,
   ambient: 0x708a7c,
   lightColor: 0xffb040,

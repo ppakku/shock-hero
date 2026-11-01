@@ -19,7 +19,7 @@ FACES = {
     'light_sewer': ([(0.06, 0.06, 0.95, 0.90)], 192, 192),
     'clue': ([(0.02, 0.02, 0.66, 0.90)], 256, 352),
     'desk': ([(0.02, 0.066, 0.98, 0.895)], 256, 168),
-    'bench': ([(0.095, 0.525, 0.905, 0.895)], 320, 100),
+    'bench': ([(0.095, 0.57, 0.905, 0.895)], 320, 100),
 }
 # 이름: (결과 크기, 그림 평균을 맞출 맵의 색, 쓸 왼쪽 위 비율). Gemini 가 같은 무늬를 두 번 그린 그림은 한 번치만 쓴다
 TILES = {
@@ -95,6 +95,14 @@ def flatten(a, radius):
     return a - low + low.mean(axis=(0, 1))
 
 
+# 천장의 붉은 녹물이 핏자국처럼 보이지 않게 누런 녹빛으로 돌린다
+def ochre(a):
+    out = a.copy()
+    out[..., 1] = np.maximum(a[..., 1], a[..., 0] * 0.74)
+    out[..., 2] = np.maximum(a[..., 2], a[..., 0] * 0.52)
+    return out
+
+
 def to_linear(c):
     c = c / 255
     return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
@@ -111,6 +119,8 @@ def tile(name, size, plain, part):
     side = round(size * 1.16)
     a = np.array(im.resize((side, side), Image.LANCZOS)).astype(float)
     a = flatten(a, size / 4)
+    if name.startswith('ceil'):
+        a = ochre(a)
     over = side - size
     a = wrap_x(a, over, 1.5)
     a = wrap_x(a.transpose(1, 0, 2), over, 1.5).transpose(1, 0, 2)
