@@ -114,10 +114,11 @@ export class HorrorGame {
     this.flash.target.position.set(0.15, -0.2, -1);
     this.camera.add(this.flash, this.flash.target);
 
+    // 놀이를 시작하면 바로 보이는 손 그림부터 받는다
+    this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun });
     this.world = buildWorld(this.scene, this.map, this.k, theme);
     this.stalker = createStalker(this.map, this.k, Math.random, this.round.monsterId);
     this.model = createCreature(this.monster.model, this.scene);
-    this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun });
     this.gunTarget = new THREE.Vector3();
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
