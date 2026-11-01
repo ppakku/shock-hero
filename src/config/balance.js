@@ -786,12 +786,12 @@ export const balance = {
         stepEvery: { patrol: 0.95, investigate: 0.8, search: 1.1, chase: 0.3, stunned: 0 },
         tone: { freqs: [147, 220], type: 'sawtooth', vol: 0.05, cutoff: 1100 }, // 작은 스피커에도 들리게 150Hz 위 소리가 남는다
       },
-      mole: { // 땅 밑에서 우르릉 울리고 흙을 파는 소리. 흔들릴 때 크게 울리고, 땅 위에서는 낮게 웃는 숨소리
+      ward: { // 옷자락이 끌리는 소리와 낮게 웃는 숨소리. 두 음이 부딪혀 떨린다
         breathFreq: 240, breathQ: 1.4,
-        breathLevel: { patrol: 0.5, investigate: 1.3, search: 0.35, chase: 0.7, stunned: 0.12 },
-        breathSwellSec: { patrol: 0.9, investigate: 0.22, search: 0.9, chase: 0.8, stunned: 1.4 },
-        stepEvery: { patrol: 0.5, investigate: 0.14, search: 0.4, chase: 0.8, stunned: 0 },
-        tone: { freqs: [165, 174.6], type: 'triangle', vol: 0.1, cutoff: 700 }, // 두 음이 부딪혀 땅이 우는 것처럼 떨린다
+        breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1, stunned: 0.12, watch: 0.2 },
+        breathSwellSec: { patrol: 0.9, investigate: 0.9, search: 0.9, chase: 0.5, stunned: 1.4, watch: 2.2 },
+        stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0, watch: 0 },
+        tone: { freqs: [165, 174.6], type: 'triangle', vol: 0.1, cutoff: 700 },
       },
     },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
@@ -938,20 +938,9 @@ export const balance = {
         sniffPause: 1, // 냄새를 맡고 돌아서기까지 걸리는 시간 (초)
         brushRest: 2, // 한 번 돌아선 뒤 다시 멈출 때까지 쉬는 시간 (초)
       },
-      mole: {
-        crawl: 1.05, // 땅속으로 다가오는 속도. 벽을 무시한다. 걷기보다 느리다
-        feelWalk: 9, // 걷거나 서 있는 주인공을 느끼는 거리
-        feelRun: 16, // 달리는 주인공을 느끼는 거리
-        lockDist: 0.9, // 주인공 밑에 이만큼 다가오면 땅이 흔들린다
-        tremor: 1.4, // 땅이 흔들린 뒤 솟아오를 때까지 시간 (초)
-        lockSpeed: 2.5, // 흔들리는 동안 정해 둔 자리로 가는 속도
-        eruptDist: 0.85, // 솟아오를 때 이 안에 있으면 잡힌다. 흔들리는 동안 걸어서 벗어날 수 있어야 한다
-        upTime: 3.5, // 땅 위에 머무는 시간 (초). 쇼크는 이때만 맞는다
-        upWarn: 0.8, // 솟은 뒤 이 시간 동안은 스쳐도 잡지 않는다 (초)
-        glide: 0.7, // 땅 위에서 미끄러져 오는 속도. 걷기보다 느리다
-        repath: 0.5, // 땅 위에서 길을 다시 찾는 간격 (초)
-        sinkTime: 0.9, // 가라앉는 시간 (초)
-        rest: 5, // 가라앉은 뒤 다시 흔들 때까지 쉬는 시간 (초)
+      ward: { // 나머지는 세이노 값을 그대로 쓴다
+        chase: 2.0, // 추격 속도
+        wallSlow: 0.6, // 벽 속에서 느려지는 비율. 튀어나오는 벽을 보고 달아날 시간을 준다
       },
     },
   },

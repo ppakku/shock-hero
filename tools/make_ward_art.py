@@ -1,12 +1,12 @@
-# 땅속이 그림을 게임용으로 만든다. 원본은 Gemini 가 아들의 그림(3489)을 참고로 그린 전신 컨셉과 땅 구멍 그림이다.
-# 사용법: python3 tools/make_mole_art.py 전신.png 구멍.png 초상화.png
+# 호러워드 그림을 게임용으로 만든다. 원본은 Gemini 가 아들의 그림(3489)을 참고로 그린 전신 컨셉과 초상화다.
+# 사용법: python3 tools/make_ward_art.py 전신.png 초상화.png
 # 줄마다 몸 윤곽을 재서 양옆을 그림 끝까지 펼친다. 머리는 가운데 절반이 앞얼굴, 양쪽 끝 4분의 1씩이 뒤통수다.
-# 끝에 머리와 몸의 높이별 반폭을 찍는다 (creatureMole.js 의 키 표).
+# 끝에 머리와 몸의 높이별 반폭을 찍는다 (creatureWard.js 의 키 표).
 import sys
 import numpy as np
 from PIL import Image, ImageFilter
 
-concept, crack, portrait = sys.argv[1:4]
+concept, portrait = sys.argv[1:3]
 OUT = 'public/art'
 HEIGHT = 2.7  # 게임 속 키 (미터)
 CHIN = 1050  # 원본에서 턱이 끝나는 줄
@@ -77,25 +77,10 @@ soft = np.stack([smooth(face[:, -2, c].astype(float), 41) for c in range(3)], -1
 head[:, HEAD_SIZE * 3 // 4:] = soft * blend + back * (1 - blend)
 soft = np.stack([smooth(face[:, 1, c].astype(float), 41) for c in range(3)], -1)[:, None]
 head[:, :HEAD_SIZE // 4] = (soft * blend + back * (1 - blend))[:, ::-1]
-Image.fromarray(head).save(f'{OUT}/horror_mole_head.jpg', quality=86)
+Image.fromarray(head).save(f'{OUT}/horror_ward_head.jpg', quality=86)
 
 body = rectify(src, left, right, CHIN - 60, hem - 40, BODY_W, BODY_H, 30)
-Image.fromarray(body).save(f'{OUT}/horror_mole_body.jpg', quality=84)
-
-hole = Image.open(crack).convert('RGB')
-a = np.asarray(hole).astype(float)
-pink = np.minimum(a[..., 0], a[..., 2]) - a[..., 1]
-alpha = 255 * (1 - np.clip((pink - 40) / 80, 0, 1))
-a[..., 0] -= pink.clip(0, 255) * (alpha < 255)
-a[..., 2] -= pink.clip(0, 255) * (alpha < 255)
-cut = Image.fromarray(np.dstack([a.clip(0, 255), alpha]).astype('uint8'), 'RGBA')
-ys, xs = np.where(alpha > 128)
-box = (xs.min(), ys.min(), min(xs.max(), int(hole.width * 0.93)), ys.max())
-side = max(box[2] - box[0], box[3] - box[1])
-cx, cy = (box[0] + box[2]) // 2, (box[1] + box[3]) // 2
-square = Image.new('RGBA', (side, side))
-square.alpha_composite(cut.crop((max(0, cx - side // 2), max(0, cy - side // 2), cx + side // 2, cy + side // 2)), (max(0, side // 2 - cx), max(0, side // 2 - cy)))
-square.resize((512, 512), Image.LANCZOS).save(f'{OUT}/horror_mole_hole.webp', quality=82, method=6)
+Image.fromarray(body).save(f'{OUT}/horror_ward_body.jpg', quality=84)
 
 # 안내 화면 얼굴: 다른 괴물과 같은 크기로, 마젠타를 빼고 아래쪽을 어둠에 녹인다
 face_im = np.asarray(Image.open(portrait).convert('RGB')).astype(float)
@@ -108,7 +93,7 @@ for c in (0, 2):
 cutout = Image.fromarray(np.dstack([face_im.clip(0, 255), keep * fade * 255]).astype('uint8'), 'RGBA')
 cutout = cutout.crop(cutout.getbbox())
 w = round(cutout.width * 512 / cutout.height)
-cutout.resize((w, 512), Image.LANCZOS).save(f'{OUT}/horror_face_mole.webp', quality=82, method=6)
+cutout.resize((w, 512), Image.LANCZOS).save(f'{OUT}/horror_face_ward.webp', quality=82, method=6)
 
 print('head keys (m above chin, half width)')
 for row in np.linspace(top + 6, CHIN, 12).astype(int):

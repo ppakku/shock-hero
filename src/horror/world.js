@@ -316,6 +316,7 @@ export function buildWorld(scene, map, k, theme) {
   };
 
   return {
+    wallMaterial: wallMat,
     addFuses,
     addKeys,
     addNotes,

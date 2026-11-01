@@ -3,8 +3,7 @@ import * as THREE from 'three';
 import { CreatureModel, createCreature, lookYaw } from '../src/horror/creatureModel.js';
 import { GazerModel } from '../src/horror/creatureGazer.js';
 import { MawModel } from '../src/horror/creatureMaw.js';
-import { MoleModel } from '../src/horror/creatureMole.js';
-import { balance } from '../src/config/balance.js';
+import { WardModel } from '../src/horror/creatureWard.js';
 
 const loader = { load: () => new THREE.Texture() };
 const make = () => {
@@ -204,11 +203,11 @@ describe('createCreature', () => {
     expect(build('nobody')).toBeInstanceOf(CreatureModel);
     expect(build('gazer')).toBeInstanceOf(GazerModel);
     expect(build('maw')).toBeInstanceOf(MawModel);
-    expect(build('mole')).toBeInstanceOf(MoleModel);
+    expect(build('ward')).toBeInstanceOf(WardModel);
   });
 
-  it.each(['gazer', 'maw', 'mole'])('%s keeps the same interface and stays cheap', (id) => {
-    const model = stand(build(id), 'chase', 90); // 땅속이는 올라와 있어야 몸이 있다
+  it.each(['gazer', 'maw', 'ward'])('%s keeps the same interface and stays cheap', (id) => {
+    const model = stand(build(id));
     for (const key of ['group', 'head', 'textures', 'yaw', 'glow', 'headHeight']) expect(model[key]).toBeDefined();
     expect(calls(model)).toBeLessThanOrEqual(12);
     expect(tris(model)).toBeLessThan(8000);
@@ -218,7 +217,7 @@ describe('createCreature', () => {
     expect(() => stand(model, 'some-new-mode', 5)).not.toThrow();
   });
 
-  it.each(['gazer', 'maw', 'mole'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
+  it.each(['gazer', 'maw', 'ward'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
     const fails = [];
     const failing = { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } };
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -231,7 +230,7 @@ describe('createCreature', () => {
     spy.mockRestore();
   });
 
-  it.each(['gazer', 'maw', 'mole'])('%s disposes everything it made', (id) => {
+  it.each(['gazer', 'maw', 'ward'])('%s disposes everything it made', (id) => {
     const model = stand(build(id));
     const items = [...model.materials, ...model.owned];
     model.group.traverse((o) => { if (o.geometry) items.push(o.geometry); });
@@ -245,23 +244,12 @@ describe('createCreature', () => {
     expect(model.scene.children).not.toContain(model.group);
   });
 
-  it('mole hides its body underground and leaves only the hole', () => {
-    const under = stand(build('mole'), 'patrol', 90);
-    expect(under.face.visible).toBe(false);
-    expect(under.robe.visible).toBe(false);
-    expect(under.hole.visible).toBe(true);
-    const up = stand(under, 'chase', 60);
-    expect(up.face.visible).toBe(true);
-    expect(up.root.position.y).toBeGreaterThan(-0.05);
-    expect(stand(up, 'search', 90).face.visible).toBe(false);
-  });
-
-  it('mole opens the hole to the danger size while the floor shakes', () => {
-    const model = stand(build('mole'), 'patrol', 40);
-    const crawl = model.hole.scale.x;
-    stand(model, 'investigate', 60);
-    expect(model.hole.scale.x).toBeGreaterThan(crawl * 2);
-    expect(model.hole.scale.x).toBeCloseTo(balance.horror.monsters.mole.eruptDist * 3, 0);
+  it('ward leans in, lifts its arms and opens its mouth in a chase', () => {
+    const calm = stand(build('ward'), 'patrol', 60);
+    const chase = stand(build('ward'), 'chase', 60);
+    expect(chase.root.rotation.x).toBeGreaterThanOrEqual(calm.root.rotation.x);
+    expect(chase.jaw.rotation.x).toBeGreaterThan(calm.jaw.rotation.x);
+    expect(chase.arms[0].shoulder.rotation.x).toBeLessThan(calm.arms[0].shoulder.rotation.x);
   });
 
   it('gazer holds still while frozen, only the pupils follow the player', () => {

@@ -162,12 +162,6 @@
       startle();
       B.ignoreT = between(6, 10);
     }
-    // 땅이 흔들리면 조금 뒤에야 알아채고 달아난다
-    B.quakeT = kind === 'mole' && monster().mode === 'investigate' ? (B.quakeT ?? 0) + dt : 0;
-    if (B.quakeT >= B.react) {
-      B.runT = 1.5;
-      B.turnT = 0;
-    }
     if (B.freezeT && !(monster().mode === 'chase' && gap() < 3)) return inp;
     // 소리가 들렸거나 때가 되면 뒤를 돌아본다. 돌아보는 동안에는 서 있다
     if (kind === 'gazer' && B.heardT >= B.react && !B.turnT && !B.ignoreT) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createStalker, tickStalker, stunStalker, sendAway, isUnderground } from '../src/logic/horrorStalker.js';
+import { createStalker, tickStalker, stunStalker, sendAway } from '../src/logic/horrorStalker.js';
 import { parseMap, inPlayerView, withOpen, center, findPath, cellOf, blocked } from '../src/logic/horrorGrid.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { balance } from '../src/config/balance.js';
@@ -7,7 +7,6 @@ import { balance } from '../src/config/balance.js';
 const k = balance.horror;
 const gz = k.monsters.gazer;
 const mw = k.monsters.maw;
-const ml = k.monsters.mole;
 const DT = 0.05;
 const seeded = (seed) => {
   let x = seed * 2654435761 + 1;
@@ -512,110 +511,68 @@ describe('큰입이: 소리로만 찾는다', () => {
   });
 });
 
-describe('땅속이', () => {
-  const under = (o) => monster('mole', { x: 15.5, y: 1.5, ...o });
+describe('호러워드', () => {
+  // 두 복도 사이에 벽이 있다
+  const seenAt = (o) => monster('ward', { heading: Math.PI / 2, ...o });
 
-  it('걷기보다 느리게 땅속으로 오고, 흔들린 뒤 걸어서 벗어날 수 있다', () => {
-    expect(ml.crawl).toBeLessThan(k.walkSpeed);
-    expect(k.walkSpeed * ml.tremor).toBeGreaterThan(ml.eruptDist + 0.5);
-    expect(ml.glide).toBeLessThan(k.walkSpeed);
-  });
-
-  it('벽을 무시하고 곧장 온다', () => {
-    const s = monster('mole', { x: 15.5, y: 3.5 }); // 벽 건너 아랫복도
-    const p = player({ x: 15.5, y: 1.5 });
-    run(s, { map: hall, player: p }, 1);
-    expect(s.x).toBeCloseTo(15.5, 1);
-    expect(s.y).toBeLessThan(3.5);
-  });
-
-  it('서 있으면 땅이 흔들리고, 경고 뒤에 그 자리에서 잡는다', () => {
-    const s = under({ x: 20.5 - ml.lockDist - 0.5 });
-    const p = player();
-    const events = run(s, { map: hall, player: p }, 1.5);
+  it('세이노처럼 보면 쫓고, 가까우면 바로 잡는다', () => {
+    const p = player({ lightOn: true });
+    const s = seenAt({ x: 15.5, y: 1.5 });
+    const events = run(s, { map: hall, player: p }, 4);
     expect(events).toContain('chase');
-    expect(s.mode).toBe('investigate');
-    expect(events).not.toContain('caught');
-    const end = run(s, { map: hall, player: p }, ml.tremor);
-    expect(end).toContain('erupt');
-    expect(end).toContain('caught');
+    expect(events).toContain('caught');
+    expect(dist(s, p)).toBeLessThan(k.catchDist);
   });
 
-  it('흔들리는 동안 비키면 빈자리로 솟는다', () => {
-    const s = under({ x: 20.5 });
-    const p = player({ noise: k.walkNoise });
-    let events = run(s, { map: hall, player: p }, DT);
-    expect(s.mode).toBe('investigate');
-    p.x += ml.eruptDist + 0.3;
-    events = run(s, { map: hall, player: p }, ml.tremor + 0.1);
-    expect(events).toContain('erupt');
-    expect(events).not.toContain('caught');
-    expect(s.mode).toBe('chase');
-    expect(Math.abs(s.x - 20.5)).toBeLessThan(0.2); // 솟은 뒤 조금 미끄러진다
+  it('벽을 뚫고 곧장 가서 길을 돌아가는 세이노보다 먼저 온다', () => {
+    const p = player({ x: 2.5, y: 1.5, lightOn: true, noise: k.walkNoise });
+    const start = { x: 2.5, y: 3.5, mode: 'chase', lastSeen: { cx: 2, cy: 1 } };
+    const ward = monster('ward', start);
+    const seino = monster('seino', start);
+    run(ward, { map: hall, player: p }, 1);
+    run(seino, { map: hall, player: p }, 1);
+    expect(dist(ward, p)).toBeLessThan(dist(seino, p));
+    expect(ward.y).toBeLessThan(3.5);
+    expect(seino.y).toBeCloseTo(3.5, 1);
   });
 
-  it('땅 위에서는 머물다가 가라앉고, 가라앉은 뒤에는 잠깐 쉰다', () => {
-    const s = under({ x: 20.5, mode: 'chase', upT: 1, warnT: 0 });
-    const p = player({ x: 28.5 });
-    run(s, { map: hall, player: p }, 1.1);
-    expect(s.mode).toBe('search');
-    run(s, { map: hall, player: p }, ml.sinkTime + 0.1);
-    expect(s.mode).toBe('patrol');
-    expect(s.restT).toBeGreaterThan(ml.rest - 0.5);
-    p.x = s.x;
-    expect(run(s, { map: hall, player: p }, 2)).not.toContain('chase');
+  it('벽에 들어가는 순간 한 번 알린다', () => {
+    const s = monster('ward', { x: 15.5, y: 3.5, mode: 'chase', lastSeen: { cx: 15, cy: 1 } });
+    const p = player({ x: 15.5, y: 1.5, hidden: 0 });
+    const events = run(s, { map: hall, player: p }, 1.4);
+    expect(events.filter((e) => e === 'wall')).toHaveLength(1);
   });
 
-  it('땅 위에서 스치면 잡지만 솟은 직후에는 잡지 않는다', () => {
-    const p = player();
-    const fresh = under({ x: 20.5 + k.catchDist - 0.1, mode: 'chase', upT: 3, warnT: ml.upWarn });
-    expect(run(fresh, { map: hall, player: p }, ml.upWarn - 0.2)).not.toContain('caught');
-    const late = under({ x: 20.5 + k.catchDist - 0.1, mode: 'chase', upT: 3, warnT: 0 });
-    expect(run(late, { map: hall, player: p }, 0.2)).toContain('caught');
+  it('벽 너머에 숨 쉬고 있어도 닿으면 잡는다', () => {
+    const s = monster('ward', { x: 15.5, y: 2.5, warnT: 0 }); // 벽 속
+    const p = player({ x: 15.5, y: 1.9 });
+    expect(run(s, { map: hall, player: p }, DT)).toContain('caught');
   });
 
-  it('사물함 안은 느끼지 못한다', () => {
-    const s = under({ x: 20.5 });
-    const p = player({ hidden: 0 });
-    expect(run(s, { map: hall, player: p }, 10)).not.toContain('chase');
+  it('사물함 안은 세이노처럼 안전하고, 뒤질 때는 벽을 뚫고 간다', () => {
+    const s = monster('ward', { x: 15.5, y: 1.5 });
+    const p = player({ x: 1.5, y: 3.5, hidden: 0 });
+    expect(run(s, { map: hall, player: p }, 2)).not.toContain('caught');
   });
 
-  it('흔들리는 중에 사물함에 들어가면 잡지 않는다', () => {
-    const s = under({ x: 20.5 });
-    const p = player();
-    run(s, { map: hall, player: p }, DT);
-    p.hidden = 0;
-    const events = run(s, { map: hall, player: p }, ml.tremor + 0.1);
-    expect(events).toContain('erupt');
-    expect(events).not.toContain('caught');
-  });
-
-  it('느끼는 거리 밖이면 찾아오지 않고, 달리면 더 멀리서 느낀다', () => {
-    const p = player({ x: 28.5 });
-    const dx = ml.feelWalk + 2;
-    const walkS = under({ x: 28.5 - dx });
-    const before = walkS.x;
-    run(walkS, { map: hall, player: { ...p, noise: k.walkNoise } }, 1, () => 0);
-    const runS = under({ x: 28.5 - dx });
-    run(runS, { map: hall, player: { ...p, noise: k.runNoise } }, 1, () => 0);
-    expect(runS.x).toBeGreaterThan(before);
-    expect(runS.x).toBeGreaterThanOrEqual(walkS.x);
-  });
-
-  it('쇼크를 맞으면 멈췄다가 가라앉는다', () => {
-    const s = under({ mode: 'chase', upT: 3 });
-    stunStalker(s, k);
-    run(s, { map: hall, player: player() }, k.stunTime + 0.1);
+  it('매복 없이 수색으로 넘어간다', () => {
+    const s = monster('ward', { x: 15.5, y: 1.5, mode: 'chase', lastSeen: { cx: 15, cy: 1 }, lostT: k.loseTime });
+    const p = player({ x: 25.5, y: 3.5 });
+    const events = run(s, { map: hall, player: p }, DT, () => 0);
+    expect(events).toContain('lost');
+    expect(events).not.toContain('ambush');
     expect(s.mode).toBe('search');
   });
 
-  it('잡은 뒤에는 땅속 먼 곳에서 다시 시작한다', () => {
-    const s = under({ x: 20.5, mode: 'chase' });
-    const p = player();
-    sendAway(s, hall, p, () => 0);
-    expect(s.mode).toBe('patrol');
-    expect(isUnderground(s)).toBe(true);
-    expect(run(s, { map: hall, player: p }, k.respawnGrace - 0.5)).not.toContain('chase');
+  it('맵 밖으로 나가지 않는다', () => {
+    const rand = seeded(9);
+    const map = withOpen(factoryMap, []);
+    const s = createStalker(map, k, rand, 'ward');
+    const p = { ...center(map.start), hidden: 0, lightOn: false, noise: 0 };
+    for (let t = 0; t < 120; t += DT) {
+      tickStalker(s, { map, player: p }, k, DT, rand);
+      expect(s.x > 0 && s.y > 0 && s.x < map.w && s.y < map.h).toBe(true);
+    }
   });
 });
 
@@ -647,7 +604,7 @@ describe('공정함: 진짜 맵에서 마구 움직여도', () => {
       if (e.includes('caught')) {
         catches += 1;
         if (t < graceUntil) bad += 1;
-        if (t - warnedAt < 0.5 && monsterId !== 'gazer') bad += 1; // 달려들거나 솟기 전에 경고가 있어야 한다
+        if (t - warnedAt < 0.5 && monsterId === 'maw') bad += 1; // 달려드는 경고가 있어야 한다
         sendAway(s, map, p, rand);
         graceUntil = t + k.respawnGrace - 0.1;
       }
@@ -655,7 +612,7 @@ describe('공정함: 진짜 맵에서 마구 움직여도', () => {
     return { bad, catches };
   };
 
-  it.each(['gazer', 'maw', 'mole'])('%s 는 경고와 쉬는 시간을 지킨다', (id) => {
+  it.each(['gazer', 'maw', 'ward'])('%s 는 경고와 쉬는 시간을 지킨다', (id) => {
     const games = Array.from({ length: 12 }, (_, i) => wander(id, i + 1));
     expect(games.reduce((a, g) => a + g.bad, 0)).toBe(0);
     expect(games.reduce((a, g) => a + g.catches, 0)).toBeGreaterThan(0); // 정말 잡는 판을 지나왔다

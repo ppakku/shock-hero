@@ -39,6 +39,9 @@ export function blocked(map, cx, cy) {
   return SOLID.has(map.rows[cy][cx]) || map.locked.has(cellKey(map, cx, cy));
 }
 
+// 벽 칸인가. 사물함이나 잠긴 문은 벽이 아니다
+export const wallAt = (map, cx, cy) => map.rows[cy]?.[cx] === '#';
+
 export const cellOf = (p) => ({ cx: Math.floor(p.x), cy: Math.floor(p.y) });
 export const center = (c) => ({ x: c.cx + 0.5, y: c.cy + 0.5 });
 
