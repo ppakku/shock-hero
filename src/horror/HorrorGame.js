@@ -98,9 +98,10 @@ export class HorrorGame {
     this.canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:none';
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000);
-    this.scene.fog = new THREE.Fog(0x000000, 3, this.k.viewCells * CELL);
-    this.scene.add(new THREE.AmbientLight(0x8890a8, this.k.ambient));
+    const { theme } = this.place;
+    this.scene.background = new THREE.Color(theme.fog);
+    this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.viewCells * CELL);
+    this.scene.add(new THREE.AmbientLight(theme.ambient, this.k.ambient));
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
     this.scene.add(this.camera);
@@ -111,7 +112,7 @@ export class HorrorGame {
     this.flash.target.position.set(0.15, -0.2, -1);
     this.camera.add(this.flash, this.flash.target);
 
-    this.world = buildWorld(this.scene, this.map, this.k, this.factoryMaterials());
+    this.world = buildWorld(this.scene, this.map, this.k, theme);
     this.stalker = createStalker(this.map);
     this.model = new CreatureModel(this.scene);
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
@@ -165,41 +166,6 @@ export class HorrorGame {
     if (!this.onContextLost) return;
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
-  }
-
-  // 벽, 바닥, 사물함 문에 그림을 입힌다. 그림을 못 받으면 밋밋한 색으로 둔다
-  factoryMaterials() {
-    this.textures = [];
-    let reported = false;
-    const make = (name, plain, repeat) => {
-      const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      const tex = new THREE.TextureLoader().load(
-        `art/horror_${name}.jpg`,
-        undefined,
-        undefined,
-        () => {
-          if (!reported) console.error('공포 모드 재질 그림을 못 받아 밋밋한 색으로 둡니다:', name);
-          reported = true;
-          mat.map = null;
-          if (name === 'wall') this.world?.dropDoorArt();
-          mat.color.setHex(plain);
-          mat.needsUpdate = true;
-        },
-      );
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repeat, repeat);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      mat.map = tex;
-      this.textures.push(tex);
-      return mat;
-    };
-    // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
-    return {
-      wall: make('wall', 0x5a5148, 1),
-      floor: make('floor', 0x35312d, 7),
-      locker: make('locker', 0x4a5a58, 1),
-    };
   }
 
   start() {
@@ -590,7 +556,7 @@ export class HorrorGame {
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.unbindContext();
     try {
-      this.textures.forEach((t) => t.dispose());
+      this.world.textures.forEach((t) => t.dispose());
       this.input.destroy();
       this.hud.destroy();
       this.audio?.destroy();
