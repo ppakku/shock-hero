@@ -5,6 +5,8 @@ const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area
 const NOTE_PAPER = 'background:#c9b48a url(art/horror_note_paper.jpg) center/cover;color:#2a1c10;border:none;border-radius:2px;box-shadow:0 6px 30px #000';
 const NOTE_PAPER_WARN = '#7a2414';
 const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-width:min(24vw,calc(47vw - 280px));max-height:60vh;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent)'; // 글자 왼쪽 빈자리에 놓고 위아래 잘린 자리는 서서히 지운다
+const TAGS = 'position:absolute;left:192px;top:31px;display:flex;gap:14px;white-space:nowrap;font-size:15px;text-shadow:0 0 4px #000,0 0 4px #000'; // 체력 막대 오른쪽. 휴대폰에서도 알림 글과 겹치지 않는다
+const TAG_LOOK = { chase: { text: '쫓아온다!', color: '#ff7a60' }, still: { text: '멈췄다', color: '#9ad0ff' }, near: { text: '가까이 있다', color: '#ffd080' }, far: { text: '멀리 있다', color: '#9a9a9a' } };
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { fillName } from './story.js';
@@ -55,6 +57,12 @@ export function escapeText({ gems, daily, bonus }, clean) {
   if (!daily) return `탈출 성공! 처음으로 한 번도 안 잡혔어요! 보석 ${bonus}개. 탈출 보석은 오늘 이미 받았어요`;
   if (bonus) return `탈출 성공! 보석 ${gems}개 (처음으로 한 번도 안 잡혔어요!)`;
   return `탈출 성공! 보석 ${gems}개${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
+}
+
+// 마지막 밤 끝 화면 글자. reward: logic/horrorRun.js 의 lastNightReward
+export function lastNightText({ gems }, clean) {
+  const praise = clean ? ' (한 번도 안 잡혔어요!)' : '';
+  return gems ? `마지막 밤을 끝냈어요! 보석 ${gems}개${praise}` : `마지막 밤을 또 끝냈어요!${praise}`;
 }
 
 // 끝 화면의 도장 소식. earned: 이번에 받은 도장 (logic/horrorStamps.js 의 addStamp). 받은 것이 없으면 빈 배열
@@ -124,6 +132,21 @@ export class HorrorHud {
     const noteText = notesFound === undefined ? '' : `   쪽지 ${notesFound}/${notesTotal}`;
     const clueText = clues === undefined ? '' : `   단서 ${clues}/${cluesTotal}`;
     this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${keyText}${clueText}${noteText}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
+  }
+
+  // 괴물이 여럿인 판에서 누가 어떤 상태인지 이름표로 보인다. list: [{ name, state }]. state 는 logic/horrorHunters.js 의 warnState
+  setHunters(list) {
+    if (!this.tags) {
+      this.tags = this.add(TAGS);
+      this.tagEls = list.map(() => this.tags.appendChild(document.createElement('div')));
+      this.tagStates = [];
+    }
+    list.forEach(({ name, state }, i) => {
+      if (this.tagStates[i] === state) return; // 매 프레임 화면을 고치지 않는다
+      this.tagStates[i] = state;
+      this.tagEls[i].textContent = `${name}: ${TAG_LOOK[state].text}`;
+      this.tagEls[i].style.color = TAG_LOOK[state].color;
+    });
   }
 
   // 쪽지 읽기. 세이노는 멈추지 않는다. Enter 나 버튼으로 닫고, 사용 키는 Game 이 closeNote 로 닫는다
@@ -238,15 +261,17 @@ export class HorrorHud {
     this.layer.style.backgroundPosition = 'center';
   }
 
-  // 시작 화면에 이번 판 괴물 얼굴을 놓는다. 못 받으면 없앤다
+  // 시작 화면에 이번 판 괴물 얼굴을 놓는다. 둘이면 양쪽에 놓는다. 못 받으면 없앤다
   addFace() {
     if (!this.place.monsterId) return;
-    const face = document.createElement('img');
-    face.alt = '';
-    face.style.cssText = FACE;
-    face.onerror = () => face.remove();
-    face.src = `art/horror_face_${this.place.monsterId}.webp`;
-    this.layer.appendChild(face);
+    (this.place.monsterIds ?? [this.place.monsterId]).forEach((id, i) => {
+      const face = document.createElement('img');
+      face.alt = '';
+      face.style.cssText = i ? `${FACE};left:auto;right:3vw` : FACE;
+      face.onerror = () => face.remove();
+      face.src = `art/horror_face_${id}.webp`;
+      this.layer.appendChild(face);
+    });
   }
 
   // compact: 휴대폰 가로 화면에 다 들어가게 글자를 줄이고 버튼을 옆으로 놓는다
@@ -370,10 +395,10 @@ export class HorrorHud {
     this.closeLayer();
   }
 
-  // notes: { found, total, final } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다
+  // notes: { found, total, final } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다. notes.ending 은 한 줄이나 여러 줄이다
   // news: 도장 소식. 결과 바로 아래에 금색으로 놓는다
   showEnd(text, onAgain, onDone, notes, news = [], compact = false) {
-    const lines = [...(notes?.ending ? [notes.ending] : []), text, ...news];
+    const lines = [...(notes?.ending ? [notes.ending].flat() : []), text, ...news];
     if (notes) {
       lines.push(`쪽지 ${notes.found}/${notes.total}`);
       if (notes.total > 0 && notes.found >= notes.total) lines.push(notes.final);

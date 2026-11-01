@@ -8,8 +8,9 @@ const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const trailCell = { cx: 0, cy: 0 }; // 매 프레임 새로 만들지 않는다
 
 // monsterId 는 balance.horror.monsters 의 이름. 눈뜬이와 큰입이는 tickGazer, tickMaw 로 움직인다. 호러워드는 세이노와 같고 벽만 통과한다
-export function createStalker(map, k, rand, monsterId = 'seino') {
-  const c = center(map.stalker);
+// spot: 처음 서는 칸. 둘이 나오는 판의 둘째 괴물은 맵의 다른 칸에서 시작한다
+export function createStalker(map, k, rand, monsterId = 'seino', spot = map.stalker) {
+  const c = center(spot);
   return {
     monsterId, frozenT: 0, doorT: 0, rushT: 0, rushRestT: 0, ranT: 0, pauseT: 0, brushT: 0, wasHidden: false, lockedN: map.locked.size,
     x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
@@ -641,9 +642,11 @@ export function stunStalker(s, k) {
 
 // 잡은 뒤에는 멀리 옮겨서, 다시 시작하자마자 또 잡히지 않게 한다
 // 멀리 있는 순찰 지점 몇 곳 중 하나로 보낸다. 늘 같은 곳이면 같은 길목에서 계속 마주친다.
-export function sendAway(s, map, player, rand = Math.random) {
+// taken: 다른 괴물이 이미 간 순찰 지점 번호
+export function sendAway(s, map, player, rand = Math.random, taken = []) {
   const far = map.patrol
     .map((c, i) => ({ c, i, d: dist(center(c), player) }))
+    .filter(({ i }) => !taken.includes(i))
     .sort((a, b) => b.d - a.d)
     .slice(0, Math.max(1, Math.min(3, map.patrol.length)));
   const pick = far[Math.floor(rand() * far.length) % far.length];

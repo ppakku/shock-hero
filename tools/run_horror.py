@@ -4,6 +4,7 @@
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
 #   python3 tools/run_horror.py 출력폴더 --rounds  (아홉 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
+#   python3 tools/run_horror.py 출력폴더 --last    (도장판을 채워 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --robust  (화면 꺼짐, 보석, 소리 실패, 나가기 실패, 세이노 숨기기, 비상등. --play 에도 들어 있다)
@@ -15,7 +16,7 @@ import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'replay' if '--replay' in sys.argv else 'rounds' if '--rounds' in sys.argv else 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
+MODE = 'last' if '--last' in sys.argv else 'replay' if '--replay' in sys.argv else 'rounds' if '--rounds' in sys.argv else 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
@@ -1113,7 +1114,7 @@ def touch_notes(pg, t, w, h):
     check(f'{label}: fits the screen', box['top'] >= 0 and box['bottom'] <= h and box['scroll'] <= box['height'] + 1 and box['btnBottom'] <= box['bottom'], box)
     longest = pg.evaluate("""async () => {
       const { NOTES, fillName } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
-      const all = Object.values(NOTES).flat().map((n) => fillName(n, g.monster.name));
+      const all = Object.values(NOTES).flat().map((n) => fillName(n, g.monsters[0].name));
       let worst = 0, fits = true, hits = [];
       for (const n of all) {
         g.hud.showNote(n, compact);
@@ -1470,7 +1471,7 @@ def play_replay(pw):
         print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
         seen.append(now['round'])
         first = first or now
-        names = pg.evaluate('(() => { const g = window.__horror; return [g.place.name, g.monster.name, g.monster.hint]; })()')
+        names = pg.evaluate('(() => { const g = window.__horror; return [g.place.name, g.monsters[0].name, g.monsters[0].hint]; })()')
         check(f'replay {i}: intro names the round', all(n in now['text'] for n in names), names)
         check(f'replay {i}: fresh game', now['state'] == 'intro' and now['have'] == 0 and now['caught'] == 0 and now['notes'] == 0 and now['home'], {k: v for k, v in now.items() if k != 'text'})
         check(f'replay {i}: nothing left behind', now['canvases'] == 1 and now['kids'] == first['kids'] and now['listeners'] == first['listeners'], (now['kids'], now['listeners']))
@@ -1684,8 +1685,141 @@ def run_rounds(pw):
     b.close()
 
 
+# 칸 수를 게임에서 읽어 도장을 count 개 찍고 저장한다
+SEED_STAMPS = """async (count) => {
+  const key = 'shock-hero-save-v1';
+  const { boardCells, cellKey } = await import('/src/logic/horrorStamps.js');
+  const stamps = Object.fromEntries(boardCells({}).slice(0, count).map((c) => [cellKey(c), 'plain']));
+  const save = JSON.parse(localStorage.getItem(key) || '{}');
+  localStorage.setItem(key, JSON.stringify({ ...save, gems: 0, horror: { ...save.horror, stamps, lastCleared: false } }));
+  return Object.keys(stamps).length;
+}"""
+SAVED = "JSON.parse(localStorage.getItem('shock-hero-save-v1'))"
+# 화면 안에 다 들어가는지 잰다
+FITS = """(sel) => {
+  const l = document.querySelector(sel), r = l.getBoundingClientRect();
+  const out = [...l.querySelectorAll('button')].filter((b) => { const x = b.getBoundingClientRect(); return x.bottom > innerHeight + 1 || x.right > innerWidth + 1 || x.top < -1 || x.left < -1; }).map((b) => b.textContent);
+  return { scroll: l.scrollHeight, height: Math.round(r.height), out };
+}"""
+
+
+def open_chooser(pg):
+    pg.goto(FREE_URL)
+    time.sleep(2.5)
+    pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.wait_for_selector('[data-chooser]', timeout=20000)
+
+
+def last_round(pw, b, w, h, phone):
+    tag = f'last_{w}x{h}'
+    o = {'viewport': {'width': w, 'height': h}}
+    if phone:
+        o.update(has_touch=True, is_mobile=True, user_agent=PHONE_UA, device_scale_factor=2, screen={'width': w, 'height': h})
+    ctx = b.new_context(**o)
+    pg = ctx.new_page()
+    errs = []
+    watch(pg, errs)
+    pg.goto(FREE_URL)
+    time.sleep(2)
+    total = pg.evaluate("import('/src/logic/horrorStamps.js').then((m) => m.boardSize())")
+    pg.evaluate(SEED_STAMPS, total - 1)
+    open_chooser(pg)
+    shut = pg.locator('[data-last-night]')
+    check(f'{tag}: locked card', shut.get_attribute('data-last-night') == 'locked' and shut.is_disabled(), shut.inner_text())
+    check(f'{tag}: locked card says how many are left', '1개' in shut.inner_text(), shut.inner_text())
+    pg.screenshot(path=f'{OUT}/{tag}_chooser_locked.png')
+    fit = pg.evaluate(FITS, '[data-chooser]')
+    check(f'{tag}: chooser fits', fit['scroll'] <= fit['height'] + 1 and not fit['out'], fit)
+    pg.evaluate(SEED_STAMPS, total)
+    open_chooser(pg)
+    card = pg.locator('[data-last-night]')
+    check(f'{tag}: open card', card.get_attribute('data-last-night') == 'open' and card.is_enabled(), card.inner_text())
+    pg.screenshot(path=f'{OUT}/{tag}_chooser_open.png')
+    card.click()
+    pg.wait_for_function('window.__horror', timeout=20000)
+    time.sleep(1)
+    pg.screenshot(path=f'{OUT}/{tag}_intro.png')
+    check(f'{tag}: device', pg.evaluate('window.__horror.device') == ('phone' if phone else 'pc'))
+    check(f'{tag}: two monsters', pg.evaluate('window.__horror.stalkers.map((s) => s.monsterId).length') == 2)
+    fit = pg.evaluate(FITS, '#horror > div[style*="z-index: 5"]')
+    print(tag, 'intro', fit)
+    pg.locator('#horror button:has-text("시작")').click()
+    pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+    pg.evaluate(FAKE_LOCK)
+    time.sleep(1.5)
+    pg.screenshot(path=f'{OUT}/{tag}_play.png')
+    both = pg.evaluate("""() => {
+      const g = window.__horror;
+      g.cullCreature();
+      const far = g.hunters.map((h) => h.model.group.visible);
+      g.renderer.render(g.scene, g.camera);
+      const culled = g.renderer.info.render.calls;
+      const c = window.__horrorLogic.center(g.map.start);
+      g.stalkers.forEach((s, i) => Object.assign(s, { x: c.x + 2 + i, y: c.y, mode: 'stunned', stunT: 3, path: [] }));
+      g.yaw = -Math.PI / 2; g.p = c;
+      return { far, culled };
+    }""")
+    time.sleep(0.6)
+    near = pg.evaluate("""() => { const g = window.__horror; g.renderer.render(g.scene, g.camera); return { calls: g.renderer.info.render.calls, shown: g.hunters.map((h) => h.model.group.visible), tags: g.hud.tags.textContent }; }""")
+    pg.screenshot(path=f'{OUT}/{tag}_both.png')
+    print(tag, 'cull', both, near)
+    check(f'{tag}: both cull behind walls', both['far'] == [False, False], both)
+    check(f'{tag}: draw calls with both in view', near['calls'] <= 110, near)
+    # 규칙 검사가 옮긴 자리를 버리고 처음부터 고르기 화면을 지나 끝까지 한다
+    open_chooser(pg)
+    pg.locator('[data-last-night]').click()
+    pg.wait_for_function('window.__horror', timeout=20000)
+    time.sleep(0.5)
+    pg.locator('#horror button:has-text("시작")').click()
+    pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+    pg.evaluate(FAKE_LOCK)
+    before = pg.evaluate(SAVED)
+    if phone:
+        pg.evaluate("window.__horrorBot = {}")
+        pg.evaluate(open('tools/bot_child.js', encoding='utf8').read())
+    else:
+        pg.evaluate("window.__horrorBot = { careful: true }")
+        pg.evaluate(open('tools/bot_horror.js', encoding='utf8').read())
+    res = pg.evaluate(FAST_PLAY, 1500)
+    print(tag, res)
+    check(f'{tag}: bot reaches the end', res.get('state') == 'end', res)
+    check(f'{tag}: draw calls stay reasonable', res.get('max', 999) <= 110, res)
+    time.sleep(0.5)
+    pg.screenshot(path=f'{OUT}/{tag}_end.png')
+    text = pg.inner_text('#horror')
+    names = pg.evaluate('window.__horror.monsters.map((m) => m.name)')
+    check(f'{tag}: ending names both', all(n in text for n in names) and '볼트' in text, text[:200])
+    check(f'{tag}: reward text', '보석' in text, text[:300])
+    fit = pg.evaluate(FITS, '#horror > div[style*="z-index: 5"]')
+    check(f'{tag}: end screen buttons on screen', not fit['out'] or fit['scroll'] > fit['height'], fit)
+    print(tag, 'end', fit)
+    after = pg.evaluate(SAVED)
+    gain = pg.evaluate('window.__horror.k.lastNight.gems')
+    check(f'{tag}: gems once', after['gems'] - before['gems'] == gain, (before['gems'], after['gems']))
+    check(f'{tag}: cleared saved', after['horror']['lastCleared'] is True)
+    check(f'{tag}: board untouched', after['horror']['stamps'] == before['horror']['stamps'] and after['horror']['gemDay'] == before['horror']['gemDay'] and after['horror']['escapes'] == before['horror']['escapes'])
+    pg.locator('#horror button:has-text("한 판 더")').click()
+    pg.wait_for_selector('[data-chooser]', timeout=10000)
+    check(f'{tag}: replay card', '다시' in pg.locator('[data-last-night]').inner_text())
+    pg.locator('[data-last-night]').click()
+    pg.wait_for_function('window.__horror && window.__horror.state === "intro"', timeout=20000)
+    pg.locator('#horror button:has-text("시작")').click()
+    pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+    pg.evaluate('(() => { const g = window.__horror; g.run.powered = true; g.win(); })()')
+    check(f'{tag}: replay pays nothing', pg.evaluate(SAVED)['gems'] == after['gems'])
+    check(f'{tag}: no errors', not errs, errs)
+    ctx.close()
+
+
+def run_last(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    last_round(pw, b, 1280, 720, False)
+    last_round(pw, b, 568, 320, True)
+    b.close()
+
+
 with sync_playwright() as pw:
-    {'replay': play_replay, 'rounds': run_rounds, 'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
+    {'last': run_last, 'replay': play_replay, 'rounds': run_rounds, 'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
     if MODE == 'keys':
         run_play(pw)
 if fails:

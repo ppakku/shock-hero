@@ -191,11 +191,19 @@ export function escapeReward(record, clean, today, k) {
   return { daily, bonus, gems: daily + bonus };
 }
 
+// 마지막 밤의 보석은 처음 깼을 때 한 번만 준다. 다시 해도 탈출 보석과 도장은 없다
+export function lastNightReward(record, k) {
+  return { gems: record.lastCleared ? 0 : k.lastNight.gems };
+}
+
+export const recordLastNight = (record) => ({ ...record, lastCleared: true });
+
 // gemDay: 탈출 보석을 마지막으로 받은 날. 없으면 아직 받은 적이 없다
 // last: 지난 판의 { mapId, monsterId }. 다음 판을 다르게 고르는 데 쓴다
 // stamps: 도장판 { '맵/괴물': 'plain' | 'gold' }. bolt, light: 고른 번개와 손전등 색 id (logic/horrorStamps.js)
+// lastCleared: 마지막 밤을 깬 적이 있는지
 export function emptyHorror() {
-  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null };
+  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null, lastCleared: false };
 }
 
 export function normalizeHorror(data) {
@@ -207,6 +215,7 @@ export function normalizeHorror(data) {
   d.stamps = normalizeStamps(data?.stamps);
   if (typeof data?.bolt === 'string') d.bolt = data.bolt;
   if (typeof data?.light === 'string') d.light = data.light;
+  d.lastCleared = data?.lastCleared === true;
   return d;
 }
 

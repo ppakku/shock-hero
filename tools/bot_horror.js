@@ -4,6 +4,7 @@
 //   { careful: true }         걸어 다니고, 쫓기면 펀치와 사물함을 쓴다
 //                             눈뜬이는 쳐다본 채 뒷걸음으로 가고, 큰입이 곁에서는 달리지 않는다
 //   없음                      괴물을 무시하고 목표로 달린다
+// 괴물이 둘이면 가장 가까운 쪽을 보고 판단한다
 (() => {
   const g = window.__horror;
   const { findPath, cellOf, frontOf, center, lineOfSight, reachable } = window.__horrorLogic;
@@ -11,8 +12,10 @@
   const same = (a, b) => a && b && a.cx === b.cx && a.cy === b.cy;
   const opts = () => window.__horrorBot || {};
   const blank = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false });
-  const stalkerDist = () => Math.hypot(g.stalker.x - g.p.x, g.stalker.y - g.p.y);
-  const chased = () => g.stalker.mode === 'chase' && stalkerDist() < 10;
+  const gapTo = (s) => Math.hypot(s.x - g.p.x, s.y - g.p.y);
+  const foe = () => g.stalkers.reduce((a, s) => (gapTo(s) < gapTo(a) ? s : a));
+  const stalkerDist = () => gapTo(foe());
+  const chased = () => g.stalkers.some((s) => s.mode === 'chase' && gapTo(s) < 10);
 
   const press = (inp) => {
     B.pressed = true;
@@ -55,7 +58,7 @@
       const f = frontOf(g.map, c);
       const path = findPath(g.map, cellOf(g.p), f);
       if (!path || path.length > 9) continue;
-      const toStalker = Math.hypot(f.cx + 0.5 - g.stalker.x, f.cy + 0.5 - g.stalker.y);
+      const toStalker = Math.min(...g.stalkers.map((s) => Math.hypot(f.cx + 0.5 - s.x, f.cy + 0.5 - s.y)));
       if (toStalker > path.length && (!best || path.length < best.n)) best = { n: path.length, f };
     }
     return best?.f || null;
@@ -86,7 +89,7 @@
 
   // 고개는 괴물 쪽에 둔 채 몸만 가던 길로 움직인다 (눈뜬이는 보고 있으면 멈춘다)
   const keepWatching = (inp) => {
-    const s = g.stalker;
+    const s = foe();
     const face = Math.atan2(-(s.x - g.p.x), -(s.y - g.p.y));
     const turn = g.yaw - inp.lookX - face;
     const go = inp.move.z;
@@ -97,7 +100,7 @@
   };
 
   const gazerBrain = (inp) => {
-    const near = stalkerDist() < 8 && lineOfSight(g.map, g.p, g.stalker);
+    const near = stalkerDist() < 8 && lineOfSight(g.map, g.p, foe());
     const out = walkTo(inp, goalNow(), chased());
     return near ? keepWatching(out) : out;
   };
@@ -114,7 +117,7 @@
       return inp;
     }
     const careful = opts().careful;
-    const kind = g.stalker.monsterId;
+    const kind = foe().monsterId;
     const target = g.nearestUse();
     if (g.hud?.keypadOpen) {
       inp.typed = g.run.code.digits.map(String); // 단서를 다 모은 뒤라 번호를 안다
@@ -126,7 +129,7 @@
     }
     if (g.hidden !== null) {
       B.hideFrames = (B.hideFrames || 0) + 1;
-      const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9) || B.hideFrames > HIDE_LIMIT;
+      const safe = g.stalkers.every((s) => s.mode === 'patrol' || (s.mode !== 'chase' && gapTo(s) > 9)) || B.hideFrames > HIDE_LIMIT;
       if (safe) {
         B.hideFrames = 0;
         B.hides = (B.hides || 0) + 1;
@@ -134,7 +137,7 @@
       return safe ? press(inp) : inp;
     }
     if (careful && kind !== 'gazer' && kind !== 'maw' && chased() && (B.hides || 0) < HIDE_TIRED) {
-      const s = g.stalker;
+      const s = foe();
       if (g.run.shock && stalkerDist() <= g.k.shockRange - 0.2 && lineOfSight(g.map, g.p, s)) {
         inp.punch = true;
         return inp;
