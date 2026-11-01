@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { MAP_IDS, MONSTER_IDS, pickRound, forcedRound, isRound } from '../src/logic/horrorPick.js';
 
@@ -8,6 +9,12 @@ function seeded(seed) {
     return (s - 1) / 2147483646;
   };
 }
+
+describe('괴물 그림', () => {
+  it.each(MONSTER_IDS)('%s 는 안내 화면 얼굴이 있다', (id) => {
+    expect(existsSync(`public/art/horror_face_${id}.webp`)).toBe(true);
+  });
+});
 
 describe('판 고르기', () => {
   it('처음이면 아홉 조합이 다 나온다', () => {
