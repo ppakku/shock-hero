@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { CELL, chunksInSight } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
-import { factoryTheme } from './maps/factory.js';
 
 const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
@@ -122,9 +121,7 @@ function themeMaterials(theme, onMissing) {
   return { wall: make('wall'), floor: make('floor'), locker: make('locker'), textures };
 }
 
-export function buildWorld(scene, map, k, themeIn = factoryTheme) {
-  const old = themeIn.decor ? null : themeIn; // HorrorGame 이 theme 을 넘기면 지운다
-  const theme = old ? factoryTheme : themeIn;
+export function buildWorld(scene, map, k, theme) {
   // 벽 그림을 못 받으면 셔터도 그림을 버린다. 안 그러면 까맣게 나와서 문 색을 알 수 없다
   const dropDoorArt = () => {
     for (const d of doors) {
@@ -132,7 +129,7 @@ export function buildWorld(scene, map, k, themeIn = factoryTheme) {
       d.mesh.material.needsUpdate = true;
     }
   };
-  const mats = old ? { ...old, textures: {} } : themeMaterials(theme, (name) => { if (name === 'wall') dropDoorArt(); });
+  const mats = themeMaterials(theme, (name) => { if (name === 'wall') dropDoorArt(); });
   const wallMat = mats.wall;
   const floorMat = mats.floor;
   const ceilMat = lambert(theme.ceil);
@@ -245,7 +242,6 @@ export function buildWorld(scene, map, k, themeIn = factoryTheme) {
     addFuses,
     addKeys,
     addNotes,
-    dropDoorArt,
     counts,
     // 문을 열면 눈길이 달라지니 계산해 둔 구역도 버린다
     openDoor(i) {
