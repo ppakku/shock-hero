@@ -770,6 +770,23 @@ export const balance = {
     stalkerRefDist: 6, // 세이노 소리가 줄어들기 시작하는 거리 (미터)
     scareVol: 0.77, // 놀람 소리 크기
     caughtVol: 0.84, // 잡힘 소리 크기
+    // 눈뜬이와 큰입이 소리. 표 모양은 위의 세이노 값과 같다. tone 은 숨소리에 섞는 지속음이다
+    voices: {
+      gazer: { // 높고 가는 속삭임과 어긋난 콧노래. 굳으면 뚝 끊긴다
+        breathFreq: 2600, breathQ: 5,
+        breathLevel: { patrol: 0.34, investigate: 0.42, search: 0.42, chase: 0.8, stunned: 0.1, ambush: 0, watch: 0.1, frozen: 0 },
+        breathSwellSec: { patrol: 3.2, investigate: 2.6, search: 2.6, chase: 1.3, stunned: 3.2, ambush: 3.2, watch: 3.2, frozen: 3.2 },
+        stepEvery: { patrol: 0.62, investigate: 0.62, search: 0.62, chase: 0.34, stunned: 0, ambush: 0, watch: 0, frozen: 0 },
+        tone: { freqs: [622, 659.3], type: 'sine', vol: 0.13, cutoff: 1800 },
+      },
+      maw: { // 낮게 킁킁대는 콧김과 으르렁. 무거운 걸음에 이빨 부딪는 소리가 섞인다
+        breathFreq: 340, breathQ: 2.2,
+        breathLevel: { patrol: 0.7, investigate: 0.9, search: 0.9, sniff: 1, chase: 1.3, rush: 1.3, stunned: 0.2, ambush: 0, watch: 0.3 },
+        breathSwellSec: { patrol: 0.5, investigate: 0.3, search: 0.3, sniff: 0.26, chase: 0.34, rush: 0.34, stunned: 1.4, ambush: 1, watch: 1 },
+        stepEvery: { patrol: 0.95, investigate: 0.8, search: 0.8, sniff: 1.1, chase: 0.3, rush: 0.3, stunned: 0, ambush: 0, watch: 0 },
+        tone: { freqs: [74, 111.5], type: 'sawtooth', vol: 0.5, cutoff: 460 },
+      },
+    },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
     noticeLight: 10, // 손전등 빛을 알아채고 조사하러 오는 거리
@@ -838,6 +855,7 @@ export const balance = {
     pressureSearch: 0.5, // 퓨즈를 다 찾았을 때 수색 시간이 늘어나는 비율
     pressureLocker: 0.3, // 퓨즈를 다 찾았을 때 사물함을 뒤질 확률에 더해지는 값
     viewFov: 110, // 주인공이 괴물을 보고 있다고 치는 좌우 각도 (도). 긴 폰 화면의 가로 시야보다 조금 넓다
+    slitFov: 40, // 사물함 틈으로 보고 있다고 치는 각도 (도). 고개를 돌릴 수 있는 각도보다 좁아야 눈을 뗄 수 있다
     monsters: {
       seino: {}, // 세이노는 위의 값을 그대로 쓴다
       gazer: {
