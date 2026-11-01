@@ -176,8 +176,8 @@ export class HorrorAudio {
 
   // 큰입이: 낮게 쿵 울리는 걸음. 가끔 긴 이빨이 딱딱 부딪힌다
   heavyStep() {
-    this.blip(this.panner, { freq: 120, dur: 0.22, vol: 1.4, slide: 0.45 });
-    this.puffNoise(this.panner, { dur: 0.14, vol: 1, freq: 500, freqTo: 180, type: 'lowpass' });
+    this.blip(this.panner, { freq: 200, dur: 0.2, vol: 0.5, slide: 0.6 });
+    this.puffNoise(this.panner, { dur: 0.14, vol: 0.8, freq: 700, freqTo: 260, type: 'lowpass' });
     if (Math.random() > 0.4) return;
     this.blip(this.panner, { freq: 2300, dur: 0.03, vol: 0.5, type: 'square', delay: 0.16 });
     this.blip(this.panner, { freq: 2000, dur: 0.03, vol: 0.45, type: 'square', delay: 0.26 });

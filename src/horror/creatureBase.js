@@ -37,6 +37,10 @@ export class CreatureBase {
   // 그림을 입힌 재질. 그림이 없거나 못 받으면 color 색만 칠해서 괴물은 그대로 보인다
   paper(url, color, shine = 0xa8a8a8) {
     const m = new THREE.MeshStandardMaterial({ color: shine, roughness: 1, vertexColors: true });
+    // 점 밝기가 0 인 곳(입안, 찢어진 틈)은 손전등 반사도 없이 완전히 까맣다
+    m.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', 'outgoingLight *= step(0.01, vColor.r);\n#include <opaque_fragment>');
+    };
     const fail = () => {
       if (!this.loadFailed) {
         this.loadFailed = true;

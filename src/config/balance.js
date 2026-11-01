@@ -773,18 +773,18 @@ export const balance = {
     // 눈뜬이와 큰입이 소리. 표 모양은 위의 세이노 값과 같다. tone 은 숨소리에 섞는 지속음이다
     voices: {
       gazer: { // 높고 가는 속삭임과 어긋난 콧노래. 바라보면 (watch) 뚝 끊긴다
-        breathFreq: 2600, breathQ: 5,
+        breathFreq: 3800, breathQ: 6,
         breathLevel: { patrol: 0.34, chase: 0.8, stunned: 0.1, watch: 0 },
         breathSwellSec: { patrol: 3.2, chase: 1.3, stunned: 3.2, watch: 3.2 },
         stepEvery: { patrol: 0.62, chase: 0.34, stunned: 0, watch: 0 },
-        tone: { freqs: [622, 659.3], type: 'sine', vol: 0.13, cutoff: 1800 },
+        tone: { freqs: [880, 932.3], type: 'sine', vol: 0.2, cutoff: 2400 }, // 반음이 부딪혀 떨린다
       },
       maw: { // 낮게 킁킁대는 콧김과 으르렁. 무거운 걸음에 이빨 부딪는 소리가 섞인다
-        breathFreq: 340, breathQ: 2.2,
-        breathLevel: { patrol: 0.7, investigate: 0.9, search: 1, chase: 1.3, stunned: 0.2 },
+        breathFreq: 420, breathQ: 2.2,
+        breathLevel: { patrol: 0.4, investigate: 0.5, search: 0.55, chase: 0.75, stunned: 0.12 },
         breathSwellSec: { patrol: 0.5, investigate: 0.3, search: 0.26, chase: 0.34, stunned: 1.4 },
         stepEvery: { patrol: 0.95, investigate: 0.8, search: 1.1, chase: 0.3, stunned: 0 },
-        tone: { freqs: [74, 111.5], type: 'sawtooth', vol: 0.5, cutoff: 460 },
+        tone: { freqs: [147, 220], type: 'sawtooth', vol: 0.05, cutoff: 1100 }, // 작은 스피커에도 들리게 150Hz 위 소리가 남는다
       },
     },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리

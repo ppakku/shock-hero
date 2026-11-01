@@ -105,7 +105,7 @@ function hairGeometry() {
       e += (rand() - 0.5) * step;
       const r = 0.31 + rand() * 0.075;
       const q = dot(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e), r);
-      if (q[1] < 0.66) q[1] = 0.66;
+      if (q[1] < 0.72) q[1] = 0.72;
       if (p) parts.push(bone(p, q, 0.009, 0.008, 0.5 + rand() * 0.7));
       p = q;
     }
@@ -114,9 +114,9 @@ function hairGeometry() {
   for (let i = 0; i < 26; i++) {
     const a = (i / 26) * TAU;
     const b = a + TAU / 26;
-    const r0 = 0.31;
-    const y0 = 0.68 + (i % 2 ? 0.05 : -0.03);
-    const y1 = 0.68 + (i % 2 ? -0.03 : 0.05);
+    const r0 = 0.3;
+    const y0 = 0.76 + (i % 2 ? 0.05 : -0.03);
+    const y1 = 0.76 + (i % 2 ? -0.03 : 0.05);
     parts.push(bone([Math.sin(a) * r0, y0, Math.cos(a) * r0 * 0.9], [Math.sin(b) * r0, y1, Math.cos(b) * r0 * 0.9], 0.012, 0.011, 0.6));
   }
   return mergeGeometries(parts);
