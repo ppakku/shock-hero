@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { blocked, center, chunksInSight, findPath, frontOf, lineOfSight, reachable, withOpen, CELL } from '../src/logic/horrorGrid.js';
 import { createRun, takeKey, openDoor, respawnSpot } from '../src/logic/horrorRun.js';
 import { decorSpots } from '../src/logic/horrorDecor.js';
+import { createStalker, sendAway } from '../src/logic/horrorStalker.js';
 import { factoryMap, factoryTheme } from '../src/horror/maps/factory.js';
 import { sewerMap, sewerTheme } from '../src/horror/maps/sewer.js';
 import { schoolMap, schoolTheme } from '../src/horror/maps/school.js';
@@ -48,6 +49,22 @@ describe.each(MAPS)('$id 맵', ({ map, theme, rooms: [fewest, most] }) => {
   it('모든 목표에 걸어갈 수 있다', () => {
     for (const c of [...m.fuses, ...m.keys, ...m.notes, ...m.returns, ...m.patrol, ...m.scares, m.stalker]) expect(canReach(c)).toBe(true);
     for (const c of [...m.lockers, ...m.boxes, m.panel, m.gate]) expect(canUse(c)).toBe(true);
+  });
+
+  it('사물함, 전기 상자, 전원, 정문은 모두 손이 닿는다', () => {
+    for (const c of [...m.lockers, ...m.boxes, m.panel, m.gate]) {
+      const f = frontOf(m, c);
+      expect(Math.hypot(f.cx - c.cx, f.cy - c.cy), `${c.cx},${c.cy}`).toBeLessThanOrEqual(k.useRange);
+    }
+  });
+
+  it('잡혀서 멀리 보낸 괴물은 막힌 칸에 서지 않는다', () => {
+    const { level } = createRun(map, k, seeded(1));
+    for (const c of level.patrol) {
+      const s = createStalker(level);
+      sendAway(s, level, center(c), seeded(c.cx + c.cy));
+      expect(blocked(level, Math.floor(s.x), Math.floor(s.y))).toBe(false);
+    }
   });
 
   it('크기와 물건 수가 계획대로다', () => {
@@ -216,11 +233,9 @@ describe.each(MAPS)('$id 맵', ({ map, theme, rooms: [fewest, most] }) => {
     it('잠긴 문이 열리면 그 너머가 보인다', () => {
       m.locks.forEach((door, i) => {
         const side = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ cx: door.cx + dx, cy: door.cy + dy, dx, dy })).find((c) => has(base, c));
-        const behind = { cx: door.cx - side.dx * 4, cy: door.cy - side.dy * 4 };
         const opened = sightOf(side, withOpen(map, [i]));
         expect(opened.size).toBeGreaterThanOrEqual(sightOf(side).size);
         expect(opened.has(chunkOf({ cx: door.cx - side.dx, cy: door.cy - side.dy }))).toBe(true);
-        expect(behind.cx).toBeGreaterThanOrEqual(0);
       });
     });
   });
@@ -284,6 +299,7 @@ describe('테마', () => {
       expect(theme.decor.light.y).toBeLessThan(3);
       expect(theme.decor.machine.tints.length).toBeGreaterThan(0);
       expect(theme.decor.pipe.ys.length).toBeGreaterThan(0);
+      if (theme.doorArt) expect(theme[theme.doorArt].art).toMatch(/^horror_/);
     }
   });
 

@@ -45,9 +45,9 @@ function setOnWall(mesh, i, f, w, h, d, y) {
   mesh.setMatrixAt(i, place.matrix);
 }
 
-// 잠긴 문은 공장 셔터다. 양옆이 벽인 쪽으로 세운다
-function addShutter(group, c, map, color, wallMat) {
-  const mat = new THREE.MeshLambertMaterial({ color, map: wallMat.map, emissive: color, emissiveIntensity: 0.12 }); // 녹슨 벽 그림에 색만 입힌다
+// 잠긴 문은 말려 올라가는 셔터다. 양옆이 벽인 쪽으로 세운다
+function addShutter(group, c, map, color, art) {
+  const mat = new THREE.MeshLambertMaterial({ color, map: art.map, emissive: color, emissiveIntensity: 0.12 }); // 그림에 색만 입힌다
   const across = map.rows[c.cy][c.cx - 1] === '#'; // 왼쪽이 벽이면 x 를 따라 놓는다
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(across ? CELL : DOOR.d, WALL_H, across ? DOOR.d : CELL), mat);
   mesh.position.set((c.cx + 0.5) * CELL, WALL_H / 2, (c.cy + 0.5) * CELL);
@@ -93,7 +93,6 @@ function addDecor(scene, map, k, mats, decor) {
   if (low) {
     const lows = new THREE.InstancedMesh(box, lambert(low.color), spots.lows.length);
     spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
-    lows.castShadow = true;
     meshes.push(lows);
   }
   if (lintel) {
@@ -143,14 +142,15 @@ function themeMaterials(theme, onMissing) {
 }
 
 export function buildWorld(scene, map, k, theme) {
-  // 벽 그림을 못 받으면 셔터도 그림을 버린다. 안 그러면 까맣게 나와서 문 색을 알 수 없다
+  // 문 그림을 못 받으면 셔터도 그림을 버린다. 안 그러면 까맣게 나와서 문 색을 알 수 없다
+  const doorPart = theme.doorArt || 'wall';
   const dropDoorArt = () => {
     for (const d of doors) {
       d.mesh.material.map = null;
       d.mesh.material.needsUpdate = true;
     }
   };
-  const mats = themeMaterials(theme, (name) => { if (name === 'wall') dropDoorArt(); });
+  const mats = themeMaterials(theme, (name) => { if (name === doorPart) dropDoorArt(); });
   const wallMat = mats.wall;
   const floorMat = mats.floor;
   const ceilMat = lambert(theme.ceil);
@@ -223,7 +223,7 @@ export function buildWorld(scene, map, k, theme) {
   const lightColor = new THREE.Color(theme.lightColor);
   const flow = theme.floor.flow;
   let lightLevel = -1;
-  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], wallMat));
+  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], mats[doorPart]));
   const rising = [];
   let lastT = 0;
 
