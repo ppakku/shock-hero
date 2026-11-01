@@ -394,7 +394,7 @@ export class HorrorGame {
     const spot = figureSpot(this.map, this.p, this.yaw, k.figureNear, k.figureFar);
     if (!spot) return;
     const heading = Math.atan2(this.p.x - spot.x, this.p.y - spot.y);
-    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: 'patrol' } };
+    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: this.round.monsterId === 'mole' ? 'watch' : 'patrol' } }; // 땅속이는 패트롤 자세면 땅속에 있어 보이지 않는다
     this.model.yaw = heading;
   }
 

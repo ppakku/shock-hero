@@ -70,13 +70,14 @@ def chooser(pw):
     check('페이지 오류 없음', not errs, errs)
     b.close()
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
-    ctx = b.new_context(viewport={'width': 844, 'height': 390}, has_touch=True, is_mobile=True, user_agent=PHONE_UA)
-    pg = ctx.new_page()
-    open_title(pg)
-    pg.wait_for_selector('[data-chooser]', timeout=30000)
-    pg.screenshot(path=f'{OUT}/chooser_phone.png')
-    fit = pg.evaluate("(() => { const e = document.querySelector('[data-chooser]'); const go = [...e.querySelectorAll('button')].pop().getBoundingClientRect(); return { h: e.scrollHeight, view: innerHeight, bottom: go.bottom }; })()")
-    check('휴대폰 가로 화면에 다 들어간다', fit['h'] <= fit['view'] and fit['bottom'] <= fit['view'], fit)
+    for w, h in ((844, 390), (568, 320)):
+        ctx = b.new_context(viewport={'width': w, 'height': h}, has_touch=True, is_mobile=True, user_agent=PHONE_UA)
+        pg = ctx.new_page()
+        open_title(pg)
+        pg.wait_for_selector('[data-chooser]', timeout=30000)
+        pg.screenshot(path=f'{OUT}/chooser_phone_{w}.png')
+        fit = pg.evaluate("(() => { const e = document.querySelector('[data-chooser]'); const go = [...e.querySelectorAll('button')].pop().getBoundingClientRect(); return { h: e.scrollHeight, view: innerHeight, bottom: go.bottom }; })()")
+        check(f'휴대폰 {w}x{h} 가로 화면에 다 들어간다', fit['h'] <= fit['view'] and fit['bottom'] <= fit['view'], fit)
     b.close()
 
 
@@ -85,7 +86,7 @@ def scare(pw):
     pg = b.new_page(viewport={'width': 1280, 'height': 720})
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    for monster in ('seino', 'gazer', 'maw'):
+    for monster in ('seino', 'gazer', 'maw', 'mole'):
         begin(pg, f'?timer&fps&map=factory&monster={monster}')
         time.sleep(0.6)
         pg.evaluate("""() => { const g = window.__horror, L = window.__horrorLogic; const c = L.cellOf(g.p); g.scaresLeft = [{ cx: c.cx, cy: c.cy }]; g.stalker.graceT = 99; }""")

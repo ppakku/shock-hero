@@ -280,6 +280,9 @@ describe('땅속이', () => {
     g.warmUp();
     expect(rises[0]).toBe(1);
     expect(g.model.face.visible).toBe(false);
+    g.exit();
+  });
+});
 
 describe('놀람 장면', () => {
   // 시작하자마자 놀람 칸을 밟게 한다
@@ -348,8 +351,6 @@ describe('놀람 장면', () => {
 });
 
 describe('잡히는 장면', () => {
-  it.each(['seino', 'gazer', 'maw', 'mole'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
-
   it('정적이 먼저 오고 그 뒤에 비명과 얼굴이 온다', () => {
     const g = makeGame('factory', 'seino');
     g.state = 'play';
@@ -366,7 +367,7 @@ describe('잡히는 장면', () => {
     g.exit();
   });
 
-  it.each(['seino', 'gazer', 'maw'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
+  it.each(['seino', 'gazer', 'maw', 'mole'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
     const g = makeGame('factory', id);
     Object.assign(g.stalker, { x: g.p.x + 0.4, y: g.p.y });
     g.getCaught();

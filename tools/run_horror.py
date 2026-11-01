@@ -1460,6 +1460,7 @@ def play_replay(pw):
     time.sleep(3)
     pg.evaluate(COUNT_LISTENERS)
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.click('[data-chooser] button:has-text("들어가기")', timeout=20000)  # 랜덤 그대로 들어간다
     pg.wait_for_function('window.__horror', timeout=20000)
     time.sleep(0.5)
     seen = []
@@ -1485,6 +1486,7 @@ def play_replay(pw):
         pg.wait_for_function("window.__horror.state === 'end'", timeout=5000)
         check(f'replay {i}: end screen offers another', '한 판 더' in pg.inner_text('#horror'))
         pg.click('#horror button:has-text("한 판 더")')
+        pg.click('[data-chooser] button:has-text("들어가기")', timeout=10000)
         pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
         check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
         time.sleep(0.4)
