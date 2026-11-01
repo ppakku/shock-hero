@@ -18,7 +18,7 @@ const BOB = 0.008; // 걸을 때 손이 흔들리는 폭 (미터)
 const BOB_SPEED = 9;
 const FRONT = -0.3; // 괴물이 이보다 뒤에 있으면 번개를 앞으로 쏜 것처럼 그린다 (미터)
 const COLD = { body: 0x24262b, strip: 0x34373d, lamp: 0x4a1c1c };
-const LIVE = { body: 0x30343c, strip: 0x46c8ff, lamp: 0x7ce8ff };
+const LIVE_BODY = 0x30343c;
 
 function glowTexture() {
   const size = 32;
@@ -55,10 +55,10 @@ function edgeFade(fade) {
 
 // 번개 한 줄. 파란 번짐과 흰 심 두 겹이다
 class Arc {
-  constructor(scene) {
+  constructor(scene, color) {
     this.scene = scene;
     this.positions = new Float32Array((PARTS + 1) * 6);
-    this.glow = this.layer(0x3aa8ff, 0.55);
+    this.glow = this.layer(color, 0.55);
     this.core = this.layer(0xffffff, 1);
     this.hide();
   }
@@ -99,8 +99,10 @@ class Arc {
 }
 
 export class StunGun {
-  constructor({ aspect, touch, lowFx, k, loader = artLoader() }) {
+  // bolt: 고른 번개 색 (balance.horror.stamps.bolts 의 한 칸)
+  constructor({ aspect, touch, lowFx, k, bolt, loader = artLoader() }) {
     this.k = k;
+    this.bolt = bolt;
     this.spotX = touch ? SPOT_X.touch : SPOT_X.pc;
     this.arcLimit = lowFx ? k.arcsLow : k.arcs;
     this.fx = createGunFx();
@@ -124,11 +126,11 @@ export class StunGun {
     this.buildHand();
     this.buildArt(loader);
     this.glowTex = glowTexture();
-    this.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: 0x66c8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false }));
+    this.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: bolt.halo, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false }));
     this.halo.renderOrder = 1;
     this.halo.visible = false;
     this.scene.add(this.halo);
-    this.arcs = Array.from({ length: ARC_PAIRS }, () => new Arc(this.scene));
+    this.arcs = Array.from({ length: ARC_PAIRS }, () => new Arc(this.scene, bolt.glow));
     this.resize(aspect);
     this.show(false);
     this.paint();
@@ -242,7 +244,7 @@ export class StunGun {
   }
 
   paint() {
-    const look = this.charged ? LIVE : COLD;
+    const look = this.charged ? { body: LIVE_BODY, strip: this.bolt.strip, lamp: this.bolt.lamp } : COLD;
     this.bodyMat.color.setHex(look.body);
     this.stripMat.color.setHex(look.strip);
     this.lampMat.color.setHex(look.lamp);

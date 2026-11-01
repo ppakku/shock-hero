@@ -8,6 +8,7 @@ const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { fillName } from './story.js';
+import { GOLD, cssColor } from '../logic/horrorStamps.js';
 
 const INTRO = [
   '조사하러 들어왔다가 문이 잠겼다.',
@@ -54,6 +55,15 @@ export function escapeText({ gems, daily, bonus }, clean) {
   if (!daily) return `탈출 성공! 처음으로 한 번도 안 잡혔어요! 보석 ${bonus}개. 탈출 보석은 오늘 이미 받았어요`;
   if (bonus) return `탈출 성공! 보석 ${gems}개 (처음으로 한 번도 안 잡혔어요!)`;
   return `탈출 성공! 보석 ${gems}개${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
+}
+
+// 끝 화면의 도장 소식. earned: 이번에 받은 도장 (logic/horrorStamps.js 의 addStamp). 받은 것이 없으면 빈 배열
+// opened: 이번에 새로 열린 색
+export function stampLines(earned, { count, total, opened }) {
+  if (!earned) return [];
+  const lines = [`${earned === GOLD ? '금 도장을 받았어요!' : '새 도장을 받았어요!'} 도장 ${count}/${total}`];
+  if (opened.length) lines.push(`새 색이 열렸어요: ${opened.map((look) => look.name).join(', ')}`);
+  return lines;
 }
 
 export class HorrorHud {
@@ -207,7 +217,11 @@ export class HorrorHud {
     this.dread.style.opacity = String(level);
   }
 
-  // 전기충격기를 쏘면 화면이 파랗게 번쩍인다 (초)
+  setZapColor(color) {
+    this.zap.style.background = cssColor(color);
+  }
+
+  // 전기충격기를 쏘면 화면이 번개 색으로 번쩍인다 (초)
   flashShock(power, time) {
     this.zap.animate?.([{ opacity: power }, { opacity: 0 }], { duration: time * 1000, easing: 'ease-out' });
   }
@@ -357,13 +371,16 @@ export class HorrorHud {
   }
 
   // notes: { found, total, final } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다
-  showEnd(text, onAgain, onDone, notes) {
-    const lines = [...(notes?.ending ? [notes.ending] : []), text];
+  // news: 도장 소식. 결과 바로 아래에 금색으로 놓는다
+  showEnd(text, onAgain, onDone, notes, news = [], compact = false) {
+    const lines = [...(notes?.ending ? [notes.ending] : []), text, ...news];
     if (notes) {
       lines.push(`쪽지 ${notes.found}/${notes.total}`);
       if (notes.total > 0 && notes.found >= notes.total) lines.push(notes.final);
     }
-    this.openLayer(lines, [{ text: '한 판 더', onPress: onAgain }, { text: '타이틀로', onPress: onDone }]);
+    this.openLayer(lines, [{ text: '한 판 더', onPress: onAgain }, { text: '타이틀로', onPress: onDone }], compact);
+    const first = lines.indexOf(text) + 1;
+    for (let i = first; i < first + news.length; i++) this.layer.children[i].style.color = '#ffd24a';
     this.backdrop();
   }
 

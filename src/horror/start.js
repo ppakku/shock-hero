@@ -92,6 +92,12 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
   const choose = () => showChooser(root, {
     choice,
     compact: deviceKind() === 'phone',
+    record: saveStore.load().horror,
+    onLook: (key, id) => {
+      const save = saveStore.load();
+      save.horror[key] = id;
+      saveStore.save(save);
+    },
     onStart: (picked) => {
       choice = picked;
       play(chooseRound(picked, saveStore.load().horror.last));
