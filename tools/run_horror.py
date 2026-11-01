@@ -1572,6 +1572,7 @@ def gazer_rule(pg, tag):
     pg.wait_for_function("(() => { const g = window.__horror, s = g.stalker; return Math.hypot(s.x - g.p.x, s.y - g.p.y) > 3 && g.state === 'play'; })()", timeout=10000)
     check(f'{tag}: gazer leaves the locker when you look away', True)
     pg.evaluate('window.__horror.toggleLocker(0)')
+    pg.evaluate(f'window.__horror.readInput = () => {BLANK_INPUT}')
 
 
 def maw_rule(pg, tag):
