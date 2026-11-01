@@ -32,6 +32,7 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `make_sheet.py`: 흰 배경 4x2 동작 그림(8장)을 칸마다 배경 지우고, 칸 크기와 발 위치를 맞춘 스프라이트 시트로 (몬스터 걷기)
 - `make_pose_sheets.py`: 4x2 그림에서 원하는 칸만 골라 걷기 시트와 한 장짜리 자세 그림을 같은 칸 크기로 만들고, 날아가는 조각(침 등)을 따로 잘라 낸다 (몸에서 떨어진 조각은 자세 그림에서 지움). 예: 침뱉기 `python3 -I tools/make_pose_sheets.py spitter_raw.png 128 public/art/monster_spitter.png=1,7,8,2,2,8,7,1@4x2 public/art/monster_spitter_aim.png=3 public/art/monster_spitter_spit.png=5 public/art/monster_spit.png=box:600,930,820,1090#1@64`
 - `run_horror.py`: 시스템 Chrome 으로 공포 모드를 켜서 확인한다. 기본(키보드)은 걷기, 소리, 괴물 장면, 줍기, 숨기, 펀치, 놀람 장면, 잡힘, 봇의 탈출까지 돌리고, `--touch` 는 진짜 터치 이벤트로, `--play` 는 조작과 탈출만, `--sound` 는 세이노가 가깝고 멀 때 순찰과 추격의 소리 크기만, `--shots` 는 벽 화면만, `--creature` 는 괴물 장면만, `--phone` 은 휴대폰 가로 화면 세 크기의 안내와 쪽지만, `--stalk` 은 진짜 행동 코드로 바라보기와 매복만 확인한다. `npx vite --port 5288 --strictPort` 를 켜 두고 쓴다 (`bot_horror.js` 를 씀)
+- `shot_horror_maps.py`: 놀이공원과 마트를 진짜 게임에서 확인한다. `--chooser` 는 도장 0, 11, 12, 20개에서 고르기 화면이 스크롤 없이 들어가는지, `--art` 는 맵마다 새 그림 앞에 서서 사진을 찍고, `--play` 는 두 맵 네 괴물을 1280x720 과 568x320 에서 봇으로 끝까지 하고 그리기 수를 본다. `HORROR_PORT` 로 포트를 정한다
 - `make_horror_art.py`: Gemini 로 받은 벽과 바닥 그림의 별 표시를 지우고 512 JPG 로 줄이고, 사물함 문 그림은 벽 철판에서 만든다. 세이노 그림은 `make_creature_art.py`
 - `make_gazer_art.py`, `make_maw_art.py`: Gemini 로 받은 눈뜬이와 큰입이의 앞뒤 머리, 전신 그림을 게임용으로 만든다. 큰입이는 머리, 머리털, 이빨 빛, 팔다리를 곧게 편 몸 그림과 안내 화면 얼굴까지 만들고, 3D 몸에 쓸 치수를 찍는다. 둘러 입히는 공용 코드는 `wrap_art.py`
 - `make_ward_art.py`: Gemini 로 받은 호러워드 전신 그림과 초상화를 게임용 머리, 몸, 얼굴 그림으로 만들고, 3D 몸에 쓸 높이별 폭을 찍는다.
