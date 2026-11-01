@@ -3,6 +3,7 @@
 #   python3 tools/run_horror.py 출력폴더 --touch   (태블릿 손가락 입력을 진짜 터치 이벤트로 확인)
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
+#   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --robust  (화면 꺼짐, 보석, 소리 실패, 나가기 실패, 세이노 숨기기, 비상등. --play 에도 들어 있다)
 #   python3 tools/run_horror.py 출력폴더 --phone   (휴대폰 가로 화면: 안내, 쪽지, 손가락이 쪽지를 지나 걷기)
@@ -13,14 +14,15 @@ import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
+MODE = 'replay' if '--replay' in sys.argv else 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
     ARGS = ['--use-angle=metal', '--ignore-gpu-blocklist']
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-URL = 'http://localhost:5288/?timer&fps'
+URL = 'http://localhost:5288/?timer&fps&map=factory&monster=seino'  # 좌표를 쓰는 검사는 공장과 세이노로 고정한다
+FREE_URL = 'http://localhost:5288/?timer&fps'  # 맵과 괴물을 게임이 고른다
 os.makedirs(OUT, exist_ok=True)
 fails = []
 
@@ -1410,8 +1412,87 @@ def run_touch(pw):
     b.close()
 
 
+# 창과 문서에 달린 듣기 함수 수를 센다. 판이 바뀌어도 늘면 안 된다
+COUNT_LISTENERS = """() => {
+  window.__listeners = 0;
+  for (const t of [window, document]) {
+    const add = t.addEventListener.bind(t), rm = t.removeEventListener.bind(t), seen = new WeakMap();
+    t.addEventListener = (type, fn, o) => {
+      const types = seen.get(fn) ?? new Set();
+      if (!types.has(type)) window.__listeners += 1;
+      types.add(type);
+      seen.set(fn, types);
+      add(type, fn, o);
+    };
+    t.removeEventListener = (type, fn, o) => {
+      if (seen.get(fn)?.delete(type)) window.__listeners -= 1;
+      rm(type, fn, o);
+    };
+  }
+}"""
+
+ROUND_NOW = """() => {
+  const g = window.__horror, root = document.getElementById('horror');
+  return {
+    round: g.round, state: g.state, have: g.run.have, caught: g.run.caughtCount, notes: g.notes.found,
+    home: g.p.x === g.map.start.cx + 0.5 && g.p.y === g.map.start.cy + 0.5, kinds: g.stalker.kind ?? null,
+    kids: root.children.length, canvases: root.querySelectorAll('canvas').length, buttons: root.querySelectorAll('button').length,
+    listeners: window.__listeners, text: root.innerText,
+  };
+}"""
+
+
+def play_replay(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 640, 'height': 360})
+    errs = []
+    watch(pg, errs)
+    pg.goto(FREE_URL)
+    pg.evaluate("localStorage.removeItem('shock-hero-save-v1')")
+    pg.goto(FREE_URL)
+    time.sleep(3)
+    pg.evaluate(COUNT_LISTENERS)
+    pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.wait_for_function('window.__horror', timeout=20000)
+    time.sleep(0.5)
+    seen = []
+    first = None
+    for i in range(7):
+        now = pg.evaluate(ROUND_NOW)
+        print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
+        seen.append(now['round'])
+        first = first or now
+        names = pg.evaluate("(r) => import('/src/horror/content.js').then(({ MAPS, MONSTERS }) => [MAPS[r.mapId].name, MONSTERS[r.monsterId].name, MONSTERS[r.monsterId].hint])", now['round'])
+        check(f'replay {i}: intro names the round', all(n in now['text'] for n in names), names)
+        check(f'replay {i}: fresh game', now['state'] == 'intro' and now['have'] == 0 and now['caught'] == 0 and now['notes'] == 0 and now['home'], {k: v for k, v in now.items() if k != 'text'})
+        check(f'replay {i}: nothing left behind', now['canvases'] == 1 and now['kids'] == first['kids'] and now['listeners'] == first['listeners'], (now['kids'], now['listeners']))
+        if i:
+            check(f'replay {i}: other map and monster', seen[i]['mapId'] != seen[i - 1]['mapId'] and seen[i]['monsterId'] != seen[i - 1]['monsterId'], seen[i - 1:])
+        saved = pg.evaluate("JSON.parse(localStorage.getItem('shock-hero-save-v1')).horror.last")
+        check(f'replay {i}: save remembers the round', saved == now['round'], saved)
+        pg.screenshot(path=f'{OUT}/replay_intro_{i}.png')
+        pg.click('#horror button:has-text("시작")')
+        pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+        time.sleep(0.5)
+        pg.evaluate('(() => { const g = window.__horror; window.__oldHorror = g; g.run.powered = true; g.win(); })()')
+        pg.wait_for_function("window.__horror.state === 'end'", timeout=5000)
+        check(f'replay {i}: end screen offers another', '한 판 더' in pg.inner_text('#horror'))
+        pg.click('#horror button:has-text("한 판 더")')
+        pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
+        check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
+        time.sleep(0.4)
+    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 3 and len({r['monsterId'] for r in seen}) == 3, seen)
+    pg.click('#horror button:has-text("타이틀로")')
+    pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
+    check('replay: root removed at title', pg.evaluate("!document.getElementById('horror')"))
+    ctxwarn = [e for e in errs if 'context' in e.lower()]
+    check('replay: no WebGL context warning', not ctxwarn, ctxwarn)
+    check('replay: no errors', not errs, errs)
+    b.close()
+
+
 with sync_playwright() as pw:
-    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
+    {'replay': play_replay, 'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
     if MODE == 'keys':
         run_play(pw)
 if fails:
