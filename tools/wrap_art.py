@@ -32,8 +32,9 @@ def smooth(v, n=31):
     return np.convolve(np.pad(v, n // 2, mode='edge'), k, 'valid')
 
 
-def wrap(rows_f, rows_b, hw_f, hw_b, rgb_f, rgb_b, cx_f, cx_b, width, front, inset, tone):
+def wrap(rows_f, rows_b, hw_f, hw_b, rgb_f, rgb_b, cx_f, cx_b, width, front, inset, tone, grain_back=0.6):
     # 그림 한 줄마다: 앞면은 윤곽 안쪽 그림, 뒷면은 뒷모습 그림, 윤곽 밖 띠는 tone 으로 이어 붙인다
+    # grain_back: 뒤쪽 옆구리 잔금을 뜨는 자리. 앞쪽(0.6)과 다르게 주면 옆구리 선을 기준으로 얼룩이 거울처럼 겹치지 않는다
     out = np.zeros((len(rows_f), width, 3))
     u = (np.arange(width) + 0.5) / width
     is_front = np.abs(u - 0.5) < front / 2
@@ -46,7 +47,7 @@ def wrap(rows_f, rows_b, hw_f, hw_b, rgb_f, rgb_b, cx_f, cx_b, width, front, ins
         xf = (cx_f + s * max(hw_f[rf] - inset, 1)).round().astype(int).clip(0, rgb_f.shape[1] - 1)
         xb = (cx_b - s * max(hw_b[rb] - inset, 1)).round().astype(int).clip(0, rgb_b.shape[1] - 1)
         row = np.where(is_front[:, None], rgb_f[rf, xf], rgb_b[rb, xb]).astype(float)
-        side = tone[y] + grain[rb, (cx_b - s * max(hw_b[rb] - inset, 1) * 0.6).round().astype(int).clip(0, rgb_b.shape[1] - 1)]
+        side = tone[y] + grain[rb, (cx_b - s * max(hw_b[rb] - inset, 1) * np.where(is_front, 0.6, grain_back)).round().astype(int).clip(0, rgb_b.shape[1] - 1)]
         out[y] = row * shadow * fade + side * (1 - fade)
     return out.clip(0, 255).astype('uint8')
 

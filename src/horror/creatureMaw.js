@@ -16,7 +16,7 @@ const PALM = 0.16;
 const HIPS_Y = 1.29;
 const SPINE_UP = 0.06;
 const CHIN_Y = 1.78;
-const PIVOT = 0.3; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 입이 화면 가운데 온다
+const PIVOT = 0.13; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 입이 화면 가운데 온다
 const SHOULDER = { x: 0.224, y: 0.344 }; // 허리에서 잰 어깨 자리
 const HIP_X = 0.105;
 const HEAD_H = 0.913;
@@ -28,7 +28,7 @@ const HEAD_KEYS = [ // [높이, 반폭, 반두께, 앞뒤 치우침]
   [0.481, 0.3], [0.427, 0.299], [0.374, 0.283], [0.321, 0.271], [0.267, 0.261], [0.214, 0.249], [0.161, 0.234], [0.107, 0.202], [0.054, 0.161], [0.012, 0.09], [0, 0.02],
 ].map(([y, hw]) => [y, hw, hw * 0.86, 0]);
 const TORSO_KEYS = [ // 허리에서 잰 높이
-  [0.44, 0.03, 0.03, 0], [0.42, 0.13, 0.09, 0], [0.38, 0.22, 0.12, 0], [0.353, 0.25, 0.135, 0], [0.298, 0.235, 0.125, 0], [0.245, 0.166, 0.11, 0],
+  [0.56, 0.03, 0.03, 0], [0.54, 0.1, 0.09, 0], [0.42, 0.115, 0.1, 0], [0.39, 0.18, 0.115, 0], [0.353, 0.25, 0.135, 0], [0.298, 0.235, 0.125, 0], [0.245, 0.166, 0.11, 0],
   [0.19, 0.152, 0.1, 0], [0.137, 0.135, 0.09, 0], [0.082, 0.111, 0.08, 0], [0.029, 0.112, 0.08, 0], [-0.026, 0.147, 0.1, 0], [-0.078, 0.146, 0.105, 0], [-0.133, 0.145, 0.1, 0], [-0.17, 0.09, 0.07, 0], [-0.19, 0.02, 0.02, 0],
 ];
 // 손목에서 잰 손가락 중심선: [바깥쪽, 아래쪽]. 바깥쪽은 팔이 뻗은 쪽이다
@@ -41,7 +41,7 @@ const FINGERS = [
 const WRIST_DROP = 0.085; // 손가락 뼈가 손목보다 내려간 거리
 const FRONT_HEAD = 2 / 3; // 그림 폭 가운데 앞면이 차지하는 몫. 양쪽 끝이 뒷면이다
 const FRONT_LIMB = 1 / 2;
-const HAIR = { top: 1.005, bottom: 0.4335, x: 0.369, z: 0.32, inner: 0.88 }; // 머리털 그림이 덮는 높이와 둘레
+const HAIR = { top: 1.005, bottom: 0.4335, x: 0.42, z: 0.34, inner: 0.84 }; // 머리털 그림이 덮는 높이와 둘레
 const INK_UV = [0.004, 0.012]; // 머리털 그림 구석의 먹빛 칸
 // 몸 그림 한 장의 칸: [왼쪽, 위, 폭, 높이] (tools/make_maw_art.py 와 같다)
 const SHEET = 1024;
@@ -64,10 +64,10 @@ const POSE = {
 const POSE_KEYS = Object.keys(POSE.walk);
 const SKIN_COLOR = 0x2e2522; // 그림이 없을 때 살색
 const HAIR_COLOR = 0x12160f; // 그림이 없을 때 머리털 색
-const TINT = 0x8c8680; // 그림이 손전등 아래서 희게 날아가지 않게 누른다
-const HEAD_TINT = 0x8c8680;
+const TINT = 0x6e7476; // 그림이 손전등 아래서 희게 날아가지 않게 누른다
+const HEAD_TINT = 0x6e7476;
 const TEETH_GLOW = { patrol: 0.3, investigate: 0.45, search: 0.45, chase: 1, stunned: 0.05 };
-const TOOTH_LIGHT = 0.5; // 어둠 속에서 이빨이 뜨는 세기
+const TOOTH_LIGHT = 2.2; // 어둠 속에서 이빨이 뜨는 세기
 
 const cell = ([x, y, w, h], u, v) => [(x + u * w) / SHEET, 1 - (y + (1 - v) * h) / SHEET];
 const skinUv = () => cell(SKIN_CELL, 0.5, 0.5);
@@ -109,12 +109,12 @@ function hairGeometry() {
     rows: 3,
     segs: 28,
     uv: (p, t, w) => [flip ? 1 - wrapU(w, FRONT_LIMB) : wrapU(w, FRONT_LIMB), (p.y - HAIR.bottom) / (HAIR.top - HAIR.bottom)],
-    at: (t, w, out) => out.set(Math.sin(w) * HAIR.x * k, lerp(HAIR.top, HAIR.bottom, t), Math.cos(w) * HAIR.z * k),
+    at: (t, w, out) => out.set(Math.sin(w) * HAIR.x * k, lerp(HAIR.top, HAIR.bottom + 0.04, t), Math.cos(w) * HAIR.z * k), // 맨 아랫줄의 먹빛 칸은 비켜 간다
   });
   const parts = [shell(1, false), shell(HAIR.inner, true)];
   const cy = 0.74;
   const dot = (x, y, z, r) => [x * r, cy + y * r * 0.72, z * r * 0.9];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 12; i++) {
     let a = rand() * TAU;
     let e = rand() * 1.3;
     const step = 0.5 + rand() * 0.5;
@@ -142,7 +142,7 @@ function torsoGeometry(top, bottom, y0) {
   return surface({
     rows: 8,
     segs: 16,
-    uv: (p, t, w) => cell(TORSO_CELL, wrapU(w, FRONT_LIMB), (p.y + y0 - ART_BOTTOM) / (ART_TOP - ART_BOTTOM)),
+    uv: (p, t, w) => cell(TORSO_CELL, wrapU(w, FRONT_LIMB), clamp((p.y + y0 - ART_BOTTOM) / (ART_TOP - ART_BOTTOM), 0, 0.99)),
     at: (t, w, out) => {
       const y = lerp(top, bottom, t);
       const [hw, hd, cz] = sampleKeys(TORSO_KEYS, y);
@@ -190,7 +190,7 @@ function palmGeometry() {
     uv: stripUv(ARM_CELL, PALM, (UPPER + FORE) / (UPPER + FORE + PALM), 1),
     at: (t, w, out) => {
       const close = Math.min(1, Math.min(t, 1 - t) * 10 + 0.2);
-      return out.set(Math.sin(w) * 0.058 * close, -t * PALM, Math.cos(w) * 0.022 * close);
+      return out.set(Math.sin(w) * lerp(0.03, 0.048, t) * close, -t * PALM, Math.cos(w) * 0.02 * close);
     },
   });
 }
@@ -216,11 +216,11 @@ export class MawModel extends CreatureBase {
   constructor(scene, loader) {
     super(scene, loader);
     const matte = (o) => new THREE.MeshLambertMaterial(o); // 반사가 없어야 그림의 까만 입안과 먹선이 손전등 아래서도 까맣다
-    const skin = this.paper('art/horror_maw_head.jpg', SKIN_COLOR, HEAD_TINT, matte);
+    const skin = this.paper('art/horror_maw_head.jpg', SKIN_COLOR, HEAD_TINT, (o) => matte({ ...o, fog: false })); // 어둠 속 이빨 빛이 안개에 묻히지 않게
     this.glowMap(skin, 'art/horror_maw_glow.jpg');
     this.faceMat = skin;
     const body = this.paper('art/horror_maw_body.jpg', SKIN_COLOR, TINT, matte);
-    const hair = this.paper('art/horror_maw_hair.webp', HAIR_COLOR, TINT, (o) => new THREE.MeshLambertMaterial({ ...o, alphaTest: 0.4, side: THREE.DoubleSide }));
+    const hair = this.paper('art/horror_maw_hair.webp', HAIR_COLOR, TINT, (o) => new THREE.MeshLambertMaterial({ ...o, alphaTest: 0.3, side: THREE.DoubleSide }));
 
     const rig = new Rig(this.group);
     this.hips = rig.bone(null, 0, HIPS_Y, 0);
@@ -230,7 +230,7 @@ export class MawModel extends CreatureBase {
 
     this.head = rig.bone(this.spine, 0, CHIN_Y + PIVOT - HIPS_Y - SPINE_UP, 0.0);
     this.head.rotation.order = 'YXZ';
-    const shell = shellHead({ keys: HEAD_KEYS, edgeU: split, edgeL: split, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 24, segs: 52 });
+    const shell = shellHead({ keys: HEAD_KEYS, edgeU: split, edgeL: split, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 22, segs: 50 });
     const face = mergeGeometries([morphed(shell.skull), morphed(shell.jaw, jawMorph(shell.jaw, MOUTH)), morphed(throat(0.17, 0.42, -0.08)), morphed(throat(0.15, 0.22, -0.06))]);
     face.morphTargetsRelative = true; // 합치면 이 표시가 사라진다. 까만 덩어리 둘은 벌어진 입으로 몸이 보이지 않게 막는다
     this.face = this.add(this.head, face, skin, true, 0, -PIVOT, 0);
@@ -239,9 +239,9 @@ export class MawModel extends CreatureBase {
     const legLen = THIGH + SHIN;
     this.legs = [-1, 1].map((side) => {
       const hip = rig.bone(this.hips, side * HIP_X, -0.08);
-      rig.part('body', hip, mergeGeometries([knob(0.062, 0, -0.02, 0, skinUv), limb(THIGH, (t) => lerp(0.06, 0.036, smooth(t)), { rows: 6, segs: 8, uv: stripUv(LEG_CELL, THIGH, 0, THIGH / legLen) })]));
+      rig.part('body', hip, mergeGeometries([knob(0.062, 0, -0.02, 0, skinUv), limb(THIGH, (t) => lerp(0.06, 0.036, smooth(t)), { rows: 6, segs: 6, uv: stripUv(LEG_CELL, THIGH, 0, THIGH / legLen) })]));
       const knee = rig.bone(hip, 0, -THIGH);
-      rig.part('body', knee, mergeGeometries([knob(0.04, 0, -0.005, 0.005, skinUv), limb(SHIN, (t) => 0.026 + 0.01 * Math.sin(t * Math.PI), { rows: 6, segs: 8, uv: stripUv(LEG_CELL, SHIN, THIGH / legLen, 1) })]));
+      rig.part('body', knee, mergeGeometries([knob(0.04, 0, -0.005, 0.005, skinUv), limb(SHIN, (t) => 0.026 + 0.01 * Math.sin(t * Math.PI), { rows: 6, segs: 6, uv: stripUv(LEG_CELL, SHIN, THIGH / legLen, 1) })]));
       const ankle = rig.bone(knee, 0, -SHIN);
       rig.part('body', ankle, footGeometry(side));
       return { hip, knee, ankle, phase: side > 0 ? 0 : Math.PI };
@@ -249,11 +249,11 @@ export class MawModel extends CreatureBase {
 
     this.arms = [-1, 1].map((side) => {
       const shoulder = rig.bone(this.spine, side * SHOULDER.x, SHOULDER.y, 0);
-      rig.part('body', shoulder, mergeGeometries([knob(0.05, 0, 0, 0, skinUv), limb(UPPER, (t) => lerp(0.042, 0.03, t), { rows: 5, segs: 8, uv: stripUv(ARM_CELL, UPPER, 0, UPPER / armLen) })]));
+      rig.part('body', shoulder, mergeGeometries([knob(0.05, 0, 0, 0, skinUv), limb(UPPER, (t) => lerp(0.042, 0.03, t), { rows: 5, segs: 6, uv: stripUv(ARM_CELL, UPPER, 0, UPPER / armLen) })]));
       const elbow = rig.bone(shoulder, 0, -UPPER);
-      rig.part('body', elbow, mergeGeometries([knob(0.033, 0, 0, 0, skinUv), limb(FORE, (t) => lerp(0.031, 0.021, t), { rows: 5, segs: 8, uv: stripUv(ARM_CELL, FORE, UPPER / armLen, (UPPER + FORE) / armLen) })]));
+      rig.part('body', elbow, mergeGeometries([knob(0.03, 0, 0, 0, skinUv), limb(FORE, (t) => lerp(0.031, 0.021, t), { rows: 5, segs: 6, uv: stripUv(ARM_CELL, FORE, UPPER / armLen, (UPPER + FORE) / armLen) })]));
       const wrist = rig.bone(elbow, 0, -FORE);
-      rig.part('body', wrist, mergeGeometries([knob(0.026, 0, 0, 0, skinUv), palmGeometry()]));
+      rig.part('body', wrist, mergeGeometries([knob(0.022, 0, 0, 0, skinUv), palmGeometry()]));
       const fingers = rig.bone(wrist, 0, -WRIST_DROP);
       rig.part('body', fingers, fingersGeometry(side));
       return { shoulder, elbow, wrist, fingers, side, phase: side > 0 ? Math.PI : 0 };
@@ -265,6 +265,7 @@ export class MawModel extends CreatureBase {
 
     this.headHeight = 2.08;
     this.faceNear = 0.85; // 잡히는 장면에서 머리 받침점까지 거리 (미터). 입이 화면을 채운다
+    this.faceTilt = 0; // 잡히는 장면의 머리 기울기. 등을 숙인 만큼 되돌려 입이 정면을 본다
     this.pose = { ...POSE.walk };
     this.phase = 0;
     this.gait = 0;
@@ -321,6 +322,7 @@ export class MawModel extends CreatureBase {
 
     // 앞을 못 보니 머리를 좌우로 저으며 냄새를 맡는다
     const sniff = Math.sin(this.sweep) * p.sweep;
+    this.faceTilt = -p.lean;
     this.head.rotation.set(-p.lean * 0.75 + 0.05 * breath, sniff, sniff * 0.22);
     this.chewT -= dt;
     if (this.chewT <= 0) {

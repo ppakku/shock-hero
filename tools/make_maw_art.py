@@ -92,17 +92,21 @@ rows = np.linspace(CROWN + 4, CHIN - 1, HEAD_PX).astype(int)
 tone = side_tone(front, rows, np.maximum(hw, 60), CX, 16, 0.8)
 # 뒤 그림은 머리와 목이 함께 있어 머리뼈 아래 끝(뒤통수 그늘)까지만 쓴다
 rows_b = np.linspace(CROWN + 4, 800, HEAD_PX).astype(int)
-head = wrap(rows, rows_b, np.maximum(hw, 8), np.maximum(hw, 8), cover_bg(front, mask), cover_bg(back, mask_b), CX, CX, HEAD_W, FRONT_HEAD, 14, tone)
+yy, xx = np.mgrid[0:front.shape[0], 0:front.shape[1]]
+ang = np.degrees(np.arctan2(np.abs(xx - MOUTH[0]), MOUTH[1] - yy))
+inside = np.hypot(xx - MOUTH[0], yy - MOUTH[1]) < edge_at(ang) * 0.93
+# 입이 갈라지는 줄 둘레는 새까맣게 칠해서, 턱이 내려가도 까만 틈의 경계가 보이지 않는다
+night = 1 - inside * np.exp(-(((yy - MOUTH[1]) / 26.0) ** 2)) * np.clip(1.3 - np.abs(xx - MOUTH[0]) / 330, 0, 1).clip(0, 1) ** 0.3
+back_plain = (cover_bg(back, mask_b) * 0.85).astype('uint8')
+head = wrap(rows, rows_b, np.maximum(hw, 8), np.maximum(hw, 8), (cover_bg(front, mask) * night[..., None]).astype('uint8'), back_plain, CX, CX, HEAD_W, FRONT_HEAD, 14, tone, -0.25)
 Image.fromarray(head).filter(ImageFilter.UnsharpMask(2, 50, 2)).save(f'{OUT}/horror_maw_head.jpg', quality=85)
 
 # 이빨 빛: 입 안쪽에서 밝고 누런 곳만 남긴다. 머리 그림과 같은 자리에 온다
-h, w = front.shape[:2]
-yy, xx = np.mgrid[0:h, 0:w]
-ang = np.degrees(np.arctan2(np.abs(xx - MOUTH[0]), MOUTH[1] - yy))
-inside = np.hypot(xx - MOUTH[0], yy - MOUTH[1]) < edge_at(ang) * 0.93
 lum = front.astype(float).mean(-1)
-teeth = (np.clip((lum - 110) / 70, 0, 1) * inside * 255).astype('uint8')
-glow_rgb = np.dstack([teeth] * 3)
+teeth = np.clip((lum - 90) / 60, 0, 1) * inside
+teeth = np.asarray(Image.fromarray((teeth * 255).astype('uint8')).filter(ImageFilter.MaxFilter(3)))
+face_glow = lum * mask * ~inside * 0.05  # 살도 아주 희미하게 떠서 어둠에서 머리 윤곽이 잡힌다
+glow_rgb = np.dstack([np.maximum(teeth, face_glow).astype('uint8')] * 3)
 glow = wrap(rows, rows_b, np.maximum(hw, 8), np.maximum(hw, 8), glow_rgb, np.zeros_like(back), CX, CX, HEAD_W // 2, FRONT_HEAD, 14, np.zeros_like(tone))[::2]
 Image.fromarray(glow).filter(ImageFilter.GaussianBlur(1)).save(f'{OUT}/horror_maw_glow.jpg', quality=80)
 
@@ -110,22 +114,29 @@ Image.fromarray(glow).filter(ImageFilter.GaussianBlur(1)).save(f'{OUT}/horror_ma
 def hair_half(rgb):
     a = rgb.astype(float)
     pink = np.minimum(a[..., 0], a[..., 2]) - a[..., 1]
-    keep = 1 - np.clip((pink - 30) / 60, 0, 1)
+    keep = 1 - np.clip((pink - 20) / 200, 0, 1)  # 먹선 가장자리까지 살려서 멀리서도 가닥이 보인다
+    keep[(a[..., 0] - a[..., 1] > 8) & (a[..., 0] > 60) & (pink <= 20)] = 0  # 머리털 사이로 보이는 살은 뺀다. 살은 머리 그림에 있다
     line = np.interp(np.abs(np.arange(rgb.shape[1]) - CX), *zip(*HAIR_LINE)) + 50
     fade = np.clip((line[None, :] - np.arange(rgb.shape[0])[:, None]) / 50, 0, 1)
     cut = rgb.copy()
-    for c in (0, 2):
-        cut[..., c] = np.where(keep < 1, np.minimum(cut[..., c], cut[..., 1] + 20), cut[..., c])
+    cut[pink > 20] = (8, 10, 8)  # 마젠타가 섞인 곳은 먹빛으로
     return np.dstack([cut, (keep * fade * 255).astype('uint8')])
 
 
 HAIR_ROWS = 560  # 머리털 그림을 쓰는 줄 수
+SIDE_HAIR = 140  # 옆머리를 메우는 반폭
 n = front.shape[1]
 strip = np.zeros((HAIR_ROWS, n * 2, 4), 'uint8')
 strip[:, n // 2:n // 2 + n] = hair_half(front)[:HAIR_ROWS]
 back_hair = hair_half(back)[:HAIR_ROWS]  # 옆을 돌아 뒤로 가면 뒤 그림의 왼쪽 끝부터 이어진다
 strip[:, :n // 2] = back_hair[:, n // 2:]
 strip[:, n // 2 + n:] = back_hair[:, :n // 2]
+# 그림 양끝은 비어 있으니, 옆머리는 뒤 그림 가운데 머리털을 세로로 늘여 메운다. 옆에서도 한 덩어리로 보인다
+side = Image.fromarray(back_hair[:330, CX - SIDE_HAIR:CX + SIDE_HAIR], 'RGBA').resize((SIDE_HAIR * 2, 440))
+side = np.asarray(side)
+for seam in (n // 2, n // 2 + n):
+    area = strip[40:480, seam - SIDE_HAIR:seam + SIDE_HAIR]
+    area[side[..., 3] > area[..., 3]] = side[side[..., 3] > area[..., 3]]
 strip[-16:, :16] = (8, 8, 6, 255)  # 먹빛 한 칸: 3D 머리털 가닥이 여기를 쓴다
 Image.fromarray(strip, 'RGBA').resize((HAIR_W, HAIR_H), Image.LANCZOS).save(f'{OUT}/horror_maw_hair.webp', quality=85, method=6)
 
