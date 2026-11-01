@@ -14,6 +14,17 @@ export function pickRound(last, rand = Math.random) {
   return { mapId: maps[Math.floor(rand() * maps.length)], monsterId: monsters[Math.floor(rand() * monsters.length)] };
 }
 
+export const RANDOM = 'random'; // 고르기 화면의 랜덤 칸
+
+// 고르기 화면의 선택을 실제 판으로 바꾼다. 랜덤 칸만 지난 판과 다르게 뽑는다
+export function chooseRound(choice, last, rand = Math.random) {
+  const drawn = pickRound(last, rand);
+  return {
+    mapId: MAP_IDS.includes(choice?.mapId) ? choice.mapId : drawn.mapId,
+    monsterId: MONSTER_IDS.includes(choice?.monsterId) ? choice.monsterId : drawn.monsterId,
+  };
+}
+
 // 시험용 주소 ?map=factory&monster=gazer. 하나만 주면 나머지는 첫 조합을 쓰고, 없거나 틀리면 null
 export function forcedRound(search) {
   const q = new URLSearchParams(search);

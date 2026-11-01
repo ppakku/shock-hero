@@ -16,6 +16,8 @@ import { HorrorInput } from './input.js';
 import { HorrorHud, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
+
+export { showChooser } from './chooser.js';
 import { FINAL_LINES, NOTE_DANGER_LINE, fillName } from './story.js';
 
 const EYE = 1.6; // 눈높이 (미터)

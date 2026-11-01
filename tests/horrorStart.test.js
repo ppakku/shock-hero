@@ -61,7 +61,7 @@ describe('시작 실패', () => {
     const game = { pause: vi.fn(), resume: vi.fn() };
     const onExit = vi.fn();
     class Boom { constructor() { throw new Error('만들기 실패'); } }
-    await startHorror(game, { onExit }, async () => ({ HorrorGame: Boom }));
+    await startHorror(game, { onExit }, async () => ({ HorrorGame: Boom, showChooser: (r, o) => o.onStart(o.choice) }));
     expect(game.pause).toHaveBeenCalled();
     expect(game.resume).toHaveBeenCalled();
     expect(root.textContent).toContain('시작하지 못했어요');
@@ -80,7 +80,7 @@ describe('시작 실패', () => {
     const onExit = vi.fn();
     const exit = vi.fn();
     class Late { start() { throw new Error('시작 실패'); } exit() { exit(); this.onExit(); } constructor(r, o) { this.onExit = o.onExit; } }
-    await startHorror(game, { onExit }, async () => ({ HorrorGame: Late }));
+    await startHorror(game, { onExit }, async () => ({ HorrorGame: Late, showChooser: (r, o) => o.onStart(o.choice) }));
     vi.advanceTimersByTime(2600);
     expect(exit).toHaveBeenCalledTimes(1);
     expect(onExit).toHaveBeenCalledTimes(1);
@@ -119,14 +119,21 @@ describe('한 판 더', () => {
       }
       start() {}
     }
-    return { root, made, Fake, saved: () => saved };
+    // 고르기 화면 대신 picks 를 차례로 고르고 들어간다. 다 쓰면 전부 랜덤이다
+    const shown = [];
+    const picks = [];
+    const showChooser = (r, o) => {
+      shown.push(o.choice);
+      o.onStart(picks.shift() ?? o.choice);
+    };
+    return { root, made, Fake, showChooser, shown, picks, saved: () => saved };
   }
 
   it('판을 고르면 바로 저장하고, 한 판 더는 다른 판을 새로 만든다', async () => {
-    const { root, made, Fake, saved } = setup();
+    const { root, made, Fake, showChooser, saved } = setup();
     const game = { pause: vi.fn(), resume: vi.fn() };
     const onExit = vi.fn();
-    await startHorror(game, { onExit }, async () => ({ HorrorGame: Fake }));
+    await startHorror(game, { onExit }, async () => ({ HorrorGame: Fake, showChooser }));
     expect(saved().horror.last).toEqual(made[0].o.round);
     made[0].o.onAgain();
     expect(made).toHaveLength(2);
@@ -142,10 +149,22 @@ describe('한 판 더', () => {
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 
+  it('고른 맵과 괴물로 시작하고, 한 판 더는 방금 고른 것을 다시 보여 준다', async () => {
+    const { made, Fake, showChooser, shown, picks } = setup();
+    picks.push({ mapId: 'school', monsterId: 'maw' });
+    await startHorror({ pause: vi.fn(), resume: vi.fn() }, { onExit: vi.fn() }, async () => ({ HorrorGame: Fake, showChooser }));
+    expect(shown[0]).toEqual({ mapId: 'random', monsterId: 'random' });
+    expect(made[0].o.round).toEqual({ mapId: 'school', monsterId: 'maw' });
+    made[0].o.onAgain();
+    expect(shown[1]).toEqual({ mapId: 'school', monsterId: 'maw' });
+    expect(made[1].o.round).toEqual({ mapId: 'school', monsterId: 'maw' }); // 같은 판을 또 고르면 그대로 한다
+  });
+
   it('주소로 정한 판은 첫 판에만 쓴다', async () => {
-    const { made, Fake } = setup();
+    const { made, Fake, showChooser, shown } = setup();
     vi.stubGlobal('location', { search: '?map=sewer&monster=maw' });
-    await startHorror({ pause: vi.fn(), resume: vi.fn() }, { onExit: vi.fn() }, async () => ({ HorrorGame: Fake }));
+    await startHorror({ pause: vi.fn(), resume: vi.fn() }, { onExit: vi.fn() }, async () => ({ HorrorGame: Fake, showChooser }));
+    expect(shown).toHaveLength(0); // 주소로 정하면 고르기 화면을 건너뛴다
     expect(made[0].o.round).toEqual({ mapId: 'sewer', monsterId: 'maw' });
     made[0].o.onAgain();
     expect(made[1].o.round.mapId).not.toBe('sewer');
