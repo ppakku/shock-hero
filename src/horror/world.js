@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { CELL, chunksInSight } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
-import { artLoader, loadArt, faceBox } from './art.js';
+import { artLoader, loadArt, faceBox, bandBox } from './art.js';
 
 const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
@@ -42,8 +42,8 @@ const faceZ = (f) => (f.cy + 0.5 + f.dy / 2) * CELL;
 // 벽면에 붙는 네모. 벽을 따라 w, 벽에서 나오는 길이 d
 function setOnWall(mesh, i, f, w, h, d, y) {
   place.position.set(faceX(f) - (f.dx * d) / 2, y, faceZ(f) - (f.dy * d) / 2);
-  place.rotation.set(0, 0, 0);
-  place.scale.set(f.dx ? d : w, h, f.dx ? w : d);
+  place.rotation.set(0, f.dx ? Math.PI / 2 : 0, 0); // 돌려 세워서 그림 앞면이 늘 방 쪽을 본다
+  place.scale.set(w, h, d);
   place.updateMatrix();
   mesh.setMatrixAt(i, place.matrix);
 }
@@ -59,8 +59,15 @@ function addShutter(group, c, map, color, art) {
   return { mesh, t: 0 };
 }
 
+// 빛을 받는 물건에 그림을 입힌다. 못 받으면 부르지 않아 원래 색 그대로다
+function paintPlain(mat, tex, tint = 0xffffff) {
+  mat.map = tex;
+  mat.color.setHex(tint);
+  mat.needsUpdate = true;
+}
+
 // 벽 등, 벽에 붙은 큰 물건, 배관. 전부 벽에 붙어 있고 종류마다 한 번에 그린다
-function addDecor(scene, map, k, mats, decor) {
+function addDecor(scene, map, k, mats, decor, tiled) {
   const { wall: wallMat, board: boardMat } = mats;
   const { light, machine, pipe, low, lintel } = decor;
   const spots = decorSpots(map, decor.tile);
@@ -83,7 +90,9 @@ function addDecor(scene, map, k, mats, decor) {
   machines.receiveShadow = true;
 
   const pipeGeo = new THREE.CylinderGeometry(pipe.r, pipe.r, CELL, 6, 1, true);
-  const pipes = new THREE.InstancedMesh(pipeGeo, lambert(pipe.color), spots.pipes.length * pipe.ys.length);
+  const pipeMat = lambert(pipe.color);
+  tiled(`${pipe.art}.jpg`, 1, pipe.repeat, (tex) => paintPlain(pipeMat, tex, pipe.tint));
+  const pipes = new THREE.InstancedMesh(pipeGeo, pipeMat, spots.pipes.length * pipe.ys.length);
   spots.pipes.forEach((f, i) => pipe.ys.forEach((y, j) => {
     place.position.set(faceX(f) - f.dx * pipe.off, y, faceZ(f) - f.dy * pipe.off);
     place.rotation.set(f.dx ? Math.PI / 2 : 0, 0, f.dx ? 0 : Math.PI / 2); // 벽과 나란히 눕힌다
@@ -94,7 +103,9 @@ function addDecor(scene, map, k, mats, decor) {
 
   const meshes = [lights, machines, pipes];
   if (low) {
-    const lows = new THREE.InstancedMesh(box, lambert(low.color), spots.lows.length);
+    const lowMat = lambert(low.color);
+    tiled(`${low.art}.jpg`, 1, 1, (tex) => paintPlain(lowMat, tex));
+    const lows = new THREE.InstancedMesh(bandBox(low.band), lowMat, spots.lows.length);
     spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
     meshes.push(lows);
   }
@@ -162,9 +173,18 @@ export function buildWorld(scene, map, k, theme) {
     const tex = loadArt(loader, file, () => ready(tex));
     if (tex) textures.push(tex);
   };
+  // 되풀이해서 까는 그림. 받은 뒤 가로 x 번, 세로 y 번 되풀이한다
+  const tiled = (file, x, y, ready) => art(file, (tex) => {
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(x, y);
+    ready(tex);
+  });
   const wallMat = mats.wall;
   const floorMat = mats.floor;
   const ceilMat = lambert(theme.ceil);
+  const { art: ceilArt, repeat: ceilRepeat, tint: ceilTint } = theme.ceilArt;
+  tiled(`${ceilArt}.jpg`, ceilRepeat, ceilRepeat, (tex) => paintPlain(ceilMat, tex, ceilTint));
   const wallGeo = new THREE.BoxGeometry(CELL, WALL_H, CELL);
   const chunks = new Map();
   const chunkOf = (cx, cy) => {
@@ -241,10 +261,17 @@ export function buildWorld(scene, map, k, theme) {
   art('horror_panel.jpg', (tex) => paint(panelMat, tex));
   art('horror_gate.jpg', (tex) => paint(gateMat, tex));
 
-  const { lightMat, counts } = addDecor(scene, map, k, mats, theme.decor);
+  const { lightMat, counts } = addDecor(scene, map, k, mats, theme.decor, tiled);
   const lightColor = new THREE.Color(theme.lightColor);
   const flow = theme.floor.flow;
   let lightLevel = -1;
+  // 등 그림에는 제 색이 있다. 색을 입히면 비상구의 흰 글자가 초록에 묻혀서 밝기만 남긴다
+  art(`${theme.decor.light.art}.jpg`, (tex) => {
+    lightMat.map = tex;
+    lightMat.needsUpdate = true;
+    lightColor.setHex(0xffffff);
+    lightLevel = -1;
+  });
   const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], mats[doorPart]));
   doors.forEach((d, i) => art(`${theme.doorSet}_${LOCK_NAMES[i]}.jpg`, (tex) => {
     d.ownArt = true;
@@ -298,6 +325,7 @@ export function buildWorld(scene, map, k, theme) {
     LOCK_NAMES.forEach((name, lock) => wear(meshes.filter((_, i) => keys[i].lock === lock), `horror_key_${name}.webp`, k.art.key));
     return meshes;
   };
+  const paintPapers = (meshes, file) => art(file, (tex) => meshes.forEach((m) => paintPlain(m.material, tex)));
   // 쪽지는 바닥에 떨어진 종이 한 장이다. 어느 쪽에서 봐도 납작해지지 않는다.
   // 구역에 넣어서 벽 너머에 있으면 같이 그리지 않는다. spots: horrorNotes 의 자리 (칸 가운데 좌표)
   const addNotes = (spots) => {
@@ -308,21 +336,21 @@ export function buildWorld(scene, map, k, theme) {
       mesh.rotation.set(0, NOTE.turn * i, 0);
       return mesh;
     });
-    art('horror_note.jpg', (tex) => meshes.forEach((m) => {
-      m.material.map = tex;
-      m.material.color.setHex(0xffffff);
-      m.material.needsUpdate = true;
-    }));
+    paintPapers(meshes, 'horror_note.jpg');
     return meshes;
   };
 
   // 정문 번호 단서: 평범한 쪽지와 달리 붉고 어둠 속에서도 눈에 띈다
-  const addClues = (spots) => spots.map((c, i) => {
-    const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), CLUE_COLOR, chunkOf(c.cx, c.cy));
-    mesh.position.y = NOTE.y;
-    mesh.rotation.set(0, NOTE.turn * i, 0);
-    return mesh;
-  });
+  const addClues = (spots) => {
+    const meshes = spots.map((c, i) => {
+      const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), CLUE_COLOR, chunkOf(c.cx, c.cy));
+      mesh.position.y = NOTE.y;
+      mesh.rotation.set(0, NOTE.turn * i, 0);
+      return mesh;
+    });
+    paintPapers(meshes, 'horror_clue.jpg');
+    return meshes;
+  };
 
   return {
     wallMaterial: wallMat,

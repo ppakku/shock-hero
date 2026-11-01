@@ -39,12 +39,13 @@ export const factoryTheme = {
   floor: { art: 'horror_floor', plain: 0x35312d, repeat: 7 }, // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
   locker: { art: 'horror_locker', plain: 0x4a5a58, repeat: 1, tint: 0xa8a8a8 }, // 밝은 그림이라 손전등에 날아가지 않게 누른다
   ceil: 0x1b1a19,
+  ceilArt: { art: 'horror_ceil_factory', repeat: 7, tint: 0xffffff }, // 그림 평균이 ceil 색과 같아지게 tint 로 눌러서 어둠이 그대로다
   fog: 0x000000,
   ambient: 0x8890a8,
   lightColor: 0xff3a14,
   decor: {
-    light: { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }, // 비상등 크기와 높이 (미터)
+    light: { w: 0.7, h: 0.2, d: 0.06, y: 2.4, art: 'horror_light_factory' }, // 철망 씌운 비상등 크기와 높이 (미터)
     machine: { w: [1.7, 2.2], h: [1.5, 1.8, 2.1], y: 0, tints: [0xb4bcc4] }, // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
-    pipe: { r: 0.07, off: 0.12, ys: [2.62, 2.8], color: 0x2e3236 }, // 벽을 따라가는 배관 두 줄
+    pipe: { r: 0.07, off: 0.12, ys: [2.62, 2.8], color: 0x2e3236, art: 'horror_pipe_factory', repeat: 4, tint: 0xffffff }, // 벽을 따라가는 배관 두 줄
   },
 };
