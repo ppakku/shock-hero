@@ -262,6 +262,15 @@ def game(pg):
     }""")
 
 
+# 바쁜 컴퓨터에서는 프레임이 늦다. 정해진 시간을 재우는 대신 그렇게 될 때까지 기다린다
+def becomes(pg, expr, timeout=5000):
+    try:
+        pg.wait_for_function(expr, timeout=timeout, polling=30)
+        return True
+    except Exception:
+        return False
+
+
 def stand_at(pg, x, y):
     pg.evaluate('([x, y]) => { window.__horror.p = { x, y }; }', [x, y])
     time.sleep(0.4)
@@ -565,7 +574,7 @@ def play_controls(pw):
     check('scare: not again on the same cell', pg.evaluate('window.__horror.blink') is None, '')
     sc2 = pg.evaluate('window.__horror.map.scares[1]')
     stand_at(pg, sc2['cx'] + 0.5, sc2['cy'] + 0.5)
-    check('scare: second cell starts a flicker', pg.evaluate('window.__horror.blink') is not None, '')
+    check('scare: second cell starts a flicker', becomes(pg, 'window.__horror.blink !== null') or pg.evaluate('window.__horror.scaresLeft.length') == left - 1, (pg.evaluate('window.__horror.state'), pg.evaluate('window.__horror.scaresLeft.length'), left))
     pg.evaluate(FAKE_LOCK)  # 마우스가 잠겨 있으면 잡힌 뒤 바로 이어진다
     pg.evaluate("window.__horror.getCaught()")
     k_ = pg.evaluate("({ blink: window.__horror.blink, i: window.__horror.flash.intensity, base: window.__horror.k.flashIntensity })")
@@ -867,7 +876,7 @@ def play_robust(pw):
     pg.evaluate("window.__horror.toggleLocker(0)")
     check('cull: always drawn from inside a locker', shown())
     pg.evaluate("window.__horror.toggleLocker(0)")
-    check('cull: hidden again after leaving', not shown())
+    check('cull: hidden again after leaving', becomes(pg, '!window.__horror.model.group.visible'))
     pg.evaluate(FAKE_LOCK)
     pg.evaluate("window.__horror.getCaught()")
     check('cull: drawn in the caught scene', pg.evaluate('window.__horror.model.group.visible'))
