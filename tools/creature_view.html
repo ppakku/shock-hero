@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Creature view</title>
+<style>html,body{margin:0;height:100%;background:#000}canvas{display:block}</style></head>
+<body>
+<script type="module">
+// 괴물 셋을 게임과 같은 어둠과 손전등 아래에 세워 보는 화면. tools/shot_creature.py 가 쓴다.
+import * as THREE from 'three';
+import { cfg } from '/src/config/index.js';
+import { createCreature } from '/src/horror/creatureModel.js';
+
+const k = cfg.horror;
+const CELL = 3;
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.BasicShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0);
+scene.fog = new THREE.Fog(0, 3, k.viewCells * CELL);
+const ambient = new THREE.AmbientLight(0x8890a8, k.ambient);
+scene.add(ambient);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, k.viewCells * CELL + 6);
+scene.add(camera);
+const flash = new THREE.SpotLight(0xfff2d8, k.flashIntensity, k.flashDistance, k.flashAngle, k.flashPenumbra, k.flashDecay);
+flash.castShadow = true;
+flash.shadow.mapSize.set(512, 512);
+flash.position.set(0.15, -0.2, 0);
+flash.target.position.set(0.15, -0.2, -1);
+camera.add(flash, flash.target);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x55504a, roughness: 1 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+let model = null;
+let id = null;
+const player = { x: 0, y: 0 };
+
+window.view = async ({ who, mode = 'patrol', frozen = false, cam = [0, 1.6, 4], at = [0, 1.5, 0], light = true, heading = 0, walk = 0, fov = 70, steps = 60, face = false }) => {
+  if (who !== id) {
+    model?.dispose();
+    model = createCreature(who, scene);
+    id = who;
+    window.model = model;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+  camera.position.set(cam[0], cam[1], cam[2]);
+  camera.lookAt(at[0], at[1], at[2]);
+  camera.updateMatrixWorld(true);
+  flash.visible = light;
+  player.x = cam[0] / CELL;
+  player.y = cam[2] / CELL;
+  const s = { x: 0, y: 0, heading, mode, frozen };
+  for (let i = 0; i < steps; i++) {
+    if (walk) { model.lastX = -(walk / 30 / CELL); model.lastY = 0; }
+    model.update(s, 1 / 30, player);
+  }
+  if (face) { // HorrorGame.placeFace 와 같은 자리: 머리 받침점 위 0.2m 가 눈높이, 0.6m 앞
+    model.head.rotation.set(0, 0, 0);
+    model.group.updateMatrixWorld(true);
+    const p = model.head.getWorldPosition(new THREE.Vector3());
+    model.group.position.y += 1.6 - p.y - 0.2;
+    model.group.position.z += -(model.faceNear ?? 0.6) - p.z;
+    camera.position.set(0, 1.6, 0);
+    camera.lookAt(0, 1.6, -1);
+    camera.updateMatrixWorld(true);
+    flash.intensity = k.flashIntensity * 0.14;
+  } else flash.intensity = k.flashIntensity;
+  renderer.render(scene, camera);
+  return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, textures: model.textures.length };
+};
+window.ready = true;
+</script>
+</body>
+</html>

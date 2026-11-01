@@ -55,7 +55,7 @@ export const smooth = (t) => t * t * (3 - 2 * t);
 const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 
 // 앞뒤 표(keys)에서 높이 y 의 폭과 두께를 읽는다
-function sampleKeys(keys, y) {
+export function sampleKeys(keys, y) {
   for (let i = 1; i < keys.length; i++) {
     const a = keys[i - 1];
     const b = keys[i];
@@ -68,8 +68,8 @@ function sampleKeys(keys, y) {
 }
 
 // 표면 함수 at(t, w) 로 그물을 짠다. t 는 위에서 아래로 0~1, w 는 앞(0)에서 오른쪽(+)으로 돈다.
-// keep 으로 칸을 골라 같은 표면을 그림 재질과 피부 재질로 나눈다.
-function surface({ rows, segs, at, uv, shade = () => 1, keep = () => true }) {
+// keep 으로 칸을 골라 같은 표면을 그림 재질과 피부 재질로 나눈다. flip 은 안쪽을 보는 면이다.
+export function surface({ rows, segs, at, uv, shade = () => 1, keep = () => true, flip = false }) {
   const pos = [];
   const nor = [];
   const tex = [];
@@ -95,6 +95,7 @@ function surface({ rows, segs, at, uv, shade = () => 1, keep = () => true }) {
       du.cross(dv);
       if (du.lengthSq() < 1e-14) du.set(0, t < 0.5 ? 1 : -1, 0); // 뚜껑 면
       du.normalize();
+      if (flip) du.negate();
       pos.push(p.x, p.y, p.z);
       nor.push(du.x, du.y, du.z);
       const [a, b] = uv(p, t, w);
@@ -109,7 +110,8 @@ function surface({ rows, segs, at, uv, shade = () => 1, keep = () => true }) {
       if (!keep((r + 0.5) / rows, ((s + 0.5) / segs - 0.5) * TAU, r, s)) continue;
       const a = r * row + s;
       const b = a + row;
-      idx.push(a, b, a + 1, a + 1, b, b + 1);
+      if (flip) idx.push(a, a + 1, b, a + 1, b + 1, b);
+      else idx.push(a, b, a + 1, a + 1, b, b + 1);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -156,11 +158,11 @@ export function knob(r, x = 0, y = 0, z = 0) {
 }
 
 // 두 점을 잇는 뾰족한 뼈 (손가락, 발톱, 등뼈 돌기)
-function bone(a, b, ra, rb, c = 1) {
+export function bone(a, b, ra, rb, c = 1, sides = 4) {
   const from = new THREE.Vector3(...a);
   const dir = new THREE.Vector3(...b).sub(from);
   const len = dir.length();
-  const g = new THREE.CylinderGeometry(rb, ra, len, 4, 1, true);
+  const g = new THREE.CylinderGeometry(rb, ra, len, sides, 1, true);
   g.translate(0, len / 2, 0);
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
   g.translate(from.x, from.y, from.z);
@@ -170,7 +172,7 @@ function bone(a, b, ra, rb, c = 1) {
 }
 
 // 점을 따라 이어지는 손가락 하나. 끝 토막이 어두운 발톱이다
-function digit(points, r0) {
+export function digit(points, r0) {
   const parts = [];
   const last = points.length - 2;
   for (let i = 0; i <= last; i++) {
