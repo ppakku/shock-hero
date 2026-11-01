@@ -179,7 +179,7 @@ describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, 
   });
 });
 
-describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
+describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw', 'mole'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
   it('언제나 탈출하고 평균 1번에서 3번 잡힌다', () => {
     const s = summary(Array.from({ length: 40 }, (_, i) => playGame(i + 1, { child: true }, 1500, mapId, monsterId)));
     console.log(mapId, monsterId, '아이 봇', s);

@@ -250,8 +250,40 @@ describe('눈뜬이를 보는 일', () => {
   });
 });
 
+describe('땅속이', () => {
+  it('땅속에 있으면 쇼크가 닿지 않고, 땅 위에 있으면 맞는다', () => {
+    const g = makeGame('factory', 'mole');
+    g.state = 'play';
+    g.hud.flashShock = () => {};
+    Object.assign(g.stalker, { x: g.p.x + 1, y: g.p.y, mode: 'patrol' });
+    g.run.shock = true;
+    g.doPunch();
+    expect(g.stalker.mode).toBe('patrol');
+    Object.assign(g.stalker, { mode: 'chase' });
+    g.run.shock = true;
+    g.doPunch();
+    expect(g.stalker.mode).toBe('stunned');
+    g.exit();
+  });
+
+  it('안내 화면 뒤에서 몸을 그려 두고 다시 땅속으로 돌려놓는다', () => {
+    const g = makeGame('factory', 'mole');
+    const rises = [];
+    g.gun.render = () => {};
+    const set = g.model.setRise.bind(g.model);
+    g.model.setRise = (r) => {
+      rises.push(r);
+      set(r);
+    };
+    g.warmUp();
+    expect(rises[0]).toBe(1);
+    expect(g.model.face.visible).toBe(false);
+    g.exit();
+  });
+});
+
 describe('잡히는 장면', () => {
-  it.each(['seino', 'gazer', 'maw'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
+  it.each(['seino', 'gazer', 'maw', 'mole'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
     const g = makeGame('factory', id);
     Object.assign(g.stalker, { x: g.p.x + 0.4, y: g.p.y });
     g.getCaught();

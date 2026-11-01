@@ -1,11 +1,11 @@
 # 괴물 모형을 앞, 옆, 가까이, 멀리, 어둠에서 찍는다. 게임을 켜지 않고 모형만 본다.
 # 사용법: npx vite --port 5288 --strictPort 를 켠 뒤
-#   python3 tools/shot_creature.py 출력폴더 gazer maw
+#   python3 tools/shot_creature.py 출력폴더 gazer maw mole
 import json, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-WHO = sys.argv[2:] or ['gazer', 'maw']
+WHO = sys.argv[2:] or ['gazer', 'maw', 'mole']
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 URL = f"http://localhost:{os.environ.get('PORT', '5288')}/tools/creature_view.html"
@@ -37,7 +37,7 @@ with sync_playwright() as p:
     pg.wait_for_function('window.ready', timeout=30000)
     for who in WHO:
         for name, view in SHOTS.items():
-            info = pg.evaluate('(v) => window.view(v)', {'who': who, **view})
+            info = pg.evaluate('(v) => window.view(v)', {'who': who, **({'mode': 'chase'} if who == 'mole' else {}), **view})
             pg.screenshot(path=f'{OUT}/{who}_{name}.png')
             print(who, name, json.dumps(info))
     print('\n'.join(sorted(set(errs))) or 'no errors')

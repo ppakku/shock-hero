@@ -18,7 +18,7 @@ describe('판 고르기', () => {
       expect(isRound(r)).toBe(true);
       seen.add(`${r.mapId}/${r.monsterId}`);
     }
-    expect(seen.size).toBe(9);
+    expect(seen.size).toBe(12);
   });
 
   it('지난 판과 맵도 괴물도 다르다', () => {
@@ -43,7 +43,7 @@ describe('판 고르기', () => {
       monsters.add(last.monsterId);
     }
     expect(maps.size).toBe(3);
-    expect(monsters.size).toBe(3);
+    expect(monsters.size).toBe(4);
   });
 
   it('난수가 끝값이어도 고른다', () => {
