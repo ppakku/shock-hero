@@ -127,7 +127,7 @@ const frames = (g, seconds) => {
 };
 
 // 곧게 보이는 칸 둘을 찾아 주인공과 괴물을 세우고 괴물 쪽을 보게 한다
-function faceOff(g, gap) {
+function faceOff(g, gap, s = g.stalker) {
   const area = [...reachable(g.map, g.map.start)].map((t) => t.split(',').map(Number));
   for (const [cx, cy] of area) {
     const from = center({ cx, cy });
@@ -135,7 +135,7 @@ function faceOff(g, gap) {
       const to = { x: from.x + dx * gap, y: from.y + dy * gap };
       if (!area.some(([x, y]) => x === Math.floor(to.x) && y === Math.floor(to.y)) || !lineOfSight(g.map, from, to)) continue;
       g.p = from;
-      Object.assign(g.stalker, { x: to.x, y: to.y, path: [], mode: 'patrol', graceT: 0, warnT: 0 });
+      Object.assign(s, { x: to.x, y: to.y, path: [], mode: 'patrol', graceT: 0, warnT: 0 });
       g.yaw = Math.atan2(-(to.x - from.x), -(to.y - from.y));
       return;
     }
@@ -505,6 +505,19 @@ describe('마지막 밤', () => {
     const all = [g.hud.intro.round.hint, ...g.noteTexts.flat()].join(' ');
     expect(all).toContain(names[1]);
     expect(all).not.toMatch(/\{(name|other)/);
+    g.exit();
+  });
+
+  it('눈뜬이를 보고 있으면 눈뜬이만 멈추고 세이노는 계속 움직인다', () => {
+    const g = start();
+    const [seino, gazer] = g.stalkers;
+    faceOff(g, 4, gazer);
+    const stay = { x: gazer.x, y: gazer.y };
+    const from = { x: seino.x, y: seino.y };
+    frames(g, 2);
+    expect({ x: gazer.x, y: gazer.y }).toEqual(stay);
+    expect(gazer.mode).toBe('watch');
+    expect(Math.hypot(seino.x - from.x, seino.y - from.y)).toBeGreaterThan(0.5);
     g.exit();
   });
 

@@ -33,12 +33,12 @@ export const stationMap = { ...parseMap([
 ]), solidLockers: true }; // 보관함이 칸을 꽉 채워서 눈을 막는다
 
 export const stationTheme = {
-  doorSet: 'horror_door_school', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
-  wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x8a94a8 },
-  floor: { art: 'horror_school_floor', plain: 0x4a4a4e, repeat: 7, tint: 0x8a8a94 },
-  locker: { art: 'horror_school_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0x6a5a40, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 물품 보관함
+  doorSet: 'horror_door_station', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
+  wall: { art: 'horror_station_wall', plain: 0x6a7068, repeat: 1, tint: 0x8a94a8 },
+  floor: { art: 'horror_station_floor', plain: 0x4a4a4e, repeat: 7, tint: 0xa0a0a8 },
+  locker: { art: 'horror_station_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0xc8c8c8, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 물품 보관함
   doorArt: 'locker',
-  board: { art: 'horror_school_board', plain: 0xffffff, repeat: 1 }, // 시간표와 안내판
+  board: { art: 'horror_station_board', plain: 0xffffff, repeat: 1 }, // 시간표와 안내판
   ceil: 0x1c1e26,
   fog: 0x03040c,
   ambient: 0x6a78a0,
