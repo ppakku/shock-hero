@@ -281,8 +281,14 @@ def stand_at_note(pg, i, off=0):
 def note_checks(pg):
     check('note: all spots placed', pg.evaluate('window.__horror.notes.total') == 8 and all(pg.evaluate('window.__horror.notes.spots.map((s) => Number.isFinite(s.x) && Number.isFinite(s.y))')))
     check('note: status starts at 0', '쪽지 0/8' in note_state(pg)['status'], note_state(pg))
-    stand_at_note(pg, 0, 0.9)
-    pg.evaluate("window.__horror.yaw = Math.PI / 2; window.__horror.pitch = -0.6")
+    # 쪽지 자리는 판마다 달라서, 벽이 아닌 옆 칸에 서서 쪽지를 내려다본다
+    pg.evaluate("""() => {
+      const g = window.__horror, s = g.notes.spots[0];
+      const [dx, dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([x, y]) => g.map.rows[Math.floor(s.y) + y][Math.floor(s.x) + x] === '.');
+      g.p = { x: s.x + dx * 0.9, y: s.y + dy * 0.9 };
+      g.yaw = Math.atan2(dx, dy);
+      g.pitch = -0.6;
+    }""")
     time.sleep(0.5)
     pg.screenshot(path=f'{OUT}/note_world.png')
     check('note: prompt', 'E: 쪽지 읽기' in note_state(pg)['prompt'], note_state(pg))
