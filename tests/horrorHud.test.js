@@ -8,13 +8,13 @@ const ROUND = { mapName: '지하 수로', monsterName: '큰입이', hint: '앞�
 describe('공포 모드 조작 안내', () => {
   it('PC 는 키보드와 마우스를 알려 준다', () => {
     const text = controlLines('pc').join(' ');
-    for (const word of ['(PC)', 'W A S D', '마우스', 'Shift', '체력', 'F', 'Esc', '충전: E', '쇼크 펀치: J 또는 왼쪽 클릭', '좌우 방향키']) expect(text).toContain(word);
+    for (const word of ['(PC)', 'W A S D', '마우스', 'Shift', '체력', 'F', 'Esc', '충전: E', '전기충격기: R 또는 왼쪽 클릭', '좌우 방향키']) expect(text).toContain(word);
     expect(text).not.toContain('버튼');
   });
 
   it('태블릿은 손가락 조작과 화면 버튼을 알려 준다', () => {
     const text = controlLines('tablet').join(' ');
-    for (const word of ['(태블릿)', '체력', '왼쪽', '오른쪽', '손전등 버튼', '멈춤 버튼', '사용 버튼', '펀치 버튼']) expect(text).toContain(word);
+    for (const word of ['(태블릿)', '체력', '왼쪽', '오른쪽', '손전등 버튼', '멈춤 버튼', '사용 버튼', '쇼크 버튼']) expect(text).toContain(word);
     expect(text).not.toContain('Esc');
   });
 
@@ -54,7 +54,7 @@ describe('공포 모드 조작 안내', () => {
   it('휴대폰은 눕혀 달라고 알려 주고, 조작은 터치로 알려 준다', () => {
     const text = controlLines('phone').join(' ');
     expect(text).toContain('가로로');
-    expect(text).toContain('펀치 버튼');
+    expect(text).toContain('쇼크 버튼');
     expect(text).not.toContain('Esc');
   });
 

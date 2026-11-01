@@ -11,6 +11,7 @@ CELL_W, CELL_H, FEET = 360, 312, 300  # heroTextures.js 의 ART_FRAME x 3
 HERO_H = 198  # 서 있는 키
 COLS, ROWS = 5, 4
 POSES = [('a', 1), ('c', 1), ('c', 2), ('b', 1), ('b', 2), ('b', 4), ('b', 5), ('b', 6), ('b', 8), ('a', 2), ('a', 3), ('a', 4), ('a', 5), ('a', 6), ('a', 7), ('a', 8), ('c', 3), ('c', 3), ('c', 7), ('c', 4)]
+RUN = {'mage': (1, 2, 3, 4, 5, 7), 'giant': (2, 4, 5, 6, 7, 4)}  # 무기를 놓치거나 잔상이 남은 칸을 뺀다
 SPIN_LAST = {'shock': ('c', 8), 'gunner': ('c', 8), 'ninja': ('c', 8), 'mage': ('c', 8), 'giant': ('c', 7)}
 
 
@@ -58,6 +59,14 @@ def blobs(rgba):
 def figures(path):
     rgba = key_magenta(path)
     keep = blobs(rgba)
+    heights = [np.ptp(c[:, 0]) for c in keep]
+    keep = [c for c, h in zip(keep, heights) if h < np.median(heights) * 1.4]  # 크게 끼어든 참고 인물
+    if len(keep) == 9:  # 잔상 조각이 하나 남은 시트
+        del keep[min(range(9), key=lambda i: len(keep[i]))]
+    if len(keep) == 10:  # 달리기를 5칸씩 그린 시트: 줄 끝을 뺀다
+        midY = rgba.shape[0] / 2
+        keep.sort(key=lambda c: (c[:, 0].mean() > midY, c[:, 1].mean()))
+        keep = keep[:4] + keep[5:9]
     if len(keep) != 8:
         sys.exit(f'{path}: 주인공이 {len(keep)}명 보인다 (8명이어야 함)')
     midY = rgba.shape[0] / 2
@@ -105,6 +114,10 @@ def main():
     poses = list(POSES)
     poses[17] = ('c', 3) if hero == 'giant' else ('a', 6)  # smash 는 강철 거인만 쓴다
     poses[18] = SPIN_LAST[hero]
+    for i, n in zip(range(3, 9), RUN.get(hero, ())):
+        poses[i] = ('b', n)
+    if hero == 'giant':
+        poses[10] = ('c', 5)  # 원본의 떨어지는 자세에 잔상이 남아 있다
     for i, (k, n) in enumerate(poses):
         cell = place(sheets[k][n - 1], HERO_H / idle[k])
         if i == 0:

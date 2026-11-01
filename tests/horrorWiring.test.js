@@ -86,6 +86,7 @@ vi.mock('../src/horror/audio.js', () => ({
     suspend() {}
     resume() {}
     setActive() {}
+    setHum() {}
   },
 }));
 

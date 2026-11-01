@@ -799,6 +799,21 @@ export const balance = {
     catchDist: 0.7, // 이만큼 가까우면 잡힌다
     stunTime: 5, // 쇼크 펀치로 멈추는 시간
     shockRange: 2.5, // 쇼크 펀치가 닿는 거리
+    stunGun: {
+      kick: { hit: 1, miss: 0.75, empty: 0.2 }, // 찌르는 세기
+      kickTime: 0.28, // 찌르고 돌아오는 시간 (초)
+      zapTime: 0.2, // 끝에서 불꽃이 튀는 시간 (초)
+      boltTime: 0.35, // 맞힌 번개가 괴물까지 이어지는 시간 (초)
+      chargeTime: 0.5, // 충전하는 순간 번쩍이는 시간 (초)
+      boltJitter: 0.14, // 번개가 꺾이는 폭 (미터)
+      flareSize: 0.42, // 번쩍일 때 커지는 빛 크기 (미터)
+      flash: { hit: 0.42, miss: 0.14 }, // 화면 번쩍임 세기
+      flashLow: 0.5, // 효과 줄이기를 켜면 곱한다
+      flashTime: 0.22, // 화면 번쩍임 시간 (초)
+      arcs: 3, // 한 번에 그리는 번개 수
+      arcsLow: 1, // 효과 줄이기를 켰을 때 번개 수
+      humVol: 0.06, // 충전된 동안 웅웅거리는 크기
+    },
     useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
     fuseCount: 3, // 찾아야 하는 퓨즈 수
     wingFuses: 1, // 잠긴 날개마다 꼭 들어가는 퓨즈 수. 그래서 문을 열어야만 끝낼 수 있다

@@ -170,7 +170,8 @@ def make(o):
             time.sleep(2)
             return save_last(o['out'])
         if '까지 적용되는 이미지 생성 한도에 도달' in (page("document.body.innerText") or ''):  # 왼쪽 채팅 제목과 헷갈리지 않는 문구
-            stop('image limit reached')
+            body = page("document.body.innerText") or ''
+            stop('image limit reached: ' + body[body.index('까지 적용되는') - 20:body.index('까지 적용되는')])
     return False
 
 

@@ -7,6 +7,8 @@ const DRONE = [82.41, 82.9, 123.47]; // 살짝 어긋난 낮은 음이 천천히
 const PAD = [155.56, 164.81]; // 반음이 부딪혀 불안하게 들린다
 const NOTES = [196, 207.65, 293.66, 311.13, 392]; // 어둠 속에서 가끔 울리는 쇳소리 음
 const CLANG = [310, 467, 811]; // 멀리서 쇠가 부딪히는 소리
+const HUM = [98, 147.5]; // 충전된 전기충격기의 웅웅거림
+const CRACKLE = 5; // 맞혔을 때 이어지는 지지직 수
 export class HorrorAudio {
   constructor({ muted, voice = 'seino' }) {
     sfx.unlock();
@@ -46,6 +48,37 @@ export class HorrorAudio {
     this.addWind();
     this.creatureNodes = [];
     this.initCreature(voice);
+    this.initHum();
+  }
+
+  // 충전된 동안 낮게 나는 웅웅거림. 떨림은 안쪽 이득에 걸어서 꺼진 동안 새어 나가지 않게 한다
+  initHum() {
+    this.humOn = false;
+    const band = this.ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 620;
+    band.Q.value = 0.8;
+    const flutter = this.ctx.createGain();
+    flutter.gain.value = 0.7;
+    this.humLevel = this.ctx.createGain();
+    this.humLevel.gain.value = 0;
+    band.connect(flutter).connect(this.humLevel).connect(this.out);
+    for (const freq of HUM) {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      osc.connect(band);
+      osc.start();
+      this.loops.push(osc);
+    }
+    this.addLfo(flutter.gain, 17, 0.3);
+    this.loops.push(band, flutter, this.humLevel);
+  }
+
+  setHum(on) {
+    if (!this.ctx || on === this.humOn) return;
+    this.humOn = on;
+    this.humLevel.gain.setTargetAtTime(on ? this.k.stunGun.humVol : 0, this.ctx.currentTime, 0.08);
   }
 
   stopNodes(nodes) {
@@ -192,9 +225,25 @@ export class HorrorAudio {
       this.blip(o, { freq: 140, dur: 0.5, vol: 0.5, type: 'sawtooth' });
       this.puffNoise(o, { dur: 0.4, vol: 0.4, freq: 900, freqTo: 200, type: 'lowpass' });
     }
-    if (name === 'punch') {
-      this.puffNoise(o, { dur: 0.12, vol: 0.5, freq: 2200, q: 0.8 });
-      this.blip(o, { freq: 180, dur: 0.12, vol: 0.4, type: 'triangle', slide: 0.5 });
+    if (name === 'shockCharge') {
+      // 치직 하며 전기가 차오른다
+      this.blip(o, { freq: 220, dur: 0.4, vol: 0.22, type: 'sawtooth', slide: 3 });
+      this.puffNoise(o, { dur: 0.35, vol: 0.4, freq: 1800, freqTo: 5200, q: 1.2 });
+      this.blip(o, { freq: 1320, dur: 0.14, vol: 0.14, type: 'triangle', slide: 1.2, delay: 0.3 });
+    }
+    if (name === 'shockHit') {
+      // 빠직: 큰 터짐에 짧은 지지직이 이어 붙는다
+      this.puffNoise(o, { dur: 0.3, vol: 0.85, freq: 3800, freqTo: 900, q: 0.7 });
+      this.blip(o, { freq: 95, dur: 0.32, vol: 0.6, type: 'sawtooth', slide: 0.5 });
+      for (let i = 0; i < CRACKLE; i++) this.puffNoise(o, { dur: 0.035, vol: 0.5, freq: 3000 + i * 900, q: 3, delay: 0.06 + i * 0.055 });
+    }
+    if (name === 'shockMiss') {
+      this.puffNoise(o, { dur: 0.14, vol: 0.4, freq: 4200, freqTo: 1800, q: 1.2 });
+      this.blip(o, { freq: 140, dur: 0.1, vol: 0.2, type: 'sawtooth', slide: 0.6 });
+    }
+    if (name === 'shockEmpty') {
+      this.blip(o, { freq: 1600, dur: 0.03, vol: 0.22, type: 'square', slide: 0.6 });
+      this.blip(o, { freq: 900, dur: 0.03, vol: 0.16, type: 'square', slide: 0.6, delay: 0.06 });
     }
     if ((name === 'scare' || name === 'caught') && this.voice !== 'seino') return this.jolt(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
     if (name === 'scare') {
