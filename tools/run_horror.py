@@ -4,7 +4,7 @@
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
 #   python3 tools/run_horror.py 출력폴더 --rounds  (모든 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
-#   python3 tools/run_horror.py 출력폴더 --last    (도장판을 채워 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
+#   python3 tools/run_horror.py 출력폴더 --last    (도장을 모아 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --tonight (오늘의 밤 카드로 시작해 다섯 조건을 봇으로 지키고 깨서 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
@@ -1655,7 +1655,8 @@ def run_rounds(pw):
     errs = []
     watch(pg, errs)
     calls = []
-    for mapId in ('factory', 'sewer', 'school', 'park', 'mart'):
+    picked = [m for m in ('factory', 'sewer', 'school', 'park', 'mart') if m in sys.argv]  # 맵 이름을 주면 그 맵만 돈다
+    for mapId in picked or ('factory', 'sewer', 'school', 'park', 'mart'):
         for monsterId in ('seino', 'gazer', 'maw', 'ward'):
             tag = f'{mapId}_{monsterId}'
             open_round(pg, mapId, monsterId)

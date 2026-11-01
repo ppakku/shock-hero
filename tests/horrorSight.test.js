@@ -48,6 +48,26 @@ describe.each(MAP_IDS)('%s 맵의 시선', (id) => {
   });
 });
 
+describe('마트의 긴 통로', () => {
+  const map = MAPS.mart.map;
+  const east = -Math.PI / 2; // +x 쪽을 보는 yaw
+  const p = { x: 3.5, y: 1.5 };
+
+  it('통로 끝까지 눈뜬이를 보고 있을 수 있다', () => {
+    expect(inPlayerView(p, east, { x: p.x + k.viewCells - 0.5, y: 1.5 }, map, k)).toBe(true);
+    expect(inPlayerView(p, east, { x: p.x + k.viewCells + 1, y: 1.5 }, map, k)).toBe(false);
+  });
+
+  it('진열대 너머는 보이지 않는다', () => {
+    expect(inPlayerView({ x: 8.5, y: 4.5 }, Math.PI, { x: 8.5, y: 8 }, map, k)).toBe(false);
+  });
+
+  it('통로에 서면 멀리 있는 구역까지 그린다', () => {
+    const far = { cx: 16, cy: 1 };
+    expect(sightOf(map, { cx: 3, cy: 1 }).has(chunkOf(map, far))).toBe(true);
+  });
+});
+
 describe('꽉 찬 사물함은 벽이다', () => {
   // 사물함 하나만 사이에 둔 복도
   const rows = [

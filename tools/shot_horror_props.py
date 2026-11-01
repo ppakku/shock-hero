@@ -1,4 +1,4 @@
-# 공포 모드 소품 그림을 네 맵에서 실제 게임으로 찍는다. 등, 배관, 천장, 낮은 가구, 붉은 쪽지.
+# 공포 모드 소품 그림을 맵마다 실제 게임으로 찍는다. 등, 배관, 천장, 낮은 가구, 붉은 쪽지.
 # 사용법: npx vite --port 5511 --strictPort 를 켠 뒤
 #   HORROR_PORT=5511 python3 tools/shot_horror_props.py 출력폴더           (1280x720, 568x320 사진, 등 깜빡임, 그리기 수)
 #   HORROR_PORT=5511 python3 tools/shot_horror_props.py 출력폴더 --calls   (그리기 수만. 그림 넣기 전과 비교할 때)
