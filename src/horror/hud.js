@@ -10,6 +10,7 @@ const TONIGHT = 'position:absolute;left:192px;top:31px;white-space:nowrap;font-s
 const TONIGHT_OK = '#ffd24a';
 const TONIGHT_BROKEN = '#ff7a60';
 const TAG_LOOK = { chase: { text: '쫓아온다!', color: '#ff7a60' }, still: { text: '멈췄다', color: '#9ad0ff' }, near: { text: '가까이 있다', color: '#ffd080' }, far: { text: '멀리 있다', color: '#9a9a9a' } };
+const COLUMNS = 'display:grid;grid-template-columns:1fr 1fr;gap:0 10px;width:100%;font-size:12px;line-height:1.25;text-align:left'; // 휴대폰 안내의 조작 설명 두 줄 묶음
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { fillName } from './story.js';
@@ -298,7 +299,14 @@ export class HorrorHud {
     this.layer.addEventListener('pointerdown', (e) => e.stopPropagation());
     for (const line of lines) {
       const p = document.createElement('div');
-      p.textContent = line;
+      if (Array.isArray(line)) { // 배열은 두 칸으로 나눠 놓는다
+        p.style.cssText = COLUMNS;
+        for (const text of line) {
+          const cell = document.createElement('div');
+          cell.textContent = text;
+          p.appendChild(cell);
+        }
+      } else p.textContent = line;
       this.layer.appendChild(p);
     }
     const row = document.createElement('div');
@@ -379,9 +387,9 @@ export class HorrorHud {
   }
 
   showIntro(device, round, onStart, onQuit) {
+    const [title, ...controls] = controlLines(device);
     this.openLayer(
-      [...(device === 'phone' && round.tonight ? [] : [SCARY_LINE]), ...introLines(device, round), // 휴대폰은 조건 줄이 들어갈 자리를 비운다
-        ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
+      [SCARY_LINE, ...introLines(device, round), ...(device === 'phone' ? [title, controls] : [' ', title, ...controls])], // 휴대폰은 조작 설명을 두 칸으로 놓아야 한 화면에 들어간다
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
