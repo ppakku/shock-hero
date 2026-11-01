@@ -18,19 +18,19 @@ FACES = {
     'light_factory': ([(0.065, 0.287, 0.915, 0.717)], 256, 73),
     'light_sewer': ([(0.06, 0.06, 0.95, 0.90)], 192, 192),
     'clue': ([(0.02, 0.02, 0.66, 0.90)], 256, 352),
-    'desk': ([(0.02, 0.06, 0.98, 0.895)], 256, 168),
+    'desk': ([(0.02, 0.066, 0.98, 0.895)], 256, 168),
     'bench': ([(0.095, 0.525, 0.905, 0.895)], 320, 100),
 }
-# 이름: (결과 크기, 그림 평균을 맞출 맵의 색)
+# 이름: (결과 크기, 그림 평균을 맞출 맵의 색, 쓸 왼쪽 위 비율). Gemini 가 같은 무늬를 두 번 그린 그림은 한 번치만 쓴다
 TILES = {
-    'ceil_factory': (512, 0x1b1a19),
-    'ceil_sewer': (512, 0x111614),
-    'ceil_school': (512, 0x24262c),
-    'ceil_station': (512, 0x1c1e26),
-    'pipe_factory': (256, 0x2e3236),
-    'pipe_sewer': (256, 0x3a4438),
-    'pipe_school': (256, 0x4a4a46),
-    'pipe_station': (256, 0x4a4a46),
+    'ceil_factory': (512, 0x1b1a19, 1),
+    'ceil_sewer': (512, 0x111614, 0.58),
+    'ceil_school': (512, 0x24262c, 0.58),
+    'ceil_station': (512, 0x1c1e26, 0.58),
+    'pipe_factory': (256, 0x2e3236, 1),
+    'pipe_sewer': (256, 0x3a4438, 1),
+    'pipe_school': (256, 0x4a4a46, 1),
+    'pipe_station': (256, 0x4a4a46, 1),
 }
 
 
@@ -104,9 +104,10 @@ def to_srgb(c):
     return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055)
 
 
-def tile(name, size, plain):
+def tile(name, size, plain, part):
     im = load(name)
     erase_star(im)
+    im = im.crop((0, 0, round(im.width * part), round(im.height * part)))
     side = round(size * 1.16)
     a = np.array(im.resize((side, side), Image.LANCZOS)).astype(float)
     a = flatten(a, size / 4)
@@ -131,6 +132,6 @@ if __name__ == '__main__':
     for name, (bands, w, h) in FACES.items():
         if (not ONLY or name in ONLY) and os.path.exists(f'{RAW}/{name}.png'):
             face(name, bands, w, h)
-    for name, (size, plain) in TILES.items():
+    for name, (size, plain, part) in TILES.items():
         if (not ONLY or name in ONLY) and os.path.exists(f'{RAW}/{name}.png'):
-            tile(name, size, plain)
+            tile(name, size, plain, part)

@@ -41,7 +41,7 @@ export const sewerTheme = {
   locker: { art: 'horror_sewer_locker', plain: 0x4a4a38, repeat: 1, tint: 0x8a8a8a, box: { w: 3, h: 3, d: 3 } }, // 벽을 파낸 칸을 꽉 채운다
   doorArt: 'locker', // 벽돌을 칠한 문은 벽처럼 보여서 철문 그림을 쓴다
   ceil: 0x111614,
-  ceilArt: { art: 'horror_ceil_sewer', repeat: 7, tint: 0xffffff },
+  ceilArt: { art: 'horror_ceil_sewer', repeat: 7, tint: 0x526f78 },
   fog: 0x010302,
   ambient: 0x708a7c,
   lightColor: 0xffb040,
@@ -49,6 +49,6 @@ export const sewerTheme = {
     tile: 7,
     light: { w: 0.34, h: 0.34, d: 0.14, y: 2.5, art: 'horror_light_sewer' }, // 쇠창살 씌운 네모난 작은 등
     machine: { w: [1.3, 1.9], h: [3, 3, 3], y: 0, tints: [0x9aa890, 0x7f8c7a] }, // 벽돌 기둥
-    pipe: { r: 0.2, off: 0.28, ys: [0.4, 2.55], color: 0x3a4438, art: 'horror_pipe_sewer', repeat: 2, tint: 0xffffff }, // 굵은 관 두 줄
+    pipe: { r: 0.2, off: 0.28, ys: [0.4, 2.55], color: 0x3a4438, art: 'horror_pipe_sewer', repeat: 2, tint: 0xa7c2c5 }, // 굵은 관 두 줄
   },
 };

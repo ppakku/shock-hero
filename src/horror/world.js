@@ -10,6 +10,7 @@ const LOCKER = { w: 1.3, h: 2.2, d: 1.1 };
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
 const CLUE_COLOR = 0xe02828;
 const NOTE = { w: 0.4, h: 0.55, color: 0xe8dcc0, y: 0.03, turn: 1.1 }; // 쪽지 크기 (미터), 색, 바닥에서 높이 (미터), 자리마다 돌아가는 각도 (라디안)
+const LIGHT_EDGE = 0.04; // 등의 옆면과 위아래에 쓰는 그림 맨 위 띠 (틀 부분)
 const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
 const LOCK_NAMES = ['red', 'blue']; // 그림 파일 이름. map.locks 순서
 
@@ -76,7 +77,7 @@ function addDecor(scene, map, k, mats, decor, tiled) {
   scene.add(group);
 
   const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const lights = new THREE.InstancedMesh(box, lightMat, spots.lights.length);
+  const lights = new THREE.InstancedMesh(bandBox(LIGHT_EDGE), lightMat, spots.lights.length);
   spots.lights.forEach((f, i) => setOnWall(lights, i, f, light.w, light.h, light.d, light.y));
 
   const machines = new THREE.InstancedMesh(box, boardMat || wallMat, spots.machines.length);
@@ -104,7 +105,7 @@ function addDecor(scene, map, k, mats, decor, tiled) {
   const meshes = [lights, machines, pipes];
   if (low) {
     const lowMat = lambert(low.color);
-    tiled(`${low.art}.jpg`, 1, 1, (tex) => paintPlain(lowMat, tex));
+    tiled(`${low.art}.jpg`, 1, 1, (tex) => paintPlain(lowMat, tex, low.tint));
     const lows = new THREE.InstancedMesh(bandBox(low.band), lowMat, spots.lows.length);
     spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
     meshes.push(lows);
