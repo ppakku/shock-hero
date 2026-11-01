@@ -98,7 +98,7 @@ inside = np.hypot(xx - MOUTH[0], yy - MOUTH[1]) < edge_at(ang) * 0.93
 # 입이 갈라지는 줄 둘레는 새까맣게 칠해서, 턱이 내려가도 까만 틈의 경계가 보이지 않는다
 night = 1 - inside * np.exp(-(((yy - MOUTH[1]) / 26.0) ** 2)) * np.clip(1.3 - np.abs(xx - MOUTH[0]) / 330, 0, 1).clip(0, 1) ** 0.3
 back_plain = (cover_bg(back, mask_b) * 0.85).astype('uint8')
-head = wrap(rows, rows_b, np.maximum(hw, 8), np.maximum(hw, 8), (cover_bg(front, mask) * night[..., None]).astype('uint8'), back_plain, CX, CX, HEAD_W, FRONT_HEAD, 14, tone, -0.25)
+head = wrap(rows, rows_b, np.maximum(hw, 8), np.maximum(hw, 8), (cover_bg(front, mask) * night[..., None]).astype('uint8'), back_plain, CX, CX, HEAD_W, FRONT_HEAD, 14, tone, True)
 Image.fromarray(head).filter(ImageFilter.UnsharpMask(2, 50, 2)).save(f'{OUT}/horror_maw_head.jpg', quality=85)
 
 # 이빨 빛: 입 안쪽에서 밝고 누런 곳만 남긴다. 머리 그림과 같은 자리에 온다
@@ -169,6 +169,7 @@ def polyline(points, n):
 def straighten(rgb, mask, points, rows, width):
     # 중심선을 따라 수직으로 잘라 곧은 그림을 만든다. 줄마다 윤곽에 맞춰 중심을 다시 잡는다
     line = polyline(points, rows)
+    line = np.stack([smooth(line[:, 0], 61), smooth(line[:, 1], 61)], -1)  # 꺾이는 곳에서 자르는 방향이 튀지 않게 한다
     tan = np.gradient(line, axis=0)
     tan /= np.maximum(np.hypot(*tan.T), 1e-6)[:, None]
     nor = np.stack([-tan[:, 1], tan[:, 0]], -1)
