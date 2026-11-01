@@ -1107,9 +1107,10 @@ def touch_notes(pg, t, w, h):
     print('note box', box)
     check(f'{label}: fits the screen', box['top'] >= 0 and box['bottom'] <= h and box['scroll'] <= box['height'] + 1 and box['btnBottom'] <= box['bottom'], box)
     longest = pg.evaluate("""async () => {
-      const { NOTES } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
+      const { NOTES, fillName } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
+      const all = Object.values(NOTES).flat().map((n) => fillName(n, g.monster.name));
       let worst = 0, fits = true, hits = [];
-      for (const n of NOTES) {
+      for (const n of all) {
         g.hud.showNote(n, compact);
         const el = g.hud.noteEl, b = el.querySelector('button').getBoundingClientRect(), r = el.getBoundingClientRect();
         worst = Math.max(worst, r.height);
@@ -1119,7 +1120,7 @@ def touch_notes(pg, t, w, h):
           if (o.left < r.right && r.left < o.right && o.top < r.bottom && r.top < o.bottom) hits.push(btn.textContent);
         }
       }
-      g.hud.showNote(NOTES[NOTES.length - 1], compact);
+      g.hud.showNote(all[all.length - 1], compact);
       await new Promise((f) => setTimeout(f, 150));
       return { worst, fits, hits: [...new Set(hits)], lines };
     }""")
