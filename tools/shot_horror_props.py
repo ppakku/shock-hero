@@ -12,7 +12,8 @@ BROKEN = '--broken' in sys.argv
 PORT = os.environ.get('HORROR_PORT', '5288')
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
-MAPS = [m for m in ('factory', 'sewer', 'school', 'station') if m in sys.argv] or ['factory', 'sewer', 'school', 'station']
+ALL_MAPS = ('factory', 'sewer', 'school', 'station', 'park', 'mart')
+MAPS = [m for m in ALL_MAPS if m in sys.argv] or list(ALL_MAPS)
 SIZES = {'pc': (1280, 720), 'phone': (568, 320)}
 NEW_ART = ['light', 'pipe', 'ceil']
 CELL = 3

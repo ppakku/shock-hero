@@ -22,8 +22,8 @@ const SIDE = 'display:flex;flex-direction:column;align-items:center;gap:14px;max
 const PANEL = 'display:flex;flex-direction:column;align-items:center;gap:8px;width:400px';
 const COUNT = 'font-size:17px;color:#e8d8c8';
 const SMALL = 'font-size:13px;line-height:15px;color:#9a9a9a';
-const CELL = 'position:relative;box-sizing:border-box;width:100%;height:58px;border-radius:6px;overflow:hidden;background:#101014';
-const CELL_ART = 'width:100%;height:100%;object-fit:cover;object-position:top;display:block';
+const CELL = 'position:relative;box-sizing:border-box;width:100%;height:50px;border-radius:6px;overflow:hidden;background:#101014';
+const CELL_ART = 'width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block';
 const CELL_EMPTY = 'filter:grayscale(1) brightness(.35)';
 const CELL_MARK = 'position:absolute;right:1px;bottom:0;font-size:15px;line-height:17px;text-shadow:0 0 3px #000,0 0 3px #000';
 const CELL_LOOK = { [GOLD]: { border: '2px solid #ffd24a', mark: '★', color: '#ffd24a' }, plain: { border: '2px solid #9a9aa4', mark: '✓', color: '#fff' }, none: { border: '2px solid #26262c' } };
@@ -86,7 +86,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
   };
   const body = add('div', compact ? `${BODY};flex-wrap:nowrap;gap:8px` : BODY);
   const side = add('div', compact ? `${SIDE};width:296px;gap:4px` : SIDE);
-  const panel = add('div', compact ? `${PANEL};width:250px;gap:3px` : PANEL);
+  const panel = add('div', compact ? `${PANEL};width:250px;gap:2px` : PANEL);
   const smallFont = compact ? ';font-size:13px;min-height:18px' : '';
   const section = (label, key, options) => {
     const row = add('div', compact ? `${ROW};gap:4px 6px` : ROW);
@@ -104,7 +104,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
     const paint = () => buttons.forEach(({ btn, o }) => {
       const on = picked[key] === o.id;
-      btn.style.cssText = `${OPTION};${on ? ON : OFF}${compact ? ';font-size:14px;padding:5px 8px;min-width:64px' : ''}`;
+      btn.style.cssText = `${OPTION};${on ? ON : OFF}${compact ? ';font-size:13px;padding:3px 6px;min-width:64px' : ''}`;
       btn.setAttribute('aria-pressed', String(on));
       if (on) hint.textContent = o.hint;
     });
@@ -112,7 +112,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     side.append(add('div', compact ? `${LABEL};font-size:13px` : LABEL, label), row, hint);
   };
   // 도장판. 맵이 줄, 괴물이 칸이다. 지금 고른 칸은 밝은 테두리로 보인다
-  const board = add('div', `display:grid;grid-template-columns:${compact ? '56px repeat(4,42px)' : '92px repeat(4,70px)'};gap:${compact ? 3 : 6}px;align-items:center`);
+  const board = add('div', `display:grid;grid-template-columns:${compact ? '48px repeat(4,44px)' : '92px repeat(4,70px)'};gap:${compact ? 2 : 6}px;align-items:center`);
   const tiles = [];
   const buildBoard = () => {
     const small = compact ? `${SMALL};font-size:11px;line-height:12px` : SMALL;
@@ -120,7 +120,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     MONSTER_IDS.forEach((id) => board.appendChild(add('div', small, MONSTERS[id].name)));
     const all = boardCells(record.stamps);
     MAP_IDS.forEach((mapId) => {
-      board.appendChild(add('div', `${small};text-align:right`, MAPS[mapId].name));
+      board.appendChild(add('div', `${small};text-align:right`, compact ? MAPS[mapId].short : MAPS[mapId].name));
       all.filter((c) => c.mapId === mapId).forEach((c) => {
         const look = CELL_LOOK[c.stamp ?? 'none'];
         const tile = add('div', '');
@@ -139,10 +139,10 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
   };
   const paintBoard = () => tiles.forEach(({ tile, c, look }) => {
-    tile.style.cssText = `${CELL};border:${look.border}${compact ? ';height:30px' : ''}${isCurrentCell(c, picked) ? `;${CURRENT}` : ''}`;
+    tile.style.cssText = `${CELL};border:${look.border}${compact ? ';height:22px;border-width:1px' : ''}${isCurrentCell(c, picked) ? `;${CURRENT}` : ''}`;
   });
   // 번개와 손전등 색 고르기. 잠긴 색에는 필요한 도장 수를 적어 둔다
-  const lookHint = add('div', `${SMALL};min-height:30px;max-width:100%`, nextLine(record.stamps, k));
+  const lookHint = add('div', `${SMALL};max-width:100%${compact ? ';font-size:12px;min-height:15px' : ';min-height:30px'}`, nextLine(record.stamps, k));
   const lookRow = ([key, label, listName, colorField]) => {
     const row = add('div', `${ROW};align-items:center;flex-wrap:nowrap;gap:${compact ? 4 : 8}px`);
     row.appendChild(add('div', `${SMALL};width:${compact ? 38 : 48}px;text-align:right`, label));
@@ -166,7 +166,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
     const paintRow = () => options().forEach(({ look, open, on }, i) => {
       const color = cssColor(look[colorField]);
-      const size = compact ? ';width:28px;height:28px' : '';
+      const size = compact ? ';width:23px;height:23px;font-size:11px' : '';
       const face = open ? `background:${color};color:#000;border:3px solid ${on ? '#fff' : '#3a3a42'}` : `background:#16161a;color:${color};border:2px dashed ${color}`;
       buttons[i].style.cssText = `${SWATCH}${size};${face}`;
       buttons[i].setAttribute('aria-pressed', String(on));
@@ -188,11 +188,11 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
   actions.append(go, back);
   side.appendChild(actions);
   const card = lastNightCard(record);
-  const last = add('button', `${LAST};${card.open ? LAST_OPEN : LAST_SHUT}${compact ? ';font-size:13px;padding:3px 8px' : ''}`, card.text);
+  const last = add('button', `${LAST};${card.open ? LAST_OPEN : LAST_SHUT}${compact ? ';font-size:12px;padding:1px 6px' : ''}`, card.text);
   last.dataset.lastNight = card.open ? 'open' : 'locked';
   last.disabled = !card.open;
   last.addEventListener('click', close(onLastNight));
-  const tonightBtn = add('button', `${TONIGHT}${compact ? ';font-size:12px;line-height:14px;padding:2px 6px' : ''}`);
+  const tonightBtn = add('button', `${TONIGHT}${compact ? ';font-size:12px;line-height:14px;padding:1px 6px' : ''}`);
   tonightBtn.dataset.tonight = '';
   tonightCard(record, tonight, cfg.horror).forEach((line) => tonightBtn.appendChild(add('div', '', line)));
   tonightBtn.addEventListener('click', close(onTonight));

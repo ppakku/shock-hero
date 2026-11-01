@@ -3,7 +3,7 @@
 #   python3 tools/run_horror.py 출력폴더 --touch   (태블릿 손가락 입력을 진짜 터치 이벤트로 확인)
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
-#   python3 tools/run_horror.py 출력폴더 --rounds  (아홉 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
+#   python3 tools/run_horror.py 출력폴더 --rounds  (모든 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
 #   python3 tools/run_horror.py 출력폴더 --last    (도장판을 채워 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --tonight (오늘의 밤 카드로 시작해 다섯 조건을 봇으로 지키고 깨서 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
@@ -1467,7 +1467,7 @@ def play_replay(pw):
     time.sleep(0.5)
     seen = []
     first = None
-    for i in range(12):
+    for i in range(16):
         now = pg.evaluate(ROUND_NOW)
         print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
         seen.append(now['round'])
@@ -1492,7 +1492,7 @@ def play_replay(pw):
         pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
         check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
         time.sleep(0.4)
-    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 3 and len({r['monsterId'] for r in seen}) == 4, seen)
+    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 5 and len({r['monsterId'] for r in seen}) == 4, seen)
     pg.click('#horror button:has-text("타이틀로")')
     pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
     check('replay: root removed at title', pg.evaluate("!document.getElementById('horror')"))
@@ -1655,7 +1655,7 @@ def run_rounds(pw):
     errs = []
     watch(pg, errs)
     calls = []
-    for mapId in ('factory', 'sewer', 'school'):
+    for mapId in ('factory', 'sewer', 'school', 'park', 'mart'):
         for monsterId in ('seino', 'gazer', 'maw', 'ward'):
             tag = f'{mapId}_{monsterId}'
             open_round(pg, mapId, monsterId)
@@ -2035,7 +2035,7 @@ def tonight_midnight(pw, b):
 def tonight_dark(pw, b):
     ctx = b.new_context(viewport={'width': 1280, 'height': 720})
     pg = ctx.new_page()
-    for mapId in ('factory', 'sewer', 'school'):
+    for mapId in ('factory', 'sewer', 'school', 'park', 'mart'):
         for monster in ('gazer', 'seino'):
             open_round(pg, mapId, monster)
             pg.evaluate(IDLE_INPUT)
