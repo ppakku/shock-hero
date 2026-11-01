@@ -42,15 +42,16 @@ export const schoolTheme = {
   doorArt: 'locker', // 벽을 칠한 문은 벽처럼 보여서 철문 그림을 쓴다
   board: { art: 'horror_school_board', plain: 0xffffff, repeat: 1 }, // 칠판과 게시판
   ceil: 0x24262c,
+  ceilArt: { art: 'horror_ceil_school', repeat: 7, tint: 0x74829f },
   fog: 0x02030a,
   ambient: 0x6878a8,
   lightColor: 0x30f070,
   decor: {
     tile: 7,
-    light: { w: 0.8, h: 0.26, d: 0.08, y: 2.5 }, // 초록 비상구 등
+    light: { w: 0.8, h: 0.3, d: 0.08, y: 2.5, art: 'horror_light_school' }, // 초록 비상구 등
     machine: { w: [2.4, 1.3], h: [1.1, 0.9], y: 1.05, depth: 0.07, tints: [0x5f9a80, 0xc8a070, 0x5f9a80, 0xb8b4a0] }, // 칠판과 게시판
-    pipe: { r: 0.05, off: 0.1, ys: [0.3, 0.42], color: 0x4a4a46 }, // 낮은 난방 관
-    low: { w: 1.1, h: 0.72, d: 0.5, color: 0x3e2e24 }, // 벽으로 밀어 둔 책상
+    pipe: { r: 0.05, off: 0.1, ys: [0.3, 0.42], color: 0x4a4a46, art: 'horror_pipe_school', repeat: 6, tint: 0x6c737c }, // 낮은 난방 관
+    low: { w: 1.1, h: 0.72, d: 0.5, color: 0x3e2e24, art: 'horror_desk', band: 0.03, tint: 0x8a8a8a }, // 벽으로 밀어 둔 책상
     lintel: { h: 0.7 }, // 문 위를 막아 교실 문처럼 보이게 한다
   },
 };

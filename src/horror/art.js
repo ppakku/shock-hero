@@ -24,3 +24,11 @@ export function faceBox(w, h, d) {
   squeeze(8, Math.min(1, d / w), Math.min(1, d / h)); // 위아래
   return geo;
 }
+
+// 앞뒤에는 그림 전체가, 나머지 면에는 그림 맨 위 band 만큼의 띠가 나오는 크기 1 상자. 책상 상판처럼 위에서 보이는 면이 앞면 그림과 이어진다
+export function bandBox(band) {
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const uv = geo.getAttribute('uv');
+  for (let i = 0; i < 16; i++) uv.setY(i, 1 - band + uv.getY(i) * band);
+  return geo;
+}

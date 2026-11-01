@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { blocked, center, chunksInSight, findPath, frontOf, lineOfSight, reachable, withOpen, CELL } from '../src/logic/horrorGrid.js';
 import { createRun, takeKey, openDoor, respawnSpot } from '../src/logic/horrorRun.js';
@@ -302,6 +303,17 @@ describe('테마', () => {
       expect(theme.decor.machine.tints.length).toBeGreaterThan(0);
       expect(theme.decor.pipe.ys.length).toBeGreaterThan(0);
       if (theme.doorArt) expect(theme[theme.doorArt].art).toMatch(/^horror_/);
+    }
+  });
+
+  it('소품 그림 파일이 다 있고, 맵마다 등과 천장, 배관이 제 그림이다', () => {
+    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, theme.decor.low?.art].filter(Boolean);
+    for (const { theme } of MAPS) {
+      for (const art of arts(theme)) expect(existsSync(`public/art/${art}.jpg`), art).toBe(true);
+    }
+    expect(existsSync('public/art/horror_clue.jpg')).toBe(true);
+    for (const pick of [(t) => t.ceilArt.art, (t) => t.decor.light.art, (t) => t.decor.pipe.art]) {
+      expect(new Set(MAPS.map(({ theme }) => pick(theme))).size).toBe(MAPS.length);
     }
   });
 

@@ -8,7 +8,7 @@ import { LAST_ROUND, roundMonsters } from '../src/logic/horrorPick.js';
 import { boardCells, cellKey } from '../src/logic/horrorStamps.js';
 import { normalizeHorror } from '../src/logic/horrorRun.js';
 
-const fakes = vi.hoisted(() => ({ loads: [], failArt: null, audio: [], late: [], save: null }));
+const fakes = vi.hoisted(() => ({ loads: [], failArt: null, okArt: false, audio: [], late: [], save: null }));
 
 vi.mock('three', async (original) => {
   const real = await original();
@@ -30,6 +30,7 @@ vi.mock('three', async (original) => {
       const tex = new real.Texture();
       fakes.loads.push(url);
       if (fakes.failArt && url.includes(fakes.failArt)) fakes.late.push(() => onError?.(new Error('없음'))); // 진짜처럼 늦게 온다
+      else if (fakes.okArt) fakes.late.push(() => onLoad?.(tex));
       return tex;
     }
   }
@@ -154,6 +155,7 @@ function inLocker(g) {
 beforeEach(() => {
   fakes.loads.length = 0;
   fakes.failArt = null;
+  fakes.okArt = false;
   fakes.audio.length = 0;
   fakes.save = null;
   vi.stubGlobal('window', { innerWidth: 1280, innerHeight: 720, devicePixelRatio: 1, location: { search: '' }, addEventListener() {}, removeEventListener() {} });
@@ -203,6 +205,57 @@ describe('판 재료', () => {
     const mats = [];
     g.scene.traverse((o) => { if (o.material) mats.push(o.material); });
     expect(mats.some((m) => m.color?.getHex() === new THREE.Color(theme.plain).getHex() && !m.map)).toBe(true);
+    g.exit();
+  });
+
+  const materialsOf = (g) => {
+    const mats = new Set();
+    g.scene.traverse((o) => { if (o.material) mats.add(o.material); });
+    return [...mats];
+  };
+  const hex = (color) => new THREE.Color(color).getHex();
+
+  it.each(['school', 'station', 'factory', 'sewer'])('%s: 소품 그림을 하나도 못 받아도 예전 색 그대로 돈다', (mapId) => {
+    const { theme } = ALL_MAPS[mapId];
+    fakes.failArt = 'horror_'; // 이 맵의 그림을 전부 막는다
+    const g = makeGame(mapId, 'seino');
+    const plain = materialsOf(g).filter((m) => !m.map).map((m) => m.color.getHex());
+    expect(plain).toContain(hex(theme.ceil));
+    expect(plain).toContain(hex(theme.decor.pipe.color));
+    if (theme.decor.low) expect(plain).toContain(hex(theme.decor.low.color));
+    expect(g.clueMeshes.every((m) => !m.material.map && m.material.color.getHex() === 0xe02828)).toBe(true);
+    g.world.update(g.p, 14, 0, true);
+    expect(g.world.lightMat.map).toBeNull();
+    expect(g.world.lightMat.color.getHex()).toBe(new THREE.Color(theme.lightColor).multiplyScalar(g.k.emergencyLow).getHex());
+    g.exit();
+  });
+
+  it('소품 그림을 받으면 천장은 눌린 색으로 되풀이되고 쪽지는 그림 제 색이다', () => {
+    const { theme } = MAPS.school;
+    fakes.okArt = true;
+    const g = makeGame('school', 'seino');
+    const painted = materialsOf(g).filter((m) => m.map);
+    const ceil = painted.find((m) => m.color.getHex() === hex(theme.ceilArt.tint));
+    expect(ceil.map.repeat.x).toBe(theme.ceilArt.repeat);
+    expect(ceil.map.wrapS).toBe(THREE.RepeatWrapping);
+    expect(painted.find((m) => m.color.getHex() === hex(theme.decor.pipe.tint)).map.repeat.y).toBe(theme.decor.pipe.repeat);
+    expect(painted.some((m) => m.color.getHex() === hex(theme.decor.low.tint))).toBe(true);
+    expect(g.clueMeshes.every((m) => m.material.map && m.material.color.getHex() === 0xffffff)).toBe(true);
+    g.exit();
+  });
+
+  it('등 그림을 받아도 깜빡이고, 색은 입히지 않아 흰 글자가 희다', () => {
+    fakes.okArt = true;
+    const g = makeGame('school', 'seino');
+    const mat = g.world.lightMat;
+    expect(mat.map).toBeTruthy();
+    const levels = [0, 1, 2, 3, 4].map((t) => {
+      g.world.update(g.p, 14, t * 1.37, false);
+      expect(mat.color.r).toBeCloseTo(mat.color.g);
+      expect(mat.color.g).toBeCloseTo(mat.color.b);
+      return mat.color.r;
+    });
+    expect(new Set(levels).size).toBeGreaterThan(1);
     g.exit();
   });
 });
