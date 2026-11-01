@@ -16,9 +16,22 @@ FACES = {
     'light_school': ([(0, 0.013, 1, 0.054), (0, 0.202, 1, 0.847), (0, 0.95, 1, 0.99)], 256, 96),
     'light_station': ([(0.036, 0.218, 0.964, 0.782)], 256, 84),
     'light_factory': ([(0.065, 0.287, 0.915, 0.717)], 256, 73),
+    'light_sewer': ([(0.06, 0.06, 0.95, 0.90)], 192, 192),
+    'clue': ([(0.02, 0.02, 0.66, 0.90)], 256, 352),
+    'desk': ([(0.02, 0.06, 0.98, 0.895)], 256, 168),
+    'bench': ([(0.095, 0.525, 0.905, 0.895)], 320, 100),
 }
-# 이름: (결과 크기, 천장이면 맞출 색)
-TILES = {}
+# 이름: (결과 크기, 그림 평균을 맞출 맵의 색)
+TILES = {
+    'ceil_factory': (512, 0x1b1a19),
+    'ceil_sewer': (512, 0x111614),
+    'ceil_school': (512, 0x24262c),
+    'ceil_station': (512, 0x1c1e26),
+    'pipe_factory': (256, 0x2e3236),
+    'pipe_sewer': (256, 0x3a4438),
+    'pipe_school': (256, 0x4a4a46),
+    'pipe_station': (256, 0x4a4a46),
+}
 
 
 def load(name):
@@ -37,6 +50,77 @@ def face(name, bands, w, h):
     save(full.resize((w, h), Image.LANCZOS), name)
 
 
+def erase_star(im):
+    W, H = im.size
+    s = int(W * STAR)
+    x0, y0 = W - s, H - s
+    patch = im.crop((x0 - s, y0, x0, H))
+    mask = Image.new('L', (s, s), 0)
+    mask.paste(255, (s // 8, s // 8, s, s))
+    im.paste(patch, (x0, y0), mask.filter(ImageFilter.GaussianBlur(s // 16)))
+
+
+# a, b 를 가로로 겹칠 때 두 그림 차이가 가장 작은 위에서 아래 길을 찾아, 왼쪽이 a 인 판을 돌려준다 (1 이면 a)
+def cut_mask(a, b, soft):
+    err = ((a - b) ** 2).sum(axis=2)
+    h, w = err.shape
+    cost = err.copy()
+    for y in range(1, h):
+        left = np.r_[np.inf, cost[y - 1, :-1]]
+        right = np.r_[cost[y - 1, 1:], np.inf]
+        cost[y] += np.minimum(np.minimum(left, cost[y - 1]), right)
+    path = [int(cost[-1].argmin())]
+    for y in range(h - 2, -1, -1):
+        x = path[-1]
+        lo, hi = max(0, x - 1), min(w, x + 2)
+        path.append(lo + int(cost[y, lo:hi].argmin()))
+    path.reverse()
+    mask = (np.arange(w)[None, :] < np.array(path)[:, None]).astype(float)
+    return np.array(Image.fromarray((mask * 255).astype('uint8')).filter(ImageFilter.GaussianBlur(soft))) / 255
+
+
+# 가로로 되풀이되게 한다: 오른쪽 끝을 왼쪽 끝 위에 겹쳐 이음매 길을 따라 잇는다
+def wrap_x(a, over, soft):
+    w = a.shape[1] - over
+    out = a[:, :w].copy()
+    mask = cut_mask(a[:, w:], a[:, :over], soft)[..., None]
+    out[:, :over] = a[:, w:] * mask + a[:, :over] * (1 - mask)
+    return out
+
+
+# 큰 얼룩이 되풀이되어 보이지 않게 넓은 밝기 차이를 편다
+def flatten(a, radius):
+    im = Image.fromarray(a.clip(0, 255).astype('uint8'))
+    low = np.array(im.filter(ImageFilter.GaussianBlur(radius))).astype(float)
+    return a - low + low.mean(axis=(0, 1))
+
+
+def to_linear(c):
+    c = c / 255
+    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def to_srgb(c):
+    return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055)
+
+
+def tile(name, size, plain):
+    im = load(name)
+    erase_star(im)
+    side = round(size * 1.16)
+    a = np.array(im.resize((side, side), Image.LANCZOS)).astype(float)
+    a = flatten(a, size / 4)
+    over = side - size
+    a = wrap_x(a, over, 1.5)
+    a = wrap_x(a.transpose(1, 0, 2), over, 1.5).transpose(1, 0, 2)
+    im = Image.fromarray(a.clip(0, 255).round().astype('uint8'))
+    save(im, name)
+    mean = to_linear(np.array(im).astype(float)).mean(axis=(0, 1))
+    goal = to_linear(np.array([plain >> 16, plain >> 8 & 255, plain & 255], float))
+    rgb = (to_srgb(np.minimum(1, goal / mean)) * 255).round().astype(int)
+    print(f'  tint 0x{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}')
+
+
 def save(im, name):
     path = f'{OUT}/horror_{name}.jpg'
     im.save(path, quality=80, optimize=True)
@@ -47,3 +131,6 @@ if __name__ == '__main__':
     for name, (bands, w, h) in FACES.items():
         if (not ONLY or name in ONLY) and os.path.exists(f'{RAW}/{name}.png'):
             face(name, bands, w, h)
+    for name, (size, plain) in TILES.items():
+        if (not ONLY or name in ONLY) and os.path.exists(f'{RAW}/{name}.png'):
+            tile(name, size, plain)
