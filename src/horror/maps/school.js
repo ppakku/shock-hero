@@ -38,7 +38,7 @@ export const schoolTheme = {
   doorSet: 'horror_door_school', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x9aa4b4 }, // 달밤처럼 푸르게 눌러 준다
   floor: { art: 'horror_school_floor', plain: 0x4a3a2a, repeat: 7, tint: 0xa0a0a8 },
-  locker: { art: 'horror_school_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0x7f9cb8, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 칸을 꽉 채운다. 칸마다 문 두 짝
+  locker: { art: 'horror_school_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0x40526a, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 칸을 꽉 채운다. 칸마다 문 두 짝
   doorArt: 'locker', // 벽을 칠한 문은 벽처럼 보여서 철문 그림을 쓴다
   board: { art: 'horror_school_board', plain: 0xffffff, repeat: 1 }, // 칠판과 게시판
   ceil: 0x24262c,

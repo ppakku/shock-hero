@@ -37,7 +37,7 @@ export const factoryTheme = {
   doorSet: 'horror_door_factory', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_wall', plain: 0x5a5148, repeat: 1 },
   floor: { art: 'horror_floor', plain: 0x35312d, repeat: 7 }, // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
-  locker: { art: 'horror_locker', plain: 0x4a5a58, repeat: 1 },
+  locker: { art: 'horror_locker', plain: 0x4a5a58, repeat: 1, tint: 0xa8a8a8 }, // 밝은 그림이라 손전등에 날아가지 않게 누른다
   ceil: 0x1b1a19,
   fog: 0x000000,
   ambient: 0x8890a8,

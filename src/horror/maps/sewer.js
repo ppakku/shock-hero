@@ -38,7 +38,7 @@ export const sewerTheme = {
   doorSet: 'horror_door_sewer', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_sewer_wall', plain: 0x3f4a3e, repeat: 1 },
   floor: { art: 'horror_sewer_floor', plain: 0x1e2a28, repeat: 7, shiny: { color: 0x8aa8a0, power: 40 }, flow: [0.02, 0.05] }, // 젖은 바닥: 손전등이 비치고 천천히 흐른다
-  locker: { art: 'horror_sewer_locker', plain: 0x4a4a38, repeat: 1, box: { w: 3, h: 3, d: 3 } }, // 벽을 파낸 칸을 꽉 채운다
+  locker: { art: 'horror_sewer_locker', plain: 0x4a4a38, repeat: 1, tint: 0x8a8a8a, box: { w: 3, h: 3, d: 3 } }, // 벽을 파낸 칸을 꽉 채운다
   doorArt: 'locker', // 벽돌을 칠한 문은 벽처럼 보여서 철문 그림을 쓴다
   ceil: 0x111614,
   fog: 0x010302,
