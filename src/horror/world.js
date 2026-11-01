@@ -10,7 +10,7 @@ const LIGHT = { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }; // 비상등 크기와 높�
 const LIGHT_COLOR = new THREE.Color(0xff3a14);
 const MACHINE_TINT = new THREE.Color(0xb4bcc4); // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
-const DOOR_COLORS = [0xc03020, 0x2060d0]; // 열쇠와 같은 색. map.locks 순서
+const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
 const PIPE = { r: 0.07, off: 0.12, ys: [2.62, 2.8] }; // 벽을 따라가는 배관 두 줄
 
 const lambert = (color) => new THREE.MeshLambertMaterial({ color });
@@ -49,10 +49,8 @@ function setOnWall(mesh, i, f, w, h, d, y) {
 }
 
 // 잠긴 문은 공장 셔터다. 양옆이 벽인 쪽으로 세운다
-function addShutter(group, c, map, color) {
-  const mat = lambert(color);
-  mat.emissive.setHex(color);
-  mat.emissiveIntensity = 0.35;
+function addShutter(group, c, map, color, wallMat) {
+  const mat = new THREE.MeshLambertMaterial({ color, map: wallMat.map, emissive: color, emissiveIntensity: 0.12 }); // 녹슨 벽 그림에 색만 입힌다
   const across = map.rows[c.cy][c.cx - 1] === '#'; // 왼쪽이 벽이면 x 를 따라 놓는다
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(across ? CELL : DOOR.d, WALL_H, across ? DOOR.d : CELL), mat);
   mesh.position.set((c.cx + 0.5) * CELL, WALL_H / 2, (c.cy + 0.5) * CELL);
@@ -168,7 +166,7 @@ export function buildWorld(scene, map, k, mats = {}) {
 
   const { lightMat, counts } = addDecor(scene, map, k, wallMat);
   let lightLevel = -1;
-  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i]));
+  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], wallMat));
   const rising = [];
   let lastT = 0;
 
