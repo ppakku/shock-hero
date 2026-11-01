@@ -4,7 +4,7 @@ const NOTE_BOX = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-5
 const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
 const NOTE_PAPER = 'background:#c9b48a url(art/horror_note_paper.jpg) center/cover;color:#2a1c10;border:none;border-radius:2px;box-shadow:0 6px 30px #000';
 const NOTE_PAPER_WARN = '#7a2414';
-const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-width:24vw;max-height:60vh;pointer-events:none'; // 글자 왼쪽 빈자리에 놓는다
+const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-width:min(24vw,calc(47vw - 280px));max-height:60vh;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent)'; // 글자 왼쪽 빈자리에 놓고 위아래 잘린 자리는 서서히 지운다
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { fillName } from './story.js';

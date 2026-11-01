@@ -1,6 +1,6 @@
 # 사용법: npx vite --port 5288 --strictPort 를 켠 뒤 python3 tools/run_stun_gun.py 출력폴더 (포트를 바꾸면 HORROR_PORT 로 알려 준다)
 # 공포 모드 전기충격기를 진짜 키 입력으로 확인한다: 충전 전, 충전, 빗나감, 맞힘, 숨기, 키 바뀜, 터치 위치
-import os, sys, time
+import os, re, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
@@ -130,7 +130,36 @@ def touch(pw, name, w, h, ua):
     b.close()
 
 
+# 새 그림을 하나도 못 받아도 원래 모습으로 놀 수 있고, 그림을 받았을 때 그리기 횟수가 늘지 않아야 한다
+NEW_ART = r'horror_(hand|fuse|key|note|box|panel|gate|door|intro|face)'
+
+
+def art_lost(pw):
+    calls = {}
+    for name, block in (('있음', False), ('없음', True)):
+        b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+        pg = b.new_page(viewport={'width': 1280, 'height': 720})
+        errs = []
+        pg.on('pageerror', lambda e: errs.append(str(e)))
+        if block:
+            pg.route(re.compile(NEW_ART), lambda r: r.abort())
+        open_game(pg)
+        pg.evaluate("window.__horror.gunTest = false")
+        time.sleep(1)
+        look = pg.evaluate("() => { const g = window.__horror, f = g.gun; g.hud.showNote(['글']); const note = g.hud.noteEl.style.cssText; g.hud.closeNote(); return { art: f.art.visible, model: f.model.visible, fuse: g.fuseMeshes[0].material.visible, key: g.keyMeshes[0].material.visible, paper: note.includes('horror_note_paper'), calls: g.renderer.info.render.calls }; }")
+        calls[name] = look['calls']
+        pg.screenshot(path=f'{OUT}/art_{name}.png')
+        if block:
+            check('그림이 없으면 3D 손, 퓨즈, 열쇠, 어두운 쪽지로 남는다', look['model'] and not look['art'] and look['fuse'] and look['key'], look)
+        else:
+            check('그림이 있으면 손, 퓨즈, 열쇠를 그림으로 그린다', look['art'] and not look['model'] and not look['fuse'] and not look['key'] and look['paper'], look)
+        check(f'그림 {name}: 페이지 오류 없음', not errs, errs)
+        b.close()
+    check('그림을 입혀도 그리기 횟수가 늘지 않는다', calls['있음'] <= calls['없음'], calls)
+
+
 with sync_playwright() as pw:
+    art_lost(pw)
     desktop(pw)
     touch(pw, 'tablet', 1024, 768, IPAD_UA)
     touch(pw, 'phone', 844, 390, PHONE_UA)
