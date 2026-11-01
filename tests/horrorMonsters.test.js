@@ -379,11 +379,28 @@ describe('큰입이: 소리로만 찾는다', () => {
     expect(run(s, { map: hall, player: p }, mw.rushWarn - 0.1)).not.toContain('caught');
   });
 
-  it('들킨 뒤에도 멈추면 잡히지 않는다. 알림이 멈추라고 말한다', () => {
+  it('달려드는 앞에서 멈춰도 그 자리에 있으면 잡힌다', () => {
     const s = monster('maw', { x: 15.5, y: 1.5 });
     const heard = player({ noise: k.runNoise });
     run(s, { map: hall, player: heard }, DT);
-    expect(run(s, { map: hall, player: player() }, 6)).not.toContain('caught');
+    expect(run(s, { map: hall, player: player() }, 6)).toContain('caught');
+  });
+
+  it('칸 구석에 멈춰 있어도 달려든 칸이면 잡힌다', () => {
+    const s = monster('maw', { x: 15.5, y: 1.5 });
+    run(s, { map: hall, player: player({ noise: k.runNoise }) }, DT);
+    expect(run(s, { map: hall, player: player({ x: 20.85, y: 1.2 }) }, 6)).toContain('caught');
+  });
+
+  it('달려드는 동안 옆으로 비켜서 멈추면 피한다', () => {
+    const s = monster('maw', { x: 9.5, y: 1.5 });
+    run(s, { map: hall, player: player({ noise: k.runNoise }) }, DT);
+    expect(run(s, { map: hall, player: player({ x: 25.5 }) }, 3)).not.toContain('caught');
+  });
+
+  it('달려들지 않아도 닿으면 잡힌다', () => {
+    const s = monster('maw', { x: 20.3, y: 1.5, brushT: 9, warnT: 0 });
+    expect(tickStalker(s, { map: hall, player: player() }, k, DT, () => 0.5)).toContain('caught');
   });
 
   it('달려드는 중에 움직이면 잡힌다', () => {
@@ -400,23 +417,25 @@ describe('큰입이: 소리로만 찾는다', () => {
     expect(e).not.toContain('caught');
   });
 
-  it('소리 없이 서 있으면 코앞에서 멈췄다 돌아선다. 막다른 곳이어도 잡지 않는다', () => {
+  it('소리 없이 서 있으면 처음 다가올 때는 코앞에서 멈췄다 돌아선다', () => {
     const p = player({ x: 2.5, y: 3.5 }); // 복도 끝
     const s = monster('maw', { x: 5.5, y: 3.5 });
     s.path = findPath(hall, cellOf(s), { cx: 2, cy: 3 });
-    const events = run(s, { map: hall, player: p }, 90, seeded(3));
+    const events = run(s, { map: hall, player: p }, mw.sniffPause + 2, seeded(3));
     expect(events).toContain('sniff');
     expect(events).not.toContain('caught');
     expect(events).not.toContain('found');
   });
 
-  it('달려드는 중이 아니면 닿아도 잡지 않는다 (경고 없는 잡힘이 없다)', () => {
+  it('숨어 있으면 닿아도 잡히지 않는다', () => {
     const s = monster('maw', { x: 20.3, y: 1.5, brushT: 9, warnT: 0 });
-    expect(tickStalker(s, { map: hall, player: player() }, k, DT, () => 0.5)).not.toContain('caught');
-    s.rushRestT = 9; // 쉬는 중이면 소리를 들어도 걸어올 뿐이다
-    const e = run(s, { map: hall, player: player({ x: s.x + 0.2, noise: k.walkNoise }) }, 1);
+    expect(tickStalker(s, { map: hall, player: player({ hidden: 0 }) }, k, DT, () => 0.5)).not.toContain('caught');
+  });
+
+  it('쉬는 중이면 소리를 들어도 달려들지 않고 걸어온다', () => {
+    const s = monster('maw', { x: 16.5, y: 1.5, rushRestT: 9, warnT: 0 });
+    run(s, { map: hall, player: player({ x: s.x + 1.5, noise: k.walkNoise }) }, 0.5);
     expect(s.mode).not.toBe('chase');
-    expect(e).not.toContain('caught');
   });
 
   it('걷는 소리는 퓨즈를 다 찾아도 멀리서 듣지 못한다. 달리는 소리만 멀어진다', () => {

@@ -1,7 +1,7 @@
 // 공포 모드 입구. 3D 묶음은 고를 때만 내려받는다 (이 파일은 three 를 import 하지 않는다).
 import { isPhone, isTouchDevice } from '../ui/touch.js';
 import { saveStore } from '../save.js';
-import { pickRound, forcedRound } from '../logic/horrorPick.js';
+import { RANDOM, chooseRound, forcedRound } from '../logic/horrorPick.js';
 
 // 안내 화면에 어느 기기의 조작법을 보여 줄지 고른다
 export function deviceKind(phone = isPhone(), touch = isTouchDevice()) {
@@ -43,8 +43,9 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
   const root = makeRoot();
   if (!canUseWebGL()) return fail(root, '이 기기에서는 공포 모드를 켤 수 없어요.', onExit);
   let HorrorGame;
+  let showChooser;
   try {
-    ({ HorrorGame } = await loadModule());
+    ({ HorrorGame, showChooser } = await loadModule());
   } catch (e) {
     console.error('공포 모드 묶음을 불러오지 못했어요', e);
     return fail(root, '공포 모드를 불러오지 못했어요. 인터넷을 확인해 주세요.', onExit);
@@ -57,11 +58,10 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     onExit();
   };
   // 판마다 HorrorGame 을 새로 만든다. 지난 판에서 남는 것이 없다
-  const play = (forced) => {
+  const play = (round) => {
     let horror = null;
     try {
       const save = saveStore.load();
-      const round = forced ?? pickRound(save.horror.last);
       save.horror.last = round;
       saveStore.save(save);
       horror = new HorrorGame(root, {
@@ -71,7 +71,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
         lowFx: save.settings.lowFx,
         muted: save.settings.muted,
         onExit: leave,
-        onAgain: () => play(null),
+        onAgain: () => choose(),
       });
       horror.start();
     } catch (e) {
@@ -88,5 +88,17 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
       fail(root, '공포 모드를 시작하지 못했어요. 다시 시도해 주세요.', onExit);
     }
   };
-  play(forcedRound(globalThis.location?.search ?? ''));
+  let choice = { mapId: RANDOM, monsterId: RANDOM }; // 한 판 더를 누르면 방금 고른 그대로 보여 준다
+  const choose = () => showChooser(root, {
+    choice,
+    compact: deviceKind() === 'phone',
+    onStart: (picked) => {
+      choice = picked;
+      play(chooseRound(picked, saveStore.load().horror.last));
+    },
+    onQuit: leave,
+  });
+  const forced = forcedRound(globalThis.location?.search ?? '');
+  if (forced) play(forced);
+  else choose();
 }

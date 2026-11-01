@@ -41,6 +41,7 @@ const UP_MODES = ['chase', 'stunned', 'watch']; // 그 밖의 상태에서는 �
 const HOLE = { crawl: 0.95, up: 1.5 }; // 구멍 반지름 (미터)
 const SKIN_COLOR = 0x4a3f36; // 그림이 없을 때 머리 색
 const ROBE_COLOR = 0x332b25; // 그림이 없을 때 몸 색
+const HOLE_Y = 0.03; // 구멍을 바닥에서 띄우는 높이 (미터)
 const HOLE_COLOR = 0x0c0a08; // 그림이 없을 때 구멍 색
 const FACE_GLOW = { patrol: 0.1, chase: 0.14, stunned: 0.03 }; // 어둠에서 얼굴이 희미하게 뜨는 세기
 
@@ -162,7 +163,7 @@ export class MoleModel extends CreatureBase {
     const hole = this.paper('art/horror_mole_hole.webp', HOLE_COLOR);
     hole.transparent = true;
     hole.depthWrite = false;
-    this.hole = this.add(this.group, holeGeometry(), hole, false, 0, 0.03, 0);
+    this.hole = this.add(this.group, holeGeometry(), hole, false, 0, HOLE_Y, 0);
     this.hole.renderOrder = 1;
 
     this.headHeight = CHIN_Y + HEAD_H;
@@ -216,6 +217,7 @@ export class MoleModel extends CreatureBase {
 
   // 땅속에서는 구멍만 꿈틀대며 간다. 땅이 흔들리는 동안 위험한 넓이까지 벌어진다
   moveHole(s, dt, first, up) {
+    this.hole.position.y = HOLE_Y; // 얼굴 장면이 옮겨 놓은 높이를 되돌린다
     this.phase = (this.phase + dt * (up ? 2 : 5)) % TAU;
     const danger = cfg.horror.monsters.mole.eruptDist * CELL;
     const goal = s.mode === 'investigate' ? danger : up || s.mode === 'search' ? HOLE.up : HOLE.crawl;

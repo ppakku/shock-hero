@@ -71,6 +71,8 @@ export class HorrorHud {
     this.box = document.createElement('div');
     // 휴대폰 노치에 글자가 가리지 않게 안전 여백만큼 안쪽에 놓는다
     this.box.style.cssText = 'position:absolute;top:env(safe-area-inset-top,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
+    // 맨 먼저 넣어서 상태 글자가 어둠 위에 남게 한다
+    this.dread = this.add('position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,transparent 38%,#000 92%)');
     this.status = this.add('position:absolute;left:16px;top:12px;text-shadow:0 0 4px #000');
     // 달리기 체력 막대. 다 쓰면 빨갛게 바뀐다
     this.add('position:absolute;left:16px;top:35px;font-size:13px;text-shadow:0 0 4px #000').textContent = '체력';
@@ -83,6 +85,7 @@ export class HorrorHud {
     this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 6px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
     this.dot = this.add('position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(255,255,255,.45)');
+    this.dreadShown = 0;
     this.zap = this.add('position:absolute;inset:0;background:#7cc4ff;opacity:0');
     this.black = this.add('position:absolute;inset:0;background:#000;opacity:0;transition:opacity .35s');
     root.appendChild(this.box);
@@ -193,6 +196,13 @@ export class HorrorHud {
 
   showSlit(on) {
     this.slit.style.display = on ? 'block' : 'none';
+  }
+
+  // 괴물이 가까울수록 화면 가장자리가 어두워진다 (0 에서 1)
+  setDread(level) {
+    if (Math.abs(level - this.dreadShown) < 0.02 && level !== 0) return; // 매 프레임 글자를 고치지 않는다
+    this.dreadShown = level;
+    this.dread.style.opacity = String(level);
   }
 
   // 전기충격기를 쏘면 화면이 파랗게 번쩍인다 (초)

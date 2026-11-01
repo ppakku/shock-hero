@@ -9,6 +9,8 @@ const NOTES = [196, 207.65, 293.66, 311.13, 392]; // 어둠 속에서 가끔 울
 const CLANG = [310, 467, 811]; // 멀리서 쇠가 부딪히는 소리
 const HUM = [98, 147.5]; // 충전된 전기충격기의 웅웅거림
 const CRACKLE = 5; // 맞혔을 때 이어지는 지지직 수
+const STING = [466.16, 493.88, 739.99, 783.99]; // 반음씩 부딪히는 놀람 소리
+const WHISPER = 6; // 속삭임 한 번의 음절 수
 export class HorrorAudio {
   constructor({ muted, voice = 'seino' }) {
     sfx.unlock();
@@ -17,6 +19,8 @@ export class HorrorAudio {
     this.loops = [];
     this.noteT = this.k.musicNoteMin / 2;
     this.clangT = this.k.musicClangMin;
+    this.whisperT = this.k.scare.whisperMin;
+    this.hushed = false;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.out = this.ctx.createGain();
@@ -216,13 +220,13 @@ export class HorrorAudio {
     if (Math.random() < 0.3) this.puffNoise(this.panner, { dur: 0.05, vol: 0.5, freq: 2600, q: 2, delay: 0.09 });
   }
 
-  // 두근두근. 120~180Hz 성분을 더해 작은 스피커에도 들린다.
-  heartbeat() {
+  // 두근두근. 120~180Hz 성분을 더해 작은 스피커에도 들린다. loud: 가까울수록 커진다
+  heartbeat(loud = 1) {
     if (this.suspended) return;
-    this.blip(this.out, { freq: 58, dur: 0.16, vol: 0.5 });
-    this.blip(this.out, { freq: 150, dur: 0.12, vol: 0.4, slide: 0.7 });
-    this.blip(this.out, { freq: 54, dur: 0.18, vol: 0.4, delay: 0.17 });
-    this.blip(this.out, { freq: 130, dur: 0.12, vol: 0.3, slide: 0.7, delay: 0.17 });
+    this.blip(this.out, { freq: 58, dur: 0.16, vol: 0.5 * loud });
+    this.blip(this.out, { freq: 150, dur: 0.12, vol: 0.4 * loud, slide: 0.7 });
+    this.blip(this.out, { freq: 54, dur: 0.18, vol: 0.4 * loud, delay: 0.17 });
+    this.blip(this.out, { freq: 130, dur: 0.12, vol: 0.3 * loud, slide: 0.7, delay: 0.17 });
   }
 
   play(name) {
@@ -259,6 +263,7 @@ export class HorrorAudio {
       this.puffNoise(o, { dur: 0.7, vol: 0.8, freq: 2400, freqTo: 300, type: 'lowpass' });
       for (let i = 0; i < CRACKLE; i++) this.puffNoise(o, { dur: 0.05, vol: 0.4, freq: 1800 + i * 500, q: 3, delay: 0.1 + i * 0.07 });
     }
+    if (name === 'scare' || name === 'caught') this.sting(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
     if ((name === 'scare' || name === 'caught') && this.voice !== 'seino') return this.jolt(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
     if (name === 'scare') {
       // 올라가는 거친 숨소리
@@ -269,6 +274,22 @@ export class HorrorAudio {
       this.puffNoise(o, { dur: 1.2, vol: this.k.caughtVol, freq: 600, freqTo: 3000, q: 3 });
       this.blip(o, { freq: 150, dur: 1.1, vol: this.k.caughtVol * 0.67, slide: 0.4 });
     }
+  }
+
+  // 어느 괴물이든 먼저 터지는 날카로운 불협화음
+  sting(vol) {
+    const o = this.out;
+    for (const freq of STING) this.blip(o, { freq, dur: 0.7, vol: vol * 0.3, type: 'sawtooth', slide: 0.82 });
+    this.puffNoise(o, { dur: 0.25, vol, freq: 2600, freqTo: 800, q: 0.6 });
+  }
+
+  // 귀 가까이에서 들리는 알아들을 수 없는 속삭임
+  whisper(rand) {
+    const pan = this.ctx.createStereoPanner();
+    pan.pan.value = rand() < 0.5 ? -0.9 : 0.9;
+    pan.connect(this.out);
+    const vol = this.k.scare.whisperVol;
+    for (let i = 0; i < WHISPER; i++) this.puffNoise(pan, { dur: 0.13 + rand() * 0.12, vol, freq: 1700 + rand() * 1800, q: 7, delay: i * 0.2 + rand() * 0.08 });
   }
 
   // 눈뜬이는 높이 치솟는 비명 숨, 큰입이는 낮은 포효 뒤에 이빨이 딱 닫힌다
@@ -335,13 +356,21 @@ export class HorrorAudio {
     this.heartT -= dt;
     if (gap !== null && !this.suspended && this.heartT <= 0) {
       this.heartT = gap;
-      this.heartbeat();
+      this.heartbeat(1 + this.k.scare.heartLoud * (1 - dist / this.k.heartFar));
     }
   }
 
   // 추격 중에는 배경 음악을 낮춰서 숨소리와 발소리가 앞에 나오게 한다
   musicLevel() {
+    if (this.hushed) return 0.0001;
     return this.k.musicVolume * (this.mode === 'chase' ? this.k.musicChaseDuck : 1);
+  }
+
+  // 놀라기 직전에 배경 음악을 뚝 끊는다
+  hush(on) {
+    if (!this.ctx || on === this.hushed) return;
+    this.hushed = on;
+    if (this.active) this.music.gain.setTargetAtTime(this.musicLevel(), this.ctx.currentTime, on ? 0.03 : 0.4);
   }
 
   duckMusic(t) {
@@ -452,6 +481,11 @@ export class HorrorAudio {
     if (this.clangT <= 0) {
       this.clangT = this.gap(this.k.musicClangMin, this.k.musicClangMax, rand);
       this.clang(rand);
+    }
+    this.whisperT -= dt;
+    if (this.whisperT <= 0) {
+      this.whisperT = this.gap(this.k.scare.whisperMin, this.k.scare.whisperMax, rand);
+      if (!this.suspended) this.whisper(rand);
     }
   }
 

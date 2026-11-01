@@ -481,6 +481,7 @@ function turnAway(s, map, player, k, rand) {
 
 // 큰입이: 눈이 없다. 달리는 소리와 문 여는 소리는 멀리서, 걷는 소리는 가까이서만 듣는다.
 // 소리 난 곳으로 잠깐 달려들고 (chase), 남은 길은 걸어가서 (investigate), 코로 찾는다 (search).
+// 소리를 내지 않으면 찾지 못하지만 닿으면 잡는다. 달려올 때는 멈추지 말고 자리를 옮겨야 한다.
 function tickMaw(s, world, m, k, dt, rand, events) {
   const { map, player } = world;
   const hiding = player.hidden !== null;
@@ -529,8 +530,9 @@ function tickMaw(s, world, m, k, dt, rand, events) {
     if (!walk(s, walkSpeed(s, k), dt)) startSniff(s, m);
   } else if (s.mode === 'search') tickSearch(s, world, k, dt, rand, events);
   else tickPatrol(s, map, k, dt, rand);
-  // 달려드는 중에 닿아야 잡힌다. 그래서 잡기 전에 늘 달려드는 소리가 난다. 멈춰 있으면 코앞까지 와도 잡지 않는다
-  if (rushing && s.warnT <= 0 && !hiding && player.noise > 0 && dist(s, player) < m.touchDist) events.push('caught');
+  // 멈추면 듣지 못할 뿐이다. 달려든 곳에 그대로 서 있거나 몸에 닿으면 잡힌다
+  if (rushing && !hiding && sameCell(cellOf(s), cellOf(player))) closeIn(s, player, Math.max(0, Math.min(m.rushSpeed * dt, dist(s, player) - m.touchDist / 2)));
+  if (s.warnT <= 0 && !hiding && dist(s, player) < m.touchDist) events.push('caught');
 }
 
 // 땅속이가 땅속에 있는가. 땅속에 있는 동안은 쇼크가 닿지 않는다

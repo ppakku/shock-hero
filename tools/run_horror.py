@@ -565,9 +565,9 @@ def play_controls(pw):
 
     # 놀람 장면: 밟으면 한 번만 울리고 손전등이 깜빡이고, 잡히면 깜빡임이 끊겨 밝기가 돌아온다
     sc = pg.evaluate('window.__horror.map.scares[0]')
-    pg.evaluate("window.__lows = []; const g = window.__horror; const t = setInterval(() => window.__lows.push(g.flash.intensity), 30); setTimeout(() => clearInterval(t), 1800)")
+    pg.evaluate("window.__lows = []; const g = window.__horror; const t = setInterval(() => window.__lows.push(g.flash.intensity), 30); setTimeout(() => clearInterval(t), 3500)")
     stand_at(pg, sc['cx'] + 0.5, sc['cy'] + 0.5)
-    time.sleep(2)
+    time.sleep(3.7)
     lows = pg.evaluate('window.__lows')
     left = pg.evaluate('window.__horror.scaresLeft.length')
     base = pg.evaluate('window.__horror.k.flashIntensity')
@@ -581,6 +581,7 @@ def play_controls(pw):
     check('scare: second cell starts a flicker', becomes(pg, 'window.__horror.blink !== null') or pg.evaluate('window.__horror.scaresLeft.length') == left - 1, (pg.evaluate('window.__horror.state'), pg.evaluate('window.__horror.scaresLeft.length'), left))
     pg.evaluate(FAKE_LOCK)  # 마우스가 잠겨 있으면 잡힌 뒤 바로 이어진다
     pg.evaluate("window.__horror.getCaught()")
+    becomes(pg, 'window.__horror.lunge?.hush <= 0')  # 정적이 끝나야 얼굴이 나온다
     k_ = pg.evaluate("({ blink: window.__horror.blink, i: window.__horror.flash.intensity, base: window.__horror.k.flashIntensity })")
     check('scare: caught cancels the flicker and keeps the face light', k_['blink'] is None and k_['i'] < k_['base'] * 0.5, k_)
     pg.wait_for_function("window.__horror.state === 'play'", timeout=20000)
@@ -588,7 +589,9 @@ def play_controls(pw):
     pg.evaluate("delete document.pointerLockElement")
     pg.evaluate(PARK_STALKER)
     low = pg.evaluate("() => { const g = window.__horror; g.lowFx = true; g.p = { x: 1.5, y: 1.5 }; const s = g.map.scares[2]; g.p = { x: s.cx + 0.5, y: s.cy + 0.5 }; return null; }")
-    time.sleep(0.5)
+    becomes(pg, 'window.__horror.scare')
+    becomes(pg, '!window.__horror.scare')  # 어둠이 끝난 뒤에 본다
+    time.sleep(0.3)
     check('scare: lowFx plays no flicker', pg.evaluate('window.__horror.blink') is None and pg.evaluate('window.__horror.flash.intensity') == base, '')
     pg.evaluate('window.__horror.lowFx = false')
     print('errors', errs)
@@ -665,7 +668,7 @@ def play_stalk(pw):
       Object.assign(g.stalker, { x: 22.5, y: 21.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [], calmT: 99, graceT: 0, patrolIndex: 0 });
     }""")
     pg.wait_for_function("window.__horror.stalker.mode === 'watch'", timeout=8000, polling=30)
-    time.sleep(1.2)
+    becomes(pg, 'window.__horror.model.glow > 0.8')  # 눈빛은 게임 시간으로 밝아져서 느린 시험에서는 늦다
     w = pg.evaluate("({ mode: window.__horror.stalker.mode, x: window.__horror.stalker.x, glow: window.__horror.model.glow, stretch: window.__horror.model.pose.stretch, lean: window.__horror.model.pose.lean, shown: window.__horror.model.group.visible, say: window.__horror.hud.message.textContent })")
     print('watch', w)
     pg.screenshot(path=f'{OUT}/watch_live.png')
@@ -884,7 +887,7 @@ def play_robust(pw):
     check('cull: hidden again after leaving', becomes(pg, '!window.__horror.model.group.visible'))
     pg.evaluate(FAKE_LOCK)
     pg.evaluate("window.__horror.getCaught()")
-    check('cull: drawn in the caught scene', pg.evaluate('window.__horror.model.group.visible'))
+    check('cull: drawn in the caught scene', becomes(pg, 'window.__horror.lunge?.hush <= 0 && window.__horror.model.group.visible'))
     pg.wait_for_function("window.__horror.state === 'play'", timeout=20000)
     check('cull: far again after respawn', not shown())
     pg.evaluate("delete document.pointerLockElement")
@@ -1457,6 +1460,7 @@ def play_replay(pw):
     time.sleep(3)
     pg.evaluate(COUNT_LISTENERS)
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.click('[data-chooser] button:has-text("들어가기")', timeout=20000)  # 랜덤 그대로 들어간다
     pg.wait_for_function('window.__horror', timeout=20000)
     time.sleep(0.5)
     seen = []
@@ -1482,6 +1486,7 @@ def play_replay(pw):
         pg.wait_for_function("window.__horror.state === 'end'", timeout=5000)
         check(f'replay {i}: end screen offers another', '한 판 더' in pg.inner_text('#horror'))
         pg.click('#horror button:has-text("한 판 더")')
+        pg.click('[data-chooser] button:has-text("들어가기")', timeout=10000)
         pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
         check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
         time.sleep(0.4)

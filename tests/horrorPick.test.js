@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
-import { MAP_IDS, MONSTER_IDS, pickRound, forcedRound, isRound } from '../src/logic/horrorPick.js';
+import { MAP_IDS, MONSTER_IDS, pickRound, forcedRound, isRound, chooseRound } from '../src/logic/horrorPick.js';
 
 function seeded(seed) {
   let s = seed;
@@ -13,6 +13,23 @@ function seeded(seed) {
 describe('괴물 그림', () => {
   it.each(MONSTER_IDS)('%s 는 안내 화면 얼굴이 있다', (id) => {
     expect(existsSync(`public/art/horror_face_${id}.webp`)).toBe(true);
+  });
+});
+
+describe('고르기 화면의 선택', () => {
+  const last = { mapId: 'factory', monsterId: 'seino' };
+  it('고른 칸은 지난 판과 같아도 그대로 쓴다', () => {
+    expect(chooseRound(last, last)).toEqual(last);
+  });
+  it('랜덤 칸만 지난 판과 다르게 뽑는다', () => {
+    for (let i = 0; i < 20; i++) {
+      const r = chooseRound({ mapId: 'random', monsterId: 'maw' }, last, () => i / 20);
+      expect(r.monsterId).toBe('maw');
+      expect(r.mapId).not.toBe('factory');
+    }
+  });
+  it('둘 다 랜덤이면 언제나 올바른 판이다', () => {
+    expect(isRound(chooseRound({ mapId: 'random', monsterId: 'random' }, null))).toBe(true);
   });
 });
 
