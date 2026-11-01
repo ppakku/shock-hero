@@ -4,12 +4,12 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { bone, clamp, knob, lerp, sampleKeys, surface } from './creatureGeometry.js';
 
 const INNER = 0.95; // 안쪽 면이 겉면보다 작은 비율 (입술 두께)
-const warp = (w) => w * (0.4 + (0.6 * Math.abs(w)) / Math.PI); // 얼굴 앞쪽에 그물을 촘촘히 모은다. 코처럼 가는 굴곡도 살아남는다
+export const warp = (w) => w * (0.4 + (0.6 * Math.abs(w)) / Math.PI); // 얼굴 앞쪽에 그물을 촘촘히 모은다. 코처럼 가는 굴곡도 살아남는다
 
 // 머리 그물 만들기.
 // keys: [높이, 반폭, 반두께, 앞뒤 치우침] 위에서 아래로. edgeU, edgeL: 각도 w 에서 윗입술과 아랫입술 높이.
-// mouthW: 입꼬리 각도. relief(x, y): 코나 눈두덩처럼 앞쪽으로 튀어나온 높이. uv: 그림 좌표를 따로 정할 때.
-export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin = () => 1, rows = 16, segs = 36, uv = (p, t, w) => [w / Math.PI, p.y * 1.1] }) {
+// mouthW: 입꼬리 각도. relief(x, y): 코나 눈두덩처럼 앞쪽으로 튀어나온 높이. uv: 그림 좌표를 따로 정할 때. lipShade: 입술 안쪽 밝기.
+export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin = () => 1, lipShade = 0.42, rows = 16, segs = 36, uv = (p, t, w) => [w / Math.PI, p.y * 1.1] }) {
   const top = keys[0][0];
   const bottom = keys[keys.length - 1][0];
   const point = (y, w, k, out) => {
@@ -36,12 +36,12 @@ export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin =
   const dark = { uv, shade: black, flip: true, rows: 5, segs: 22 };
   const skull = mergeGeometries([
     surface({ rows, segs, uv, shade, at: upper(1) }),
-    surface({ rows: 2, segs, uv, shade: () => 0.42, at: lip(edgeU, 0.01), keep: inMouth }),
+    surface({ rows: 2, segs, uv, shade: () => lipShade, at: lip(edgeU, 0.01), keep: inMouth }),
     surface({ ...dark, at: upper(INNER) }),
   ]);
   const jaw = mergeGeometries([
     surface({ rows: Math.ceil(rows / 2), segs, uv, shade, at: lower(1) }),
-    surface({ rows: 2, segs, uv, shade: () => 0.42, at: lip(edgeL, -0.01), keep: inMouth }),
+    surface({ rows: 2, segs, uv, shade: () => lipShade, at: lip(edgeL, -0.01), keep: inMouth }),
     surface({ ...dark, at: lower(INNER) }),
   ]);
   // 얼굴 앞면의 깊이: 눈처럼 표면에 붙이는 조각이 쓴다
@@ -112,13 +112,13 @@ export function strip(points, width, depth) {
 }
 
 // 눈처럼 표면에 붙는 타원 조각. r 표(rows)마다 c 밝기를 정한다
-export function disc({ rx, ry, depth, rings, segs = 16 }) {
+export function disc({ rx, ry, depth, rings, uv = () => [0, 0], segs = 16 }) {
   const n = rings.length - 1;
   return surface({
     rows: n,
     segs,
     flip: true, // 가운데에서 바깥으로 도는 면이라 그대로 두면 뒤를 본다
-    uv: () => [0, 0],
+    uv,
     shade: (p, t) => rings[Math.round(t * n)][1],
     at: (t, w, out) => {
       const i = t * n;
