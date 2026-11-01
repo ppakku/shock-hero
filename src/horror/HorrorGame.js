@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { cfg } from '../config/index.js';
 import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable, playerSees } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
-import { createStalker, tickStalker, sendAway, stunStalker, isUnderground } from '../logic/horrorStalker.js';
+import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
@@ -13,6 +13,7 @@ import { sfx } from '../audio/sfx.js';
 import { MAPS, MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
 import { createCreature } from './creatureModel.js';
+import { WallBulge } from './wallBulge.js';
 import { HorrorInput } from './input.js';
 import { HorrorHud, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
@@ -36,7 +37,8 @@ const BACK_AT = 2;
 const FACE_FAR = 1.5; // 달려들기 시작하는 얼굴 거리 (미터)
 const FACE_NEAR = 0.6; // 화면을 채우는 얼굴 거리 (미터)
 const FACE_UP = 0.2; // 머리 받침점에서 화면 가운데로 올 곳까지 높이 (미터). 웃는 입까지 보이게 낮춰 잡는다
-const SHAKE = 0.035; // 땅이 흔들릴 때 눈높이가 떨리는 폭 (미터)
+const WALL_SAY_NEAR = 8; // 호러워드가 이 칸 안의 벽에 들어가면 글로 알린다
+const WALL_SAY_GAP = 6; // 그 글이 다시 나올 때까지 시간 (초)
 const FACE_LIGHT = 0.14; // 코앞의 얼굴이 하얗게 날아가지 않게 줄이는 손전등 비율
 // 놀람 장면 (map.scares) 이 끝난 뒤 뜨는 글. 피나 다친 모습 없이 어둠과 소리, 갑작스러운 얼굴로만 놀라게 한다
 const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 무언가 바닥을 긁는다', '불빛이 깜빡인다. {name}가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
@@ -132,6 +134,8 @@ export class HorrorGame {
     this.world = buildWorld(this.scene, this.map, this.k, theme);
     this.stalker = createStalker(this.map, this.k, Math.random, this.round.monsterId);
     this.model = createCreature(this.monster.model, this.scene);
+    this.bulge = this.monster.throughWalls ? new WallBulge(this.scene, this.map, this.world.wallMaterial) : null;
+    this.wallSaidAt = -WALL_SAY_GAP;
     this.gunTarget = new THREE.Vector3();
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
@@ -220,7 +224,6 @@ export class HorrorGame {
   warmUp() {
     this.warmed = true;
     const m = this.model;
-    m.setRise?.(1); // 땅속이는 평소에 몸을 그리지 않는다. 처음 솟아오를 때 멈추지 않게 미리 그린다
     m.group.position.set(this.p.x * CELL, 0, (this.p.y - 1) * CELL); // 시작할 때 보는 쪽
     this.renderer.render(this.scene, this.camera);
     this.flash.visible = false;
@@ -228,7 +231,6 @@ export class HorrorGame {
     this.flash.visible = this.lightOn;
     this.gun.show(true);
     this.gun.render(this.renderer);
-    m.setRise?.(0);
     m.update(this.stalker, 0, this.p);
   }
 
@@ -296,6 +298,7 @@ export class HorrorGame {
     // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
     if (this.stalker.mode === 'chase' && this.hud.closeNote()) this.hud.say(NOTE_AGAIN, 3);
     this.model.update(this.stalker, dt, this.p);
+    this.bulge?.update(this.stalker, dt, this.lowFx);
     this.cullCreature();
     this.checkScare();
     this.tickScare(dt);
@@ -395,7 +398,7 @@ export class HorrorGame {
     const spot = figureSpot(this.map, this.p, this.yaw, k.figureNear, k.figureFar);
     if (!spot) return;
     const heading = Math.atan2(this.p.x - spot.x, this.p.y - spot.y);
-    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: isUnderground({ ...this.stalker, mode: 'patrol' }) ? 'watch' : 'patrol' } }; // 땅속 괴물도 몸이 보이는 자세로 세운다
+    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: 'patrol' } };
     this.model.yaw = heading;
   }
 
@@ -459,10 +462,19 @@ export class HorrorGame {
       const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
       this.hud.say(`${this.named(this.monster.alarm)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
-    if (events.includes('erupt')) this.audio?.play('erupt');
+    if (events.includes('wall')) this.onWall();
     if (events.includes('slip')) this.hud.say(this.named('{name}가 사라졌다...'), 3);
     if (events.includes('sniff')) this.hud.say(this.named('움직이지 마! {name}가 냄새를 맡고 있다'), 2);
     if (events.includes('caught') || events.includes('found')) this.getCaught();
+  }
+
+  // 호러워드가 벽으로 들어갔다. 벽 안에서는 몸이 안 보이니 소리와 글로도 알린다
+  onWall() {
+    this.audio?.play('wall');
+    const s = this.stalker;
+    if (Math.hypot(s.x - this.p.x, s.y - this.p.y) > WALL_SAY_NEAR || this.playTime < this.wallSaidAt + WALL_SAY_GAP) return;
+    this.wallSaidAt = this.playTime;
+    this.hud.say(this.named('벽이 흔들린다! {name}가 지나간다!'), 2);
   }
 
   nearestUse() {
@@ -486,7 +498,7 @@ export class HorrorGame {
     if (t.kind === 'lock' && openDoor(this.run, t.index)) {
       this.world.openDoor(t.index);
       this.audio?.play('door');
-      this.hud.say(`문이 열렸다. ${this.monster.name}도 이제 들어올 수 있어!`, 4);
+      this.hud.say(this.monster.throughWalls ? '문이 열렸다!' : `문이 열렸다. ${this.monster.name}도 이제 들어올 수 있어!`, 4);
     }
     if (t.kind === 'box' && chargeShock(this.run, t.index)) {
       this.audio?.play('shockCharge');
@@ -540,7 +552,7 @@ export class HorrorGame {
       return;
     }
     const s = this.stalker;
-    const hit = !isUnderground(s) && Math.hypot(s.x - this.p.x, s.y - this.p.y) <= this.k.shockRange && lineOfSight(this.map, this.p, s);
+    const hit = Math.hypot(s.x - this.p.x, s.y - this.p.y) <= this.k.shockRange && lineOfSight(this.map, this.p, s);
     const result = hit ? 'hit' : 'miss';
     this.audio?.play(hit ? 'shockHit' : 'shockMiss');
     this.gun.fire(result);
@@ -620,7 +632,6 @@ export class HorrorGame {
     m.group.position.x += this.p.x * CELL + fx * near - face.x;
     m.group.position.y += EYE - face.y - FACE_UP;
     m.group.position.z += this.p.y * CELL + fz * near - face.z;
-    if (m.hole) m.hole.position.y -= m.group.position.y; // 땅속이의 구멍은 몸을 따라 뜨지 않고 바닥에 남는다
   }
 
   respawn() {
@@ -701,9 +712,7 @@ export class HorrorGame {
   }
 
   placeCamera() {
-    // 땅속이가 발밑을 흔드는 동안 화면도 떨린다. 효과 줄이기를 켜면 뺀다
-    const quake = this.state === 'play' && !this.lowFx && this.stalker.monsterId === 'mole' && this.stalker.mode === 'investigate';
-    this.camera.position.set(this.p.x * CELL, EYE + (quake ? SHAKE * Math.sin(this.playTime * 47) : 0), this.p.y * CELL);
+    this.camera.position.set(this.p.x * CELL, EYE, this.p.y * CELL);
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     if (this.shakeT <= 0) return;
     const r = this.k.scare.shakePower * (this.shakeT / this.shakeTime);

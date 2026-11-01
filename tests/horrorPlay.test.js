@@ -181,7 +181,17 @@ describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, 
   });
 });
 
-describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw', 'mole'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
+describe.each(MAP_IDS)('아이처럼 노는 봇: %s 맵의 호러워드', (mapId) => {
+  // 이 봇은 세이노에게서도 도망치지 않아서 세이노에게 판마다 8번에서 12번 잡힌다. 호러워드도 그만큼이면 된다
+  it('언제나 탈출하고 세이노보다 크게 더 잡히지 않는다', () => {
+    const s = summary(Array.from({ length: 40 }, (_, i) => playGame(i + 1, { child: true }, 1500, mapId, 'ward')));
+    console.log(mapId, 'ward', '아이 봇', s);
+    expect(s.won).toBe(40);
+    expect(s.meanCatches).toBeLessThanOrEqual(13);
+  }, 120000);
+});
+
+describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
   it('언제나 탈출하고 평균 1번 이상 잡히되 너무 자주는 아니다', () => {
     const s = summary(Array.from({ length: 40 }, (_, i) => playGame(i + 1, { child: true }, 1500, mapId, monsterId)));
     console.log(mapId, monsterId, '아이 봇', s);

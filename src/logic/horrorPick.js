@@ -1,6 +1,6 @@
 // 공포 모드 판 고르기: 맵과 괴물을 정한다. 지난 판과 달라야 다시 하고 싶어진다.
 export const MAP_IDS = ['factory', 'sewer', 'school'];
-export const MONSTER_IDS = ['seino', 'gazer', 'maw', 'mole'];
+export const MONSTER_IDS = ['seino', 'gazer', 'maw', 'ward'];
 
 export function isRound(r) {
   return MAP_IDS.includes(r?.mapId) && MONSTER_IDS.includes(r?.monsterId);

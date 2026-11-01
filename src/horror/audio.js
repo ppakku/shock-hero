@@ -193,13 +193,13 @@ export class HorrorAudio {
     if (!this.ctx || this.suspended) return;
     if (this.voice === 'gazer') return this.dragStep();
     if (this.voice === 'maw') return this.heavyStep();
-    if (this.voice === 'mole') return this.digStep();
+    if (this.voice === 'ward') return this.dragStep();
     this.puffNoise(this.panner, { dur: 0.09, vol: 1.3, freq: 3200, freqTo: 1800, q: 1.5 });
     this.puffNoise(this.panner, { dur: 0.05, vol: 1.0, freq: 5200, q: 2, delay: 0.07 });
     this.blip(this.panner, { freq: 900, dur: 0.04, vol: 0.5, type: 'square', slide: 0.5 });
   }
 
-  // 눈뜬이는 발이 없다: 옷자락이 바닥을 쓸며 끌리는 소리
+  // 눈뜬이와 호러워드는 발이 없다: 옷자락이 바닥을 쓸며 끌리는 소리
   dragStep() {
     this.puffNoise(this.panner, { dur: 0.32, vol: 1.1, freq: 1500, freqTo: 3400, q: 0.9 });
   }
@@ -211,13 +211,6 @@ export class HorrorAudio {
     if (Math.random() > 0.4) return;
     this.blip(this.panner, { freq: 2300, dur: 0.03, vol: 0.5, type: 'square', delay: 0.16 });
     this.blip(this.panner, { freq: 2000, dur: 0.03, vol: 0.45, type: 'square', delay: 0.26 });
-  }
-
-  // 땅속이: 흙을 파고 돌이 구르는 소리
-  digStep() {
-    this.puffNoise(this.panner, { dur: 0.2, vol: 1, freq: 520, freqTo: 180, type: 'lowpass' });
-    this.blip(this.panner, { freq: 170, dur: 0.14, vol: 0.5, slide: 0.6 });
-    if (Math.random() < 0.3) this.puffNoise(this.panner, { dur: 0.05, vol: 0.5, freq: 2600, q: 2, delay: 0.09 });
   }
 
   // 두근두근. 120~180Hz 성분을 더해 작은 스피커에도 들린다. loud: 가까울수록 커진다
@@ -257,11 +250,12 @@ export class HorrorAudio {
       this.blip(o, { freq: 1600, dur: 0.03, vol: 0.22, type: 'square', slide: 0.6 });
       this.blip(o, { freq: 900, dur: 0.03, vol: 0.16, type: 'square', slide: 0.6, delay: 0.06 });
     }
-    if (name === 'erupt') {
-      // 바닥이 터지며 돌이 튄다
-      this.blip(o, { freq: 120, dur: 0.6, vol: 0.7, type: 'sawtooth', slide: 0.4 });
-      this.puffNoise(o, { dur: 0.7, vol: 0.8, freq: 2400, freqTo: 300, type: 'lowpass' });
-      for (let i = 0; i < CRACKLE; i++) this.puffNoise(o, { dur: 0.05, vol: 0.4, freq: 1800 + i * 500, q: 3, delay: 0.1 + i * 0.07 });
+    if (name === 'wall') {
+      // 벽이 안에서 밀려 돌이 갈라지는 소리. 벽이 있는 쪽에서 들린다
+      const p = this.panner;
+      this.blip(p, { freq: 120, dur: 0.6, vol: 0.9, type: 'sawtooth', slide: 0.4 });
+      this.puffNoise(p, { dur: 0.7, vol: 1, freq: 2400, freqTo: 300, type: 'lowpass' });
+      for (let i = 0; i < CRACKLE; i++) this.puffNoise(p, { dur: 0.05, vol: 0.6, freq: 1800 + i * 500, q: 3, delay: 0.1 + i * 0.07 });
     }
     if (name === 'scare' || name === 'caught') this.sting(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
     if ((name === 'scare' || name === 'caught') && this.voice !== 'seino') return this.jolt(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
@@ -300,8 +294,8 @@ export class HorrorAudio {
       this.blip(o, { freq: 640, dur: 0.8, vol: vol * 0.4, type: 'triangle', slide: 1.9 });
       return;
     }
-    if (this.voice === 'mole') {
-      // 땅에서 끓어오르는 낮은 웃음
+    if (this.voice === 'ward') {
+      // 끓어오르는 낮은 웃음
       for (let i = 0; i < 4; i++) this.blip(o, { freq: 190 - i * 18, dur: 0.16, vol: vol * 0.7, type: 'sawtooth', slide: 0.8, delay: i * 0.17 });
       this.puffNoise(o, { dur: 0.9, vol: vol * 0.7, freq: 400, freqTo: 1400, q: 1.2 });
       return;

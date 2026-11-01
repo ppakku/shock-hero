@@ -1,16 +1,15 @@
-// 땅속이: 아이 그림(3489)을 따라 달걀 머리, 얼굴 절반을 차지한 웃는 입, 긴 코, 몸에 붙은 긴 팔, 바닥까지 끌리는 옷자락 몸을 짠다.
-// 다리가 없고 땅속으로 다닌다. 땅속에서는 바닥 구멍만 움직이고, 솟아오를 때 몸이 바닥을 뚫고 올라온다. 앞은 +Z 다.
+// 호러워드: 아이 그림(3489)을 따라 달걀 머리, 얼굴 절반을 차지한 웃는 입, 긴 코, 몸에 붙은 긴 팔, 바닥까지 끌리는 옷자락 몸을 짠다.
+// 다리가 없어 미끄러지듯 다닌다. 앞은 +Z 다.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { cfg } from '../config/index.js';
 import { CELL } from '../logic/horrorGrid.js';
-import { CreatureBase, Rig, damp, lookYaw } from './creatureBase.js';
+import { CreatureBase, EYE_GLOW, Rig, damp, lookYaw } from './creatureBase.js';
 import { TAU, bone, clamp, digit, knob, lerp, limb, sampleKeys, surface } from './creatureGeometry.js';
 import { shellHead, throat } from './creatureShell.js';
 
 const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 
-// 치수는 Gemini 전신 그림의 윤곽에서 쟀다 (tools/make_mole_art.py 가 찍어 준다). 키는 2.7m
+// 치수는 Gemini 전신 그림의 윤곽에서 쟀다 (tools/make_ward_art.py 가 찍어 준다). 키는 2.7m
 const CHIN_Y = 1.769;
 const HEAD_H = 0.93;
 const PIVOT = 0.2; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 눈과 입이 함께 화면에 들어온다
@@ -34,16 +33,9 @@ const SHOULDER = { x: 0.3, y: 1.72 };
 const UPPER = 0.62;
 const FORE = 0.58;
 
-const SINK = 2.85; // 다 들어갔을 때 몸이 내려간 깊이 (미터). 머리까지 바닥 밑에 숨는다
-const RISE_RATE = 9; // 솟아오르는 빠르기
-const SINK_RATE = 4;
-const UP_MODES = ['chase', 'stunned', 'watch']; // 그 밖의 상태에서는 땅속이다 ('search' 는 가라앉는 중)
-const HOLE = { crawl: 0.95, up: 1.5 }; // 구멍 반지름 (미터)
 const SKIN_COLOR = 0x4a3f36; // 그림이 없을 때 머리 색
 const ROBE_COLOR = 0x332b25; // 그림이 없을 때 몸 색
-const HOLE_Y = 0.03; // 구멍을 바닥에서 띄우는 높이 (미터)
-const HOLE_COLOR = 0x0c0a08; // 그림이 없을 때 구멍 색
-const FACE_GLOW = { patrol: 0.1, chase: 0.14, stunned: 0.03 }; // 어둠에서 얼굴이 희미하게 뜨는 세기
+const FACE_GLOW = 0.14; // 어둠에서 얼굴이 희미하게 뜨는 세기
 
 // 위아래 이빨이 만나는 초승달 선. 입을 다물면 틈 없이 그림만 보인다
 function lipLine(w) {
@@ -114,21 +106,14 @@ function clawsGeometry() {
   return mergeGeometries(parts);
 }
 
-function holeGeometry() {
-  const g = new THREE.CircleGeometry(1, 24);
-  g.rotateX(-Math.PI / 2);
-  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3));
-  return g;
-}
-
-export class MoleModel extends CreatureBase {
+export class WardModel extends CreatureBase {
   constructor(scene, loader) {
     super(scene, loader);
-    const skin = this.paper('art/horror_mole_head.jpg', SKIN_COLOR);
+    const skin = this.paper('art/horror_ward_head.jpg', SKIN_COLOR);
     this.faceMat = skin;
     skin.emissive = new THREE.Color(0xffffff);
     skin.emissiveMap = skin.map;
-    const robe = this.paper('art/horror_mole_body.jpg', ROBE_COLOR);
+    const robe = this.paper('art/horror_ward_body.jpg', ROBE_COLOR);
     robe.map.wrapS = THREE.MirroredRepeatWrapping;
 
     const rig = new Rig(this.group);
@@ -160,20 +145,12 @@ export class MoleModel extends CreatureBase {
     this.skeleton = rig.bind([this.face, this.robe]);
     this.setupHem();
 
-    const hole = this.paper('art/horror_mole_hole.webp', HOLE_COLOR);
-    hole.transparent = true;
-    hole.depthWrite = false;
-    this.hole = this.add(this.group, holeGeometry(), hole, false, 0, HOLE_Y, 0);
-    this.hole.renderOrder = 1;
-
     this.headHeight = CHIN_Y + HEAD_H;
     this.faceNear = 0.85; // 잡히는 장면에서 머리 받침점까지 거리 (미터)
-    this.rise = 0;
-    this.holeSize = HOLE.crawl;
     this.mouth = 0;
     this.lookY = 0;
+    this.gait = 0;
     this.phase = 0;
-    this.setRise(0);
   }
 
   setupHem() {
@@ -191,45 +168,26 @@ export class MoleModel extends CreatureBase {
     };
   }
 
-  // 0 은 다 들어간 자리, 1 은 다 올라온 자리. 안내 화면 뒤에서 몸을 한 번 그려 둘 때도 쓴다
-  setRise(r) {
-    this.rise = r;
-    this.root.position.y = -SINK * (1 - r);
-    this.face.visible = this.robe.visible = r > 0.005; // 땅속에서는 그리지 않는다
-  }
-
   update(s, dt, player) {
     const first = !this.hasLast;
-    this.track(s, dt, CELL);
-    const up = UP_MODES.includes(s.mode);
-    const rate = up ? RISE_RATE : SINK_RATE;
-    this.setRise(this.rise + ((up ? 1 : 0) - this.rise) * damp(rate, dt));
+    const moved = this.track(s, dt, CELL);
     this.lightFace(s, dt);
-    this.moveHole(s, dt, first, up);
-    if (!this.face.visible) return;
     if (s.mode === 'stunned') {
       this.shake(s, this.root, 0.012);
       return;
     }
     this.turn(s, dt, first);
-    this.body(s, dt, player);
+    this.body(s, dt, moved < 1.5 ? moved : 0, player);
   }
 
-  // 땅속에서는 구멍만 꿈틀대며 간다. 땅이 흔들리는 동안 위험한 넓이까지 벌어진다
-  moveHole(s, dt, first, up) {
-    this.hole.position.y = HOLE_Y; // 얼굴 장면이 옮겨 놓은 높이를 되돌린다
-    this.phase = (this.phase + dt * (up ? 2 : 5)) % TAU;
-    const danger = cfg.horror.monsters.mole.eruptDist * CELL;
-    const goal = s.mode === 'investigate' ? danger : up || s.mode === 'search' ? HOLE.up : HOLE.crawl;
-    const rate = s.mode === 'investigate' ? 3 : 4;
-    this.holeSize = first ? goal : this.holeSize + (goal - this.holeSize) * damp(rate, dt);
-    const wobble = up ? 0 : 0.05 * Math.sin(this.phase);
-    this.hole.scale.set(this.holeSize * (1 + wobble), 1, this.holeSize * (1 - wobble));
-  }
-
-  body(s, dt, player) {
+  body(s, dt, moved, player) {
     const chasing = s.mode === 'chase';
-    this.root.rotation.set(chasing ? 0.08 : 0.02, 0, 0.025 * Math.sin(this.time * 1.7));
+    const speed = dt > 0 ? moved / dt : 0;
+    this.gait += ((speed > 0.1 ? 1 : 0) - this.gait) * damp(7, dt);
+    this.phase = (this.phase + dt * lerp(1.5, chasing ? 9 : 5, this.gait)) % TAU;
+    const glide = Math.sin(this.phase);
+    this.root.position.y = 0.018 * this.gait * Math.sin(this.phase * 2); // 다리가 없어 물 위처럼 미끄러진다
+    this.root.rotation.set(chasing ? 0.2 * this.gait + 0.06 : 0.04 * this.gait + 0.02, 0, lerp(0.025, 0.05, this.gait) * glide);
     const k = damp(6, dt);
     this.lookY += (lookYaw(s, this.yaw, player) - this.lookY) * k;
     this.head.rotation.set(chasing ? 0.1 : 0, this.lookY, 0.05 * Math.sin(this.time * 0.9));
@@ -237,9 +195,9 @@ export class MoleModel extends CreatureBase {
     this.jaw.rotation.x = lerp(0, MOUTH_OPEN, this.mouth);
     for (let i = 0; i < this.arms.length; i++) {
       const arm = this.arms[i];
-      const sway = Math.sin(this.time * 1.5 + arm.phase);
-      arm.shoulder.rotation.set(-0.08 + 0.05 * sway - this.mouth * 0.3, 0, arm.side * 0.17);
-      arm.elbow.rotation.set(-0.1 - this.mouth * 0.25, 0, arm.side * 0.03);
+      const sway = Math.sin(this.time * 1.5 + arm.phase) * (1 - this.mouth) + this.gait * Math.sin(this.phase + arm.phase);
+      arm.shoulder.rotation.set(-0.08 + 0.09 * sway - this.mouth * 0.75, 0, arm.side * 0.17);
+      arm.elbow.rotation.set(-0.1 - this.mouth * 0.35, 0, arm.side * 0.03);
       arm.wrist.rotation.set(0.1 * sway, 0, arm.side * -0.06);
     }
     if (this.group.visible) this.rippleHem();
@@ -249,9 +207,9 @@ export class MoleModel extends CreatureBase {
     const { index, x, z, weight, angle } = this.hem;
     const pos = this.robe.geometry.attributes.position;
     const a = pos.array;
-    const t = this.time * 3;
+    const t = this.phase;
     for (let i = 0; i < index.length; i++) {
-      const r = 1 + 0.05 * weight[i] * (Math.sin(angle[i] * 5 + t) + 0.6 * Math.sin(angle[i] * 3 - t * 2));
+      const r = 1 + lerp(0.04, 0.08, this.gait) * weight[i] * (Math.sin(angle[i] * 5 + t) + 0.6 * Math.sin(angle[i] * 3 - t * 2));
       const k = index[i] * 3;
       a[k] = x[i] * r;
       a[k + 2] = z[i] * r;
@@ -259,9 +217,10 @@ export class MoleModel extends CreatureBase {
     pos.needsUpdate = true;
   }
 
+  // 쫓을 때 얼굴이 어둠에서 더 뜬다
   lightFace(s, dt) {
-    const goal = FACE_GLOW[s.mode] ?? FACE_GLOW.patrol;
+    const goal = EYE_GLOW[s.mode] ?? EYE_GLOW.patrol;
     this.glow += (goal - this.glow) * damp(5, dt);
-    this.faceMat.emissiveIntensity = this.glow;
+    this.faceMat.emissiveIntensity = FACE_GLOW * (0.5 + this.glow);
   }
 }
