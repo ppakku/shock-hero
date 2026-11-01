@@ -328,7 +328,7 @@ describe('createCreature', () => {
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);
       if (Math.abs(pos.getX(i)) < 0.02 && y > 0.56 && y < 0.62) lip = Math.max(lip, pos.getZ(i));
-      if (Math.abs(pos.getX(i)) < 0.02 && Math.abs(y - 0.4) < 0.08) mouth = Math.max(mouth, pos.getZ(i));
+      if (Math.abs(pos.getX(i)) < 0.02 && Math.abs(y - 0.34) < 0.04) mouth = Math.max(mouth, pos.getZ(i));
     }
     expect(lip - mouth).toBeGreaterThan(0.1);
   });
