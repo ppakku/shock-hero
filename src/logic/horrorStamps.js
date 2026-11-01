@@ -27,7 +27,7 @@ export const stampCount = (stamps) => boardCells(stamps).filter((c) => c.stamp).
 export const goldCount = (stamps) => boardCells(stamps).filter((c) => c.stamp === GOLD).length;
 
 // 마지막 밤을 여는 데 남은 도장 수. 색은 상관없다. 0 이면 열렸다
-export const stampsLeft = (stamps) => boardSize() - stampCount(stamps);
+export const stampsLeft = (stamps, k) => Math.max(0, k.lastNight - stampCount(stamps));
 
 // 강제로 정한 판이든 랜덤 판이든 실제로 한 판에 찍는다. 금 도장은 일반 도장으로 돌아가지 않는다.
 // earned: 이번에 새로 받은 도장. 칸이 그대로면 null
@@ -47,11 +47,8 @@ export function isCurrentCell(cell, choice) {
   return (anyMap || cell.mapId === choice.mapId) && (anyMonster || cell.monsterId === choice.monsterId);
 }
 
-// 단계마다 필요한 도장 수. k.steps 는 판 크기에 대한 비율이라 마지막 단계는 언제나 판 전체다
-export const stepCounts = (k) => k.steps.map((part) => Math.ceil(part * boardSize()));
-
 // 색 목록의 맨 앞은 처음부터 쓰는 색이고, 그 뒤로 한 단계에 하나씩 열린다
-const needOf = (index, k) => (index === 0 ? 0 : stepCounts(k)[index - 1]);
+const needOf = (index, k) => (index === 0 ? 0 : k.steps[index - 1]);
 
 // list: k.bolts 또는 k.lights. picked: 저장된 색 id
 export function lookOptions(list, stamps, k, picked) {
@@ -77,9 +74,9 @@ export function openedLooks(before, after, k) {
 // 다음에 열리는 단계. 다 열렸으면 null
 export function nextUnlock(stamps, k) {
   const have = stampCount(stamps);
-  const step = stepCounts(k).findIndex((need) => need > have);
+  const step = k.steps.findIndex((need) => need > have);
   if (step < 0) return null;
-  return { need: stepCounts(k)[step], looks: [k.bolts[step + 1], k.lights[step + 1]] };
+  return { need: k.steps[step], looks: [k.bolts[step + 1], k.lights[step + 1]] };
 }
 
 export const cssColor = (n) => `#${n.toString(16).padStart(6, '0')}`;

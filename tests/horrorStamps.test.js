@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { MAP_IDS, MONSTER_IDS, RANDOM } from '../src/logic/horrorPick.js';
-import { GOLD, PLAIN, addStamp, boardCells, boardSize, cellKey, goldCount, isCurrentCell, lookOptions, nextUnlock, normalizeStamps, openedLooks, stampCount, stepCounts, wornLook } from '../src/logic/horrorStamps.js';
+import { GOLD, PLAIN, addStamp, boardCells, boardSize, cellKey, goldCount, isCurrentCell, lookOptions, nextUnlock, normalizeStamps, openedLooks, stampCount, wornLook } from '../src/logic/horrorStamps.js';
 import { emptyHorror, normalizeHorror } from '../src/logic/horrorRun.js';
 import { createSaveStore } from '../src/logic/save.js';
 import { stampLines } from '../src/horror/hud.js';
@@ -70,27 +70,24 @@ describe('지금 고른 칸', () => {
 });
 
 describe('색 열기', () => {
-  it('네 단계이고 마지막은 판 전체다', () => {
-    const steps = stepCounts(k);
-    expect(steps).toHaveLength(4);
-    expect(steps.at(-1)).toBe(boardSize());
-    expect([...steps].sort((a, b) => a - b)).toEqual(steps);
-    expect(new Set(steps).size).toBe(4);
+  it('단계는 판 크기와 상관없이 3, 6, 9, 12 장이다', () => {
+    expect(k.steps).toEqual([3, 6, 9, 12]);
+    expect(k.steps.at(-1)).toBeLessThan(boardSize());
   });
 
   it('단계마다 번개와 손전등이 하나씩 열린다', () => {
     expect(k.bolts).toHaveLength(k.steps.length + 1);
     expect(k.lights).toHaveLength(k.steps.length + 1);
-    for (const n of [0, ...stepCounts(k)]) {
+    for (const n of [0, ...k.steps]) {
       const stamps = filled(n);
       const open = (list) => lookOptions(list, stamps, k, null).filter((o) => o.open).length;
-      expect(open(k.bolts)).toBe(stepCounts(k).filter((need) => need <= n).length + 1);
+      expect(open(k.bolts)).toBe(k.steps.filter((need) => need <= n).length + 1);
       expect(open(k.lights)).toBe(open(k.bolts));
     }
   });
 
   it('필요한 도장 수에서 딱 열리고 한 칸 모자라면 잠겨 있다', () => {
-    for (const [i, need] of stepCounts(k).entries()) {
+    for (const [i, need] of k.steps.entries()) {
       const at = (n) => lookOptions(k.bolts, filled(n), k, null)[i + 1];
       expect(at(need - 1)).toMatchObject({ open: false, need });
       expect(at(need)).toMatchObject({ open: true, need });
@@ -98,7 +95,7 @@ describe('색 열기', () => {
   });
 
   it('금 도장도 한 칸으로 센다', () => {
-    const [first] = stepCounts(k);
+    const [first] = k.steps;
     expect(lookOptions(k.lights, filled(first, GOLD), k, null)[1].open).toBe(true);
   });
 
@@ -106,25 +103,26 @@ describe('색 열기', () => {
     expect(wornLook(k.bolts, {}, k, k.bolts[1].id)).toBe(k.bolts[0]);
     expect(wornLook(k.lights, {}, k, 'nope')).toBe(k.lights[0]);
     expect(wornLook(k.lights, {}, k, null)).toBe(k.lights[0]);
-    expect(wornLook(k.bolts, filled(stepCounts(k)[0]), k, k.bolts[1].id)).toBe(k.bolts[1]);
+    expect(wornLook(k.bolts, filled(k.steps[0]), k, k.bolts[1].id)).toBe(k.bolts[1]);
   });
 
   it('고른 색 하나만 켜져 있다', () => {
-    const on = lookOptions(k.bolts, filled(stepCounts(k)[1]), k, k.bolts[2].id).filter((o) => o.on);
+    const on = lookOptions(k.bolts, filled(k.steps[1]), k, k.bolts[2].id).filter((o) => o.on);
     expect(on.map((o) => o.look)).toEqual([k.bolts[2]]);
   });
 
   it('새로 열린 색을 알려 준다', () => {
-    const [first, second] = stepCounts(k);
+    const [first, second] = k.steps;
     expect(openedLooks(filled(first - 1), filled(first), k)).toEqual([k.bolts[1], k.lights[1]]);
     expect(openedLooks(filled(first), filled(first + 1), k)).toEqual([]);
     expect(openedLooks(filled(first - 1), filled(second), k)).toEqual([k.bolts[1], k.bolts[2], k.lights[1], k.lights[2]]);
   });
 
   it('다음 단계를 알려 주고 다 열리면 null 이다', () => {
-    const [first, second] = stepCounts(k);
+    const [first, second] = k.steps;
     expect(nextUnlock({}, k)).toEqual({ need: first, looks: [k.bolts[1], k.lights[1]] });
     expect(nextUnlock(filled(first), k).need).toBe(second);
+    expect(nextUnlock(filled(k.steps.at(-1)), k)).toBeNull();
     expect(nextUnlock(filled(boardSize()), k)).toBeNull();
   });
 });

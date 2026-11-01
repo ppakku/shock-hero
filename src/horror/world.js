@@ -80,15 +80,26 @@ function addDecor(scene, map, k, mats, decor, tiled) {
   const lights = new THREE.InstancedMesh(bandBox(LIGHT_EDGE), lightMat, spots.lights.length);
   spots.lights.forEach((f, i) => setOnWall(lights, i, f, light.w, light.h, light.d, light.y));
 
-  const machines = new THREE.InstancedMesh(box, boardMat || wallMat, spots.machines.length);
-  const tints = machine.tints.map((c) => new THREE.Color(c));
-  spots.machines.forEach((f, i) => {
-    const h = machine.h[i % machine.h.length];
-    setOnWall(machines, i, f, machine.w[i % machine.w.length], h, machine.depth ?? k.machineDepth, machine.y + h / 2);
-    machines.setColorAt(i, tints[i % tints.length]);
+  // 벽에 붙은 물건은 한 종류이거나, decor.extra 가 있으면 자리를 돌아가며 나눠 갖는다. 종류마다 그림 하나로 한 번에 그린다
+  const extras = (decor.extra ?? []).map((kind) => {
+    const mat = lambert(kind.plain);
+    tiled(`${kind.art}.jpg`, 1, 1, (tex) => paintPlain(mat, tex));
+    return { ...kind, mat };
   });
-  machines.castShadow = true;
-  machines.receiveShadow = true;
+  const kinds = [{ ...machine, mat: boardMat || wallMat }, ...extras];
+  const machineSets = kinds.map((kind, n) => {
+    const places = spots.machines.filter((_, i) => i % kinds.length === n);
+    const set = new THREE.InstancedMesh(box, kind.mat, places.length);
+    const tints = kind.tints.map((c) => new THREE.Color(c));
+    places.forEach((f, i) => {
+      const h = kind.h[i % kind.h.length];
+      setOnWall(set, i, f, kind.w[i % kind.w.length], h, kind.depth ?? k.machineDepth, kind.y + h / 2);
+      set.setColorAt(i, tints[i % tints.length]);
+    });
+    set.castShadow = true;
+    set.receiveShadow = true;
+    return set;
+  });
 
   const pipeGeo = new THREE.CylinderGeometry(pipe.r, pipe.r, CELL, 6, 1, true);
   const pipeMat = lambert(pipe.color);
@@ -102,10 +113,11 @@ function addDecor(scene, map, k, mats, decor, tiled) {
     pipes.setMatrixAt(i * pipe.ys.length + j, place.matrix);
   }));
 
-  const meshes = [lights, machines, pipes];
+  const meshes = [lights, ...machineSets, pipes];
   if (low) {
     const lowMat = lambert(low.color);
-    tiled(`${low.art}.jpg`, 1, 1, (tex) => paintPlain(lowMat, tex, low.tint));
+    if (low.cut) lowMat.alphaTest = 0.5; // 수레처럼 틈이 있는 물건은 그림의 빈 곳으로 뒤가 보인다
+    tiled(`${low.art}.${low.cut ? 'webp' : 'jpg'}`, 1, 1, (tex) => paintPlain(lowMat, tex, low.tint));
     const lows = new THREE.InstancedMesh(bandBox(low.band), lowMat, spots.lows.length);
     spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
     meshes.push(lows);

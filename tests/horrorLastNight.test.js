@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { LAST_MAP_ID, LAST_ROUND, MAP_IDS, MONSTER_IDS, RANDOM, chooseRound, forcedRound, isLastNight, isRound, pickRound, roundMonsters } from '../src/logic/horrorPick.js';
-import { addStamp, boardCells, boardSize, cellKey, normalizeStamps, stampCount, stampsLeft } from '../src/logic/horrorStamps.js';
+import { addStamp, boardCells, boardSize, cellKey, lookOptions, normalizeStamps, stampCount, stampsLeft, wornLook } from '../src/logic/horrorStamps.js';
 import { emptyHorror, lastNightReward, normalizeHorror, recordLastNight } from '../src/logic/horrorRun.js';
 import { anyChasing, createAlarm, createStalkers, nearestStalker, nextAlarm, raiseAlarm, sendAllAway, warnState } from '../src/logic/horrorHunters.js';
 import { createRun } from '../src/logic/horrorRun.js';
@@ -13,6 +13,7 @@ import { ENDINGS, FINAL_LINES, clueTexts, fillName, joinNames } from '../src/hor
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
+const s = k.stamps;
 const fullBoard = (stamp = 'plain') => Object.fromEntries(boardCells({}).map((c) => [cellKey(c), stamp]));
 
 describe('마지막 밤 판', () => {
@@ -55,24 +56,38 @@ describe('마지막 밤 판', () => {
 });
 
 describe('마지막 밤 열기', () => {
-  it('도장이 다 찍혀야 열리고 금 도장이 아니어도 된다', () => {
-    expect(stampsLeft({})).toBe(boardSize());
-    const one = boardCells({}).at(-1);
-    const almost = fullBoard();
-    delete almost[cellKey(one)];
-    expect(stampsLeft(almost)).toBe(1);
-    expect(stampsLeft(fullBoard())).toBe(0);
-    expect(stampsLeft({ ...almost, [cellKey(one)]: 'gold' })).toBe(0);
+  const stamped = (n, stamp = 'plain') => Object.fromEntries(boardCells({}).slice(0, n).map((c) => [cellKey(c), stamp]));
+
+  it('도장 12개면 열리고 금 도장이 아니어도 된다', () => {
+    expect(s.lastNight).toBe(12);
+    expect(stampsLeft({}, s)).toBe(12);
+    expect(stampsLeft(stamped(11), s)).toBe(1);
+    expect(stampsLeft(stamped(12), s)).toBe(0);
+    expect(stampsLeft(stamped(12, 'gold'), s)).toBe(0);
+    expect(stampsLeft(fullBoard(), s)).toBe(0); // 12개를 넘어도 음수가 되지 않는다
   });
 
   it('고르기 칸은 남은 도장 수를 말하고, 다 모으면 열리고, 깬 뒤에는 다시 할 수 있다', () => {
     const shut = lastNightCard({ stamps: {} });
     expect(shut.open).toBe(false);
-    expect(shut.text).toContain(`${boardSize()}개`);
-    const open = lastNightCard({ stamps: fullBoard() });
+    expect(shut.text).toContain('12개');
+    expect(lastNightCard({ stamps: stamped(11) }).text).toContain('1개');
+    const open = lastNightCard({ stamps: stamped(12) });
     expect(open.open).toBe(true);
     for (const id of roundMonsters(LAST_ROUND)) expect(open.text).toContain(MONSTERS[id].name);
-    expect(lastNightCard({ stamps: fullBoard(), lastCleared: true }).text).toContain('다시');
+    expect(lastNightCard({ stamps: stamped(12), lastCleared: true }).text).toContain('다시');
+  });
+
+  it('옛 12칸 저장은 도장을 그대로 지키고 마지막 밤과 색도 열려 있다', () => {
+    const old = {};
+    for (const mapId of ['factory', 'sewer', 'school']) for (const monsterId of MONSTER_IDS) old[`${mapId}/${monsterId}`] = monsterId === 'seino' ? 'gold' : 'plain';
+    const stamps = normalizeStamps(old);
+    expect(stamps).toEqual(old);
+    expect(stampCount(stamps)).toBe(12);
+    expect(stampsLeft(stamps, s)).toBe(0);
+    expect(lastNightCard({ stamps }).open).toBe(true);
+    expect(lookOptions(s.bolts, stamps, s, s.bolts.at(-1).id).every((o) => o.open)).toBe(true);
+    expect(wornLook(s.lights, stamps, s, s.lights.at(-1).id)).toBe(s.lights.at(-1));
   });
 });
 

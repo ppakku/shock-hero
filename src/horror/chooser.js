@@ -50,9 +50,9 @@ function nextLine(stamps, k) {
   return next ? `도장 ${next.need}개면 열려요: ${next.looks.map((look) => look.name).join(', ')}` : ALL_OPEN;
 }
 
-// 마지막 밤 칸의 글. 도장판을 다 채우면 열리고, 깬 뒤에는 다시 할 수 있다고 알린다
+// 마지막 밤 칸의 글. 도장을 정해진 수만큼 모으면 열리고, 깬 뒤에는 다시 할 수 있다고 알린다
 export function lastNightCard(record) {
-  const left = stampsLeft(record.stamps);
+  const left = stampsLeft(record.stamps, cfg.horror.stamps);
   const names = roundMonsters(LAST_ROUND).map((id) => MONSTERS[id].name).join(', ');
   if (left > 0) return { open: false, text: `마지막 밤: 도장 ${left}개 더 모으면 열려요` };
   return { open: true, text: `${record.lastCleared ? '마지막 밤 다시 하기' : '마지막 밤 들어가기'}: ${names}` };

@@ -3,6 +3,8 @@ import { factoryMap, factoryTheme } from './maps/factory.js';
 import { sewerMap, sewerTheme } from './maps/sewer.js';
 import { schoolMap, schoolTheme } from './maps/school.js';
 import { stationMap, stationTheme } from './maps/station.js';
+import { parkMap, parkTheme } from './maps/park.js';
+import { martMap, martTheme } from './maps/mart.js';
 import { NOTES } from './story.js';
 import { LAST_MAP_ID } from '../logic/horrorPick.js';
 
@@ -10,6 +12,8 @@ export const MAPS = {
   factory: { name: '밤의 고철 공장', map: factoryMap, theme: factoryTheme, notes: NOTES.factory, blurb: '녹슨 기계 사이로 쇳소리가 울려요' },
   sewer: { name: '지하 수로', map: sewerMap, theme: sewerTheme, notes: NOTES.sewer, blurb: '젖은 바닥, 끝없이 이어지는 어둠' },
   school: { name: '밤의 학교', map: schoolMap, theme: schoolTheme, notes: NOTES.school, blurb: '아무도 없는데 시계만 멈춰 있어요' },
+  park: { name: '문 닫은 놀이공원', map: parkMap, theme: parkTheme, notes: NOTES.park, blurb: '꼬불꼬불한 방마다 색 전구가 깜빡여요' },
+  mart: { name: '문 닫은 마트', map: martMap, theme: martTheme, notes: NOTES.mart, blurb: '긴 통로 끝까지 보이지만, 저쪽도 나를 봐요' },
 };
 
 // 마지막 밤의 맵. MAPS 는 고르기 화면과 도장판의 맵이라 따로 둔다. hint 의 {name} 은 첫째, {other} 는 둘째 괴물이다

@@ -846,7 +846,8 @@ export const balance = {
     },
     // 도장판으로 여는 색. 맨 앞은 처음부터 쓰고, 그 뒤로 한 단계에 번개와 손전등이 하나씩 열린다
     stamps: {
-      steps: [0.25, 0.5, 0.75, 1], // 단계마다 필요한 도장 수. 판 칸 수에 대한 비율이고 마지막은 판 전체다
+      steps: [3, 6, 9, 12], // 색을 여는 단계마다 필요한 도장 수. 판이 커져도 그대로라서 한 번 연 것이 다시 잠기지 않는다
+      lastNight: 12, // 마지막 밤을 여는 도장 수
       bolts: [ // glow: 번개, halo: 끝의 빛, strip, lamp: 전기충격기의 띠와 표시등, screen: 쏠 때 화면 번쩍임
         { id: 'blue', name: '파란 번개', glow: 0x3aa8ff, halo: 0x66c8ff, strip: 0x46c8ff, lamp: 0x7ce8ff, screen: 0x7cc4ff },
         { id: 'green', name: '초록 번개', glow: 0x3ae87a, halo: 0x7cf0a0, strip: 0x4ae88a, lamp: 0x9cffb8, screen: 0x8cf0a8 },
