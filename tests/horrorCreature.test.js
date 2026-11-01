@@ -323,7 +323,7 @@ describe('createCreature', () => {
     const walk = stand(build('maw'), 'patrol', 90);
     const rush = stand(build('maw'), 'chase', 90);
     expect(rush.spine.rotation.x).toBeGreaterThan(walk.spine.rotation.x + 0.3);
-    expect(rush.jaw.rotation.x).toBeGreaterThan(walk.jaw.rotation.x + 0.1);
+    expect(rush.mouth).toBeGreaterThan(walk.mouth + 0.1);
     expect(rush.arms[0].shoulder.rotation.x).toBeLessThan(walk.arms[0].shoulder.rotation.x - 0.8);
     const sniff = build('maw');
     let swing = 0;
@@ -364,9 +364,7 @@ describe('createCreature', () => {
   it('every skinned point follows a real bone', () => {
     const model = stand(build('maw'));
     const bones = model.skeleton.bones.length;
-    for (const m of [model.skin, model.teeth]) {
-      const index = m.geometry.attributes.skinIndex;
-      for (let i = 0; i < index.count; i++) expect(index.getX(i)).toBeLessThan(bones);
-    }
+    const index = model.skin.geometry.attributes.skinIndex;
+    for (let i = 0; i < index.count; i++) expect(index.getX(i)).toBeLessThan(bones);
   });
 });

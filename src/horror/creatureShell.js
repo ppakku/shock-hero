@@ -63,6 +63,26 @@ export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin =
   return { skull, jaw, frontZ, point };
 }
 
+// 아래턱을 따로 잘라 돌리지 않고 입 둘레만 늘린다. 입꼬리는 그대로라서 볼에 틈이 생기지 않는다.
+// mouth: { x: 입꼬리 반폭, y: 입을 가르는 선의 높이, drop: 턱이 내려가는 거리 }
+export function jawMorph(g, mouth) {
+  const pos = g.attributes.position;
+  const d = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const reach = mouth.x + 0.6 * (mouth.y - pos.getY(i)); // 입꼬리는 그대로 두고, 아래로 갈수록 턱 전체가 함께 내려간다
+    const open = (1 - clamp(Math.abs(pos.getX(i)) / reach, 0, 1) ** 4) * clamp((pos.getZ(i) + 0.1) / 0.12, 0, 1);
+    d[i * 3 + 1] = -mouth.drop * open;
+    d[i * 3 + 2] = -0.3 * mouth.drop * open;
+  }
+  return d;
+}
+
+export function morphed(g, delta = new Float32Array(g.attributes.position.count * 3)) {
+  g.morphAttributes.position = [new THREE.BufferAttribute(delta, 3)];
+  g.morphTargetsRelative = true;
+  return g;
+}
+
 // 입안을 끝까지 까맣게 막는 덩어리. 벌어진 틈 사이로 뒤가 비치지 않게 한다
 export const throat = (r, y, z) => {
   const g = knob(r, 0, y, z);

@@ -41,25 +41,41 @@ export class CreatureBase {
     m.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', 'outgoingLight *= step(0.01, vColor.r);\n#include <opaque_fragment>');
     };
+    m.map = this.picture(url, () => {
+      m.map = null;
+      m.color.setHex(color);
+      m.needsUpdate = true;
+    });
+    this.materials.push(m);
+    return m;
+  }
+
+  // 흑백 그림의 밝은 곳만 어둠에서 뜬다. 그림을 못 받으면 뜨는 빛만 없다
+  glowMap(m, url) {
+    m.emissive = new THREE.Color(0xffffff);
+    m.emissiveMap = this.picture(url, () => {
+      m.emissiveMap = null;
+      m.emissive.setHex(0);
+      m.needsUpdate = true;
+    });
+  }
+
+  picture(url, lost) {
     const fail = () => {
       if (!this.loadFailed) {
         this.loadFailed = true;
         console.error(`괴물 그림을 못 받았습니다: ${url}`);
       }
       this.textures = this.textures.filter((x) => x !== t);
-      m.map = null;
-      m.color.setHex(color);
-      m.needsUpdate = true;
+      lost();
     };
     const t = this.loader.load(url, undefined, undefined, fail);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    m.map = t;
     this.textures.push(t);
     this.owned.push(t);
-    this.materials.push(m);
-    return m;
+    return t;
   }
 
   add(parent, geometry, material, shadow, x = 0, y = 0, z = 0) {
