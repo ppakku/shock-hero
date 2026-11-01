@@ -11,7 +11,7 @@ import { saveStore } from '../save.js';
 import { sfx } from '../audio/sfx.js';
 import { MAPS, MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
-import { CreatureModel } from './creatureModel.js';
+import { createCreature } from './creatureModel.js';
 import { HorrorInput } from './input.js';
 import { HorrorHud, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
@@ -114,7 +114,7 @@ export class HorrorGame {
 
     this.world = buildWorld(this.scene, this.map, this.k, theme);
     this.stalker = createStalker(this.map, this.k, Math.random, this.round.monsterId);
-    this.model = new CreatureModel(this.scene);
+    this.model = createCreature(this.monster.model, this.scene);
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
     this.stamina = createStamina();
@@ -188,7 +188,7 @@ export class HorrorGame {
     this.hud.closeLayer();
     this.state = 'play';
     try {
-      this.audio = new HorrorAudio({ muted: this.muted });
+      this.audio = new HorrorAudio({ muted: this.muted, voice: this.monster.voice });
     } catch (e) {
       console.error('공포 모드 소리를 켜지 못해 소리 없이 합니다', e);
     }
