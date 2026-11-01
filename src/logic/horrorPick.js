@@ -1,12 +1,12 @@
 // 공포 모드 판 고르기: 맵과 괴물을 정한다. 지난 판과 달라야 다시 하고 싶어진다.
 export const MAP_IDS = ['factory', 'sewer', 'school'];
-export const MONSTER_IDS = ['seino', 'gazer', 'maw'];
+export const MONSTER_IDS = ['seino', 'gazer', 'maw', 'mole'];
 
 export function isRound(r) {
   return MAP_IDS.includes(r?.mapId) && MONSTER_IDS.includes(r?.monsterId);
 }
 
-// 지난 판과 맵도 괴물도 다른 조합에서 고른다. 처음이면 아홉 조합 모두 후보다
+// 지난 판과 맵도 괴물도 다른 조합에서 고른다. 처음이면 열두 조합 모두 후보다
 export function pickRound(last, rand = Math.random) {
   const known = isRound(last) ? last : null;
   const maps = MAP_IDS.filter((id) => id !== known?.mapId);

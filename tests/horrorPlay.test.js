@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
@@ -8,6 +8,8 @@ import { factoryMap } from '../src/horror/maps/factory.js';
 import { MAPS } from '../src/horror/content.js';
 import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
+
+vi.setConfig({ testTimeout: 120000 }); // 봇이 한 판을 끝까지 돌아서 다른 시험과 함께 돌면 몇 초를 넘는다
 
 const k = balance.horror;
 const DT = 1 / 30;
@@ -179,7 +181,7 @@ describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, 
   });
 });
 
-describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
+describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw', 'mole'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
   it('언제나 탈출하고 평균 1번에서 3번 잡힌다', () => {
     const s = summary(Array.from({ length: 40 }, (_, i) => playGame(i + 1, { child: true }, 1500, mapId, monsterId)));
     console.log(mapId, monsterId, '아이 봇', s);

@@ -8,8 +8,8 @@ const warp = (w) => w * (0.4 + (0.6 * Math.abs(w)) / Math.PI); // 얼굴 앞쪽�
 
 // 머리 그물 만들기.
 // keys: [높이, 반폭, 반두께, 앞뒤 치우침] 위에서 아래로. edgeU, edgeL: 각도 w 에서 윗입술과 아랫입술 높이.
-// mouthW: 입꼬리 각도. relief(x, y): 코나 눈두덩처럼 앞쪽으로 튀어나온 높이.
-export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin = () => 1, rows = 16, segs = 36 }) {
+// mouthW: 입꼬리 각도. relief(x, y): 코나 눈두덩처럼 앞쪽으로 튀어나온 높이. uv: 그림 좌표를 따로 정할 때.
+export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin = () => 1, rows = 16, segs = 36, uv = (p, t, w) => [w / Math.PI, p.y * 1.1] }) {
   const top = keys[0][0];
   const bottom = keys[keys.length - 1][0];
   const point = (y, w, k, out) => {
@@ -18,7 +18,6 @@ export function shellHead({ keys, edgeU, edgeL, mouthW, relief = () => 0, skin =
     const front = Math.max(0, Math.cos(w));
     return out.set(x, y, Math.cos(w) * hd * k + cz + relief(x, y) * front);
   };
-  const uv = (p, t, w) => [w / Math.PI, p.y * 1.1];
   const shade = (p) => skin(p.x, p.y);
   const upper = (k) => (t, u, out) => {
     const w = warp(u);

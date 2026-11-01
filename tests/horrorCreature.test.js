@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { CreatureModel, createCreature, lookYaw } from '../src/horror/creatureModel.js';
 import { GazerModel } from '../src/horror/creatureGazer.js';
 import { MawModel } from '../src/horror/creatureMaw.js';
+import { MoleModel } from '../src/horror/creatureMole.js';
+import { balance } from '../src/config/balance.js';
 
 const loader = { load: () => new THREE.Texture() };
 const make = () => {
@@ -202,10 +204,11 @@ describe('createCreature', () => {
     expect(build('nobody')).toBeInstanceOf(CreatureModel);
     expect(build('gazer')).toBeInstanceOf(GazerModel);
     expect(build('maw')).toBeInstanceOf(MawModel);
+    expect(build('mole')).toBeInstanceOf(MoleModel);
   });
 
-  it.each(['gazer', 'maw'])('%s keeps the same interface and stays cheap', (id) => {
-    const model = stand(build(id));
+  it.each(['gazer', 'maw', 'mole'])('%s keeps the same interface and stays cheap', (id) => {
+    const model = stand(build(id), 'chase', 90); // 땅속이는 올라와 있어야 몸이 있다
     for (const key of ['group', 'head', 'textures', 'yaw', 'glow', 'headHeight']) expect(model[key]).toBeDefined();
     expect(calls(model)).toBeLessThanOrEqual(12);
     expect(tris(model)).toBeLessThan(8000);
@@ -215,7 +218,7 @@ describe('createCreature', () => {
     expect(() => stand(model, 'some-new-mode', 5)).not.toThrow();
   });
 
-  it.each(['gazer', 'maw'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
+  it.each(['gazer', 'maw', 'mole'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
     const fails = [];
     const failing = { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } };
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -228,7 +231,7 @@ describe('createCreature', () => {
     spy.mockRestore();
   });
 
-  it.each(['gazer', 'maw'])('%s disposes everything it made', (id) => {
+  it.each(['gazer', 'maw', 'mole'])('%s disposes everything it made', (id) => {
     const model = stand(build(id));
     const items = [...model.materials, ...model.owned];
     model.group.traverse((o) => { if (o.geometry) items.push(o.geometry); });
@@ -240,6 +243,25 @@ describe('createCreature', () => {
     model.dispose();
     spies.forEach((f) => expect(f).toHaveBeenCalled());
     expect(model.scene.children).not.toContain(model.group);
+  });
+
+  it('mole hides its body underground and leaves only the hole', () => {
+    const under = stand(build('mole'), 'patrol', 90);
+    expect(under.face.visible).toBe(false);
+    expect(under.robe.visible).toBe(false);
+    expect(under.hole.visible).toBe(true);
+    const up = stand(under, 'chase', 60);
+    expect(up.face.visible).toBe(true);
+    expect(up.root.position.y).toBeGreaterThan(-0.05);
+    expect(stand(up, 'search', 90).face.visible).toBe(false);
+  });
+
+  it('mole opens the hole to the danger size while the floor shakes', () => {
+    const model = stand(build('mole'), 'patrol', 40);
+    const crawl = model.hole.scale.x;
+    stand(model, 'investigate', 60);
+    expect(model.hole.scale.x).toBeGreaterThan(crawl * 2);
+    expect(model.hole.scale.x).toBeCloseTo(balance.horror.monsters.mole.eruptDist * 3, 0);
   });
 
   it('gazer holds still while frozen, only the pupils follow the player', () => {

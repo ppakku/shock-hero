@@ -1591,6 +1591,25 @@ def maw_rule(pg, tag):
     check(f'{tag}: maw rushes at a running noise', True)
 
 
+def mole_rule(pg, tag):
+    pg.evaluate(f'window.__horror.readInput = () => {BLANK_INPUT}')
+    # 벽 건너 세 칸 밑에 두고 가만히 서 있으면 곧장 와서 땅을 흔든다
+    pg.evaluate('(() => { const g = window.__horror, s = g.stalker; s.x = g.p.x + 3; s.y = g.p.y; s.mode = "patrol"; s.graceT = 0; s.restT = 0; })()')
+    pg.wait_for_function("window.__horror.stalker.mode === 'investigate'", timeout=8000)
+    check(f'{tag}: mole shakes the floor under a still player', True)
+    time.sleep(0.8)
+    pg.screenshot(path=f'{OUT}/{tag}_tremor.png')
+    pg.evaluate('window.__horror.onStalkerEvents = () => {}')  # 솟는 모습을 찍으려고 잡힘만 막는다
+    pg.wait_for_function("window.__horror.stalker.mode === 'chase'", timeout=4000)
+    check(f'{tag}: mole erupts at that spot', True)
+    pg.evaluate('(() => { const g = window.__horror, s = g.stalker; const f = g.camera.getWorldDirection(new (g.camera.position.constructor)()); s.x = g.p.x + f.x * 1.5; s.y = g.p.y + f.z * 1.5; s.upT = 3; s.warnT = 9; s.path = []; g.model.group.visible = true; })()')
+    time.sleep(0.5)
+    pg.screenshot(path=f'{OUT}/{tag}_near.png')
+    pg.evaluate('(() => { const g = window.__horror; delete g.onStalkerEvents; })()')
+    pg.evaluate('(() => { const g = window.__horror, s = g.stalker; g.run.shock = true; s.mode = "patrol"; s.graceT = 9; g.doPunch(); })()')
+    check(f'{tag}: shock cannot reach it underground', pg.evaluate('window.__horror.stalker.mode') != 'stunned')
+
+
 def seino_shot(pg, tag):
     place = pg.evaluate(FACE_MONSTER, [4, 6, 'stunned'])
     check(f'{tag}: found a straight view', place is not None, place)
@@ -1607,12 +1626,12 @@ def run_rounds(pw):
     watch(pg, errs)
     calls = []
     for mapId in ('factory', 'sewer', 'school'):
-        for monsterId in ('seino', 'gazer', 'maw'):
+        for monsterId in ('seino', 'gazer', 'maw', 'mole'):
             tag = f'{mapId}_{monsterId}'
             open_round(pg, mapId, monsterId)
             time.sleep(0.8)
             pg.screenshot(path=f'{OUT}/{tag}_start.png')
-            {'seino': seino_shot, 'gazer': gazer_rule, 'maw': maw_rule}[monsterId](pg, tag)
+            {'seino': seino_shot, 'gazer': gazer_rule, 'maw': maw_rule, 'mole': mole_rule}[monsterId](pg, tag)
             pg.evaluate(FACE_MONSTER, [3, 3, 'stunned'])
             time.sleep(0.5)
             pg.screenshot(path=f'{OUT}/{tag}_close.png')

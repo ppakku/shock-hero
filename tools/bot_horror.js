@@ -120,7 +120,7 @@
       const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9);
       return safe ? press(inp) : inp;
     }
-    if (careful && kind !== 'gazer' && kind !== 'maw' && chased()) {
+    if (careful && kind !== 'gazer' && kind !== 'maw' && kind !== 'mole' && chased()) {
       const s = g.stalker;
       if (g.run.shock && stalkerDist() <= g.k.shockRange - 0.2 && lineOfSight(g.map, g.p, s)) {
         inp.punch = true;
@@ -133,7 +133,7 @@
     const wanted = ['fuse', 'key', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
     if (careful && kind === 'gazer') return gazerBrain(inp);
-    return walkTo(inp, goalNow(), !careful || (chased() && kind !== 'maw'));
+    return walkTo(inp, goalNow(), !careful || (chased() && kind !== 'maw') || (kind === 'mole' && g.stalker.mode === 'investigate'));
   };
 
   g.readInput = brain;

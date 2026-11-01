@@ -265,7 +265,7 @@ describe('HorrorAudio 괴물 목소리', () => {
     expect(a.v).toBe(a.k);
   });
 
-  it.each(['gazer', 'maw'])('%s 은 자기 표를 쓰고 세이노와 다른 소리 높이를 낸다', (voice) => {
+  it.each(['gazer', 'maw', 'mole'])('%s 은 자기 표를 쓰고 세이노와 다른 소리 높이를 낸다', (voice) => {
     const a = new HorrorAudio({ muted: false, voice });
     expect(a.v).toBe(a.k.voices[voice]);
     expect(a.v.breathFreq).not.toBe(a.k.breathFreq);
@@ -305,7 +305,7 @@ describe('HorrorAudio 괴물 목소리', () => {
   });
 
   it('놀람과 잡힘 소리는 목소리마다 다르게 낸다', () => {
-    for (const voice of ['gazer', 'maw']) {
+    for (const voice of ['gazer', 'maw', 'mole']) {
       const a = new HorrorAudio({ muted: false, voice });
       const jolt = vi.spyOn(a, 'jolt');
       a.play('scare');

@@ -1,4 +1,4 @@
-// 괴물 셋이 함께 쓰는 것: 각도 계산과, 눈뜬이와 큰입이의 재질, 뼈대, 마지막 정리.
+// 괴물들이 함께 쓰는 것: 각도 계산과, 세이노를 뺀 괴물의 재질, 뼈대, 마지막 정리.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clamp } from './creatureGeometry.js';

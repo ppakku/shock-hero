@@ -7,12 +7,13 @@ export const MODES = ['patrol', 'investigate', 'chase', 'search', 'stunned', 'am
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const trailCell = { cx: 0, cy: 0 }; // 매 프레임 새로 만들지 않는다
 
-// monsterId 는 balance.horror.monsters 의 이름. 세이노가 아닌 괴물은 tickGazer, tickMaw 로 움직인다
+// monsterId 는 balance.horror.monsters 의 이름. 세이노가 아닌 괴물은 tickGazer, tickMaw, tickMole 로 움직인다
 export function createStalker(map, k, rand, monsterId = 'seino') {
   const c = center(map.stalker);
   return {
     monsterId, frozenT: 0, doorT: 0, rushT: 0, rushRestT: 0, ranT: 0, pauseT: 0, brushT: 0, wasHidden: false, lockedN: map.locked.size,
     x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
+    restT: 0, tremorT: 0, upT: 0, sinkT: 0,
     pressure: 0, graceT: 0, warnT: 0, calmT: 0, watchT: 0, ambushT: 0, ambushKind: null,
     heat: new Float32Array(map.w * map.h), heatW: map.w, heatT: 0, // 주인공이 걸어 다닌 자리. 저장하지 않는다
     weights: new Float32Array(map.patrol.length), recent: new Int16Array(8).fill(-1), recentAt: 0,
@@ -532,6 +533,103 @@ function tickMaw(s, world, m, k, dt, rand, events) {
   if (rushing && s.warnT <= 0 && !hiding && player.noise > 0 && dist(s, player) < m.touchDist) events.push('caught');
 }
 
+// 땅속이가 땅속에 있는가. 땅속에 있는 동안은 쇼크가 닿지 않는다
+export const isUnderground = (s) => s.monsterId === 'mole' && (s.mode === 'patrol' || s.mode === 'investigate');
+
+// 땅속은 벽이 없다. 목표까지 곧장 간다. 다 왔으면 true
+function burrow(s, x, y, step) {
+  const d = Math.hypot(x - s.x, y - s.y);
+  if (d <= step) {
+    s.x = x;
+    s.y = y;
+    return true;
+  }
+  s.heading = Math.atan2(x - s.x, y - s.y);
+  s.x += ((x - s.x) / d) * step;
+  s.y += ((y - s.y) / d) * step;
+  return false;
+}
+
+// 주인공을 못 느낄 때는 순찰 지점 사이를 땅속으로 다닌다
+function burrowAround(s, map, k, step, rand) {
+  if (!map.patrol.length) return;
+  const c = center(map.patrol[s.patrolIndex]);
+  if (burrow(s, c.x, c.y, step)) s.patrolIndex = pickPatrol(s, map, k, rand);
+}
+
+function startSink(s, m) {
+  s.mode = 'search';
+  s.sinkT = m.sinkTime;
+  s.path = [];
+}
+
+// 흔들림이 끝나면 그 자리로 솟는다. 그 넓이 안에 서 있으면 잡힌다
+function erupt(s, player, m, k, events) {
+  events.push('erupt');
+  s.mode = 'chase';
+  s.upT = m.upTime;
+  s.warnT = m.upWarn;
+  s.repathT = 0;
+  s.path = [];
+  s.heading = Math.atan2(player.x - s.x, player.y - s.y);
+  if (player.hidden === null && dist(s, player) <= m.eruptDist) events.push('caught');
+}
+
+// 땅속이: 벽 밑으로 곧장 다가온다 (patrol). 코앞에 오면 땅이 흔들리고 (investigate), 그 자리로 솟아
+// 천천히 미끄러지다가 (chase) 다시 가라앉는다 (search). 멈춰 있으면 밑으로 오니 계속 움직여야 하고, 사물함 안은 느끼지 못한다.
+function tickMole(s, world, m, k, dt, rand, events) {
+  const { map, player } = world;
+  const hiding = player.hidden !== null;
+  s.restT = Math.max(0, s.restT - dt);
+  if (s.mode === 'stunned') {
+    s.stunT -= dt;
+    if (s.stunT <= 0) startSink(s, m);
+    return;
+  }
+  if (s.mode === 'search') {
+    s.sinkT -= dt;
+    if (s.sinkT <= 0) {
+      s.mode = 'patrol';
+      s.restT = m.rest;
+    }
+    return;
+  }
+  if (s.mode === 'chase') {
+    s.upT -= dt;
+    if (s.upT <= 0) {
+      startSink(s, m);
+      return;
+    }
+    if (hiding) return;
+    s.repathT -= dt;
+    if (s.repathT <= 0) {
+      goTo(s, map, cellOf(player));
+      s.repathT = m.repath;
+    }
+    walk(s, m.glide, dt);
+    if (s.warnT <= 0 && dist(s, player) < k.catchDist) events.push('caught');
+    return;
+  }
+  if (s.mode === 'investigate') {
+    s.tremorT -= dt;
+    burrow(s, s.target.x, s.target.y, m.lockSpeed * dt);
+    if (s.tremorT <= 0) erupt(s, player, m, k, events);
+    return;
+  }
+  const speed = m.crawl * (1 + k.pressureWalk * s.pressure) * dt;
+  const range = (player.noise >= k.runNoise ? m.feelRun : m.feelWalk) * (1 + k.pressureHear * s.pressure);
+  if (hiding || s.graceT > 0 || dist(s, player) > range) {
+    burrowAround(s, map, k, speed, rand);
+    return;
+  }
+  burrow(s, player.x, player.y, speed);
+  if (s.restT > 0 || dist(s, player) > m.lockDist) return;
+  events.push('chase');
+  s.mode = 'investigate';
+  s.tremorT = m.tremor;
+  s.target = { x: player.x, y: player.y };
+}
+
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.
 // 'found' 는 여기서 잡힘이 되지 않는다. 호출하는 쪽이 이 이벤트를 받아 잡힘으로 처리한다.
 export function tickStalker(s, world, k, dt, rand = Math.random) {
@@ -547,6 +645,10 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
   }
   if (s.monsterId === 'maw') {
     tickMaw(s, world, k.monsters.maw, k, dt, rand, events);
+    return events;
+  }
+  if (s.monsterId === 'mole') {
+    tickMole(s, world, k.monsters.mole, k, dt, rand, events);
     return events;
   }
   if (player.hidden === null && player.noise > 0) {
