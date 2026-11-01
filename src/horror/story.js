@@ -50,8 +50,15 @@ export const FINAL_LINES = {
 // 쪽지를 읽는 동안 괴물은 멈추지 않는다. 읽는 사람에게 알려 주는 작은 줄
 export const NOTE_DANGER_LINE = '읽는 동안에도 {name}는 가까이 있어요';
 
-// {name} 을 괴물 이름으로 바꾼다. 글 하나 또는 글 여러 줄을 받는다.
+const JOSA = { 는: '은', 가: '이', 를: '을' };
+const hasFinal = (s) => {
+  const c = s.charCodeAt(s.length - 1);
+  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
+};
+
+// {name} 을 괴물 이름으로 바꾼다. 글에는 받침 없는 이름처럼 {name}는, {name}가, {name}를 로 쓰면 받침에 맞게 고친다.
+// 글 하나 또는 글 여러 줄을 받는다.
 export function fillName(text, name) {
   if (Array.isArray(text)) return text.map((t) => fillName(t, name));
-  return text.replaceAll('{name}', name);
+  return text.replace(/\{name\}(는|가|를)?/g, (_, j) => name + (j && hasFinal(name) ? JOSA[j] : j ?? ''));
 }

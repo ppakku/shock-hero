@@ -112,18 +112,24 @@ export function reachable(map, from) {
   return seen;
 }
 
-// 눈을 막는 칸. 사물함과 상자는 칸보다 작아서 뒤가 보이므로 벽과 정문, 잠긴 문만 친다
+// 눈을 막는 칸. 벽과 정문, 잠긴 문을 친다. 상자는 칸보다 작아서 뒤가 보인다.
+// 사물함은 맵마다 다르다: 작으면 뒤가 보이고, map.solidLockers 면 칸을 꽉 채워서 벽과 같다
 const opaque = (map, cx, cy) => {
   const ch = map.rows[cy]?.[cx];
-  return ch === undefined || ch === '#' || ch === 'G' || map.locked.has(cellKey(map, cx, cy));
+  return ch === undefined || ch === '#' || ch === 'G' || (ch === 'L' && !!map.solidLockers) || map.locked.has(cellKey(map, cx, cy));
 };
 
-// 주인공 눈에서 (x, y) 까지 벽이나 잠긴 문이 없는지. 주인공 눈에 그린 그대로 보이는 쪽을 따른다
+// 주인공 눈에서 (x, y) 까지 벽이나 잠긴 문이 없는지. 주인공 눈에 그린 그대로 보이는 쪽을 따른다.
+// 출발 칸은 치지 않는다. 사물함 안에서 밖을 볼 때 그 칸이 막혀 있다
 function clearView(map, a, x, y) {
   const n = Math.max(1, Math.ceil(Math.hypot(x - a.x, y - a.y) / 0.1));
+  const fromX = Math.floor(a.x);
+  const fromY = Math.floor(a.y);
   for (let i = 1; i < n; i++) {
     const t = i / n;
-    if (opaque(map, Math.floor(a.x + (x - a.x) * t), Math.floor(a.y + (y - a.y) * t))) return false;
+    const cx = Math.floor(a.x + (x - a.x) * t);
+    const cy = Math.floor(a.y + (y - a.y) * t);
+    if ((cx !== fromX || cy !== fromY) && opaque(map, cx, cy)) return false;
   }
   return true;
 }
@@ -141,6 +147,11 @@ export function inPlayerView(p, yaw, s, map, k, hidden = false) {
     if (clearView(map, p, s.x + ox, s.y + oy)) return true;
   }
   return false;
+}
+
+// 게임과 시험이 같이 부른다. g: { p, yaw, stalker, map, k, hidden }. 쪽지가 앞을 가리면 본 것이 아니다
+export function playerSees(g, noteOpen = false) {
+  return !noteOpen && inPlayerView(g.p, g.yaw, g.stalker, g.map, g.k, g.hidden !== null);
 }
 
 const VIEW_RAYS = 240; // 한 자리에서 쏘는 시선 수
@@ -161,7 +172,7 @@ export function chunksInSight(map, cell, viewCells, chunk, mark) {
         const cx = Math.floor(cell.cx + ox + dx * i);
         const cy = Math.floor(cell.cy + oy + dy * i);
         if (cx >= 0 && cy >= 0 && cx < map.w && cy < map.h) mark(Math.floor(cy / chunk) * perRow + Math.floor(cx / chunk));
-        if (opaque(map, cx, cy)) break;
+        if ((cx !== cell.cx || cy !== cell.cy) && opaque(map, cx, cy)) break; // 사물함 안에서도 밖이 보인다
       }
     }
   }

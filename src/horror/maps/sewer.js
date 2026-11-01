@@ -4,7 +4,7 @@ import { parseMap } from '../../logic/horrorGrid.js';
 // 굽은 굴이 둥근 물방으로 이어지고 곳곳이 고리로 돈다. 문은 잠긴 문 둘뿐이다.
 // 사물함과 전기 상자는 굴 벽을 파낸 자리에 들어간다. 그래서 굴이 좁아지지 않는다.
 // 날개 두 곳은 잠긴 문 하나로만 들어간다: A 는 왼쪽 위 물방, B 는 오른쪽 아래 물방.
-export const sewerMap = parseMap([
+export const sewerMap = { ...parseMap([
   '#################L####L#################',
   '####K.########.C..###..##########L######',
   '###...R######F......R.....#L##........##',
@@ -32,7 +32,7 @@ export const sewerMap = parseMap([
   '###E#..####...###########L###.R.##L#####',
   '#####L#######L###############L#E########',
   '########################################',
-]);
+]), solidLockers: true }; // 사물함이 칸을 꽉 채워서 눈을 막는다
 
 export const sewerTheme = {
   wall: { art: 'horror_sewer_wall', plain: 0x3f4a3e, repeat: 1 },

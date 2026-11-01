@@ -1,7 +1,7 @@
 // 공포 모드 3D 화면 전체 흐름
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
-import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable, inPlayerView } from '../logic/horrorGrid.js';
+import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable, playerSees } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
@@ -33,7 +33,7 @@ const FACE_NEAR = 0.6; // 화면을 채우는 얼굴 거리 (미터)
 const FACE_UP = 0.2; // 머리 받침점에서 화면 가운데로 올 곳까지 높이 (미터). 웃는 입까지 보이게 낮춰 잡는다
 const FACE_LIGHT = 0.14; // 코앞의 얼굴이 하얗게 날아가지 않게 줄이는 손전등 비율
 // 놀람 장면 (map.scares) 에서 한 번씩 뜨는 글. 피나 다친 모습 없이 소리와 불빛으로만 놀라게 한다
-const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 발톱이 바닥을 긁는다', '불빛이 깜빡인다. {name}가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
+const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 무언가 바닥을 긁는다', '불빛이 깜빡인다. {name}가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
 const BLINK_STEP = 0.09; // 손전등이 켜졌다 꺼지는 간격 (초)
 const BLINK_COUNT = 7;
 const BLINK_DIM = 0.1; // 꺼진 순간에 남는 밝기 비율
@@ -251,9 +251,11 @@ export class HorrorGame {
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
-    const seen = !this.hud.noteOpen && inPlayerView(this.p, this.yaw, this.stalker, this.map, this.k, this.hidden !== null); // 쪽지가 앞을 가리면 본 것이 아니다
+    const seen = playerSees(this, this.hud.noteOpen);
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, seen, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
     if (this.state !== 'play') return;
+    // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
+    if (this.stalker.mode === 'chase' && this.hud.closeNote()) this.hud.say(NOTE_AGAIN, 3);
     this.model.update(this.stalker, dt, this.p);
     this.cullCreature();
     this.checkScare();

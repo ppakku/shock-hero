@@ -1559,6 +1559,19 @@ def gazer_rule(pg, tag):
     pg.evaluate('window.__horror.yaw += Math.PI')
     pg.wait_for_function("(() => { const g = window.__horror, s = g.stalker; return s.mode !== 'watch' && Math.hypot(s.x - g.p.x, s.y - g.p.y) < 3.5; })()", timeout=15000)
     check(f'{tag}: gazer comes when you look away', True)
+    # 사물함 안: 틈으로 보면 문 앞에서 멈추고, 고개를 돌리면 떠난다
+    pg.evaluate("""() => {
+      const g = window.__horror, L = window.__horrorLogic, f = L.center(L.frontOf(g.map, g.map.lockers[0]));
+      g.toggleLocker(0);
+      Object.assign(g.stalker, { x: f.x, y: f.y, path: [], mode: 'patrol', graceT: 0, warnT: 0 });
+    }""")
+    time.sleep(0.6)
+    check(f'{tag}: gazer stops at the locker while seen', pg.evaluate('window.__horror.stalker.mode') == 'watch')
+    pg.screenshot(path=f'{OUT}/{tag}_locker.png')
+    pg.evaluate(f'window.__horror.readInput = () => {{ const i = {BLANK_INPUT}; i.lookX = 0.1; return i; }}')
+    pg.wait_for_function("(() => { const g = window.__horror, s = g.stalker; return Math.hypot(s.x - g.p.x, s.y - g.p.y) > 3 && g.state === 'play'; })()", timeout=10000)
+    check(f'{tag}: gazer leaves the locker when you look away', True)
+    pg.evaluate('window.__horror.toggleLocker(0)')
 
 
 def maw_rule(pg, tag):

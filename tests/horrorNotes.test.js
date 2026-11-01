@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createNotes, takeNote, NOTE_TOTAL } from '../src/logic/horrorNotes.js';
+import { MONSTERS } from '../src/horror/content.js';
 import { NOTES, FINAL_LINES, NOTE_DANGER_LINE, fillName } from '../src/horror/story.js';
 
 const spots = Array.from({ length: 12 }, (_, i) => ({ x: i + 0.5, y: 2.5 }));
@@ -41,6 +42,18 @@ describe('맵별 쪽지 이야기', () => {
       expect(all).not.toMatch(/세이노|눈뜬이|큰입이/);
     }
   });
+  it('받침 있는 이름도 조사가 맞는다', () => {
+    expect(fillName('{name}는 {name}가 {name}를 {name}도 {name}에게', '눈먼곰')).toBe('눈먼곰은 눈먼곰이 눈먼곰을 눈먼곰도 눈먼곰에게');
+    expect(fillName('{name}는 {name}가 {name}를', '큰입이')).toBe('큰입이는 큰입이가 큰입이를');
+    expect(fillName('{name}는', 'Boo')).toBe('Boo는');
+    for (const id of Object.keys(NOTES)) {
+      const all = fillName([...NOTES[id].flat(), FINAL_LINES[id], NOTE_DANGER_LINE], '눈먼곰').join('\n');
+      expect(all).not.toContain('{name');
+      expect(all).not.toMatch(/눈먼곰[는가를]/);
+    }
+    for (const m of Object.values(MONSTERS)) expect(fillName([m.hint, m.alarm], '눈먼곰').join(' ')).not.toMatch(/눈먼곰[는가를]/);
+  });
+
   it('fillName 이 모든 {name} 을 바꾼다', () => {
     for (const id of maps) {
       const all = fillName([...NOTES[id].flat(), FINAL_LINES[id], NOTE_DANGER_LINE], '눈뜬이').join('\n');

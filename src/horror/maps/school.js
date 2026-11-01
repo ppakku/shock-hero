@@ -4,7 +4,7 @@ import { parseMap } from '../../logic/horrorGrid.js';
 // 곧은 복도 두 줄을 세 계단 복도가 잇고, 복도를 따라 교실이 늘어선다. 교실은 앞문과 뒷문이 있다.
 // 사물함은 복도 벽에 줄지어 박혀 있어 복도가 좁아지지 않는다. 체육관은 오른쪽 아래의 큰 방이다.
 // 날개 두 곳은 잠긴 문 하나로만 들어간다: A 는 위쪽 교실 셋, B 는 가운데 교실 둘.
-export const schoolMap = parseMap([
+export const schoolMap = { ...parseMap([
   '########################################',
   '#.....E#......#.....N#...R..#.....#..XN#',
   '#...C..#...F..#..R...#..F...D.K...D..F.#',
@@ -32,7 +32,7 @@ export const schoolMap = parseMap([
   '#....F.#....X.#......#.........K.....P.#',
   '#......#.....E#......#N................#',
   '############################L#####L#####',
-]);
+]), solidLockers: true }; // 사물함이 칸을 꽉 채워서 눈을 막는다
 
 export const schoolTheme = {
   wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x9aa4b4 }, // 달밤처럼 푸르게 눌러 준다

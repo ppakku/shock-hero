@@ -126,6 +126,24 @@ describe('읽은 쪽지 다시 보기', () => {
   });
 });
 
+describe('끝 화면', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('한 판 더가 먼저 있고 버튼마다 제 일을 한다', () => {
+    const hud = fakeHud();
+    const again = vi.fn();
+    const done = vi.fn();
+    hud.showEnd('탈출', again, done, { found: 8, total: 8, final: '마지막 줄' });
+    expect(layerButtons(hud).map((b) => b.textContent)).toEqual(['한 판 더', '타이틀로']);
+    expect(layerText(hud)).toContain('마지막 줄');
+    press(layerButtons(hud)[0]);
+    expect(again).toHaveBeenCalledOnce();
+    expect(done).not.toHaveBeenCalled();
+    press(layerButtons(hud)[1]);
+    expect(done).toHaveBeenCalledOnce();
+  });
+});
+
 describe('쪽지 화면', () => {
   it('조작 안내에 쪽지 읽기와 닫기가 있다', () => {
     for (const d of ['pc', 'tablet', 'phone']) expect(controlLines(d).join(' ')).toContain('쪽지');

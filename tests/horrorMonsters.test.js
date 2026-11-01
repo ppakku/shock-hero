@@ -378,11 +378,18 @@ describe('큰입이: 소리로만 찾는다', () => {
     expect(run(s, { map: hall, player: p }, mw.rushWarn - 0.1)).not.toContain('caught');
   });
 
-  it('소리 난 자리에 그대로 서 있으면 달려와서 부딪힌다', () => {
+  it('들킨 뒤에도 멈추면 잡히지 않는다. 알림이 멈추라고 말한다', () => {
     const s = monster('maw', { x: 15.5, y: 1.5 });
     const heard = player({ noise: k.runNoise });
     run(s, { map: hall, player: heard }, DT);
-    expect(run(s, { map: hall, player: player() }, 3)).toContain('caught');
+    expect(run(s, { map: hall, player: player() }, 6)).not.toContain('caught');
+  });
+
+  it('달려드는 중에 움직이면 잡힌다', () => {
+    const s = monster('maw', { x: 15.5, y: 1.5 });
+    const heard = player({ noise: k.runNoise });
+    run(s, { map: hall, player: heard }, DT);
+    expect(run(s, { map: hall, player: player({ noise: k.walkNoise }) }, 3)).toContain('caught');
   });
 
   it('닿기 전에는 잡지 않는다', () => {

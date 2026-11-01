@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, inPlayerView } from '../src/logic/horrorGrid.js';
+import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
@@ -57,7 +57,7 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
     const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
-    const seen = inPlayerView(g.p, g.yaw, g.stalker, map, k, g.hidden !== null);
+    const seen = playerSees(g);
     const events = tickStalker(g.stalker, { map, player, seen, pressure: run.have / k.fuseCount }, k, DT, rand);
     if (events.includes('caught') || events.includes('found')) {
       caught(run);

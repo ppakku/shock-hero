@@ -528,8 +528,8 @@ function tickMaw(s, world, m, k, dt, rand, events) {
     if (!walk(s, walkSpeed(s, k), dt)) startSniff(s, m);
   } else if (s.mode === 'search') tickSearch(s, world, k, dt, rand, events);
   else tickPatrol(s, map, k, dt, rand);
-  // 달려드는 중에 닿아야 잡힌다. 그래서 잡기 전에 늘 달려드는 소리가 난다
-  if (rushing && s.warnT <= 0 && !hiding && dist(s, player) < m.touchDist) events.push('caught');
+  // 달려드는 중에 닿아야 잡힌다. 그래서 잡기 전에 늘 달려드는 소리가 난다. 멈춰 있으면 코앞까지 와도 잡지 않는다
+  if (rushing && s.warnT <= 0 && !hiding && player.noise > 0 && dist(s, player) < m.touchDist) events.push('caught');
 }
 
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.

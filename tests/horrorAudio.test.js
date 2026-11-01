@@ -283,17 +283,6 @@ describe('HorrorAudio 괴물 목소리', () => {
     expect(creature.mock.calls.at(-1)[0]).toBe(a.k.chaseCreatureGain);
   });
 
-  it('setVoice 는 이전 목소리를 멈추고 새 목소리로 갈아 끼운다', () => {
-    const a = new HorrorAudio({ muted: false, voice: 'gazer' });
-    const old = [...a.creatureNodes];
-    a.setVoice('maw');
-    expect(a.voice).toBe('maw');
-    expect(old.every((n) => n.disconnected)).toBe(true);
-    expect(a.creatureNodes.some((n) => old.includes(n))).toBe(false);
-    a.destroy();
-    expect(a.creatureNodes.every((n) => n.disconnected)).toBe(true);
-  });
-
   it('놀람과 잡힘 소리는 목소리마다 다르게 낸다', () => {
     for (const voice of ['gazer', 'maw']) {
       const a = new HorrorAudio({ muted: false, voice });

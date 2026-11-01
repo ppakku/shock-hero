@@ -48,14 +48,6 @@ export class HorrorAudio {
     this.initCreature(voice);
   }
 
-  // 한 판 더: 같은 소리 장치에서 괴물 목소리만 갈아 끼운다
-  setVoice(voice) {
-    if (!this.ctx || voice === this.voice) return;
-    this.stopNodes(this.creatureNodes);
-    this.creatureNodes = [];
-    this.initCreature(voice);
-  }
-
   stopNodes(nodes) {
     for (const node of nodes) {
       node.stop?.();
