@@ -4,16 +4,13 @@ const NOTE_BOX = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-5
 const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
-import { NOTE_DANGER_LINE, FINAL_LINE } from './story.js';
-
-export const MONSTER_NAME = '세이노';
+import { fillName } from './story.js';
 
 const INTRO = [
-  '밤의 고철 공장을 조사하다가 문이 잠겼다.',
+  '조사하러 들어왔다가 문이 잠겼다.',
   '볼트와의 통신도 끊겼다.',
   '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자. 잠긴 문은 같은 색 열쇠로 연다.',
-  '달리면 소리가 나고, 손전등 빛은 들킨다.',
-  `${MONSTER_NAME}는 쓰러뜨릴 수 없다. 사물함에 숨어!`,
+  '{name}는 쓰러뜨릴 수 없다. 사물함에 숨어!',
 ];
 
 const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기, 숨기, 문 열기, 충전: 사용 버튼', '쪽지 닫기: 사용 버튼 또는 닫기 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
@@ -35,9 +32,11 @@ export function controlLines(device) {
   return CONTROLS[device] ?? CONTROLS.pc;
 }
 
-// 시작 전 안내 이야기. 휴대폰은 화면이 작아서 앞의 두 줄을 뺀다
-export function introLines(device) {
-  return device === 'phone' ? INTRO.slice(2) : INTRO;
+// 시작 전 안내 이야기. 맨 앞은 이번 판의 맵, 괴물, 힌트다. 휴대폰은 화면이 작아서 이야기 앞의 두 줄을 뺀다
+// round: { mapName, monsterName, hint }
+export function introLines(device, { mapName, monsterName, hint }) {
+  const story = fillName(device === 'phone' ? INTRO.slice(2) : INTRO, monsterName);
+  return [`${mapName}: ${monsterName}`, hint, ...story];
 }
 
 // 시작한 뒤 잠깐 띄우는 알림
@@ -54,8 +53,10 @@ export function escapeText({ gems, daily, bonus }, clean) {
 }
 
 export class HorrorHud {
-  constructor(root) {
+  // dangerLine: 쪽지 아래에 붙는 작은 줄
+  constructor(root, dangerLine) {
     this.root = root;
+    this.dangerLine = dangerLine;
     this.box = document.createElement('div');
     // 휴대폰 노치에 글자가 가리지 않게 안전 여백만큼 안쪽에 놓는다
     this.box.style.cssText = 'position:absolute;top:env(safe-area-inset-top,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
@@ -116,7 +117,7 @@ export class HorrorHud {
       box.appendChild(p);
     }
     const warn = document.createElement('div');
-    warn.textContent = NOTE_DANGER_LINE;
+    warn.textContent = this.dangerLine;
     warn.style.cssText = `margin-top:${compact ? 4 : 10}px;font-size:${compact ? 12 : 14}px;color:#e08a7a`;
     box.appendChild(warn);
     const btn = document.createElement('button');
@@ -221,9 +222,9 @@ export class HorrorHud {
     this.layer = null;
   }
 
-  showIntro(device, onStart, onQuit) {
+  showIntro(device, round, onStart, onQuit) {
     this.openLayer(
-      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...introLines(device), ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
+      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...introLines(device, round), ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
@@ -251,14 +252,14 @@ export class HorrorHud {
     this.closeLayer();
   }
 
-  // notes: { found, total } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다
-  showEnd(text, onDone, notes) {
+  // notes: { found, total, final } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다
+  showEnd(text, onAgain, onDone, notes) {
     const lines = [text];
     if (notes) {
       lines.push(`쪽지 ${notes.found}/${notes.total}`);
-      if (notes.total > 0 && notes.found >= notes.total) lines.push(FINAL_LINE);
+      if (notes.total > 0 && notes.found >= notes.total) lines.push(notes.final);
     }
-    this.openLayer(lines, [{ text: '타이틀로', onPress: onDone }]);
+    this.openLayer(lines, [{ text: '한 판 더', onPress: onAgain }, { text: '타이틀로', onPress: onDone }]);
   }
 
   destroy() {
