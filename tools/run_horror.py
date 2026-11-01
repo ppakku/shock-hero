@@ -1461,7 +1461,7 @@ def play_replay(pw):
     time.sleep(0.5)
     seen = []
     first = None
-    for i in range(7):
+    for i in range(12):
         now = pg.evaluate(ROUND_NOW)
         print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
         seen.append(now['round'])
@@ -1485,7 +1485,7 @@ def play_replay(pw):
         pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
         check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
         time.sleep(0.4)
-    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 3 and len({r['monsterId'] for r in seen}) == 3, seen)
+    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 3 and len({r['monsterId'] for r in seen}) == 4, seen)
     pg.click('#horror button:has-text("타이틀로")')
     pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
     check('replay: root removed at title', pg.evaluate("!document.getElementById('horror')"))
