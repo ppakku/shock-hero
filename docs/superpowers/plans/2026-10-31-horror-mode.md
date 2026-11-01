@@ -2731,3 +2731,27 @@ git commit -m "Horror mode art, scares and docs"
 ```
 
 main 을 base 로 PR 을 만들고 머지한다. 사용자에게 남기는 확인은 실제 태블릿 속도, 무서운 정도, 소리 품질, 파쇄자 속도(`balance.js` 의 `horror`)다.
+
+---
+
+## 2라운드: 더 큰 공장 (2026-11-01)
+
+네 갈래를 나란히 만들고 마지막에 연결했다. 설계는 `docs/superpowers/specs/2026-10-31-horror-mode-design.md` 를 따른다.
+
+| 갈래 | 만든 것 | 파일 |
+|---|---|---|
+| 조이스틱 | 누른 자리의 고리와 손잡이, 달리기 구간 표시, 첫 사용 전 흐린 힌트 | `src/horror/input.js`, `tests/horrorStick.test.js` |
+| 세이노 | 열 지도 기억, 가중치 순찰, 매복, 바라보기, 압박, 공정함 장치 | `src/logic/horrorStalker.js`, `tests/horrorStalker.test.js` |
+| 맵 | 40x27 칸, 방 22개, 잠긴 문 두 개, 열쇠, 돌아올 곳, 시선으로 구역 숨기기 | `src/horror/maps/factory.js`, `src/logic/horrorGrid.js`, `src/logic/horrorRun.js`, `src/horror/world.js`, `tools/bot_horror.js` |
+| 쪽지 | 이야기 글 8장, 줍기 기록, 쪽지 화면, 끝 화면 수 | `src/horror/story.js`, `src/logic/horrorNotes.js`, `src/horror/hud.js` |
+| 연결 | 쪽지 종이와 안내, 사용 키 나누기, 자세와 눈빛과 소리 표, 시작 안내 | `src/horror/HorrorGame.js`, `src/horror/world.js`, `src/horror/creatureModel.js`, `src/config/balance.js`, `tools/run_horror.py` |
+
+연결할 때 지킨 것:
+
+- `map.notes` 는 `{ cx, cy }` 칸이고 `createNotes` 는 `{ x, y }` 를 읽는다. `HorrorGame` 이 `center` 로 바꿔서 넘긴다.
+- 쪽지는 `nearestUse` 의 마지막 인자로 넘겨서 다른 것과 거리로 겨룬다. 시험 봇은 이 인자를 주지 않으므로 쪽지를 모르고 시뮬레이션 결과도 달라지지 않는다.
+- E 는 `HorrorInput` 에서만 읽고, `HorrorHud` 는 Enter 만 듣는다. `playFrame` 은 `closeNote()` 가 true 면 `doUse` 를 부르지 않는다.
+- `showNote` 상자는 `pointer-events: none`, 닫기 버튼만 받는다.
+- 추격 시작, 잡힘, 일시정지, 탈출에서 `closeNote(false)` 를 부른다.
+
+브라우저 확인은 `tools/run_horror.py` 의 기본 실행과 `--touch`, `--creature`, `--phone`, `--stalk` 이다.
