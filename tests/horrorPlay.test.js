@@ -12,6 +12,8 @@ import { balance } from '../src/config/balance.js';
 const k = balance.horror;
 const DT = 1 / 30;
 const BOT = readFileSync('tools/bot_horror.js', 'utf8');
+const CHILD = readFileSync('tools/bot_child.js', 'utf8');
+const HIDE_LOOK = 0.6; // HorrorGame 과 같은 값: 사물함 안에서 돌릴 수 있는 고개 각도
 
 // 작은 씨앗 난수. 실패가 늘 같은 판에서 다시 나게 한다
 function seeded(seed) {
@@ -36,14 +38,19 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
   };
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
-  new Function('window', BOT)(window);
+  if (options?.child) {
+    window.__horrorBot = { rand: seeded(seed + 1000) };
+    new Function('window', CHILD)(window);
+  } else new Function('window', BOT)(window);
   const catches = [];
   let stamina = createStamina();
   let hideFrom = null;
+  let hideYaw = 0;
   let t = 0;
   for (; t < maxSeconds && !run.escaped; t += DT) {
-    const inp = g.readInput();
+    const inp = g.readInput(DT);
     g.yaw -= inp.lookX;
+    if (g.hidden !== null) g.yaw = hideYaw + Math.max(-HIDE_LOOK, Math.min(HIDE_LOOK, Math.atan2(Math.sin(g.yaw - hideYaw), Math.cos(g.yaw - hideYaw))));
     const before = g.p;
     const running = canRun(stamina, inp.move.run);
     if (g.hidden === null) g.p = stepPlayer(g.p, inp.move, g.yaw, running ? k.runSpeed : k.walkSpeed, DT, map, 0.2);
@@ -75,7 +82,8 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
           g.hidden = target.index;
           g.p = center(map.lockers[target.index]);
           const f = center(frontOf(map, map.lockers[target.index]));
-          g.yaw = Math.atan2(-(f.x - g.p.x), -(f.y - g.p.y));
+          hideYaw = Math.atan2(-(f.x - g.p.x), -(f.y - g.p.y));
+          g.yaw = hideYaw;
         } else {
           g.hidden = null;
           g.p = hideFrom;
@@ -169,4 +177,14 @@ describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, 
     console.log(mapId, monsterId, '달리기만 하는 봇', s);
     expect(s.won).toBe(seeds.length);
   });
+});
+
+describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
+  it('언제나 탈출하고 평균 1번에서 3번 잡힌다', () => {
+    const s = summary(Array.from({ length: 40 }, (_, i) => playGame(i + 1, { child: true }, 1500, mapId, monsterId)));
+    console.log(mapId, monsterId, '아이 봇', s);
+    expect(s.won).toBe(40);
+    expect(s.meanCatches).toBeGreaterThanOrEqual(1);
+    expect(s.meanCatches).toBeLessThanOrEqual(3);
+  }, 120000);
 });

@@ -251,7 +251,7 @@ export class HorrorGame {
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
-    const seen = inPlayerView(this.p, this.yaw, this.stalker, this.map, this.k, this.hidden !== null);
+    const seen = !this.hud.noteOpen && inPlayerView(this.p, this.yaw, this.stalker, this.map, this.k, this.hidden !== null); // 쪽지가 앞을 가리면 본 것이 아니다
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, seen, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
