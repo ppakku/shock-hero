@@ -232,7 +232,7 @@ export function buildWorld(scene, map, k, theme) {
   const paint = (m, tex) => {
     m.map = tex;
     m.emissiveMap = tex;
-    m.color.setHex(0xffffff);
+    m.color.setHex(0x8a8a8a); // 가까이서 손전등에 하얗게 날아가지 않게 누른다
     m.needsUpdate = true;
   };
   art('horror_box.jpg', (tex) => paint(boxMat, tex));
@@ -273,7 +273,8 @@ export function buildWorld(scene, map, k, theme) {
   };
   // 그림을 받으면 물건마다 어디서 봐도 정면인 그림을 띄우고 3D 모양은 그리지 않는다
   const wear = (meshes, file, size) => {
-    const mat = new THREE.SpriteMaterial({ alphaTest: 0.5 });
+    const mat = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.1 });
+    mat.color.setScalar(k.art.glow); // 어둠 속에서 찾을 수 있게 그림보다 밝게 그린다
     const sprites = meshes.map((mesh) => {
       const s = new THREE.Sprite(mat);
       s.scale.set(size, size, 1);
