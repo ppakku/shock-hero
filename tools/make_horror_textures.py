@@ -217,28 +217,6 @@ def school_board():
     save(out, 'horror_school_board.jpg', q=78)
 
 
-def gazer_skin():
-    # 창백한 회녹색 밀랍 피부, 잔주름
-    a = lerp((84, 94, 86), (146, 156, 140), noise(81, beta=2.6) * 0.7 + noise(82, beta=1.3) * 0.3)
-    wr = np.clip((ridged(83, beta=2.2) - 0.8) * 5, 0, 1)
-    a = a * (1 - wr[..., None] * 0.35)
-    fine = noise(84, beta=0.8)
-    a = a * (0.94 + fine[..., None] * 0.12)
-    save(a * 0.85, 'horror_gazer_skin.jpg', q=82)
-
-
-def gazer_robe():
-    # 어두운 회청색 천 같은 살갗, 세로 주름
-    f = noise(91, beta=2.4, ax=12.0, ay=0.4)
-    w = noise(92, beta=2.0)
-    y, x = np.mgrid[0:S, 0:S]
-    fold = 0.5 + 0.5 * np.sin((x * 0.07) * 6.28 / 1.0 + w * 9)
-    t = np.clip(f * 0.5 + fold * 0.5, 0, 1)
-    a = lerp((30, 36, 46), (74, 84, 98), t)
-    a = a * (0.94 + noise(93, beta=0.9)[..., None] * 0.12)
-    save(a, 'horror_gazer_robe.jpg', q=82)
-
-
 def maw_skin():
     # 마르고 팽팽한 갈회색 피부, 주름이 자글자글
     t = noise(101, beta=2.4) * 0.6 + noise(102, beta=1.4) * 0.4
@@ -279,7 +257,5 @@ school_wall()
 school_floor()
 cabinet('horror_school_locker.jpg', (50, 78, 66), (112, 140, 122), (170, 190, 176), (80, 118, 156), True, (80, 70, 50), 17)
 school_board()
-gazer_skin()
-gazer_robe()
 maw_skin()
 maw_hair()
