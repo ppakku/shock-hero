@@ -1,18 +1,18 @@
 // 쪽지 이야기. 가족이 마음대로 고쳐 쓸 수 있게 글만 모아 둔다.
 // 쪽지는 찾은 순서대로 보인다. 마지막(8번째) 쪽지만 맨 끝에 나오고, 나머지는 어느 자리에 와도 읽히게 쓴다.
 // 규칙: 쉬운 말, 한 쪽지에 2에서 4줄, 무섭지만 피나 죽음은 쓰지 않는다. 다 설명하지 않는다.
-// 괴물 이름은 {name} 으로 쓴다. 받침에 따라 달라지는 글자는 {name:은는} {name:이가} {name:을를} 로 쓴다.
+// 괴물 이름은 {name} 으로 쓴다. 받침에 따라 달라지는 글자는 {name}는 {name}가 {name}를 로 쓴다.
 // 어느 괴물이 와도 맞아야 하니, 한 괴물에게만 맞는 규칙(불, 소리, 속도, 눈)은 쓰지 않는다.
 
 const FACTORY = [
   ['밤 근무표에 이름이 하나 더 있다.', '아무도 그 사람을 뽑은 적이 없다고 한다.'],
   ['오늘도 키 큰 사람이 기계 사이에 서 있었다.', '인사를 했더니 한참 뒤에 고개만 끄덕였다.'],
-  ['카메라 화면을 보니 {name:이가} 웃고 있었다.', '카메라를 보고 웃는 건 처음 봤다.', '누구한테 웃은 걸까?'],
+  ['카메라 화면을 보니 {name}가 웃고 있었다.', '카메라를 보고 웃는 건 처음 봤다.', '누구한테 웃은 걸까?'],
   ['야간 반장님이 말했다.', '"밤에 이름을 불리면 대답하지 마."', '이유는 말해 주지 않았다.'],
   ['쇼크 히어로가 볼트에게 말했다고 한다.', '"여긴 이상해. 소리가 다 늦게 들려."', '볼트의 대답은 적혀 있지 않다.'],
   ['퇴근 시간이 지났는데 문이 열리지 않았다.', '대신 복도 끝에서 발소리가 따라왔다.', '끈질기게, 일정하게, 외롭게.'],
   ['불이 꺼지면 복도가 길어진다.', '불을 켜 두면 마음이 놓인다.', '혹시 {name}도 어둠이 무서운 걸까?'],
-  ['이제 알 것 같다.', '{name:은는} 쫓아오는 게 아니었다.', '그냥 누가 같이 있어 주길 바랄 뿐이다.', '그래서 우리가 나가는 게 싫은 거다.'],
+  ['이제 알 것 같다.', '{name}는 쫓아오는 게 아니었다.', '그냥 누가 같이 있어 주길 바랄 뿐이다.', '그래서 우리가 나가는 게 싫은 거다.'],
 ];
 
 const SEWER = [
@@ -22,8 +22,8 @@ const SEWER = [
   ['쇼크 히어로의 수첩이 물 위에 떠 있었다.', '마지막 줄은 이렇다. "여기 길이 자꾸 바뀐다."', '길이 바뀌는 걸까, 내가 돌고 있는 걸까.'],
   ['어디선가 물이 빠지는 소리가 났다.', '그런데 물은 조금도 줄지 않았다.', '누가 길게 숨을 들이쉬는 소리였다.'],
   ['오늘은 길을 세 번 돌았다.', '같은 녹슨 사다리가 세 번 나왔다.', '네 번째에는 사다리가 없었다.'],
-  ['{name:이가} 가까이 있다는 걸 알았다.', '물소리 사이에 다른 소리가 섞여 있었다.', '나를 부르는 걸까, 길을 알려 주는 걸까.'],
-  ['이제 알 것 같다.', '{name:은는} 길을 잃은 거였다.', '오래전 들어온 입구를 못 찾아서 계속 걷고 있었다.', '우리가 출구를 찾으면, {name}도 따라 나갈 수 있을까?'],
+  ['{name}가 가까이 있다는 걸 알았다.', '물소리 사이에 다른 소리가 섞여 있었다.', '나를 부르는 걸까, 길을 알려 주는 걸까.'],
+  ['이제 알 것 같다.', '{name}는 길을 잃은 거였다.', '오래전 들어온 입구를 못 찾아서 계속 걷고 있었다.', '우리가 출구를 찾으면, {name}도 따라 나갈 수 있을까?'],
 ];
 
 const SCHOOL = [
@@ -34,51 +34,24 @@ const SCHOOL = [
   ['사물함 한 칸에 쇼크 히어로의 이름표가 붙어 있다.', '그 칸은 아무도 열어 본 적이 없다고 한다.', '안에서 노크 소리가 두 번 났다.'],
   ['학교 시계가 전부 멈춰 있다.', '모두 같은 시각에 멈췄다.', '밤 열두 시 오 분 전.'],
   ['방송실 마이크가 켜져 있었다.', '아무도 없는데 숨소리가 방송으로 흘러나왔다.', '아주 작은 목소리가 물었다.', '"종 쳤어?"'],
-  ['이제 알 것 같다.', '{name:은는} 마지막 종소리를 기다리고 있었다.', '그 종이 울려야 수업이 끝나는 줄 아는 거다.', '우리가 나가면, 오늘은 종이 울릴지도 모른다.'],
+  ['이제 알 것 같다.', '{name}는 마지막 종소리를 기다리고 있었다.', '그 종이 울려야 수업이 끝나는 줄 아는 거다.', '우리가 나가면, 오늘은 종이 울릴지도 모른다.'],
 ];
 
-// 맵별 이야기. final 은 쪽지를 다 모았을 때 끝 화면에 더하는 한 줄
-export const STORY = {
-  factory: { notes: FACTORY, final: '쪽지를 다 모았어요. {name:은는} 문 앞까지 따라와서, 손을 흔들었어요.' },
-  sewer: { notes: SEWER, final: '쪽지를 다 모았어요. {name:은는} 출구 앞에서 한참 동안 서 있었어요.' },
-  school: { notes: SCHOOL, final: '쪽지를 다 모았어요. 멀리서 마지막 종소리가 울렸어요.' },
+// 맵별 쪽지. 괴물 이름 자리 {name} 은 HorrorGame 이 MONSTERS[id].name 으로 바꾼다.
+export const NOTES = { factory: FACTORY, sewer: SEWER, school: SCHOOL };
+
+// 쪽지를 다 모았을 때 끝 화면에 더하는 한 줄 (맵별)
+export const FINAL_LINES = {
+  factory: '쪽지를 다 모았어요. {name}는 문 앞까지 따라와서, 손을 흔들었어요.',
+  sewer: '쪽지를 다 모았어요. {name}는 출구 앞에서 한참 동안 서 있었어요.',
+  school: '쪽지를 다 모았어요. 멀리서 마지막 종소리가 울렸어요.',
 };
 
 // 쪽지를 읽는 동안 괴물은 멈추지 않는다. 읽는 사람에게 알려 주는 작은 줄
-export const NOTE_DANGER_TEMPLATE = '읽는 동안에도 {name:은는} 가까이 있어요';
+export const NOTE_DANGER_LINE = '읽는 동안에도 {name}는 가까이 있어요';
 
-export const DEFAULT_NAME = '세이노';
-
-const HAS_BATCHIM = (ch) => {
-  const c = ch.charCodeAt(0);
-  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0;
-};
-const JOSA = { 은는: ['은', '는'], 이가: ['이', '가'], 을를: ['을', '를'] };
-
-// {name} 과 {name:은는} 같은 자리를 괴물 이름으로 바꾼다. 글 하나 또는 글 여러 줄을 받는다.
-export function fillName(text, name = DEFAULT_NAME) {
+// {name} 을 괴물 이름으로 바꾼다. 글 하나 또는 글 여러 줄을 받는다.
+export function fillName(text, name) {
   if (Array.isArray(text)) return text.map((t) => fillName(t, name));
-  const last = name.slice(-1);
-  return text.replace(/\{name(?::([^}]+))?\}/g, (_, josa) => {
-    if (!josa) return name;
-    const pair = JOSA[josa];
-    return pair ? name + pair[HAS_BATCHIM(last) ? 0 : 1] : name;
-  });
+  return text.replaceAll('{name}', name);
 }
-
-const storyOf = (mapId) => STORY[mapId] || STORY.factory;
-
-export function notesFor(mapId, name = DEFAULT_NAME) {
-  return storyOf(mapId).notes.map((n) => fillName(n, name));
-}
-export function finalLineFor(mapId, name = DEFAULT_NAME) {
-  return fillName(storyOf(mapId).final, name);
-}
-export function dangerLineFor(name = DEFAULT_NAME) {
-  return fillName(NOTE_DANGER_TEMPLATE, name);
-}
-
-// 예전 이름도 그대로 쓸 수 있게 둔다 (공장 맵, 세이노 기준)
-export const NOTES = notesFor('factory');
-export const FINAL_LINE = finalLineFor('factory');
-export const NOTE_DANGER_LINE = dangerLineFor();
