@@ -36,7 +36,7 @@ export const schoolMap = { ...parseMap([
 
 export const schoolTheme = {
   doorSet: 'horror_door_school', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
-  wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x9aa4b4 }, // 달밤처럼 푸르게 눌러 준다
+  wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x565c68 }, // 달밤처럼 푸르게 누른다. 밝은 그림이라 더 밝으면 손전등에 하얗게 날아간다
   floor: { art: 'horror_school_floor', plain: 0x4a3a2a, repeat: 7, tint: 0xa0a0a8 },
   locker: { art: 'horror_school_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0x40526a, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 칸을 꽉 채운다. 칸마다 문 두 짝
   doorArt: 'locker', // 벽을 칠한 문은 벽처럼 보여서 철문 그림을 쓴다
@@ -44,7 +44,7 @@ export const schoolTheme = {
   ceil: 0x24262c,
   ceilArt: { art: 'horror_ceil_school', repeat: 7, tint: 0x74829f },
   fog: 0x02030a,
-  ambient: 0x6878a8,
+  ambient: 0x9cb4fc, // 벽을 누른 만큼 키워서 손전등을 끈 어둠이 그대로다
   lightColor: 0x30f070,
   decor: {
     tile: 7,

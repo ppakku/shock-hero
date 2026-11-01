@@ -306,6 +306,13 @@ describe('테마', () => {
     }
   });
 
+  it('밝은 벽 그림은 tint 로 눌러서 가까운 손전등에 하얗게 날아가지 않는다', () => {
+    for (const theme of [schoolTheme, stationTheme]) {
+      const { tint } = theme.wall;
+      expect(Math.max((tint >> 16) & 255, (tint >> 8) & 255, tint & 255)).toBeLessThanOrEqual(0x68);
+    }
+  });
+
   it('소품 그림 파일이 다 있고, 맵마다 등과 천장, 배관이 제 그림이다', () => {
     const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, theme.decor.low?.art].filter(Boolean);
     for (const { theme } of MAPS) {
