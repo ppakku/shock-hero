@@ -126,7 +126,7 @@ export class HorrorGame {
     this.keyMeshes = this.world.addKeys(this.run.keys);
     this.noteMeshes = this.world.addNotes(this.notes.spots);
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
-    this.hud = new HorrorHud(root, this.named(NOTE_DANGER_LINE));
+    this.hud = new HorrorHud(root, this.named(NOTE_DANGER_LINE), this.round);
     this.hud.setStatus(this.statusNow());
     if (this.showFps) {
       this.fpsLabel = document.createElement('div');
