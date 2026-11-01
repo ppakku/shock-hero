@@ -46,6 +46,7 @@ vi.mock('../src/horror/hud.js', () => {
     setStamina() {}
     showSlit() {}
     fade() {}
+    setZapColor() {}
     setDread() {}
     get keypadOpen() { return false; }
     closeKeypad() { return false; }
@@ -63,7 +64,7 @@ vi.mock('../src/horror/hud.js', () => {
       return was;
     }
   }
-  return { HorrorHud, startHint: () => '', escapeText: () => '탈출' };
+  return { HorrorHud, startHint: () => '', escapeText: () => '탈출', stampLines: () => [] };
 });
 
 vi.mock('../src/horror/input.js', () => ({
@@ -96,7 +97,7 @@ vi.mock('../src/horror/audio.js', () => ({
 
 vi.mock('../src/save.js', () => ({
   saveStore: {
-    load: () => ({ gems: 0, horror: { escapes: 0, cleanEscapes: 0, gemDay: null, last: null }, settings: {} }),
+    load: () => ({ gems: 0, horror: { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null }, settings: {} }),
     save: () => {},
   },
 }));

@@ -7,7 +7,8 @@ import * as THREE from 'three';
 
 const k = cfg.horror.stunGun;
 const litArcs = (g) => g.arcs.filter((a) => a.core.visible).length;
-const make = (o = {}) => new StunGun({ aspect: 16 / 9, touch: false, lowFx: false, k, ...o });
+const [blue, green] = cfg.horror.stamps.bolts;
+const make = (o = {}) => new StunGun({ aspect: 16 / 9, touch: false, lowFx: false, k, bolt: blue, ...o });
 const frame = { lit: true, walking: false, target: { x: 0, y: 0, z: -3 } };
 
 describe('전기충격기 움직임 계산', () => {
@@ -138,6 +139,17 @@ describe('손에 든 전기충격기', () => {
     expect(r.clearDepth).toHaveBeenCalled();
     expect(r.render).toHaveBeenCalled();
     expect(r.autoClear).toBe(true);
+  });
+});
+
+describe('번개 색', () => {
+  it('고른 색으로 번개와 빛과 띠를 칠한다', () => {
+    const gun = make({ bolt: green });
+    gun.setCharged(true);
+    expect(gun.arcs[0].glow.material.color.getHex()).toBe(new gun.arcs[0].glow.material.color.constructor(green.glow).getHex());
+    expect(gun.halo.material.color.getHex()).toBe(new gun.halo.material.color.constructor(green.halo).getHex());
+    expect(gun.stripMat.color.getHex()).toBe(new gun.stripMat.color.constructor(green.strip).getHex());
+    expect(gun.lampMat.color.getHex()).toBe(new gun.lampMat.color.constructor(green.lamp).getHex());
   });
 });
 

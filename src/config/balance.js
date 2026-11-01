@@ -833,6 +833,25 @@ export const balance = {
     wingFuses: 1, // 잠긴 날개마다 꼭 들어가는 퓨즈 수. 그래서 문을 열어야만 끝낼 수 있다
     gemsEscape: 5, // 탈출 보석. 날마다 첫 탈출에만 준다
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석. 처음 한 번만 준다
+    // 도장판으로 여는 색. 맨 앞은 처음부터 쓰고, 그 뒤로 한 단계에 번개와 손전등이 하나씩 열린다
+    stamps: {
+      steps: [0.25, 0.5, 0.75, 1], // 단계마다 필요한 도장 수. 판 칸 수에 대한 비율이고 마지막은 판 전체다
+      bolts: [ // glow: 번개, halo: 끝의 빛, strip, lamp: 전기충격기의 띠와 표시등, screen: 쏠 때 화면 번쩍임
+        { id: 'blue', name: '파란 번개', glow: 0x3aa8ff, halo: 0x66c8ff, strip: 0x46c8ff, lamp: 0x7ce8ff, screen: 0x7cc4ff },
+        { id: 'green', name: '초록 번개', glow: 0x3ae87a, halo: 0x7cf0a0, strip: 0x4ae88a, lamp: 0x9cffb8, screen: 0x8cf0a8 },
+        { id: 'violet', name: '보라 번개', glow: 0x9a5aff, halo: 0xb88cff, strip: 0xa878ff, lamp: 0xd0b0ff, screen: 0xb49aff },
+        { id: 'pink', name: '분홍 번개', glow: 0xff5ab0, halo: 0xff8cc8, strip: 0xff70bc, lamp: 0xffb0dc, screen: 0xff9ad0 },
+        { id: 'gold', name: '금빛 번개', glow: 0xffb82a, halo: 0xffd26a, strip: 0xffc040, lamp: 0xffe49a, screen: 0xffd890 },
+      ],
+      // 색만 바꾸고 밝기와 거리는 그대로다. 그래서 눈에 보이는 밝기가 처음 색과 비슷한 옅은 색만 쓴다 (tests/horrorStamps.test.js 가 잰다)
+      lights: [
+        { id: 'warm', name: '따뜻한 빛', color: 0xfff2d8 },
+        { id: 'moon', name: '달빛', color: 0xd8f6ff },
+        { id: 'leaf', name: '풀빛', color: 0xd4ffd0 },
+        { id: 'blossom', name: '꽃빛', color: 0xffeaf6 },
+        { id: 'honey', name: '꿀빛', color: 0xfff79a },
+      ],
+    },
     musicVolume: 0.7, // 배경 음악 크기
     chaseCreatureGain: 3.5, // 추격 중에 세이노 숨소리와 발소리를 이 배로 키운다
     musicChaseDuck: 0.3, // 추격 중에 배경 음악을 이 비율로 낮춘다 (숨소리와 발소리가 앞에 나오게)

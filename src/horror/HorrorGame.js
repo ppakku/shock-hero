@@ -10,13 +10,14 @@ import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
 import { saveStore } from '../save.js';
+import { addStamp, wornLook, openedLooks, stampCount, boardSize } from '../logic/horrorStamps.js';
 import { sfx } from '../audio/sfx.js';
 import { MAPS, MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
 import { createCreature } from './creatureModel.js';
 import { WallBulge } from './wallBulge.js';
 import { HorrorInput } from './input.js';
-import { HorrorHud, startHint, escapeText } from './hud.js';
+import { HorrorHud, startHint, escapeText, stampLines } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
 
@@ -118,6 +119,9 @@ export class HorrorGame {
 
     this.scene = new THREE.Scene();
     const { theme } = this.place;
+    const { stamps, bolt: boltId, light: lightId } = saveStore.load().horror;
+    const light = wornLook(this.k.stamps.lights, stamps, this.k.stamps, lightId);
+    this.bolt = wornLook(this.k.stamps.bolts, stamps, this.k.stamps, boltId);
     this.scene.background = new THREE.Color(theme.fog);
     this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.fogCells * CELL);
     this.ambientLight = new THREE.AmbientLight(theme.ambient, this.k.ambient);
@@ -125,7 +129,7 @@ export class HorrorGame {
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
     this.scene.add(this.camera);
-    this.flash = new THREE.SpotLight(0xfff2d8, this.k.flashIntensity, this.k.flashDistance, this.k.flashAngle, this.k.flashPenumbra, this.k.flashDecay);
+    this.flash = new THREE.SpotLight(light.color, this.k.flashIntensity, this.k.flashDistance, this.k.flashAngle, this.k.flashPenumbra, this.k.flashDecay);
     this.flash.castShadow = true;
     this.flash.shadow.mapSize.set(512, 512);
     this.flash.position.set(0.15, -0.2, 0);
@@ -133,7 +137,7 @@ export class HorrorGame {
     this.camera.add(this.flash, this.flash.target);
 
     // 놀이를 시작하면 바로 보이는 손 그림부터 받는다
-    this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun });
+    this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun, bolt: this.bolt });
     this.world = buildWorld(this.scene, this.map, this.k, theme);
     this.stalker = createStalker(this.map, this.k, Math.random, this.round.monsterId);
     this.model = createCreature(this.monster.model, this.scene);
@@ -149,6 +153,7 @@ export class HorrorGame {
     this.clueMeshes = this.world.addClues(this.run.clues);
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root, this.named(NOTE_DANGER_LINE), this.round);
+    this.hud.setZapColor(this.bolt.screen);
     this.hud.setStatus(this.statusNow());
     if (this.showFps) {
       this.fpsLabel = document.createElement('div');
@@ -718,14 +723,17 @@ export class HorrorGame {
     const save = saveStore.load();
     const today = todayKey();
     const reward = escapeReward(save.horror, result.clean, today, this.k);
+    const was = save.horror.stamps;
+    const { stamps, earned } = addStamp(was, this.round, result.clean);
     save.gems += reward.gems;
-    save.horror = recordEscape(save.horror, result.clean, today);
+    save.horror = { ...recordEscape(save.horror, result.clean, today), stamps };
     saveStore.save(save);
     document.exitPointerLock?.();
     this.input.clearTouch();
     this.hud.closeNote();
     this.hud.setPrompt('');
-    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) });
+    const news = stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) });
+    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) }, news, this.device === 'phone');
   }
 
   pause() {

@@ -2,6 +2,7 @@
 import { isRound } from './horrorPick.js';
 import { reachable, withOpen } from './horrorGrid.js';
 import { createCode, CLUE_COUNT } from './horrorCode.js';
+import { normalizeStamps } from './horrorStamps.js';
 
 export const KEY_NAMES = ['빨간', '파란']; // 잠긴 문과 열쇠의 색. map.locks 순서
 
@@ -192,8 +193,9 @@ export function escapeReward(record, clean, today, k) {
 
 // gemDay: 탈출 보석을 마지막으로 받은 날. 없으면 아직 받은 적이 없다
 // last: 지난 판의 { mapId, monsterId }. 다음 판을 다르게 고르는 데 쓴다
+// stamps: 도장판 { '맵/괴물': 'plain' | 'gold' }. bolt, light: 고른 번개와 손전등 색 id (logic/horrorStamps.js)
 export function emptyHorror() {
-  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null };
+  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null };
 }
 
 export function normalizeHorror(data) {
@@ -202,6 +204,9 @@ export function normalizeHorror(data) {
   if (Number.isInteger(data?.cleanEscapes) && data.cleanEscapes > 0) d.cleanEscapes = Math.min(data.cleanEscapes, d.escapes);
   if (typeof data?.gemDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.gemDay)) d.gemDay = data.gemDay;
   if (isRound(data?.last)) d.last = { mapId: data.last.mapId, monsterId: data.last.monsterId };
+  d.stamps = normalizeStamps(data?.stamps);
+  if (typeof data?.bolt === 'string') d.bolt = data.bolt;
+  if (typeof data?.light === 'string') d.light = data.light;
   return d;
 }
 
