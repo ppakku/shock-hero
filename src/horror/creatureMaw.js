@@ -114,7 +114,7 @@ function hairGeometry() {
     uv: (p, t, w) => [flip ? 1 - wrapU(w, FRONT_LIMB) : wrapU(w, FRONT_LIMB), (p.y - HAIR.bottom) / (HAIR.top - HAIR.bottom)],
     at: (t, w, out) => out.set(Math.sin(w) * HAIR.x * k, lerp(HAIR.top, HAIR.bottom + 0.04, t), Math.cos(w) * HAIR.z * k), // 맨 아랫줄의 먹빛 칸은 비켜 간다
   });
-  const parts = [shell(1, false), shell(HAIR.inner, true)];
+  const parts = [];
   const cy = 0.74;
   const dot = (x, y, z, r) => [x * r, cy + y * r * 0.72, z * r * 0.9];
   for (let i = 0; i < 12; i++) {
@@ -137,7 +137,10 @@ function hairGeometry() {
       p = q;
     }
   }
-  return mergeGeometries(parts);
+  const strands = mergeGeometries(parts);
+  const g = mergeGeometries([strands, shell(1, false), shell(HAIR.inner, true)]);
+  g.userData.strands = strands.index.count; // 그림을 못 받으면 원통은 빼고 가닥만 그린다
+  return g;
 }
 
 // 몸통: 허리 위아래 두 토막. 몸을 숙여도 틈이 보이지 않게 조금 겹친다
@@ -219,11 +222,11 @@ export class MawModel extends CreatureBase {
   constructor(scene, loader) {
     super(scene, loader);
     const matte = (o) => new THREE.MeshLambertMaterial(o); // 반사가 없어야 그림의 까만 입안과 먹선이 손전등 아래서도 까맣다
-    const skin = this.paper('art/horror_maw_head.jpg', SKIN_COLOR, HEAD_TINT, (o) => matte({ ...o, fog: false })); // 어둠 속 이빨 빛이 안개에 묻히지 않게
+    const skin = this.paper('art/horror_maw_head.jpg', SKIN_COLOR, HEAD_TINT, (o) => matte({ ...o, fog: false }), () => this.blackenMouth()); // 어둠 속 이빨 빛이 안개에 묻히지 않게
     this.glowMap(skin, 'art/horror_maw_glow.jpg', TOOTH_COLOR);
     this.faceMat = skin;
     const body = this.paper('art/horror_maw_body.jpg', SKIN_COLOR, TINT, matte);
-    const hair = this.paper('art/horror_maw_hair.webp', HAIR_COLOR, TINT, (o) => new THREE.MeshLambertMaterial({ ...o, alphaTest: 0.3, side: THREE.DoubleSide }));
+    const hair = this.paper('art/horror_maw_hair.webp', HAIR_COLOR, TINT, (o) => new THREE.MeshLambertMaterial({ ...o, alphaTest: 0.3, side: THREE.DoubleSide }), () => this.hair?.geometry.setDrawRange(0, this.hair.geometry.userData.strands));
 
     const rig = new Rig(this.group);
     this.hips = rig.bone(null, 0, HIPS_Y, 0);
@@ -277,6 +280,14 @@ export class MawModel extends CreatureBase {
     this.chewT = 1;
     this.mouth = 0;
     this.glow = TEETH_GLOW.patrol;
+  }
+
+  // 그림을 못 받아도 머리 전체가 입인 것은 보이게 입 자리를 까맣게 칠한다
+  blackenMouth() {
+    if (!this.face) return;
+    const { position: p, color: c } = this.face.geometry.attributes;
+    for (let i = 0; i < p.count; i++) if (p.getZ(i) > 0 && inMouth(p.getX(i), p.getY(i)) > 0) c.setXYZ(i, 0, 0, 0);
+    c.needsUpdate = true;
   }
 
   update(s, dt, player) {

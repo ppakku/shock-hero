@@ -333,6 +333,18 @@ describe('createCreature', () => {
     expect(lip - mouth).toBeGreaterThan(0.1);
   });
 
+  it('maw keeps a dark mouth and drops the hair sheets when its pictures fail', () => {
+    const fails = [];
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const model = createCreature('maw', new THREE.Scene(), { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } });
+    fails.forEach((f) => f());
+    error.mockRestore();
+    const color = model.face.geometry.attributes.color;
+    expect(Array.from(color.array).some((c) => c === 0)).toBe(true);
+    expect(Array.from(color.array).some((c) => c === 1)).toBe(true);
+    expect(model.hair.geometry.drawRange.count).toBe(model.hair.geometry.userData.strands);
+  });
+
   it('maw has no eyes and never looks at the player', () => {
     const rest = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const a = build('maw');

@@ -35,7 +35,7 @@ export class CreatureBase {
   }
 
   // 그림을 입힌 재질. 그림이 없거나 못 받으면 color 색만 칠해서 괴물은 그대로 보인다
-  paper(url, color, shine = 0xa8a8a8, make = (o) => new THREE.MeshStandardMaterial({ ...o, roughness: 1 })) {
+  paper(url, color, shine = 0xa8a8a8, make = (o) => new THREE.MeshStandardMaterial({ ...o, roughness: 1 }), lost = () => {}) {
     const m = make({ color: shine, vertexColors: true });
     // 점 밝기가 0 인 곳(입안, 찢어진 틈)은 손전등 반사도 없이 완전히 까맣다
     m.onBeforeCompile = (shader) => {
@@ -45,6 +45,7 @@ export class CreatureBase {
       m.map = null;
       m.color.setHex(color);
       m.needsUpdate = true;
+      lost();
     });
     this.materials.push(m);
     return m;
