@@ -34,6 +34,9 @@ TILES = {
 }
 
 
+STRIPES_KEEP = 0.35
+
+
 def load(name):
     return Image.open(f'{RAW}/{name}.png').convert('RGB')
 
@@ -103,6 +106,11 @@ def ochre(a):
     return out
 
 
+# 손전등 아래서 골판 줄무늬가 너무 튀지 않게 세로줄 밝기 차이를 줄인다. keep: 남길 비율
+def soften_stripes(a, keep):
+    return a - (1 - keep) * (a.mean(axis=0, keepdims=True) - a.mean(axis=(0, 1), keepdims=True))
+
+
 def to_linear(c):
     c = c / 255
     return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
@@ -121,6 +129,8 @@ def tile(name, size, plain, part):
     a = flatten(a, size / 4)
     if name.startswith('ceil'):
         a = ochre(a)
+    if name == 'ceil_factory':
+        a = soften_stripes(a, STRIPES_KEEP)
     over = side - size
     a = wrap_x(a, over, 1.5)
     a = wrap_x(a.transpose(1, 0, 2), over, 1.5).transpose(1, 0, 2)
