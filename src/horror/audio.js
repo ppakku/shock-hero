@@ -10,7 +10,7 @@ const CLANG = [310, 467, 811]; // 멀리서 쇠가 부딪히는 소리
 const HUM = [98, 147.5]; // 충전된 전기충격기의 웅웅거림
 const CRACKLE = 5; // 맞혔을 때 이어지는 지지직 수
 export class HorrorAudio {
-  constructor({ muted }) {
+  constructor({ muted, voice = 'seino' }) {
     sfx.unlock();
     this.ctx = sfx.ctx;
     this.k = cfg.horror;
@@ -46,7 +46,8 @@ export class HorrorAudio {
     this.addTones(DRONE, 'sawtooth', 0.09, 420, 0.07, 160);
     this.addTones(PAD, 'triangle', 0.05, 900, 0.11, 200);
     this.addWind();
-    this.initCreature();
+    this.creatureNodes = [];
+    this.initCreature(voice);
     this.initHum();
   }
 
@@ -80,8 +81,17 @@ export class HorrorAudio {
     this.humLevel.gain.setTargetAtTime(on ? this.k.stunGun.humVol : 0, this.ctx.currentTime, 0.08);
   }
 
-  // 세이노: 숨소리 반복음과 방향이 들리는 소리 길. 가까이 오기 전에도 들리도록 멀리까지 감쇠를 약하게 둔다.
-  initCreature() {
+  stopNodes(nodes) {
+    for (const node of nodes) {
+      node.stop?.();
+      node.disconnect();
+    }
+  }
+
+  // 괴물 소리: 숨소리 반복음과 방향이 들리는 소리 길. 가까이 오기 전에도 들리도록 멀리까지 감쇠를 약하게 둔다.
+  initCreature(voice) {
+    this.voice = voice;
+    this.v = this.k.voices[voice] ?? this.k; // 세이노 값은 balance.horror 에 바로 있다
     this.stepT = 0;
     this.heartT = 0;
     this.mode = 'patrol';
@@ -93,7 +103,7 @@ export class HorrorAudio {
     this.panner.distanceModel = 'inverse';
     this.panner.refDistance = this.k.stalkerRefDist;
     this.panner.rolloffFactor = 1;
-    this.creatureOut = this.ctx.createGain(); // 추격 중에는 세이노 소리 전체를 키운다
+    this.creatureOut = this.ctx.createGain(); // 추격 중에는 괴물 소리 전체를 키운다
     this.panner.connect(this.creatureOut);
     this.creatureOut.connect(this.out);
 
@@ -102,8 +112,8 @@ export class HorrorAudio {
     breath.loop = true;
     const band = this.ctx.createBiquadFilter();
     band.type = 'bandpass';
-    band.frequency.value = this.k.breathFreq;
-    band.Q.value = 1.1; // 900~1800Hz 쯤이 넓게 남는다
+    band.frequency.value = this.v.breathFreq;
+    band.Q.value = this.v.breathQ ?? 1.1; // 세이노는 900~1800Hz 쯤이 넓게 남는다
     this.swell = this.ctx.createGain();
     this.swell.gain.value = 0.5;
     this.breathLevel = this.ctx.createGain();
@@ -112,12 +122,32 @@ export class HorrorAudio {
     breath.start();
     // 들숨 날숨: 이득이 천천히 오르내린다
     this.swellLfo = this.ctx.createOscillator();
-    this.swellLfo.frequency.value = 1 / this.k.breathSwellSec.patrol;
+    this.swellLfo.frequency.value = 1 / this.v.breathSwellSec.patrol;
     const depth = this.ctx.createGain();
     depth.gain.value = 0.5;
     this.swellLfo.connect(depth).connect(this.swell.gain);
     this.swellLfo.start();
-    this.loops.push(breath, band, this.swell, this.breathLevel, this.swellLfo, depth, this.panner, this.creatureOut);
+    this.creatureNodes.push(breath, band, this.swell, this.breathLevel, this.swellLfo, depth, this.panner, this.creatureOut);
+    if (this.v.tone) this.addVoiceTone(this.v.tone);
+  }
+
+  // 숨소리와 함께 커졌다 작아지는 지속음. 숨소리 크기가 0 이면 함께 끊긴다
+  addVoiceTone({ freqs, type, vol, cutoff }) {
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = cutoff;
+    const gain = this.ctx.createGain();
+    gain.gain.value = vol;
+    filter.connect(gain).connect(this.swell);
+    this.creatureNodes.push(filter, gain);
+    for (const freq of freqs) {
+      const osc = this.ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq;
+      osc.connect(filter);
+      osc.start();
+      this.creatureNodes.push(osc);
+    }
   }
 
   // 한 번 나는 짧은 소리. 오실레이터 하나가 높이를 미끄러뜨리며 사라진다.
@@ -154,12 +184,28 @@ export class HorrorAudio {
     src.stop(t + dur + 0.02);
   }
 
-  // 발톱 걸음: 마른 긁는 소리와 딱 하는 소리
+  // 세이노는 발톱 걸음: 마른 긁는 소리와 딱 하는 소리
   footstep() {
     if (!this.ctx || this.suspended) return;
+    if (this.voice === 'gazer') return this.dragStep();
+    if (this.voice === 'maw') return this.heavyStep();
     this.puffNoise(this.panner, { dur: 0.09, vol: 1.3, freq: 3200, freqTo: 1800, q: 1.5 });
     this.puffNoise(this.panner, { dur: 0.05, vol: 1.0, freq: 5200, q: 2, delay: 0.07 });
     this.blip(this.panner, { freq: 900, dur: 0.04, vol: 0.5, type: 'square', slide: 0.5 });
+  }
+
+  // 눈뜬이는 발이 없다: 옷자락이 바닥을 쓸며 끌리는 소리
+  dragStep() {
+    this.puffNoise(this.panner, { dur: 0.32, vol: 1.1, freq: 1500, freqTo: 3400, q: 0.9 });
+  }
+
+  // 큰입이: 낮게 쿵 울리는 걸음. 가끔 긴 이빨이 딱딱 부딪힌다
+  heavyStep() {
+    this.blip(this.panner, { freq: 200, dur: 0.2, vol: 0.5, slide: 0.6 });
+    this.puffNoise(this.panner, { dur: 0.14, vol: 0.8, freq: 700, freqTo: 260, type: 'lowpass' });
+    if (Math.random() > 0.4) return;
+    this.blip(this.panner, { freq: 2300, dur: 0.03, vol: 0.5, type: 'square', delay: 0.16 });
+    this.blip(this.panner, { freq: 2000, dur: 0.03, vol: 0.45, type: 'square', delay: 0.26 });
   }
 
   // 두근두근. 120~180Hz 성분을 더해 작은 스피커에도 들린다.
@@ -199,6 +245,7 @@ export class HorrorAudio {
       this.blip(o, { freq: 1600, dur: 0.03, vol: 0.22, type: 'square', slide: 0.6 });
       this.blip(o, { freq: 900, dur: 0.03, vol: 0.16, type: 'square', slide: 0.6, delay: 0.06 });
     }
+    if ((name === 'scare' || name === 'caught') && this.voice !== 'seino') return this.jolt(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
     if (name === 'scare') {
       // 올라가는 거친 숨소리
       this.puffNoise(o, { dur: 0.9, vol: this.k.scareVol, freq: 700, freqTo: 2400, q: 2.5 });
@@ -208,6 +255,19 @@ export class HorrorAudio {
       this.puffNoise(o, { dur: 1.2, vol: this.k.caughtVol, freq: 600, freqTo: 3000, q: 3 });
       this.blip(o, { freq: 150, dur: 1.1, vol: this.k.caughtVol * 0.67, slide: 0.4 });
     }
+  }
+
+  // 눈뜬이는 높이 치솟는 비명 숨, 큰입이는 낮은 포효 뒤에 이빨이 딱 닫힌다
+  jolt(vol) {
+    const o = this.out;
+    if (this.voice === 'gazer') {
+      this.puffNoise(o, { dur: 0.9, vol, freq: 1800, freqTo: 5200, q: 6 });
+      this.blip(o, { freq: 640, dur: 0.8, vol: vol * 0.4, type: 'triangle', slide: 1.9 });
+      return;
+    }
+    this.puffNoise(o, { dur: 0.9, vol, freq: 320, freqTo: 900, q: 1.6 });
+    this.blip(o, { freq: 82, dur: 0.9, vol: vol * 0.8, type: 'sawtooth', slide: 0.7 });
+    this.blip(o, { freq: 2100, dur: 0.05, vol: vol * 0.5, type: 'square', delay: 0.72 });
   }
 
   setPos(node, x, y, z) {
@@ -237,15 +297,15 @@ export class HorrorAudio {
     if (mode !== this.mode) {
       this.mode = mode;
       this.duckMusic(t);
-      this.swellLfo.frequency.setTargetAtTime(1 / (this.k.breathSwellSec[mode] ?? 1.4), t, 0.2);
+      this.swellLfo.frequency.setTargetAtTime(1 / (this.v.breathSwellSec[mode] ?? 1.4), t, 0.2);
     }
-    const level = this.k.breathLevel[mode] ?? 0.5;
+    const level = this.v.breathLevel[mode] ?? 0.5;
     if (!this.suspended && level !== this.breathGoal) { // 매 프레임 일정을 쌓지 않는다
       this.breathGoal = level;
       this.breathLevel.gain.setTargetAtTime(level, t, 0.2);
     }
 
-    const every = this.k.stepEvery[mode] ?? 0;
+    const every = this.v.stepEvery[mode] ?? 0;
     this.stepT -= dt;
     if (every && this.stepT <= 0) {
       this.stepT = every;
@@ -387,10 +447,8 @@ export class HorrorAudio {
 
   destroy() {
     if (!this.ctx) return;
-    for (const node of this.loops) {
-      node.stop?.();
-      node.disconnect();
-    }
+    this.stopNodes(this.loops);
+    this.stopNodes(this.creatureNodes);
     this.echoLoop.forEach((node) => node.disconnect());
     this.music.disconnect();
     this.out.disconnect();

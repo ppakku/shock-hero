@@ -276,7 +276,7 @@ describe('전원과 탈출', () => {
 
 describe('저장', () => {
   it('기록을 더한다', () => {
-    expect(recordEscape(emptyHorror(), true, DAY1)).toEqual({ escapes: 1, cleanEscapes: 1, gemDay: DAY1 });
+    expect(recordEscape(emptyHorror(), true, DAY1)).toEqual({ ...emptyHorror(), escapes: 1, cleanEscapes: 1, gemDay: DAY1 });
     expect(recordEscape({ escapes: 2, cleanEscapes: 1, gemDay: DAY1 }, false, DAY2)).toEqual({ escapes: 3, cleanEscapes: 1, gemDay: DAY2 });
   });
 
@@ -286,7 +286,7 @@ describe('저장', () => {
   });
 
   it('깨끗한 탈출 수는 전체 탈출 수를 넘지 않는다', () => {
-    expect(normalizeHorror({ escapes: 1, cleanEscapes: 5 })).toEqual({ escapes: 1, cleanEscapes: 1, gemDay: null });
+    expect(normalizeHorror({ escapes: 1, cleanEscapes: 5 })).toEqual({ ...emptyHorror(), escapes: 1, cleanEscapes: 1 });
     expect(normalizeHorror({ escapes: 0, cleanEscapes: 2 })).toEqual(emptyHorror());
   });
 
@@ -299,13 +299,20 @@ describe('저장', () => {
     expect(old.horror).toEqual(emptyHorror());
     old.horror = { escapes: 1, cleanEscapes: 1, gemDay: DAY1 };
     store.save(old);
-    expect(store.load().horror).toEqual({ escapes: 1, cleanEscapes: 1, gemDay: DAY1 });
+    expect(store.load().horror).toEqual({ ...emptyHorror(), escapes: 1, cleanEscapes: 1, gemDay: DAY1 });
   });
 
   it('날짜가 없는 예전 기록은 보석을 아직 안 받은 것으로 읽는다', () => {
     const old = normalizeHorror({ escapes: 4, cleanEscapes: 1 });
     expect(old.gemDay).toBeNull();
     expect(escapeReward(old, false, DAY1, k).daily).toBe(k.gemsEscape);
+  });
+
+  it('지난 판을 지키고, 모르는 맵이나 괴물은 버린다', () => {
+    const last = { mapId: 'sewer', monsterId: 'maw' };
+    expect(normalizeHorror({ last }).last).toEqual(last);
+    expect(recordEscape({ ...emptyHorror(), last }, false, DAY1).last).toEqual(last);
+    for (const bad of [null, 'sewer', { mapId: 'moon', monsterId: 'maw' }, { mapId: 'sewer' }]) expect(normalizeHorror({ last: bad }).last).toBeNull();
   });
 
   it('이상한 날짜는 버린다', () => {
@@ -344,7 +351,7 @@ describe('탈출 보석', () => {
 
   it('보석 없이 다시 탈출해도 횟수는 늘고 날짜는 그대로다', () => {
     const r = after(after(emptyHorror(), true, DAY1), true, DAY1);
-    expect(r).toEqual({ escapes: 2, cleanEscapes: 2, gemDay: DAY1 });
+    expect(r).toEqual({ ...emptyHorror(), escapes: 2, cleanEscapes: 2, gemDay: DAY1 });
   });
 });
 

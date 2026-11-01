@@ -32,3 +32,18 @@ export const factoryMap = parseMap([
   '#E....L#...K.#..........P.#L.....#L....#',
   '########################################',
 ]);
+
+export const factoryTheme = {
+  wall: { art: 'horror_wall', plain: 0x5a5148, repeat: 1 },
+  floor: { art: 'horror_floor', plain: 0x35312d, repeat: 7 }, // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
+  locker: { art: 'horror_locker', plain: 0x4a5a58, repeat: 1 },
+  ceil: 0x1b1a19,
+  fog: 0x000000,
+  ambient: 0x8890a8,
+  lightColor: 0xff3a14,
+  decor: {
+    light: { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }, // 비상등 크기와 높이 (미터)
+    machine: { w: [1.7, 2.2], h: [1.5, 1.8, 2.1], y: 0, tints: [0xb4bcc4] }, // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
+    pipe: { r: 0.07, off: 0.12, ys: [2.62, 2.8], color: 0x2e3236 }, // 벽을 따라가는 배관 두 줄
+  },
+};

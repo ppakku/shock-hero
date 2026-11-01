@@ -770,6 +770,23 @@ export const balance = {
     stalkerRefDist: 6, // 세이노 소리가 줄어들기 시작하는 거리 (미터)
     scareVol: 0.77, // 놀람 소리 크기
     caughtVol: 0.84, // 잡힘 소리 크기
+    // 눈뜬이와 큰입이 소리. 표 모양은 위의 세이노 값과 같다. tone 은 숨소리에 섞는 지속음이다
+    voices: {
+      gazer: { // 높고 가는 속삭임과 어긋난 콧노래. 바라보면 (watch) 뚝 끊긴다
+        breathFreq: 3800, breathQ: 6,
+        breathLevel: { patrol: 0.34, chase: 0.8, stunned: 0.1, watch: 0 },
+        breathSwellSec: { patrol: 3.2, chase: 1.3, stunned: 3.2, watch: 3.2 },
+        stepEvery: { patrol: 0.62, chase: 0.34, stunned: 0, watch: 0 },
+        tone: { freqs: [880, 932.3], type: 'sine', vol: 0.2, cutoff: 2400 }, // 반음이 부딪혀 떨린다
+      },
+      maw: { // 낮게 킁킁대는 콧김과 으르렁. 무거운 걸음에 이빨 부딪는 소리가 섞인다
+        breathFreq: 420, breathQ: 2.2,
+        breathLevel: { patrol: 0.4, investigate: 0.5, search: 0.55, chase: 0.75, stunned: 0.12 },
+        breathSwellSec: { patrol: 0.5, investigate: 0.3, search: 0.26, chase: 0.34, stunned: 1.4 },
+        stepEvery: { patrol: 0.95, investigate: 0.8, search: 1.1, chase: 0.3, stunned: 0 },
+        tone: { freqs: [147, 220], type: 'sawtooth', vol: 0.05, cutoff: 1100 }, // 작은 스피커에도 들리게 150Hz 위 소리가 남는다
+      },
+    },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
     noticeLight: 10, // 손전등 빛을 알아채고 조사하러 오는 거리
@@ -852,6 +869,37 @@ export const balance = {
     pressureHear: 0.6, // 퓨즈를 다 찾았을 때 듣는 거리가 늘어나는 비율
     pressureSearch: 0.5, // 퓨즈를 다 찾았을 때 수색 시간이 늘어나는 비율
     pressureLocker: 0.3, // 퓨즈를 다 찾았을 때 사물함을 뒤질 확률에 더해지는 값
+    viewFov: 125, // 주인공이 괴물을 보고 있다고 치는 좌우 각도 (도). 긴 폰 화면의 가로 시야보다 조금 넓다
+    slitFov: 40, // 사물함 틈으로 보고 있다고 치는 각도 (도). 고개를 돌릴 수 있는 각도보다 좁아야 눈을 뗄 수 있다
+    monsters: {
+      seino: {}, // 세이노는 위의 값을 그대로 쓴다
+      gazer: {
+        creep: 1.0, // 멀리서 다가오는 속도. 걷기보다 느리다
+        rushSpeed: 1.9, // 가까워지면 빨라진 속도. 걷기보다 빠르고 달리기보다 느리다
+        rushPath: 7, // 길이 이 칸 안이면 빨라지고 발소리가 커진다
+        rushSlack: 3, // 빨라진 뒤에는 이만큼 더 멀어져야 다시 느려진다
+        repath: 0.5, // 주인공 쪽 길을 다시 찾는 간격 (초)
+        chaseWarn: 1.2, // 빨라지거나 눈을 뗀 뒤 이 시간 동안은 잡지 않는다 (초)
+        alarmAgain: 3, // 빨라진 지 이만큼 지나야 다시 알린다. 눈을 깜빡여도 안내가 쏟아지지 않게 한다
+        slipAfter: 6, // 이만큼 오래 보고 있다가 눈을 떼면 사라진다 (초)
+        doorWait: 3, // 숨은 사물함 앞에 서 있다가 떠나는 시간 (초)
+      },
+      maw: {
+        hearRun: 13, // 달리는 소리와 문 여는 소리를 듣는 거리
+        hearWalk: 2, // 걷는 소리를 듣는 거리. 퓨즈를 다 찾아도 늘지 않는다
+        rushSpeed: 2.8, // 소리 난 곳으로 달려드는 속도. 달리기보다 빠르다
+        rushTime: 2.5, // 달려드는 시간 (초)
+        rushRest: 2, // 달려든 뒤 다시 달려들 때까지 쉬는 시간 (초)
+        rushWarn: 0.8, // 달려들기 시작한 뒤 이 시간 동안은 잡지 않는다 (초)
+        sniffTime: 8, // 소리 난 곳 둘레를 코로 찾는 시간 (초)
+        touchDist: 0.6, // 이만큼 닿아야 잡힌다
+        lockerNear: 2, // 달려서 사물함에 들어갈 때 이 거리 안이면 들킨다
+        lockerRun: 0.5, // 달리기를 멈춘 뒤 이 시간 안에 들어가면 달려 들어간 것으로 친다 (초)
+        brushDist: 1.3, // 소리 없이 서 있는 주인공에게 이만큼 다가오면 멈춰서 냄새를 맡는다
+        sniffPause: 1, // 냄새를 맡고 돌아서기까지 걸리는 시간 (초)
+        brushRest: 5, // 한 번 돌아선 뒤 다시 멈출 때까지 쉬는 시간 (초)
+      },
+    },
   },
 
   // ---------- 효과 ----------

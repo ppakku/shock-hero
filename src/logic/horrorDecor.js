@@ -1,4 +1,4 @@
-// 공장을 꾸밀 자리 고르기 (비상등, 기계, 배관). 벽에 붙이기만 하고 다니는 칸은 바꾸지 않는다.
+// 맵을 꾸밀 자리 고르기 (벽 등, 벽에 붙은 큰 물건, 배관). 벽에 붙이기만 하고 다니는 칸은 바꾸지 않는다.
 import { blocked } from './horrorGrid.js';
 
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -6,6 +6,7 @@ const KEEP_CLEAR = new Set(['L', 'E', 'P', 'G', 'D', 'A', 'B', 'K', 'N']); // �
 const MACHINE_AT = [[0.2, 0.7], [0.35]]; // 방의 벽면 목록에서 고르는 위치 (방마다 번갈아)
 const LIGHT_AT = [0.45, 0.9];
 const PIPE_AT = 0.55;
+const LOW_AT = [0.08, 0.5, 0.92]; // 낮은 가구를 놓는 위치
 const PIPE_CELLS = 2; // 고른 벽면에서 양쪽으로 잇는 칸 수
 
 const open = (map, cx, cy) => !blocked(map, cx, cy) && map.rows[cy][cx] !== 'D';
@@ -69,15 +70,29 @@ function pipeRun(faces, start) {
   return run;
 }
 
-// 맵에서 항상 같은 자리가 나온다
-export function decorSpots(map) {
-  const out = { machines: [], lights: [], pipes: [] };
-  roomsOf(map).forEach((cells, i) => {
+// 큰 방을 tile 칸 묶음으로 쪼갠다. 문이 적은 긴 굴도 고루 꾸미게 한다
+function split(cells, tile) {
+  const parts = new Map();
+  for (const c of cells) {
+    const key = `${Math.floor(c.cx / tile)},${Math.floor(c.cy / tile)}`;
+    if (!parts.has(key)) parts.set(key, []);
+    parts.get(key).push(c);
+  }
+  return [...parts.values()];
+}
+
+// 맵에서 항상 같은 자리가 나온다. tile 이 있으면 방을 그 크기로 쪼개서 고른다
+export function decorSpots(map, tile = 0) {
+  const out = { machines: [], lights: [], pipes: [], lows: [] };
+  const rooms = roomsOf(map);
+  (tile ? rooms.flatMap((cells) => split(cells, tile)) : rooms).forEach((cells, i) => {
     const faces = facesOf(map, cells);
     if (!faces.length) return;
-    for (const part of MACHINE_AT[i % 2]) out.machines.push(at(faces, part));
-    if (i % 3 !== 2) for (const part of LIGHT_AT) out.lights.push(at(faces, part));
+    const addOnce = (list, f) => { if (!list.includes(f)) list.push(f); }; // 벽면이 적으면 같은 면이 또 뽑힌다
+    for (const part of MACHINE_AT[i % 2]) addOnce(out.machines, at(faces, part));
+    if (i % 3 !== 2) for (const part of LIGHT_AT) addOnce(out.lights, at(faces, part));
     if (i % 2 === 0) out.pipes.push(...pipeRun(faces, at(faces, PIPE_AT)));
+    for (const part of LOW_AT) addOnce(out.lows, at(faces, part));
   });
   return out;
 }

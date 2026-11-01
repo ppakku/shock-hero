@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
-import { CreatureModel, lookYaw } from '../src/horror/creatureModel.js';
+import { CreatureModel, createCreature, lookYaw } from '../src/horror/creatureModel.js';
+import { GazerModel } from '../src/horror/creatureGazer.js';
+import { MawModel } from '../src/horror/creatureMaw.js';
 
 const loader = { load: () => new THREE.Texture() };
 const make = () => {
@@ -173,5 +175,166 @@ describe('horror creature', () => {
     make().group.traverse((o) => { if (o.isMesh && o.castShadow) casters++; });
     expect(casters).toBeLessThanOrEqual(6);
     expect(casters).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe('createCreature', () => {
+  const build = (id) => createCreature(id, new THREE.Scene(), loader);
+  const stand = (model, mode = 'patrol', frames = 1) => {
+    for (let i = 0; i < frames; i++) model.update({ x: 5, y: 5, heading: 0, mode }, 1 / 30, P);
+    model.group.updateMatrixWorld(true);
+    return model;
+  };
+  // 그림자까지 넣은 그리기 호출 수
+  const calls = (model) => {
+    let n = 0;
+    model.group.traverse((o) => { if (o.isMesh) n += o.castShadow ? 2 : 1; });
+    return n;
+  };
+  const tris = (model) => {
+    let n = 0;
+    model.group.traverse((o) => { if (o.isMesh) n += o.geometry.index.count / 3; });
+    return n;
+  };
+
+  it('picks the model by id and keeps seino as the default', () => {
+    expect(build('seino')).toBeInstanceOf(CreatureModel);
+    expect(build('nobody')).toBeInstanceOf(CreatureModel);
+    expect(build('gazer')).toBeInstanceOf(GazerModel);
+    expect(build('maw')).toBeInstanceOf(MawModel);
+  });
+
+  it.each(['gazer', 'maw'])('%s keeps the same interface and stays cheap', (id) => {
+    const model = stand(build(id));
+    for (const key of ['group', 'head', 'textures', 'yaw', 'glow', 'headHeight']) expect(model[key]).toBeDefined();
+    expect(calls(model)).toBeLessThanOrEqual(12);
+    expect(tris(model)).toBeLessThan(8000);
+    const box = new THREE.Box3().setFromObject(model.group);
+    expect(box.max.y).toBeGreaterThan(2.4);
+    expect(box.max.y).toBeLessThan(2.95);
+    expect(() => stand(model, 'some-new-mode', 5)).not.toThrow();
+  });
+
+  it.each(['gazer', 'maw'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
+    const fails = [];
+    const failing = { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } };
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const model = createCreature(id, new THREE.Scene(), failing);
+    expect(fails.length).toBeGreaterThan(0);
+    fails.forEach((f) => f());
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(model.textures).toHaveLength(0);
+    expect(model.materials.every((m) => m.map === null)).toBe(true);
+    spy.mockRestore();
+  });
+
+  it.each(['gazer', 'maw'])('%s disposes everything it made', (id) => {
+    const model = stand(build(id));
+    const items = [...model.materials, ...model.owned];
+    model.group.traverse((o) => { if (o.geometry) items.push(o.geometry); });
+    const spies = items.map((x) => {
+      const f = vi.fn();
+      x.addEventListener('dispose', f);
+      return f;
+    });
+    model.dispose();
+    spies.forEach((f) => expect(f).toHaveBeenCalled());
+    expect(model.scene.children).not.toContain(model.group);
+  });
+
+  it('gazer holds still while frozen, only the pupils follow the player', () => {
+    const model = stand(build('gazer'), 'patrol', 40);
+    const snap = () => [
+      model.root.rotation.x, model.root.rotation.z, model.root.position.y, model.neck.rotation.z, model.jaw.rotation.x,
+      model.head.rotation.x, model.head.rotation.y, model.yaw, ...model.bodyMesh.geometry.attributes.position.array.slice(-60),
+    ];
+    const s = { x: 5, y: 5, heading: 0.7, mode: 'watch' };
+    model.update(s, 1 / 30, { x: 5, y: 8 });
+    const held = snap();
+    const eyeA = model.pupils[0].mesh.position.x;
+    for (let i = 0; i < 40; i++) model.update(s, 1 / 30, { x: 7, y: 8 });
+    expect(snap()).toEqual(held);
+    expect(model.pupils[0].mesh.position.x).not.toBe(eyeA);
+  });
+
+  it('gazer opens its mouth wider in a chase and dims when stunned', () => {
+    const rest = vi.spyOn(Math, 'random').mockReturnValue(0);
+    const patrol = stand(build('gazer'), 'patrol', 90);
+    const chase = stand(build('gazer'), 'chase', 90);
+    expect(chase.jaw.rotation.x).toBeGreaterThan(patrol.jaw.rotation.x + 0.1);
+    expect(chase.root.rotation.x).toBeGreaterThan(patrol.root.rotation.x);
+    expect(stand(build('gazer'), 'stunned', 90).glow).toBeLessThan(patrol.glow * 0.5);
+    rest.mockRestore();
+  });
+
+  it('gazer puts two ringed eyes on the front of the head', () => {
+    const [a, b] = stand(build('gazer')).eyes.map((e) => e.center);
+    expect(a.z).toBeGreaterThan(0.1);
+    expect(a.x).toBeCloseTo(-b.x, 1);
+  });
+
+  it('maw has no eyes and never looks at the player', () => {
+    const rest = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const a = build('maw');
+    const b = build('maw');
+    expect(a.eyes).toBeUndefined();
+    for (let i = 0; i < 60; i++) {
+      a.update({ x: 5, y: 5, heading: 0, mode: 'patrol' }, 1 / 30, { x: 6, y: 5 });
+      b.update({ x: 5, y: 5, heading: 0, mode: 'patrol' }, 1 / 30, { x: 2, y: 9 });
+    }
+    expect(a.head.rotation.y).toBeCloseTo(b.head.rotation.y, 6);
+    rest.mockRestore();
+  });
+
+  it('maw rushes low with its mouth wide and searches with its head swinging', () => {
+    const rest = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const walk = stand(build('maw'), 'patrol', 90);
+    const rush = stand(build('maw'), 'chase', 90);
+    expect(rush.spine.rotation.x).toBeGreaterThan(walk.spine.rotation.x + 0.3);
+    expect(rush.jaw.rotation.x).toBeGreaterThan(walk.jaw.rotation.x + 0.1);
+    expect(rush.arms[0].shoulder.rotation.x).toBeLessThan(walk.arms[0].shoulder.rotation.x - 0.8);
+    const sniff = build('maw');
+    let swing = 0;
+    for (let i = 0; i < 120; i++) {
+      stand(sniff, 'search');
+      if (i > 60) swing = Math.max(swing, Math.abs(sniff.head.rotation.y));
+    }
+    expect(swing).toBeGreaterThan(0.45);
+    rest.mockRestore();
+  });
+
+  it('maw stops to sniff while pauseT runs, whatever its mode', () => {
+    const rest = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const model = build('maw');
+    for (let i = 0; i < 90; i++) model.update({ x: 5, y: 5, heading: 0, mode: 'patrol', pauseT: 1 }, 1 / 30, P);
+    expect(model.pose.lean).toBeGreaterThan(0.35);
+    rest.mockRestore();
+  });
+
+  it('maw keeps its arms held out to the sides and feet near the floor while walking', () => {
+    const model = build('maw');
+    const hand = new THREE.Vector3();
+    for (let i = 1; i < 90; i++) {
+      model.update({ x: 5 + i * 0.03, y: 5, heading: Math.PI / 2, mode: 'patrol' }, 1 / 30, P);
+      if (i < 30) continue;
+      expect(model.hips.position.y).toBeGreaterThan(0.95);
+      expect(model.hips.position.y).toBeLessThan(1.3);
+    }
+    model.update({ x: 5, y: 5, heading: 0, mode: 'patrol' }, 1 / 30, P);
+    model.group.position.set(0, 0, 0);
+    model.group.rotation.set(0, 0, 0);
+    model.group.updateMatrixWorld(true);
+    model.arms[1].fingers.getWorldPosition(hand);
+    expect(hand.x).toBeGreaterThan(0.5);
+    expect(hand.y).toBeGreaterThan(1);
+  });
+
+  it('every skinned point follows a real bone', () => {
+    const model = stand(build('maw'));
+    const bones = model.skeleton.bones.length;
+    for (const m of [model.skin, model.teeth]) {
+      const index = m.geometry.attributes.skinIndex;
+      for (let i = 0; i < index.count; i++) expect(index.getX(i)).toBeLessThan(bones);
+    }
   });
 });

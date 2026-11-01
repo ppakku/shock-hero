@@ -1,4 +1,4 @@
-// 공장 건물 3D. 7칸 묶음(구역)으로 나눠서 먼 구역은 통째로 그리지 않는다.
+// 맵 건물 3D. 7칸 묶음(구역)으로 나눠서 먼 구역은 통째로 그리지 않는다. 생김새는 맵 파일의 theme 이 정한다.
 import * as THREE from 'three';
 import { CELL, chunksInSight } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
@@ -6,13 +6,9 @@ import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
 const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
 const LOCKER = { w: 1.3, h: 2.2, d: 1.1 };
-const LIGHT = { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }; // 비상등 크기와 높이 (미터)
-const LIGHT_COLOR = new THREE.Color(0xff3a14);
-const MACHINE_TINT = new THREE.Color(0xb4bcc4); // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
 const NOTE = { w: 0.4, h: 0.55, color: 0xe8dcc0, y: 0.03, turn: 1.1 }; // 쪽지 크기 (미터), 색, 바닥에서 높이 (미터), 자리마다 돌아가는 각도 (라디안)
 const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
-const PIPE = { r: 0.07, off: 0.12, ys: [2.62, 2.8] }; // 벽을 따라가는 배관 두 줄
 
 const lambert = (color) => new THREE.MeshLambertMaterial({ color });
 const place = new THREE.Object3D();
@@ -49,9 +45,9 @@ function setOnWall(mesh, i, f, w, h, d, y) {
   mesh.setMatrixAt(i, place.matrix);
 }
 
-// 잠긴 문은 공장 셔터다. 양옆이 벽인 쪽으로 세운다
-function addShutter(group, c, map, color, wallMat) {
-  const mat = new THREE.MeshLambertMaterial({ color, map: wallMat.map, emissive: color, emissiveIntensity: 0.12 }); // 녹슨 벽 그림에 색만 입힌다
+// 잠긴 문은 말려 올라가는 셔터다. 양옆이 벽인 쪽으로 세운다
+function addShutter(group, c, map, color, art) {
+  const mat = new THREE.MeshLambertMaterial({ color, map: art.map, emissive: color, emissiveIntensity: 0.12 }); // 그림에 색만 입힌다
   const across = map.rows[c.cy][c.cx - 1] === '#'; // 왼쪽이 벽이면 x 를 따라 놓는다
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(across ? CELL : DOOR.d, WALL_H, across ? DOOR.d : CELL), mat);
   mesh.position.set((c.cx + 0.5) * CELL, WALL_H / 2, (c.cy + 0.5) * CELL);
@@ -60,47 +56,104 @@ function addShutter(group, c, map, color, wallMat) {
   return { mesh, t: 0 };
 }
 
-// 비상등, 기계, 배관. 전부 벽에 붙어 있고 종류마다 한 번에 그린다
-function addDecor(scene, map, k, wallMat) {
-  const spots = decorSpots(map);
+// 벽 등, 벽에 붙은 큰 물건, 배관. 전부 벽에 붙어 있고 종류마다 한 번에 그린다
+function addDecor(scene, map, k, mats, decor) {
+  const { wall: wallMat, board: boardMat } = mats;
+  const { light, machine, pipe, low, lintel } = decor;
+  const spots = decorSpots(map, decor.tile);
   const box = new THREE.BoxGeometry(1, 1, 1);
-  const decor = new THREE.Group();
-  scene.add(decor);
+  const group = new THREE.Group();
+  scene.add(group);
 
-  const lightMat = new THREE.MeshBasicMaterial({ color: LIGHT_COLOR.clone() });
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const lights = new THREE.InstancedMesh(box, lightMat, spots.lights.length);
-  spots.lights.forEach((f, i) => setOnWall(lights, i, f, LIGHT.w, LIGHT.h, LIGHT.d, LIGHT.y));
+  spots.lights.forEach((f, i) => setOnWall(lights, i, f, light.w, light.h, light.d, light.y));
 
-  const machines = new THREE.InstancedMesh(box, wallMat, spots.machines.length);
+  const machines = new THREE.InstancedMesh(box, boardMat || wallMat, spots.machines.length);
+  const tints = machine.tints.map((c) => new THREE.Color(c));
   spots.machines.forEach((f, i) => {
-    const h = 1.5 + (i % 3) * 0.3;
-    setOnWall(machines, i, f, 1.7 + (i % 2) * 0.5, h, k.machineDepth, h / 2);
-    machines.setColorAt(i, MACHINE_TINT);
+    const h = machine.h[i % machine.h.length];
+    setOnWall(machines, i, f, machine.w[i % machine.w.length], h, machine.depth ?? k.machineDepth, machine.y + h / 2);
+    machines.setColorAt(i, tints[i % tints.length]);
   });
   machines.castShadow = true;
   machines.receiveShadow = true;
 
-  const pipeGeo = new THREE.CylinderGeometry(PIPE.r, PIPE.r, CELL, 6, 1, true);
-  const pipes = new THREE.InstancedMesh(pipeGeo, lambert(0x2e3236), spots.pipes.length * PIPE.ys.length);
-  spots.pipes.forEach((f, i) => PIPE.ys.forEach((y, j) => {
-    place.position.set(faceX(f) - f.dx * PIPE.off, y, faceZ(f) - f.dy * PIPE.off);
+  const pipeGeo = new THREE.CylinderGeometry(pipe.r, pipe.r, CELL, 6, 1, true);
+  const pipes = new THREE.InstancedMesh(pipeGeo, lambert(pipe.color), spots.pipes.length * pipe.ys.length);
+  spots.pipes.forEach((f, i) => pipe.ys.forEach((y, j) => {
+    place.position.set(faceX(f) - f.dx * pipe.off, y, faceZ(f) - f.dy * pipe.off);
     place.rotation.set(f.dx ? Math.PI / 2 : 0, 0, f.dx ? 0 : Math.PI / 2); // 벽과 나란히 눕힌다
     place.scale.set(1, 1, 1);
     place.updateMatrix();
-    pipes.setMatrixAt(i * PIPE.ys.length + j, place.matrix);
+    pipes.setMatrixAt(i * pipe.ys.length + j, place.matrix);
   }));
 
-  for (const mesh of [lights, machines, pipes]) {
+  const meshes = [lights, machines, pipes];
+  if (low) {
+    const lows = new THREE.InstancedMesh(box, lambert(low.color), spots.lows.length);
+    spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
+    meshes.push(lows);
+  }
+  if (lintel) {
+    const doors = [];
+    map.rows.forEach((row, cy) => [...row].forEach((ch, cx) => { if (ch === 'D') doors.push({ cx, cy }); }));
+    const tops = new THREE.InstancedMesh(box, wallMat, doors.length);
+    doors.forEach((c, i) => {
+      place.position.set((c.cx + 0.5) * CELL, WALL_H - lintel.h / 2, (c.cy + 0.5) * CELL);
+      place.rotation.set(0, 0, 0);
+      place.scale.set(CELL, lintel.h, CELL);
+      place.updateMatrix();
+      tops.setMatrixAt(i, place.matrix);
+    });
+    meshes.push(tops);
+  }
+  for (const mesh of meshes) {
     mesh.computeBoundingSphere();
-    decor.add(mesh);
+    group.add(mesh);
   }
   return { lightMat, counts: { lights: spots.lights.length, machines: spots.machines.length, pipes: spots.pipes.length } };
 }
 
-export function buildWorld(scene, map, k, mats = {}) {
-  const wallMat = mats.wall || lambert(0x5a5148);
-  const floorMat = mats.floor || lambert(0x35312d);
-  const ceilMat = lambert(0x1b1a19);
+// 벽, 바닥, 사물함의 재질. 그림을 못 받으면 밋밋한 색으로 둔다
+function themeMaterials(theme, onMissing) {
+  const textures = {};
+  let reported = false;
+  const make = (name) => {
+    const { art, plain, repeat, repeatY = repeat, tint = 0xffffff, shiny } = theme[name];
+    const mat = shiny ? new THREE.MeshPhongMaterial({ color: tint, specular: shiny.color, shininess: shiny.power }) : new THREE.MeshLambertMaterial({ color: tint });
+    const tex = new THREE.TextureLoader().load(`art/${art}.jpg`, undefined, undefined, () => {
+      if (!reported) console.error('공포 모드 재질 그림을 못 받아 밋밋한 색으로 둡니다:', name);
+      reported = true;
+      mat.map = null;
+      mat.color.setHex(plain);
+      mat.needsUpdate = true;
+      onMissing(name);
+    });
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeat, repeatY);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    mat.map = tex;
+    textures[name] = tex;
+    return mat;
+  };
+  return { wall: make('wall'), floor: make('floor'), locker: make('locker'), board: theme.board && make('board'), textures };
+}
+
+export function buildWorld(scene, map, k, theme) {
+  // 문 그림을 못 받으면 셔터도 그림을 버린다. 안 그러면 까맣게 나와서 문 색을 알 수 없다
+  const doorPart = theme.doorArt || 'wall';
+  const dropDoorArt = () => {
+    for (const d of doors) {
+      d.mesh.material.map = null;
+      d.mesh.material.needsUpdate = true;
+    }
+  };
+  const mats = themeMaterials(theme, (name) => { if (name === doorPart) dropDoorArt(); });
+  const wallMat = mats.wall;
+  const floorMat = mats.floor;
+  const ceilMat = lambert(theme.ceil);
   const wallGeo = new THREE.BoxGeometry(CELL, WALL_H, CELL);
   const chunks = new Map();
   const chunkOf = (cx, cy) => {
@@ -148,7 +201,8 @@ export function buildWorld(scene, map, k, mats = {}) {
 
   const props = new THREE.Group();
   scene.add(props);
-  propSet(props, map.lockers, LOCKER.w, LOCKER.h, LOCKER.d, mats.locker || lambert(0x4a5a58));
+  const locker = theme.locker.box || LOCKER;
+  propSet(props, map.lockers, locker.w, locker.h, locker.d, mats.locker);
   const boxMat = lambert(0x3a4a6a);
   propSet(props, map.boxes, 0.9, 1.5, 0.5, boxMat);
   const panelMat = lambert(0x6a3a2a);
@@ -165,9 +219,11 @@ export function buildWorld(scene, map, k, mats = {}) {
   glow(panelMat, 0xc03020, 0.6);
   glow(gateMat, 0x402808, 0.5);
 
-  const { lightMat, counts } = addDecor(scene, map, k, wallMat);
+  const { lightMat, counts } = addDecor(scene, map, k, mats, theme.decor);
+  const lightColor = new THREE.Color(theme.lightColor);
+  const flow = theme.floor.flow;
   let lightLevel = -1;
-  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], wallMat));
+  const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], mats[doorPart]));
   const rising = [];
   let lastT = 0;
 
@@ -207,13 +263,6 @@ export function buildWorld(scene, map, k, mats = {}) {
     addFuses,
     addKeys,
     addNotes,
-    // 벽 그림을 못 받으면 셔터도 그림을 버린다. 안 그러면 까맣게 나와서 문 색을 알 수 없다
-    dropDoorArt() {
-      for (const d of doors) {
-        d.mesh.material.map = null;
-        d.mesh.material.needsUpdate = true;
-      }
-    },
     counts,
     // 문을 열면 눈길이 달라지니 계산해 둔 구역도 버린다
     openDoor(i) {
@@ -222,6 +271,7 @@ export function buildWorld(scene, map, k, mats = {}) {
       shownCell = -1;
     },
     lightMat,
+    textures: Object.values(mats.textures),
     // 전원이 켜지면 전원은 초록으로, 정문은 밝게 바뀐다
     setPowered() {
       glow(panelMat, 0x20c040, 0.8);
@@ -249,8 +299,9 @@ export function buildWorld(scene, map, k, mats = {}) {
       const level = emergencyGlow(t, lowFx, k);
       if (level !== lightLevel) {
         lightLevel = level;
-        lightMat.color.copy(LIGHT_COLOR).multiplyScalar(level);
+        lightMat.color.copy(lightColor).multiplyScalar(level);
       }
+      if (flow && !lowFx) mats.textures.floor.offset.set(t * flow[0], t * flow[1]);
     },
   };
 }

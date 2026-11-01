@@ -1,22 +1,65 @@
 import { describe, it, expect } from 'vitest';
 import { createNotes, takeNote, NOTE_TOTAL } from '../src/logic/horrorNotes.js';
-import { NOTES, FINAL_LINE } from '../src/horror/story.js';
+import { MONSTERS } from '../src/horror/content.js';
+import { NOTES, FINAL_LINES, NOTE_DANGER_LINE, fillName } from '../src/horror/story.js';
 
 const spots = Array.from({ length: 12 }, (_, i) => ({ x: i + 0.5, y: 2.5 }));
 const seeded = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
 describe('쪽지 이야기 글', () => {
   it('쪽지는 8개이고 2에서 4줄이다', () => {
-    expect(NOTES).toHaveLength(NOTE_TOTAL);
-    for (const n of NOTES) {
+    expect(NOTES.factory).toHaveLength(NOTE_TOTAL);
+    for (const n of NOTES.factory) {
       expect(n.length).toBeGreaterThanOrEqual(2);
       expect(n.length).toBeLessThanOrEqual(4);
     }
   });
   it('em dash 와 가운뎃점, 피 이야기가 없다', () => {
-    const all = [...NOTES.flat(), FINAL_LINE].join('\n');
+    const all = [...NOTES.factory.flat(), FINAL_LINES.factory].join('\n');
     expect(all).not.toMatch(/[—·]/);
     expect(all).not.toMatch(/피|죽|시체|살해/);
+  });
+});
+
+describe('맵별 쪽지 이야기', () => {
+  const maps = ['factory', 'sewer', 'school'];
+  it('맵마다 8개이고 2에서 4줄이며 한 줄이 짧다', () => {
+    expect(Object.keys(NOTES)).toEqual(maps);
+    for (const id of maps) {
+      expect(NOTES[id]).toHaveLength(NOTE_TOTAL);
+      for (const n of NOTES[id]) {
+        expect(n.length).toBeGreaterThanOrEqual(2);
+        expect(n.length).toBeLessThanOrEqual(4);
+        for (const line of n) expect(line.length).toBeLessThanOrEqual(34);
+      }
+    }
+  });
+  it('em dash, 가운뎃점, 피와 죽음 이야기가 없고 괴물 이름은 {name} 으로만 쓴다', () => {
+    for (const id of maps) {
+      const all = [...NOTES[id].flat(), FINAL_LINES[id], NOTE_DANGER_LINE].join('\n');
+      expect(all).not.toMatch(/[—·]/);
+      expect(all).not.toMatch(/피|죽|시체|살해/);
+      expect(all).not.toMatch(/세이노|눈뜬이|큰입이/);
+    }
+  });
+  it('받침 있는 이름도 조사가 맞는다', () => {
+    expect(fillName('{name}는 {name}가 {name}를 {name}도 {name}에게', '눈먼곰')).toBe('눈먼곰은 눈먼곰이 눈먼곰을 눈먼곰도 눈먼곰에게');
+    expect(fillName('{name}는 {name}가 {name}를', '큰입이')).toBe('큰입이는 큰입이가 큰입이를');
+    expect(fillName('{name}는', 'Boo')).toBe('Boo는');
+    for (const id of Object.keys(NOTES)) {
+      const all = fillName([...NOTES[id].flat(), FINAL_LINES[id], NOTE_DANGER_LINE], '눈먼곰').join('\n');
+      expect(all).not.toContain('{name');
+      expect(all).not.toMatch(/눈먼곰[는가를]/);
+    }
+    for (const m of Object.values(MONSTERS)) expect(fillName([m.hint, m.alarm], '눈먼곰').join(' ')).not.toMatch(/눈먼곰[는가를]/);
+  });
+
+  it('fillName 이 모든 {name} 을 바꾼다', () => {
+    for (const id of maps) {
+      const all = fillName([...NOTES[id].flat(), FINAL_LINES[id], NOTE_DANGER_LINE], '눈뜬이').join('\n');
+      expect(all).not.toMatch(/[{}]/);
+    }
+    expect(fillName(NOTES.factory[7], '큰입이').join('')).toContain('큰입이는');
   });
 });
 

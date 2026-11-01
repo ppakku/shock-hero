@@ -7,9 +7,11 @@ export const MODES = ['patrol', 'investigate', 'chase', 'search', 'stunned', 'am
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const trailCell = { cx: 0, cy: 0 }; // 매 프레임 새로 만들지 않는다
 
-export function createStalker(map) {
+// monsterId 는 balance.horror.monsters 의 이름. 세이노가 아닌 괴물은 tickGazer, tickMaw 로 움직인다
+export function createStalker(map, k, rand, monsterId = 'seino') {
   const c = center(map.stalker);
   return {
+    monsterId, frozenT: 0, doorT: 0, rushT: 0, rushRestT: 0, ranT: 0, pauseT: 0, brushT: 0, wasHidden: false, lockedN: map.locked.size,
     x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
     pressure: 0, graceT: 0, warnT: 0, calmT: 0, watchT: 0, ambushT: 0, ambushKind: null,
     heat: new Float32Array(map.w * map.h), heatW: map.w, heatT: 0, // 주인공이 걸어 다닌 자리. 저장하지 않는다
@@ -371,6 +373,165 @@ function spotted(s, player, map, k) {
   return player.hidden === null && dist(s, player) <= k.ambushSpring && lineOfSight(map, s, player);
 }
 
+// 눈뜬이가 사라진다. 등을 돌린 사이에만 부르고, 멀리서 다시 천천히 다가온다
+function slipAway(s, map, player, rand, events) {
+  events.push('slip');
+  sendAway(s, map, player, rand);
+  s.frozenT = 0;
+  s.doorT = 0;
+}
+
+// 눈뜬이: 보고 있으면 멈추고, 안 보면 주인공 쪽으로 온다. 듣지 않아도 어디 있는지 안다.
+// 멀면 천천히 (patrol), 길이 가까우면 빠르게 (chase) 온다. 소리와 몸짓 표는 그 이름을 그대로 읽는다.
+function tickGazer(s, world, m, k, dt, rand, events) {
+  const { map, player } = world;
+  if (s.mode === 'stunned') {
+    s.stunT -= dt;
+    if (s.stunT <= 0) s.mode = 'patrol';
+    s.repathT = 0;
+    return;
+  }
+  if (world.seen) {
+    s.mode = 'watch';
+    s.frozenT += dt;
+    return;
+  }
+  if (s.mode === 'watch') {
+    s.mode = 'patrol';
+    if (s.frozenT >= m.slipAfter) {
+      slipAway(s, map, player, rand, events);
+      return;
+    }
+  }
+  s.frozenT = Math.max(0, s.frozenT - dt);
+  if (s.graceT > 0) {
+    s.repathT = 0;
+    tickPatrol(s, map, k, dt, rand);
+    return;
+  }
+  s.repathT -= dt;
+  if (s.repathT <= 0) {
+    goTo(s, map, cellOf(player));
+    s.repathT = m.repath;
+  }
+  const near = s.path.length <= m.rushPath + (s.mode === 'chase' ? m.rushSlack : 0);
+  if (near && s.mode !== 'chase') {
+    if (s.calmT >= m.alarmAgain) events.push('chase');
+    s.mode = 'chase';
+    s.warnT = m.chaseWarn; // 발소리가 들리기 시작한 뒤 이 시간 동안은 잡지 않는다
+  } else if (!near) s.mode = 'patrol';
+  if (near) s.calmT = 0;
+  if (player.hidden !== null) {
+    s.warnT = Math.max(s.warnT, m.chaseWarn); // 문 앞에 있어도 나오는 순간 바로 잡지 않는다
+    if (s.path.length) s.doorT = 0;
+    else if ((s.doorT += dt) >= m.doorWait) {
+      slipAway(s, map, player, rand, events);
+      return;
+    }
+  }
+  // 같은 칸이면 곧장 다가가되 몸이 겹치기 전에 선다
+  if (near && sameCell(cellOf(s), cellOf(player))) closeIn(s, player, Math.max(0, Math.min(m.rushSpeed * dt, dist(s, player) - k.catchDist / 2)));
+  else walk(s, near ? m.rushSpeed : m.creep * (1 + k.pressureWalk * s.pressure), dt);
+  if (s.mode === 'chase' && s.warnT <= 0 && player.hidden === null && dist(s, player) < k.catchDist) events.push('caught');
+}
+
+function startSniff(s, m) {
+  s.mode = 'search';
+  s.searchT = m.sniffTime;
+  s.lockers = [];
+  s.checking = null;
+  s.path = [];
+}
+
+// 소리가 난 칸으로 간다. 쉬는 중이면 달리지 않고 걸어간다
+function hearAt(s, map, cell, m, events) {
+  s.pauseT = 0;
+  const following = s.mode === 'chase' || s.mode === 'investigate';
+  if (!following || !sameCell(cell, s.target)) {
+    s.target = cell;
+    goTo(s, map, cell);
+  }
+  if (s.mode === 'chase') return;
+  s.checking = null;
+  if (s.rushRestT > 0) {
+    s.mode = 'investigate';
+    return;
+  }
+  events.push('chase');
+  s.mode = 'chase';
+  s.rushT = m.rushTime;
+  s.warnT = m.rushWarn;
+}
+
+// 소리 없이 서 있는 주인공 앞에서 돌아선다. 주인공 칸을 밟지 않는 길로 다른 순찰 지점에 간다
+function turnAway(s, map, player, k, rand) {
+  s.mode = 'patrol';
+  s.path = [];
+  const avoid = new Uint8Array(map.w * map.h);
+  const c = cellOf(player);
+  avoid[c.cy * map.w + c.cx] = 1;
+  const n = map.patrol.length;
+  const first = n ? pickPatrol(s, map, k, rand) : 0;
+  for (let i = 0; i < n && !s.path.length; i++) {
+    s.patrolIndex = (first + i) % n;
+    s.path = pathAround(map, cellOf(s), frontOf(map, map.patrol[s.patrolIndex]), avoid) || [];
+  }
+}
+
+// 큰입이: 눈이 없다. 달리는 소리와 문 여는 소리는 멀리서, 걷는 소리는 가까이서만 듣는다.
+// 소리 난 곳으로 잠깐 달려들고 (chase), 남은 길은 걸어가서 (investigate), 코로 찾는다 (search).
+function tickMaw(s, world, m, k, dt, rand, events) {
+  const { map, player } = world;
+  const hiding = player.hidden !== null;
+  const running = player.noise >= k.runNoise;
+  const loud = running || map.locked.size < s.lockedN; // 문이 열리면 잠긴 칸이 줄어든다
+  const slammed = hiding && !s.wasHidden && s.ranT > 0;
+  s.lockedN = map.locked.size;
+  s.wasHidden = hiding;
+  s.ranT = running ? m.lockerRun : Math.max(0, s.ranT - dt);
+  s.rushRestT = Math.max(0, s.rushRestT - dt);
+  s.brushT = Math.max(0, s.brushT - dt);
+  if (s.mode === 'stunned') {
+    s.stunT -= dt;
+    if (s.stunT <= 0) startSniff(s, m);
+    return;
+  }
+  if (s.graceT > 0) {
+    tickPatrol(s, map, k, dt, rand);
+    return;
+  }
+  if (slammed && s.warnT <= 0 && dist(s, player) <= m.lockerNear) {
+    events.push('found');
+    return;
+  }
+  const range = loud ? m.hearRun * (1 + k.pressureHear * s.pressure) : m.hearWalk; // 걷는 소리는 끝까지 가까이서만 듣는다
+  const heard = !hiding && (loud || player.noise > 0) && dist(s, player) <= range;
+  if (heard) hearAt(s, map, cellOf(player), m, events);
+  const rushing = s.mode === 'chase';
+  if (rushing) {
+    s.calmT = 0;
+    s.rushT -= dt;
+    const moving = walk(s, m.rushSpeed, dt);
+    if (!moving || s.rushT <= 0) {
+      s.rushRestT = m.rushRest;
+      if (moving) s.mode = 'investigate';
+      else startSniff(s, m);
+    }
+  } else if (s.pauseT > 0) {
+    s.pauseT -= dt;
+    if (s.pauseT <= 0) turnAway(s, map, player, k, rand);
+  } else if (!hiding && player.noise === 0 && s.brushT <= 0 && dist(s, player) <= m.brushDist && lineOfSight(map, s, player)) {
+    events.push('sniff');
+    s.pauseT = m.sniffPause;
+    s.brushT = m.brushRest;
+  } else if (s.mode === 'investigate') {
+    if (!walk(s, walkSpeed(s, k), dt)) startSniff(s, m);
+  } else if (s.mode === 'search') tickSearch(s, world, k, dt, rand, events);
+  else tickPatrol(s, map, k, dt, rand);
+  // 달려드는 중에 닿아야 잡힌다. 그래서 잡기 전에 늘 달려드는 소리가 난다. 멈춰 있으면 코앞까지 와도 잡지 않는다
+  if (rushing && s.warnT <= 0 && !hiding && player.noise > 0 && dist(s, player) < m.touchDist) events.push('caught');
+}
+
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.
 // 'found' 는 여기서 잡힘이 되지 않는다. 호출하는 쪽이 이 이벤트를 받아 잡힘으로 처리한다.
 export function tickStalker(s, world, k, dt, rand = Math.random) {
@@ -380,6 +541,14 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
   s.graceT = Math.max(0, Math.min(s.graceT, k.respawnGrace) - dt); // sendAway 가 넣은 Infinity 를 여기서 맞춘다
   s.warnT = Math.max(0, s.warnT - dt);
   s.calmT += dt;
+  if (s.monsterId === 'gazer') {
+    tickGazer(s, world, k.monsters.gazer, k, dt, rand, events);
+    return events;
+  }
+  if (s.monsterId === 'maw') {
+    tickMaw(s, world, k.monsters.maw, k, dt, rand, events);
+    return events;
+  }
   if (player.hidden === null && player.noise > 0) {
     trailCell.cx = Math.floor(player.x);
     trailCell.cy = Math.floor(player.y);

@@ -2,7 +2,8 @@
 // window.__horrorBot 으로 조종한다.
 //   { caughtOnPurpose: true } 세이노를 옆으로 불러 일부러 잡힌다
 //   { careful: true }         걸어 다니고, 쫓기면 펀치와 사물함을 쓴다
-//   없음                      세이노를 무시하고 목표로 달린다
+//                             눈뜬이는 쳐다본 채 뒷걸음으로 가고, 큰입이 곁에서는 달리지 않는다
+//   없음                      괴물을 무시하고 목표로 달린다
 (() => {
   const g = window.__horror;
   const { findPath, cellOf, frontOf, center, lineOfSight, reachable } = window.__horrorLogic;
@@ -81,6 +82,24 @@
     return inp;
   };
 
+  // 고개는 괴물 쪽에 둔 채 몸만 가던 길로 움직인다 (눈뜬이는 보고 있으면 멈춘다)
+  const keepWatching = (inp) => {
+    const s = g.stalker;
+    const face = Math.atan2(-(s.x - g.p.x), -(s.y - g.p.y));
+    const turn = g.yaw - inp.lookX - face;
+    const go = inp.move.z;
+    inp.lookX = g.yaw - face;
+    inp.move.x = -Math.sin(turn) * go;
+    inp.move.z = Math.cos(turn) * go;
+    return inp;
+  };
+
+  const gazerBrain = (inp) => {
+    const near = stalkerDist() < 8 && lineOfSight(g.map, g.p, g.stalker);
+    const out = walkTo(inp, goalNow(), chased());
+    return near ? keepWatching(out) : out;
+  };
+
   const brain = () => {
     const inp = blank();
     if (opts().caughtOnPurpose) {
@@ -91,6 +110,7 @@
       return inp;
     }
     const careful = opts().careful;
+    const kind = g.stalker.monsterId;
     const target = g.nearestUse();
     if (B.pressed) {
       B.pressed = false; // 한 번 누르면 한 프레임 쉰다
@@ -100,7 +120,7 @@
       const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9);
       return safe ? press(inp) : inp;
     }
-    if (careful && chased()) {
+    if (careful && kind !== 'gazer' && kind !== 'maw' && chased()) {
       const s = g.stalker;
       if (g.run.shock && stalkerDist() <= g.k.shockRange - 0.2 && lineOfSight(g.map, g.p, s)) {
         inp.punch = true;
@@ -112,7 +132,8 @@
     }
     const wanted = ['fuse', 'key', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
-    return walkTo(inp, goalNow(), !careful || chased());
+    if (careful && kind === 'gazer') return gazerBrain(inp);
+    return walkTo(inp, goalNow(), !careful || (chased() && kind !== 'maw'));
   };
 
   g.readInput = brain;

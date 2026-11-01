@@ -1,7 +1,7 @@
 // 공포 모드 3D 화면 전체 흐름
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
-import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable } from '../logic/horrorGrid.js';
+import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable, playerSees } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
@@ -9,14 +9,14 @@ import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { todayKey } from '../logic/daily.js';
 import { saveStore } from '../save.js';
 import { sfx } from '../audio/sfx.js';
-import { factoryMap } from './maps/factory.js';
+import { MAPS, MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
-import { CreatureModel } from './creatureModel.js';
+import { createCreature } from './creatureModel.js';
 import { HorrorInput } from './input.js';
-import { HorrorHud, MONSTER_NAME, startHint, escapeText } from './hud.js';
+import { HorrorHud, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
-import { NOTES } from './story.js';
+import { FINAL_LINES, NOTE_DANGER_LINE, fillName } from './story.js';
 
 const EYE = 1.6; // 눈높이 (미터)
 const GUN_AIM_Y = 1.3; // 전기충격기 번개가 닿는 괴물 몸 높이 (미터)
@@ -35,7 +35,7 @@ const FACE_NEAR = 0.6; // 화면을 채우는 얼굴 거리 (미터)
 const FACE_UP = 0.2; // 머리 받침점에서 화면 가운데로 올 곳까지 높이 (미터). 웃는 입까지 보이게 낮춰 잡는다
 const FACE_LIGHT = 0.14; // 코앞의 얼굴이 하얗게 날아가지 않게 줄이는 손전등 비율
 // 놀람 장면 (map.scares) 에서 한 번씩 뜨는 글. 피나 다친 모습 없이 소리와 불빛으로만 놀라게 한다
-const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 발톱이 바닥을 긁는다', '불빛이 깜빡인다. 세이노가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
+const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 무언가 바닥을 긁는다', '불빛이 깜빡인다. {name}가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
 const BLINK_STEP = 0.09; // 손전등이 켜졌다 꺼지는 간격 (초)
 const BLINK_COUNT = 7;
 const BLINK_DIM = 0.1; // 꺼진 순간에 남는 밝기 비율
@@ -43,17 +43,23 @@ const NOTE_AGAIN = '쪽지는 일시정지 화면에서 다시 읽을 수 있어
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class HorrorGame {
-  constructor(root, { touch, device, lowFx, muted, onExit }) {
+  // round: { mapId, monsterId }. onAgain: 끝 화면의 한 판 더. 정리를 마친 뒤에 부른다
+  constructor(root, { round, touch, device, lowFx, muted, onExit, onAgain }) {
     this.root = root;
+    this.round = round;
+    this.place = MAPS[round.mapId];
+    this.monster = MONSTERS[round.monsterId];
     this.touch = touch;
     this.device = device;
     this.lowFx = lowFx;
     this.muted = muted;
     this.onExit = onExit;
+    this.onAgain = onAgain;
     this.k = cfg.horror;
-    this.run = createRun(factoryMap, this.k);
+    this.run = createRun(this.place.map, this.k);
     this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
     this.notes = createNotes(this.map.notes.map(center));
+    this.noteTexts = fillName(this.place.notes, this.monster.name);
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
@@ -94,9 +100,10 @@ export class HorrorGame {
     this.canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:none';
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000);
-    this.scene.fog = new THREE.Fog(0x000000, 3, this.k.viewCells * CELL);
-    this.scene.add(new THREE.AmbientLight(0x8890a8, this.k.ambient));
+    const { theme } = this.place;
+    this.scene.background = new THREE.Color(theme.fog);
+    this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.viewCells * CELL);
+    this.scene.add(new THREE.AmbientLight(theme.ambient, this.k.ambient));
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
     this.scene.add(this.camera);
@@ -107,9 +114,9 @@ export class HorrorGame {
     this.flash.target.position.set(0.15, -0.2, -1);
     this.camera.add(this.flash, this.flash.target);
 
-    this.world = buildWorld(this.scene, this.map, this.k, this.factoryMaterials());
-    this.stalker = createStalker(this.map);
-    this.model = new CreatureModel(this.scene);
+    this.world = buildWorld(this.scene, this.map, this.k, theme);
+    this.stalker = createStalker(this.map, this.k, Math.random, this.round.monsterId);
+    this.model = createCreature(this.monster.model, this.scene);
     this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun });
     this.gunTarget = new THREE.Vector3();
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
@@ -119,7 +126,7 @@ export class HorrorGame {
     this.keyMeshes = this.world.addKeys(this.run.keys);
     this.noteMeshes = this.world.addNotes(this.notes.spots);
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
-    this.hud = new HorrorHud(root);
+    this.hud = new HorrorHud(root, this.named(NOTE_DANGER_LINE));
     this.hud.setStatus(this.statusNow());
     if (this.showFps) {
       this.fpsLabel = document.createElement('div');
@@ -155,49 +162,20 @@ export class HorrorGame {
     window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight, reachable }; // 봇이 쓴다
   }
 
+  // 글 속의 {name} 을 이번 판 괴물 이름으로 바꾼다
+  named(text) {
+    return fillName(text, this.monster.name);
+  }
+
   unbindContext() {
     if (!this.onContextLost) return;
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
   }
 
-  // 벽, 바닥, 사물함 문에 그림을 입힌다. 그림을 못 받으면 밋밋한 색으로 둔다
-  factoryMaterials() {
-    this.textures = [];
-    let reported = false;
-    const make = (name, plain, repeat) => {
-      const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      const tex = new THREE.TextureLoader().load(
-        `art/horror_${name}.jpg`,
-        undefined,
-        undefined,
-        () => {
-          if (!reported) console.error('공포 모드 재질 그림을 못 받아 밋밋한 색으로 둡니다:', name);
-          reported = true;
-          mat.map = null;
-          if (name === 'wall') this.world?.dropDoorArt();
-          mat.color.setHex(plain);
-          mat.needsUpdate = true;
-        },
-      );
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repeat, repeat);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      mat.map = tex;
-      this.textures.push(tex);
-      return mat;
-    };
-    // 바닥 한 구역이 21미터라, 7번 되풀이하면 그림 한 장이 3미터가 된다 (벽 한 면과 같다)
-    return {
-      wall: make('wall', 0x5a5148, 1),
-      floor: make('floor', 0x35312d, 7),
-      locker: make('locker', 0x4a5a58, 1),
-    };
-  }
-
   start() {
-    this.hud.showIntro(this.device, () => this.beginPlay(), () => this.exit());
+    const round = { mapName: this.place.name, monsterName: this.monster.name, hint: this.monster.hint };
+    this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
       const real = (now - this.last) / 1000;
@@ -216,7 +194,7 @@ export class HorrorGame {
     this.hud.closeLayer();
     this.state = 'play';
     try {
-      this.audio = new HorrorAudio({ muted: this.muted });
+      this.audio = new HorrorAudio({ muted: this.muted, voice: this.monster.voice });
     } catch (e) {
       console.error('공포 모드 소리를 켜지 못해 소리 없이 합니다', e);
     }
@@ -295,8 +273,11 @@ export class HorrorGame {
     this.walking = moving;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
-    this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
+    const seen = playerSees(this, this.hud.noteOpen);
+    this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, seen, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
     if (this.state !== 'play') return;
+    // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
+    if (this.stalker.mode === 'chase' && this.hud.closeNote()) this.hud.say(NOTE_AGAIN, 3);
     this.model.update(this.stalker, dt, this.p);
     this.cullCreature();
     this.checkScare();
@@ -326,7 +307,7 @@ export class HorrorGame {
     if (i < 0) return;
     this.scaresLeft.splice(i, 1);
     this.audio?.play('scare');
-    this.hud.say(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)], 3);
+    this.hud.say(this.named(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)]), 3);
     if (!this.lowFx) this.blink = { t: 0, n: 0 };
   }
 
@@ -364,8 +345,10 @@ export class HorrorGame {
     this.lastEvents = events;
     if (events.includes('chase')) {
       const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
-      this.hud.say(`${MONSTER_NAME}에게 들켰다! 도망쳐!${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
+      this.hud.say(`${this.named(this.monster.alarm)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
+    if (events.includes('slip')) this.hud.say(this.named('{name}가 사라졌다...'), 3);
+    if (events.includes('sniff')) this.hud.say(this.named('움직이지 마! {name}가 냄새를 맡고 있다'), 2);
     if (events.includes('caught') || events.includes('found')) this.getCaught();
   }
 
@@ -390,7 +373,7 @@ export class HorrorGame {
     if (t.kind === 'lock' && openDoor(this.run, t.index)) {
       this.world.openDoor(t.index);
       this.audio?.play('door');
-      this.hud.say('문이 열렸다. 세이노도 이제 들어올 수 있어!', 4);
+      this.hud.say(`문이 열렸다. ${this.monster.name}도 이제 들어올 수 있어!`, 4);
     }
     if (t.kind === 'box' && chargeShock(this.run, t.index)) {
       this.audio?.play('shockCharge');
@@ -413,7 +396,7 @@ export class HorrorGame {
     if (order < 0) return;
     this.noteMeshes[i].visible = false;
     this.audio?.play('fuse');
-    this.hud.showNote(NOTES[order], this.device === 'phone');
+    this.hud.showNote(this.noteTexts[order], this.device === 'phone');
   }
 
   toggleLocker(i) {
@@ -497,7 +480,8 @@ export class HorrorGame {
     const m = this.model;
     m.update(l.shown, dt, this.p);
     m.head.rotation.set(0, 0, 0);
-    const near = FACE_NEAR + (FACE_FAR - FACE_NEAR) * (1 - Math.min(1, l.t / LUNGE_TIME)) ** 2;
+    const stop = m.faceNear ?? FACE_NEAR; // 긴 이빨이 카메라를 뚫는 괴물은 더 멀리 선다
+    const near = stop + (FACE_FAR - stop) * (1 - Math.min(1, l.t / LUNGE_TIME)) ** 2;
     m.group.updateMatrixWorld(true);
     const face = m.head.getWorldPosition(new THREE.Vector3());
     const fx = -Math.sin(l.dir);
@@ -544,7 +528,7 @@ export class HorrorGame {
     this.input.clearTouch();
     this.hud.closeNote();
     this.hud.setPrompt('');
-    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(), { found: this.notes.found, total: this.notes.total });
+    this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]) });
   }
 
   pause() {
@@ -560,7 +544,7 @@ export class HorrorGame {
   }
 
   openPause() {
-    const read = this.notes.read.map((order) => NOTES[order]);
+    const read = this.notes.read.map((order) => this.noteTexts[order]);
     const phone = this.device === 'phone';
     const onNotes = read.length ? () => this.hud.showReadNotes(read, () => this.openPause(), phone) : null;
     this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone);
@@ -600,7 +584,8 @@ export class HorrorGame {
     if (this.fpsLabel) this.fpsLabel.textContent = `${Math.round(this.fps)} fps, 배율 ${this.ratio.toFixed(1)}`;
   }
 
-  exit() {
+  // next: 정리가 끝난 뒤 부른다. 기본은 타이틀로 돌아가기
+  exit(next = this.onExit) {
     if (this.dead) return;
     this.dead = true;
     this.blink = null;
@@ -609,7 +594,7 @@ export class HorrorGame {
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.unbindContext();
     try {
-      this.textures.forEach((t) => t.dispose());
+      this.world.textures.forEach((t) => t.dispose());
       this.input.destroy();
       this.hud.destroy();
       this.audio?.destroy();
@@ -623,10 +608,12 @@ export class HorrorGame {
       this.flash.shadow.dispose(); // 손전등 그림자 지도
       this.renderer.dispose();
       this.renderer.forceContextLoss(); // 태블릿은 WebGL 을 몇 개만 허용한다
+      this.canvas.remove(); // 한 판 더는 같은 root 를 다시 쓴다
+      this.fpsLabel?.remove();
     } finally {
       window.__horror = null;
       window.__horrorLogic = null;
-      this.onExit(); // 정리에 실패해도 까만 화면과 멈춘 Phaser 를 남기지 않는다
+      next(); // 정리에 실패해도 까만 화면과 멈춘 Phaser 를 남기지 않는다
     }
   }
 }

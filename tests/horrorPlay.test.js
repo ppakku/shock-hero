@@ -1,15 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen } from '../src/logic/horrorGrid.js';
+import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
+import { MAPS } from '../src/horror/content.js';
+import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
 const DT = 1 / 30;
 const BOT = readFileSync('tools/bot_horror.js', 'utf8');
+const CHILD = readFileSync('tools/bot_child.js', 'utf8');
+const HIDE_LOOK = 0.6; // HorrorGame 과 같은 값: 사물함 안에서 돌릴 수 있는 고개 각도
 
 // 작은 씨앗 난수. 실패가 늘 같은 판에서 다시 나게 한다
 function seeded(seed) {
@@ -21,34 +25,40 @@ function seeded(seed) {
 }
 
 // HorrorGame.playFrame 과 같은 순서로 그림 없이 한 판을 돌린다. 봇은 진짜 bot_horror.js 다.
-function playGame(seed, options, maxSeconds = 900) {
+function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId = 'seino') {
   const rand = seeded(seed);
-  const run = createRun(factoryMap, k, rand);
+  const run = createRun(MAPS[mapId].map, k, rand);
   const map = run.level;
   const g = {
     map, run, k,
     p: center(map.start),
     yaw: 0,
     hidden: null,
-    stalker: createStalker(map),
+    stalker: createStalker(map, k, rand, monsterId),
     nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
   };
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
-  new Function('window', BOT)(window);
+  if (options?.child) {
+    window.__horrorBot = { rand: seeded(seed + 1000) };
+    new Function('window', CHILD)(window);
+  } else new Function('window', BOT)(window);
   const catches = [];
   let stamina = createStamina();
   let hideFrom = null;
+  let hideYaw = 0;
   let t = 0;
   for (; t < maxSeconds && !run.escaped; t += DT) {
-    const inp = g.readInput();
+    const inp = g.readInput(DT);
     g.yaw -= inp.lookX;
+    if (g.hidden !== null) g.yaw = hideYaw + Math.max(-HIDE_LOOK, Math.min(HIDE_LOOK, Math.atan2(Math.sin(g.yaw - hideYaw), Math.cos(g.yaw - hideYaw))));
     const before = g.p;
     const running = canRun(stamina, inp.move.run);
     if (g.hidden === null) g.p = stepPlayer(g.p, inp.move, g.yaw, running ? k.runSpeed : k.walkSpeed, DT, map, 0.2);
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
     const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
-    const events = tickStalker(g.stalker, { map, player, pressure: run.have / k.fuseCount }, k, DT, rand);
+    const seen = playerSees(g);
+    const events = tickStalker(g.stalker, { map, player, seen, pressure: run.have / k.fuseCount }, k, DT, rand);
     if (events.includes('caught') || events.includes('found')) {
       caught(run);
       catches.push(t);
@@ -71,6 +81,9 @@ function playGame(seed, options, maxSeconds = 900) {
           hideFrom = g.p;
           g.hidden = target.index;
           g.p = center(map.lockers[target.index]);
+          const f = center(frontOf(map, map.lockers[target.index]));
+          hideYaw = Math.atan2(-(f.x - g.p.x), -(f.y - g.p.y));
+          g.yaw = hideYaw;
         } else {
           g.hidden = null;
           g.p = hideFrom;
@@ -147,4 +160,31 @@ describe('봇이 끝까지 한 판을 한다', () => {
     expect(Math.hypot(s.x - p.x, s.y - p.y)).toBeGreaterThanOrEqual(15);
     expect(s.mode).toBe('patrol');
   });
+});
+
+describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, monsterId])))('%s 맵의 %s', (mapId, monsterId) => {
+  const seeds = Array.from({ length: 40 }, (_, i) => i + 1);
+
+  it('조심하는 봇은 언제나 탈출하고 잡히는 일이 적다', () => {
+    const s = summary(seeds.map((seed) => playGame(seed, { careful: true }, 900, mapId, monsterId)));
+    console.log(mapId, monsterId, '조심하는 봇', s);
+    expect(s.won).toBe(seeds.length);
+    expect(s.meanCatches).toBeLessThan(4);
+  });
+
+  it('달리기만 하는 봇도 언제나 탈출한다', () => {
+    const s = summary(seeds.map((seed) => playGame(seed, null, 900, mapId, monsterId)));
+    console.log(mapId, monsterId, '달리기만 하는 봇', s);
+    expect(s.won).toBe(seeds.length);
+  });
+});
+
+describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [mapId, monsterId])))('아이처럼 노는 봇: %s 맵의 %s', (mapId, monsterId) => {
+  it('언제나 탈출하고 평균 1번에서 3번 잡힌다', () => {
+    const s = summary(Array.from({ length: 40 }, (_, i) => playGame(i + 1, { child: true }, 1500, mapId, monsterId)));
+    console.log(mapId, monsterId, '아이 봇', s);
+    expect(s.won).toBe(40);
+    expect(s.meanCatches).toBeGreaterThanOrEqual(1);
+    expect(s.meanCatches).toBeLessThanOrEqual(3);
+  }, 120000);
 });

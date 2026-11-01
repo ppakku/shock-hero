@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { HorrorHud, controlLines, introLines, startHint, escapeText, MONSTER_NAME } from '../src/horror/hud.js';
+import { MAPS, MONSTERS } from '../src/horror/content.js';
+import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
+import { HorrorHud, controlLines, introLines, startHint, escapeText } from '../src/horror/hud.js';
+
+const ROUND = { mapName: '지하 수로', monsterName: '큰입이', hint: '앞을 못 봐요. 소리를 내지 마세요' };
 
 describe('공포 모드 조작 안내', () => {
   it('PC 는 키보드와 마우스를 알려 준다', () => {
@@ -16,8 +20,9 @@ describe('공포 모드 조작 안내', () => {
 
   it('어느 기기든 시작 안내가 퓨즈와 열쇠, 잠긴 문을 알려 준다', () => {
     for (const d of ['pc', 'tablet', 'phone']) {
-      const text = introLines(d).join(' ');
-      for (const word of ['퓨즈', '열쇠', '잠긴 문']) expect(text).toContain(word);
+      const text = introLines(d, ROUND).join(' ');
+      for (const word of ['퓨즈', '열쇠', '잠긴 문', '지하 수로', '큰입이', '소리를 내지 마세요']) expect(text).toContain(word);
+      expect(text).not.toContain('{name');
     }
   });
 
@@ -53,8 +58,11 @@ describe('공포 모드 조작 안내', () => {
     expect(text).not.toContain('Esc');
   });
 
-  it('괴물 이름은 세이노다', () => {
-    expect(MONSTER_NAME).toBe('세이노');
+  it('이름은 content.js 한곳에 있다', () => {
+    expect(Object.keys(MAPS)).toEqual(MAP_IDS);
+    expect(Object.keys(MONSTERS)).toEqual(MONSTER_IDS);
+    for (const m of Object.values(MONSTERS)) expect(m.name && m.hint && m.model && m.voice).toBeTruthy();
+    expect(MONSTERS.seino.name).toBe('세이노');
   });
 });
 
@@ -115,6 +123,24 @@ describe('읽은 쪽지 다시 보기', () => {
     expect(hud.closeNote()).toBe(true);
     expect(hud.noteLines).toBe(null);
     expect(hud.closeNote()).toBe(false);
+  });
+});
+
+describe('끝 화면', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('한 판 더가 먼저 있고 버튼마다 제 일을 한다', () => {
+    const hud = fakeHud();
+    const again = vi.fn();
+    const done = vi.fn();
+    hud.showEnd('탈출', again, done, { found: 8, total: 8, final: '마지막 줄' });
+    expect(layerButtons(hud).map((b) => b.textContent)).toEqual(['한 판 더', '타이틀로']);
+    expect(layerText(hud)).toContain('마지막 줄');
+    press(layerButtons(hud)[0]);
+    expect(again).toHaveBeenCalledOnce();
+    expect(done).not.toHaveBeenCalled();
+    press(layerButtons(hud)[1]);
+    expect(done).toHaveBeenCalledOnce();
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { canUseWebGL, startHorror, deviceKind } from '../src/horror/start.js';
+import { saveStore } from '../src/save.js';
 
 const fakeCtx = (loseContext = () => {}) => ({ getExtension: () => ({ loseContext }) });
 const docWith = (ctx) => ({ createElement: () => ({ getContext: () => ctx }) });
@@ -95,6 +96,59 @@ describe('시작 실패', () => {
     vi.advanceTimersByTime(2600);
     expect(console.error).toHaveBeenCalled();
     expect(onExit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('한 판 더', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function setup() {
+    const root = { style: {}, textContent: '', removed: false, remove() { this.removed = true; } };
+    vi.stubGlobal('document', { createElement: (tag) => (tag === 'canvas' ? { getContext: () => fakeCtx() } : root), body: { appendChild: () => {} } });
+    let saved = { horror: { last: null }, settings: {} };
+    vi.spyOn(saveStore, 'load').mockImplementation(() => JSON.parse(JSON.stringify(saved)));
+    vi.spyOn(saveStore, 'save').mockImplementation((s) => { saved = s; });
+    const made = [];
+    class Fake {
+      constructor(r, o) {
+        this.o = o;
+        made.push(this);
+      }
+      start() {}
+    }
+    return { root, made, Fake, saved: () => saved };
+  }
+
+  it('판을 고르면 바로 저장하고, 한 판 더는 다른 판을 새로 만든다', async () => {
+    const { root, made, Fake, saved } = setup();
+    const game = { pause: vi.fn(), resume: vi.fn() };
+    const onExit = vi.fn();
+    await startHorror(game, { onExit }, async () => ({ HorrorGame: Fake }));
+    expect(saved().horror.last).toEqual(made[0].o.round);
+    made[0].o.onAgain();
+    expect(made).toHaveLength(2);
+    expect(made[1].o.round.mapId).not.toBe(made[0].o.round.mapId);
+    expect(made[1].o.round.monsterId).not.toBe(made[0].o.round.monsterId);
+    expect(saved().horror.last).toEqual(made[1].o.round);
+    expect(root.removed).toBe(false);
+    expect(game.resume).not.toHaveBeenCalled();
+    expect(onExit).not.toHaveBeenCalled();
+    made[1].o.onExit();
+    expect(root.removed).toBe(true);
+    expect(game.resume).toHaveBeenCalledTimes(1);
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('주소로 정한 판은 첫 판에만 쓴다', async () => {
+    const { made, Fake } = setup();
+    vi.stubGlobal('location', { search: '?map=sewer&monster=maw' });
+    await startHorror({ pause: vi.fn(), resume: vi.fn() }, { onExit: vi.fn() }, async () => ({ HorrorGame: Fake }));
+    expect(made[0].o.round).toEqual({ mapId: 'sewer', monsterId: 'maw' });
+    made[0].o.onAgain();
+    expect(made[1].o.round.mapId).not.toBe('sewer');
   });
 });
 

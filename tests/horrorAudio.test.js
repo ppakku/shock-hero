@@ -257,3 +257,60 @@ describe('HorrorAudio 세이노 소리', () => {
     expect(a.breathLevel.gain.setTargetAtTime).toBeDefined();
   });
 });
+
+describe('HorrorAudio 괴물 목소리', () => {
+  it('기본은 세이노이고 세이노 값을 그대로 쓴다', () => {
+    const a = new HorrorAudio({ muted: false });
+    expect(a.voice).toBe('seino');
+    expect(a.v).toBe(a.k);
+  });
+
+  it.each(['gazer', 'maw'])('%s 은 자기 표를 쓰고 세이노와 다른 소리 높이를 낸다', (voice) => {
+    const a = new HorrorAudio({ muted: false, voice });
+    expect(a.v).toBe(a.k.voices[voice]);
+    expect(a.v.breathFreq).not.toBe(a.k.breathFreq);
+    expect(a.v.tone.freqs.length).toBeGreaterThan(0);
+  });
+
+  it('세 괴물의 숨소리 높이가 크게 떨어져 있다', () => {
+    const k = new HorrorAudio({ muted: false }).k;
+    const [low, mid, high] = [k.voices.maw.breathFreq, k.breathFreq, k.voices.gazer.breathFreq];
+    expect(mid / low).toBeGreaterThan(2);
+    expect(high / mid).toBeGreaterThan(1.6);
+  });
+
+  it('눈뜬이는 굳으면 끌리는 소리도 숨소리도 멈춘다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'gazer' });
+    const steps = vi.spyOn(a, 'dragStep');
+    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 30, 0.1);
+    expect(steps).toHaveBeenCalled();
+    steps.mockClear();
+    for (let i = 0; i < 30; i++) a.updateStalker(cam, pos, 'watch', 30, 0.1);
+    expect(steps).not.toHaveBeenCalled();
+    expect(set.mock.calls.at(-1)[0]).toBe(0);
+  });
+
+  it('큰입이의 돌진은 음악을 낮추고 걸음이 빨라진다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maw' });
+    const creature = vi.spyOn(a.creatureOut.gain, 'setTargetAtTime');
+    const steps = vi.spyOn(a, 'heavyStep');
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 30, 0.1);
+    const walk = steps.mock.calls.length;
+    steps.mockClear();
+    a.stepT = 0;
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'chase', 30, 0.1);
+    expect(steps.mock.calls.length).toBeGreaterThan(walk);
+    expect(creature.mock.calls.at(-1)[0]).toBe(a.k.chaseCreatureGain);
+  });
+
+  it('놀람과 잡힘 소리는 목소리마다 다르게 낸다', () => {
+    for (const voice of ['gazer', 'maw']) {
+      const a = new HorrorAudio({ muted: false, voice });
+      const jolt = vi.spyOn(a, 'jolt');
+      a.play('scare');
+      a.play('caught');
+      expect(jolt).toHaveBeenCalledTimes(2);
+    }
+  });
+});

@@ -3,6 +3,8 @@
 #   python3 tools/run_horror.py 출력폴더 --touch   (태블릿 손가락 입력을 진짜 터치 이벤트로 확인)
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
+#   python3 tools/run_horror.py 출력폴더 --rounds  (아홉 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
+#   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --robust  (화면 꺼짐, 보석, 소리 실패, 나가기 실패, 세이노 숨기기, 비상등. --play 에도 들어 있다)
 #   python3 tools/run_horror.py 출력폴더 --phone   (휴대폰 가로 화면: 안내, 쪽지, 손가락이 쪽지를 지나 걷기)
@@ -13,14 +15,16 @@ import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
+MODE = 'replay' if '--replay' in sys.argv else 'rounds' if '--rounds' in sys.argv else 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
     ARGS = ['--use-angle=metal', '--ignore-gpu-blocklist']
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-URL = 'http://localhost:5288/?timer&fps'
+PORT = os.environ.get('HORROR_PORT', '5288')  # 다른 일과 겹치면 포트를 바꿔 돌린다
+URL = f'http://localhost:{PORT}/?timer&fps&map=factory&monster=seino'  # 좌표를 쓰는 검사는 공장과 세이노로 고정한다
+FREE_URL = f'http://localhost:{PORT}/?timer&fps'  # 맵과 괴물을 게임이 고른다
 os.makedirs(OUT, exist_ok=True)
 fails = []
 
@@ -1104,9 +1108,10 @@ def touch_notes(pg, t, w, h):
     print('note box', box)
     check(f'{label}: fits the screen', box['top'] >= 0 and box['bottom'] <= h and box['scroll'] <= box['height'] + 1 and box['btnBottom'] <= box['bottom'], box)
     longest = pg.evaluate("""async () => {
-      const { NOTES } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
+      const { NOTES, fillName } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
+      const all = Object.values(NOTES).flat().map((n) => fillName(n, g.monster.name));
       let worst = 0, fits = true, hits = [];
-      for (const n of NOTES) {
+      for (const n of all) {
         g.hud.showNote(n, compact);
         const el = g.hud.noteEl, b = el.querySelector('button').getBoundingClientRect(), r = el.getBoundingClientRect();
         worst = Math.max(worst, r.height);
@@ -1116,7 +1121,7 @@ def touch_notes(pg, t, w, h):
           if (o.left < r.right && r.left < o.right && o.top < r.bottom && r.top < o.bottom) hits.push(btn.textContent);
         }
       }
-      g.hud.showNote(NOTES[NOTES.length - 1], compact);
+      g.hud.showNote(all[all.length - 1], compact);
       await new Promise((f) => setTimeout(f, 150));
       return { worst, fits, hits: [...new Set(hits)], lines };
     }""")
@@ -1325,7 +1330,7 @@ def run_touch(pw):
     tap(t, button_xy(pg, '손전등'))
     check('light button toggles back', state(pg)['light'] == on0)
 
-    # 사용 버튼, 펀치 버튼. 세이노는 멀리 세워 두고 시작 방 상자 옆으로 간다
+    # 사용 버튼, 쇼크 버튼. 세이노는 멀리 세워 두고 시작 방 상자 옆으로 간다
     pg.evaluate(PARK_STALKER)
     stand_at(pg, 2.5, 25.5)
     check('touch: prompt says 사용', '사용: 쇼크 충전' in game(pg)['prompt'], game(pg))
@@ -1333,7 +1338,7 @@ def run_touch(pw):
     tap(t, button_xy(pg, '사용'))
     check('touch: use button charges', game(pg)['shock'], game(pg))
     pg.evaluate("Object.assign(window.__horror.stalker, { x: 4.5, y: 25.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [] })")
-    tap(t, button_xy(pg, '펀치'))
+    tap(t, button_xy(pg, '쇼크'))
     check('touch: punch button stuns', game(pg)['mode'] == 'stunned' and not game(pg)['shock'], game(pg))
     pg.evaluate(PARK_STALKER)
 
@@ -1410,8 +1415,230 @@ def run_touch(pw):
     b.close()
 
 
+# 창과 문서에 달린 듣기 함수 수를 센다. 판이 바뀌어도 늘면 안 된다
+COUNT_LISTENERS = """() => {
+  window.__listeners = 0;
+  for (const t of [window, document]) {
+    const add = t.addEventListener.bind(t), rm = t.removeEventListener.bind(t), seen = new WeakMap();
+    t.addEventListener = (type, fn, o) => {
+      const types = seen.get(fn) ?? new Set();
+      if (!types.has(type)) window.__listeners += 1;
+      types.add(type);
+      seen.set(fn, types);
+      add(type, fn, o);
+    };
+    t.removeEventListener = (type, fn, o) => {
+      if (seen.get(fn)?.delete(type)) window.__listeners -= 1;
+      rm(type, fn, o);
+    };
+  }
+}"""
+
+ROUND_NOW = """() => {
+  const g = window.__horror, root = document.getElementById('horror');
+  return {
+    round: g.round, state: g.state, have: g.run.have, caught: g.run.caughtCount, notes: g.notes.found,
+    home: g.p.x === g.map.start.cx + 0.5 && g.p.y === g.map.start.cy + 0.5, kinds: g.stalker.kind ?? null,
+    kids: root.children.length, canvases: root.querySelectorAll('canvas').length, buttons: root.querySelectorAll('button').length,
+    listeners: window.__listeners, text: root.innerText,
+  };
+}"""
+
+
+def play_replay(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 640, 'height': 360})
+    errs = []
+    watch(pg, errs)
+    pg.goto(FREE_URL)
+    pg.evaluate("localStorage.removeItem('shock-hero-save-v1')")
+    pg.goto(FREE_URL)
+    time.sleep(3)
+    pg.evaluate(COUNT_LISTENERS)
+    pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.wait_for_function('window.__horror', timeout=20000)
+    time.sleep(0.5)
+    seen = []
+    first = None
+    for i in range(7):
+        now = pg.evaluate(ROUND_NOW)
+        print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
+        seen.append(now['round'])
+        first = first or now
+        names = pg.evaluate('(() => { const g = window.__horror; return [g.place.name, g.monster.name, g.monster.hint]; })()')
+        check(f'replay {i}: intro names the round', all(n in now['text'] for n in names), names)
+        check(f'replay {i}: fresh game', now['state'] == 'intro' and now['have'] == 0 and now['caught'] == 0 and now['notes'] == 0 and now['home'], {k: v for k, v in now.items() if k != 'text'})
+        check(f'replay {i}: nothing left behind', now['canvases'] == 1 and now['kids'] == first['kids'] and now['listeners'] == first['listeners'], (now['kids'], now['listeners']))
+        if i:
+            check(f'replay {i}: other map and monster', seen[i]['mapId'] != seen[i - 1]['mapId'] and seen[i]['monsterId'] != seen[i - 1]['monsterId'], seen[i - 1:])
+        saved = pg.evaluate("JSON.parse(localStorage.getItem('shock-hero-save-v1')).horror.last")
+        check(f'replay {i}: save remembers the round', saved == now['round'], saved)
+        pg.screenshot(path=f'{OUT}/replay_intro_{i}.png')
+        pg.click('#horror button:has-text("시작")')
+        pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+        time.sleep(0.5)
+        pg.evaluate('(() => { const g = window.__horror; window.__oldHorror = g; g.run.powered = true; g.win(); })()')
+        pg.wait_for_function("window.__horror.state === 'end'", timeout=5000)
+        check(f'replay {i}: end screen offers another', '한 판 더' in pg.inner_text('#horror'))
+        pg.click('#horror button:has-text("한 판 더")')
+        pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
+        check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
+        time.sleep(0.4)
+    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 3 and len({r['monsterId'] for r in seen}) == 3, seen)
+    pg.click('#horror button:has-text("타이틀로")')
+    pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
+    check('replay: root removed at title', pg.evaluate("!document.getElementById('horror')"))
+    ctxwarn = [e for e in errs if 'context' in e.lower()]
+    check('replay: no WebGL context warning', not ctxwarn, ctxwarn)
+    check('replay: no errors', not errs, errs)
+    b.close()
+
+
+BLANK_INPUT = "({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false })"
+
+# 진짜 게임의 update 를 시간 재지 않고 빨리 돌린다. 그림은 1초에 한 장만 그려서 그리기 수를 잰다
+FAST_PLAY = """(limit) => {
+  const g = window.__horror;
+  g.renderer.setAnimationLoop(null);
+  const calls = [];
+  let t = 0;
+  for (; t < limit && g.state !== 'end'; t += 1 / 30) {
+    g.update(1 / 30);
+    if (Math.round(t * 30) % 30 === 0) {
+      g.renderer.render(g.scene, g.camera);
+      calls.push(g.renderer.info.render.calls);
+    }
+    if (g.state === 'paused') return { paused: true, t };
+  }
+  return { state: g.state, t: Math.round(t), caught: g.run.caughtCount, mean: Math.round(calls.reduce((a, b) => a + b, 0) / calls.length), max: Math.max(...calls) };
+}"""
+
+# 주인공을 시작 칸에 두고 d 칸쯤 떨어진, 곧게 보이는 칸에 괴물을 세운다. 주인공은 그쪽을 본다
+FACE_MONSTER = """([near, far, mode]) => {
+  const g = window.__horror, L = window.__horrorLogic, s = g.stalker;
+  let best = null;
+  const spots = [g.map.start, ...g.map.chunks ?? []];
+  for (let cy = 1; cy < g.map.h - 1 && !best; cy += 1) for (let cx = 1; cx < g.map.w - 1 && !best; cx += 1) {
+    const from = { x: cx + 0.5, y: cy + 0.5 };
+    if (!L.reachable(g.map, g.map.start).has(`${cx},${cy}`)) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = Math.round((near + far) / 2), to = { x: from.x + dx * n, y: from.y + dy * n };
+      if (L.reachable(g.map, g.map.start).has(`${Math.floor(to.x)},${Math.floor(to.y)}`) && L.lineOfSight(g.map, from, to)) { best = { from, to }; break; }
+    }
+  }
+  if (!best) return null;
+  g.p = best.from;
+  Object.assign(s, { x: best.to.x, y: best.to.y, path: [], mode, stunT: mode === 'stunned' ? 9999 : 0, graceT: 0, warnT: 0 });
+  g.yaw = Math.atan2(-(s.x - g.p.x), -(s.y - g.p.y));
+  g.pitch = 0;
+  return best;
+}"""
+
+
+def open_round(pg, mapId, monsterId):
+    pg.goto(f'http://localhost:{PORT}/?timer&fps&map={mapId}&monster={monsterId}')
+    time.sleep(2.5)
+    pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+    pg.wait_for_function('window.__horror', timeout=20000)
+    time.sleep(1)
+    pg.click('#horror button:has-text("시작")')
+    pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
+    pg.evaluate(FAKE_LOCK)
+
+
+def gazer_rule(pg, tag):
+    place = pg.evaluate(FACE_MONSTER, [4, 6, 'patrol'])
+    check(f'{tag}: found a straight view', place is not None, place)
+    pg.evaluate(f'window.__horror.readInput = () => {BLANK_INPUT}')
+    time.sleep(0.3)
+    a = pg.evaluate('({ x: window.__horror.stalker.x, y: window.__horror.stalker.y, mode: window.__horror.stalker.mode })')
+    time.sleep(1.5)
+    b = pg.evaluate('({ x: window.__horror.stalker.x, y: window.__horror.stalker.y, mode: window.__horror.stalker.mode })')
+    check(f'{tag}: gazer stops while looked at', b['mode'] == 'watch' and a['x'] == b['x'] and a['y'] == b['y'], (a, b))
+    pg.screenshot(path=f'{OUT}/{tag}_near.png')
+    pg.evaluate('window.__horror.yaw += Math.PI')
+    pg.wait_for_function("(() => { const g = window.__horror, s = g.stalker; return s.mode !== 'watch' && Math.hypot(s.x - g.p.x, s.y - g.p.y) < 3.5; })()", timeout=15000)
+    check(f'{tag}: gazer comes when you look away', True)
+    # 사물함 안: 틈으로 보면 문 앞에서 멈추고, 고개를 돌리면 떠난다
+    pg.evaluate("""() => {
+      const g = window.__horror, L = window.__horrorLogic, f = L.center(L.frontOf(g.map, g.map.lockers[0]));
+      g.toggleLocker(0);
+      Object.assign(g.stalker, { x: f.x, y: f.y, path: [], mode: 'patrol', graceT: 0, warnT: 0 });
+    }""")
+    time.sleep(0.6)
+    check(f'{tag}: gazer stops at the locker while seen', pg.evaluate('window.__horror.stalker.mode') == 'watch')
+    pg.screenshot(path=f'{OUT}/{tag}_locker.png')
+    pg.evaluate(f'window.__horror.readInput = () => {{ const i = {BLANK_INPUT}; i.lookX = 0.1; return i; }}')
+    pg.wait_for_function("(() => { const g = window.__horror, s = g.stalker; return Math.hypot(s.x - g.p.x, s.y - g.p.y) > 3 && g.state === 'play'; })()", timeout=10000)
+    check(f'{tag}: gazer leaves the locker when you look away', True)
+    pg.evaluate('window.__horror.toggleLocker(0)')
+    pg.evaluate(f'window.__horror.readInput = () => {BLANK_INPUT}')
+
+
+def maw_rule(pg, tag):
+    place = pg.evaluate(FACE_MONSTER, [5, 7, 'patrol'])
+    check(f'{tag}: found a straight view', place is not None, place)
+    pg.evaluate(f'window.__horror.readInput = () => {BLANK_INPUT}')
+    time.sleep(1.2)
+    still = pg.evaluate('window.__horror.stalker.mode')
+    check(f'{tag}: standing still is silent', still in ('patrol', 'search', 'investigate'), still)
+    pg.evaluate(FACE_MONSTER, [5, 7, 'stunned'])
+    time.sleep(0.4)
+    pg.screenshot(path=f'{OUT}/{tag}_near.png')
+    pg.evaluate(FACE_MONSTER, [5, 7, 'patrol'])
+    pg.evaluate(f'window.__horror.readInput = () => {{ const i = {BLANK_INPUT}; i.move.z = -1; i.move.run = true; return i; }}')  # 등 쪽으로 달리면 소리가 난다
+    pg.wait_for_function("window.__horror.stalker.mode === 'chase'", timeout=6000)
+    check(f'{tag}: maw rushes at a running noise', True)
+
+
+def seino_shot(pg, tag):
+    place = pg.evaluate(FACE_MONSTER, [4, 6, 'stunned'])
+    check(f'{tag}: found a straight view', place is not None, place)
+    pg.evaluate(f'window.__horror.readInput = () => {BLANK_INPUT}')
+    time.sleep(0.8)
+    pg.screenshot(path=f'{OUT}/{tag}_near.png')
+
+
+def run_rounds(pw):
+    bot = open('tools/bot_horror.js', encoding='utf8').read()
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 960, 'height': 540})
+    errs = []
+    watch(pg, errs)
+    calls = []
+    for mapId in ('factory', 'sewer', 'school'):
+        for monsterId in ('seino', 'gazer', 'maw'):
+            tag = f'{mapId}_{monsterId}'
+            open_round(pg, mapId, monsterId)
+            time.sleep(0.8)
+            pg.screenshot(path=f'{OUT}/{tag}_start.png')
+            {'seino': seino_shot, 'gazer': gazer_rule, 'maw': maw_rule}[monsterId](pg, tag)
+            pg.evaluate(FACE_MONSTER, [3, 3, 'stunned'])
+            time.sleep(0.5)
+            pg.screenshot(path=f'{OUT}/{tag}_close.png')
+            pg.evaluate('(() => { const g = window.__horror; g.stalker.x = g.p.x + 0.4; g.stalker.y = g.p.y; g.getCaught(); })()')
+            pg.wait_for_function("window.__horror.state === 'caught' && window.__horror.lunge.t > 0.25", timeout=5000, polling=30)
+            pg.evaluate('window.__horror.caughtFrame = () => {}')
+            pg.screenshot(path=f'{OUT}/{tag}_caught.png')
+            # 규칙 검사가 흐트러 놓은 자리를 버리고 처음부터 봇으로 끝까지 한다
+            open_round(pg, mapId, monsterId)
+            pg.evaluate('window.__horrorBot = { careful: true }')
+            pg.evaluate(bot)
+            res = pg.evaluate(FAST_PLAY, 900)
+            print(tag, res)
+            calls.append(res.get('mean', 0))
+            check(f'{tag}: bot escapes in the real game', res.get('state') == 'end', res)
+            check(f'{tag}: draw calls stay near today', res.get('max', 999) <= 70, res)
+            pg.screenshot(path=f'{OUT}/{tag}_end.png')
+            n = len(errs)
+            check(f'{tag}: no errors', n == 0, errs)
+            errs.clear()
+    print('mean draw calls', calls)
+    b.close()
+
+
 with sync_playwright() as pw:
-    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
+    {'replay': play_replay, 'rounds': run_rounds, 'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
     if MODE == 'keys':
         run_play(pw)
 if fails:

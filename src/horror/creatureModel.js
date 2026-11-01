@@ -2,14 +2,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL } from '../logic/horrorGrid.js';
+import { EYE_GLOW, LOOK_CELLS, damp, lookYaw, wrapAngle } from './creatureBase.js';
+import { GazerModel } from './creatureGazer.js';
+import { MawModel } from './creatureMaw.js';
 import {
   TAU, THIGH, SHIN, ANKLE, UPPER_ARM, FOREARM, SHOULDER, SPINE_UP, NECK_UP, HEAD, EYE_UV, EYE_R, NECK_POINTS,
   clamp, lerp, smooth, limb, knob, handGeometry, footGeometry, headAt, faceSurface, faceX, faceY,
   headGeometries, eyeGeometry, torsoGeometries, pelvisGeometry, neckGeometry,
 } from './creatureGeometry.js';
 
-const LOOK_CELLS = 8; // 이 안에 들어오면 머리를 돌려 주인공을 본다
-const LOOK_LIMIT = 1.15; // 목이 돌아가는 한계 (라디안)
 const EYE_H = 1.6; // 주인공 눈높이 (미터)
 
 const POSE = {
@@ -20,16 +21,8 @@ const POSE = {
 };
 const POSE_KEYS = Object.keys(POSE.walk);
 const SKIN_TINT = 0x8a7f74; // 그림을 못 받았을 때 대신 칠하는 살색
-const EYE_GLOW = { patrol: 0.42, investigate: 0.55, search: 0.55, chase: 1, stunned: 0.04, ambush: 0.12, watch: 1 };
 
-const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-const damp = (rate, dt) => 1 - Math.exp(-rate * dt);
-
-// 머리를 돌릴 각도. 멀면 0, 가까우면 목 한계 안에서 주인공 쪽 (s 는 칸 좌표, heading 은 몸 방향)
-export function lookYaw(s, heading, player) {
-  if (Math.hypot(player.x - s.x, player.y - s.y) > LOOK_CELLS) return 0;
-  return clamp(wrapAngle(Math.atan2(player.x - s.x, player.y - s.y) - heading), -LOOK_LIMIT, LOOK_LIMIT);
-}
+export { lookYaw };
 
 export class CreatureModel {
   constructor(scene, loader = new THREE.TextureLoader()) {
@@ -148,6 +141,7 @@ export class CreatureModel {
     this.eyeScale = 0;
     this.setEyeScale(EYE_R);
 
+    this.headHeight = 2.2;
     this.pose = { ...POSE.walk };
     this.phase = 0;
     this.gait = 0;
@@ -316,4 +310,11 @@ export class CreatureModel {
     });
     this.textures.forEach((t) => t.dispose());
   }
+}
+
+// 괴물 이름으로 모형을 고른다. 모르는 이름은 세이노다
+export function createCreature(id, scene, loader) {
+  if (id === 'gazer') return new GazerModel(scene, loader);
+  if (id === 'maw') return new MawModel(scene, loader);
+  return new CreatureModel(scene, loader);
 }
