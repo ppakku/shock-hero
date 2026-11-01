@@ -177,9 +177,9 @@ export class StunGun {
   buildArt(loader) {
     const { hand } = this.k;
     this.artMat = new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, fog: false });
-    this.art = new THREE.Mesh(new THREE.PlaneGeometry(hand.w, hand.h), this.artMat);
-    this.art.position.set(hand.x, hand.y, hand.z);
-    this.art.rotation.set(...hand.turn);
+    this.art = new THREE.Mesh(this.artPlane(hand), this.artMat);
+    this.art.position.y = -hand.drop;
+    this.art.rotation.set(-hand.turn[0], -hand.turn[1], 0);
     this.art.visible = false;
     this.root.add(this.art);
     const got = {};
@@ -188,6 +188,15 @@ export class StunGun {
       if (got.cold && got.live) this.useArt(got);
     };
     this.artTex = [loadArt(loader, 'horror_hand_cold.png', ready('cold')), loadArt(loader, 'horror_hand_live.png', ready('live'))];
+  }
+
+  // 찌를 때 소매 끝이 화면 안으로 들어와도 잘린 자리가 안 보이게, 그림의 오른쪽과 아래 끝 줄을 판 밖으로 늘인다
+  artPlane({ w, h, spill }) {
+    const geo = new THREE.PlaneGeometry(w * (1 + spill), h * (1 + spill));
+    geo.translate((w * spill) / 2, (-h * spill) / 2, 0);
+    const uv = geo.getAttribute('uv');
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (1 + spill), 1 - (1 - uv.getY(i)) * (1 + spill));
+    return geo;
   }
 
   useArt(tex) {
