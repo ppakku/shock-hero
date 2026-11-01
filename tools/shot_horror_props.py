@@ -130,7 +130,7 @@ def run_map(pg, mapId, sizes):
                 continue
             shoot(pg, f'{tag}_{kind}', items, dist)
             if kind == 'light':
-                shoot(pg, f'{tag}_{kind}2', items, 1.8, True, 3)
+                shoot(pg, f'{tag}_{kind}2', items, 1.8, True, 5)
                 shoot(pg, f'{tag}_{kind}_dark', items, 5.5, False)
         items = pg.evaluate(FIND, 'light')
         shoot(pg, f'{tag}_ceil', items, 2.4, True, 1)
