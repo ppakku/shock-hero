@@ -66,8 +66,11 @@ const SKIN_COLOR = 0x2e2522; // 그림이 없을 때 살색
 const HAIR_COLOR = 0x12160f; // 그림이 없을 때 머리털 색
 const TINT = 0x6e7476; // 그림이 손전등 아래서 희게 날아가지 않게 누른다
 const HEAD_TINT = 0x6e7476;
-const TEETH_GLOW = { patrol: 0.3, investigate: 0.45, search: 0.45, chase: 1, stunned: 0.05 };
+const TEETH_GLOW = { patrol: 0.3, investigate: 0.4, search: 0.4, chase: 0.65, stunned: 0.05 };
 const TOOTH_LIGHT = 2.2; // 어둠 속에서 이빨이 뜨는 세기
+const TOOTH_COLOR = 0xe6ddbe;
+const TOOTH_FAR = 3; // 이 칸보다 가까우면 빛을 줄여 그림의 먹선이 보이게 한다
+const TOOTH_NEAR = 0.2; // 코앞에서 남는 빛의 몫
 
 const cell = ([x, y, w, h], u, v) => [(x + u * w) / SHEET, 1 - (y + (1 - v) * h) / SHEET];
 const skinUv = () => cell(SKIN_CELL, 0.5, 0.5);
@@ -217,7 +220,7 @@ export class MawModel extends CreatureBase {
     super(scene, loader);
     const matte = (o) => new THREE.MeshLambertMaterial(o); // 반사가 없어야 그림의 까만 입안과 먹선이 손전등 아래서도 까맣다
     const skin = this.paper('art/horror_maw_head.jpg', SKIN_COLOR, HEAD_TINT, (o) => matte({ ...o, fog: false })); // 어둠 속 이빨 빛이 안개에 묻히지 않게
-    this.glowMap(skin, 'art/horror_maw_glow.jpg');
+    this.glowMap(skin, 'art/horror_maw_glow.jpg', TOOTH_COLOR);
     this.faceMat = skin;
     const body = this.paper('art/horror_maw_body.jpg', SKIN_COLOR, TINT, matte);
     const hair = this.paper('art/horror_maw_hair.webp', HAIR_COLOR, TINT, (o) => new THREE.MeshLambertMaterial({ ...o, alphaTest: 0.3, side: THREE.DoubleSide }));
@@ -347,9 +350,10 @@ export class MawModel extends CreatureBase {
   }
 
   // 눈이 없으니 어둠에서는 이빨이 희미하게 뜬다
-  lightTeeth(s, dt) {
+  lightTeeth(s, dt, player) {
     const goal = TEETH_GLOW[s.mode] ?? TEETH_GLOW.patrol;
     this.glow += (goal - this.glow) * damp(5, dt);
-    this.faceMat.emissiveIntensity = this.glow * TOOTH_LIGHT;
+    const far = clamp(Math.hypot(player.x - s.x, player.y - s.y) / TOOTH_FAR, 0, 1);
+    this.faceMat.emissiveIntensity = this.glow * TOOTH_LIGHT * lerp(TOOTH_NEAR, 1, far);
   }
 }

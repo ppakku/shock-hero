@@ -51,8 +51,8 @@ export class CreatureBase {
   }
 
   // 흑백 그림의 밝은 곳만 어둠에서 뜬다. 그림을 못 받으면 뜨는 빛만 없다
-  glowMap(m, url) {
-    m.emissive = new THREE.Color(0xffffff);
+  glowMap(m, url, color = 0xffffff) {
+    m.emissive = new THREE.Color(color);
     m.emissiveMap = this.picture(url, () => {
       m.emissiveMap = null;
       m.emissive.setHex(0);

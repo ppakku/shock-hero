@@ -204,7 +204,7 @@ def limb_strip(rgb_f, rgb_b, points, cell, m, name):
     sb, hb = straighten(cover_bg(rgb_b, mask_b, BODY_TONE), mask_b, points, rows, width)
     ids = np.arange(rows)
     tone = side_tone(sf, ids, hf, width // 2, 2, 0.75)
-    out = wrap(ids, ids, hf, hb, sf, sb, width // 2, width // 2, cw // 2, FRONT_LIMB, 1, tone)
+    out = wrap(ids, ids, hf, hb, sf, sb, width // 2, width // 2, cw // 2, FRONT_LIMB, 3, tone)
     length = np.hypot(*np.diff(polyline(points, rows), axis=0).T).sum()
     print(name, 'length m', round(length * m, 3), 'radius m along limb', [round(float(hf[i] * m), 3) for i in np.linspace(0, rows - 1, 9).astype(int)])
     return up(out)

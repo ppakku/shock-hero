@@ -305,6 +305,34 @@ describe('createCreature', () => {
     expect(a.x).toBeCloseTo(-b.x, 1);
   });
 
+  it('maw opens the painted mouth without moving the skull, and faces the camera when it catches', () => {
+    const model = build('maw');
+    const g = model.face.geometry;
+    const pos = g.attributes.position;
+    const move = g.morphAttributes.position[0];
+    expect(g.morphTargetsRelative).toBe(true);
+    let drop = 0;
+    for (let i = 0; i < pos.count; i++) {
+      drop = Math.max(drop, -move.getY(i));
+      if (pos.getY(i) > 0.32) expect(move.getY(i)).toBe(0);
+    }
+    expect(drop).toBeGreaterThan(0.1);
+    const rush = stand(build('maw'), 'chase', 90);
+    expect(rush.faceTilt).toBeCloseTo(-rush.spine.rotation.x, 5);
+  });
+
+  it('maw hollows the mouth back so the sides are not a flat sticker', () => {
+    const pos = build('maw').face.geometry.attributes.position;
+    let lip = 0;
+    let mouth = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (Math.abs(pos.getX(i)) < 0.02 && y > 0.56 && y < 0.62) lip = Math.max(lip, pos.getZ(i));
+      if (Math.abs(pos.getX(i)) < 0.02 && Math.abs(y - 0.4) < 0.08) mouth = Math.max(mouth, pos.getZ(i));
+    }
+    expect(lip - mouth).toBeGreaterThan(0.1);
+  });
+
   it('maw has no eyes and never looks at the player', () => {
     const rest = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const a = build('maw');
