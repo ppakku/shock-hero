@@ -1208,8 +1208,8 @@ def run_phone(pw):
         intro = pg.evaluate("(() => { const l = window.__horror.hud.layer, r = l.getBoundingClientRect(); const bs = [...l.querySelectorAll('button')].map((x) => x.getBoundingClientRect().bottom); return { scroll: l.scrollHeight, height: r.height, bottom: Math.max(...bs), text: l.textContent }; })()")
         print('phone intro', {k: v for k, v in intro.items() if k != 'text'})
         check(f'phone {w}: intro mentions keys', '열쇠' in intro['text'])
-        if intro['scroll'] > intro['height'] + 1:
-            print(f'phone {w}: intro needs a scroll', intro['scroll'], intro['height'])
+        check(f'phone {w}: intro fits without a scroll', intro['scroll'] <= intro['height'] + 1, intro['scroll'])
+        check(f'phone {w}: intro keeps the scare warning', '꽤 무서워요' in intro['text'])
         pg.evaluate("window.__horror.hud.layer.scrollTop = 1e4")
         tap(t, button_xy(pg, '시작'))
         check(f'phone {w}: start', pg.evaluate('window.__horror.state') == 'play')
@@ -1890,6 +1890,7 @@ def tonight_start(pg, tag, shot):
     intro = pg.inner_text('#horror')
     fit = pg.evaluate(FITS, '#horror > div[style*="z-index: 5"]')
     check(f'{tag}: intro names the condition, buttons on screen', '오늘의 밤 조건' in intro and not fit['out'], fit)
+    check(f'{tag}: intro fits and keeps the scare warning', fit['scroll'] <= fit['height'] + 1 and '꽤 무서워요' in intro, fit)
     pg.locator('#horror button:has-text("시작")').click()
     pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
     pg.evaluate(FAKE_LOCK)
