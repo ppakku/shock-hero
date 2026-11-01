@@ -35,20 +35,20 @@ export const schoolMap = parseMap([
 ]);
 
 export const schoolTheme = {
-  wall: { art: 'horror_wall', plain: 0x6a7068, repeat: 1, tint: 0xc0d0c8 }, // 그림이 오면 horror_school_wall 로 바꾼다
-  floor: { art: 'horror_floor', plain: 0x4a3a2a, repeat: 7, tint: 0xd0b090 },
-  locker: { art: 'horror_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0xa8c0d8, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 칸을 꽉 채운다. 칸마다 문 두 짝
-  board: { art: 'horror_wall', plain: 0xffffff, repeat: 1 }, // 칠판과 게시판. 그림이 오면 horror_school_board 로 바꾼다
+  wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x9aa4b4 }, // 달밤처럼 푸르게 눌러 준다
+  floor: { art: 'horror_school_floor', plain: 0x4a3a2a, repeat: 7, tint: 0xa0a0a8 },
+  locker: { art: 'horror_school_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 칸을 꽉 채운다. 칸마다 문 두 짝
+  board: { art: 'horror_school_board', plain: 0xffffff, repeat: 1 }, // 칠판과 게시판
   ceil: 0x24262c,
   fog: 0x02030a,
-  ambient: 0x8090c0,
+  ambient: 0x6878a8,
   lightColor: 0x30f070,
   decor: {
     tile: 7,
     light: { w: 0.8, h: 0.26, d: 0.08, y: 2.5 }, // 초록 비상구 등
     machine: { w: [2.4, 1.3], h: [1.1, 0.9], y: 1.05, depth: 0.07, tints: [0x5f9a80, 0xc8a070, 0x5f9a80, 0xb8b4a0] }, // 칠판과 게시판
     pipe: { r: 0.05, off: 0.1, ys: [0.3, 0.42], color: 0x4a4a46 }, // 낮은 난방 관
-    low: { w: 1.1, h: 0.72, d: 0.5, color: 0x6a4e34 }, // 벽으로 밀어 둔 책상
+    low: { w: 1.1, h: 0.72, d: 0.5, color: 0x3e2e24 }, // 벽으로 밀어 둔 책상
     lintel: { h: 0.7 }, // 문 위를 막아 교실 문처럼 보이게 한다
   },
 };
