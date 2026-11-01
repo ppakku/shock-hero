@@ -16,7 +16,7 @@ const HIPS_Y = 1.1;
 const SPINE_UP = 0.06;
 const CHIN_Y = 1.68;
 const PIVOT = 0.22; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 입이 화면 가운데 온다
-const SHOULDER = { x: 0.25, y: 0.56 }; // 허리에서 잰 어깨 자리
+const SHOULDER = { x: 0.25, y: 0.52 }; // 허리에서 잰 어깨 자리
 const HINGE = { y: 0.38, z: -0.17 };
 const LIP = { top: 0.7, bottom: 0.04 };
 const MOUTH_W = 1.42;
@@ -32,10 +32,10 @@ const HEAD_KEYS = [
   [0, 0.03, 0.03, 0],
 ];
 const TORSO_KEYS = [
-  [0.74, 0.04, 0.04, 0],
-  [0.7, 0.2, 0.13, 0],
-  [0.62, 0.25, 0.15, 0],
-  [0.52, 0.215, 0.13, 0],
+  [0.6, 0.03, 0.03, 0],
+  [0.59, 0.19, 0.12, 0],
+  [0.55, 0.25, 0.15, 0],
+  [0.47, 0.215, 0.13, 0],
   [0.32, 0.165, 0.105, 0],
   [0.1, 0.145, 0.095, 0],
   [-0.05, 0.15, 0.1, 0],
@@ -98,7 +98,7 @@ function hairGeometry() {
   });
   const parts = [mound];
   const dot = (x, y, z, r) => [x * r, cy + y * r * 0.72, z * r * 0.92];
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 38; i++) {
     let a = rand() * TAU;
     let e = rand() * 1.3;
     const step = 0.5 + rand() * 0.5;
@@ -185,8 +185,9 @@ export class MawModel extends CreatureBase {
     const shell = shellHead({ keys: HEAD_KEYS, edgeU, edgeL, mouthW: MOUTH_W, rows: 18 });
     rig.part('body', this.head, mergeGeometries([shell.skull, throat(0.16, 0.32, -0.06)]), 0, -PIVOT, 0);
     this.jaw = rig.bone(this.head, 0, HINGE.y - PIVOT, HINGE.z);
-    shell.jaw.translate(0, -HINGE.y, -HINGE.z);
-    rig.part('body', this.jaw, shell.jaw);
+    const jaw = mergeGeometries([shell.jaw, throat(0.13, 0.15, -0.03)]); // 벌어진 입으로 몸이 보이지 않게 막는다
+    jaw.translate(0, -HINGE.y, -HINGE.z);
+    rig.part('body', this.jaw, jaw);
 
     const on = (edge, k) => (w, out) => shell.point(edge(w), w, k, out);
     const reach = MOUTH_W * 0.86;

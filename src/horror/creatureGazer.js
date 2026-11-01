@@ -33,7 +33,7 @@ const FACE_KEYS = [
 ];
 // 목에서 바닥까지 넓어지는 고깔: [높이, 반폭, 반두께, 앞뒤 치우침]
 const BODY_KEYS = [
-  [1.72, 0.07, 0.07, 0],
+  [1.57, 0.02, 0.02, 0],
   [1.55, 0.082, 0.08, 0],
   [1.46, 0.09, 0.088, 0],
   [1.38, 0.115, 0.105, 0],
@@ -180,7 +180,7 @@ function eyeGeometries() {
     rx: head.rx * 0.74,
     ry: head.ry * 0.74,
     rings: [[0, 0], [0.34, 0], [0.4, 0.9], [0.62, 0.9], [0.68, 0], [0.92, 0], [1, 0]],
-    depth: (x, y, r) => frontZ(side * head.x + x, head.y + y) + 0.016 * (1 - (r * 0.74) ** 2) + 0.009,
+    depth: (x, y, r) => frontZ(side * head.x + x, head.y + y) - frontZ(side * head.x, head.y) + 0.016 * (1 - (r * 0.74) ** 2) + 0.014,
   });
   return { white, ring };
 }
@@ -201,8 +201,9 @@ export class GazerModel extends CreatureBase {
     const shell = shellHead({ keys: FACE_KEYS, edgeU, edgeL, mouthW: MOUTH_W, relief, skin: faceShade, rows: 24, segs: 40 });
     this.add(inner, mergeGeometries([shell.skull, throat(0.13, 0.28, -0.03)]), skin, true);
     this.jaw = this.pivot(inner, 0, HINGE.y, HINGE.z);
-    shell.jaw.translate(0, -HINGE.y, -HINGE.z);
-    this.add(this.jaw, shell.jaw, skin, true);
+    const jaw = mergeGeometries([shell.jaw, throat(0.1, 0.14, -0.02)]); // 벌어진 입으로 목이 보이지 않게 막는다
+    jaw.translate(0, -HINGE.y, -HINGE.z);
+    this.add(this.jaw, jaw, skin, true);
 
     // 이빨: 위는 네모나게, 아래는 U 자로 뾰족하게 (그림 그대로)
     this.teethMat = new THREE.MeshStandardMaterial({ color: 0x8a8670, roughness: 0.7, vertexColors: true });
@@ -221,7 +222,7 @@ export class GazerModel extends CreatureBase {
     this.add(inner, mergeGeometries(eyes.white(shell.frontZ)), this.whiteMat, false).renderOrder = 1;
     this.pupils = [-1, 1].map((side) => {
       const x = side * EYE.x;
-      const m = this.add(inner, eyes.ring(shell.frontZ, side), this.ringMat, false, x, EYE.y);
+      const m = this.add(inner, eyes.ring(shell.frontZ, side), this.ringMat, false, x, EYE.y, shell.frontZ(x, EYE.y));
       m.renderOrder = 2;
       return { mesh: m, x, y: EYE.y };
     });
@@ -349,8 +350,8 @@ export class GazerModel extends CreatureBase {
     const size = lerp(1.1, 0.72, this.glow);
     if (size !== this.pupilScale) {
       this.pupilScale = size;
-      this.pupils[0].mesh.scale.setScalar(size);
-      this.pupils[1].mesh.scale.setScalar(size);
+      this.pupils[0].mesh.scale.set(size, size, 1);
+      this.pupils[1].mesh.scale.set(size, size, 1);
     }
   }
 }
