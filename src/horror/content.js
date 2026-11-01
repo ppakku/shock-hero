@@ -1,11 +1,13 @@
 // 맵과 괴물의 이름, 내용을 한곳에 모은다. 이름을 바꾸려면 여기 한 줄만 고치면 된다.
 import { factoryMap, factoryTheme } from './maps/factory.js';
+import { sewerMap, sewerTheme } from './maps/sewer.js';
+import { schoolMap, schoolTheme } from './maps/school.js';
 import { NOTES } from './story.js';
 
 export const MAPS = {
   factory: { name: '밤의 고철 공장', map: factoryMap, theme: factoryTheme, notes: NOTES.factory },
-  sewer: { name: '지하 수로', map: factoryMap, theme: factoryTheme, notes: NOTES.sewer },
-  school: { name: '밤의 학교', map: factoryMap, theme: factoryTheme, notes: NOTES.school },
+  sewer: { name: '지하 수로', map: sewerMap, theme: sewerTheme, notes: NOTES.sewer },
+  school: { name: '밤의 학교', map: schoolMap, theme: schoolTheme, notes: NOTES.school },
 };
 
 export const MONSTERS = {
