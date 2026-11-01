@@ -223,15 +223,16 @@ export function buildWorld(scene, map, k, theme) {
   // 어둠 속에서도 찾을 수 있게 전기 상자, 전원, 정문은 살짝 빛낸다
   const glow = (m, color, power) => {
     m.emissive.setHex(color);
-    m.emissiveIntensity = power;
+    m.emissiveIntensity = power * (m.emissiveMap ? k.art.lift : 1);
   };
   glow(boxMat, 0x3060c0, 0.5);
   glow(panelMat, 0xc03020, 0.6);
   glow(gateMat, 0x402808, 0.5);
   // 그림을 받으면 색을 빼고, 빛도 그림 모양대로 나게 한다
-  const paint = (m, tex) => {
+  const paint = (m, tex, lift = k.art.lift) => {
     m.map = tex;
     m.emissiveMap = tex;
+    m.emissiveIntensity *= lift;
     m.color.setHex(0x8a8a8a); // 가까이서 손전등에 하얗게 날아가지 않게 누른다
     m.needsUpdate = true;
   };
@@ -246,7 +247,7 @@ export function buildWorld(scene, map, k, theme) {
   const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], mats[doorPart]));
   doors.forEach((d, i) => art(`${theme.doorSet}_${LOCK_NAMES[i]}.jpg`, (tex) => {
     d.ownArt = true;
-    paint(d.mesh.material, tex);
+    paint(d.mesh.material, tex, 1);
   }));
   const rising = [];
   let lastT = 0;
