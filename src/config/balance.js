@@ -768,8 +768,8 @@ export const balance = {
     stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0, ambush: 0, watch: 0 }, // 상태별 발소리 간격 (초). 0 은 소리 없음
     breathFreq: 1300, // 숨소리 중심 주파수 (Hz). 작은 스피커에도 들리게 300Hz 위만 쓴다
     stalkerRefDist: 6, // 세이노 소리가 줄어들기 시작하는 거리 (미터)
-    scareVol: 0.77, // 놀람 소리 크기
-    caughtVol: 0.84, // 잡힘 소리 크기
+    scareVol: 0.95, // 놀람 소리 크기
+    caughtVol: 1, // 잡힘 소리 크기
     // 눈뜬이와 큰입이 소리. 표 모양은 위의 세이노 값과 같다. tone 은 숨소리에 섞는 지속음이다
     voices: {
       gazer: { // 높고 가는 속삭임과 어긋난 콧노래. 바라보면 (watch) 뚝 끊긴다
@@ -840,7 +840,7 @@ export const balance = {
     musicNoteMax: 14, // 쇳소리 음 사이 가장 긴 시간 (초)
     musicClangMin: 18, // 멀리서 쇠 부딪히는 소리 사이 가장 짧은 시간 (초)
     musicClangMax: 40, // 멀리서 쇠 부딪히는 소리 사이 가장 긴 시간 (초)
-    ambient: 0.9, // 손전등을 껐을 때 은은하게 보이는 윤곽 밝기 (0 은 완전히 캄캄함)
+    ambient: 0.55, // 손전등을 껐을 때 은은하게 보이는 윤곽 밝기 (0 은 완전히 캄캄함)
     flashIntensity: 150, // 손전등 밝기
     flashAngle: 0.55, // 손전등 빛이 퍼지는 각도의 절반 (라디안). 화면 높이의 3분의 2쯤을 덮는다
     flashPenumbra: 0.6, // 빛 가장자리가 부드러운 정도 (0 은 칼같이, 1 은 가운데부터 흐려짐)
@@ -851,6 +851,31 @@ export const balance = {
     machineDepth: 0.45, // 기계가 벽에서 나오는 길이 (미터). 주인공 몸 반지름(0.6미터)보다 작아야 몸이 파묻히지 않는다
     creatureNear: 4, // 이 칸 안의 세이노는 벽 너머여도 그린다. 더 멀고 벽에 가리면 그리지 않는다
     viewCells: 14, // 이보다 먼 구역은 그리지 않는다 (어둠에 묻혀 안 보임)
+    fogCells: 10, // 어둠에 완전히 묻히는 거리 (칸). 무서움을 줄이려면 늘린다
+    scare: {
+      dark: 0.9, // 놀람 칸에서 불이 꺼져 있는 시간 (초)
+      show: 0.32, // 얼굴이 코앞에 있는 시간 (초)
+      darkAmbient: 0.1, // 불이 꺼진 동안 남는 주변 밝기 비율
+      shakePower: 0.14, // 화면 흔들림 폭 (미터)
+      shakeTime: 0.45, // 놀람 때 흔들리는 시간 (초)
+      caughtShake: 1, // 잡힐 때 흔들리는 시간 (초)
+      hush: 0.16, // 잡히는 순간 비명 전의 정적 (초)
+      dreadFar: 10, // 이 거리부터 화면 가장자리가 어두워진다 (칸)
+      dreadNear: 2, // 이 거리에서 가장 어둡다 (칸)
+      dreadChase: 0.6, // 쫓기는 동안 최소 어둠 비율
+      dreadMax: 0.9, // 가장자리 어둠의 최대 진하기. 무서움을 줄이려면 낮춘다
+      chaseFlicker: 0.5, // 쫓길 때 손전등이 어두워지는 최대 비율
+      flickerEvery: 0.07, // 손전등이 떨리는 간격 (초)
+      figureMin: 40, // 멀리 형체가 나타나는 최소 간격 (초)
+      figureMax: 85, // 최대 간격 (초)
+      figureShow: 0.7, // 형체가 서 있는 시간 (초)
+      figureNear: 3, // 형체가 서는 가장 가까운 거리 (칸)
+      figureFar: 5, // 가장 먼 거리 (칸)
+      whisperMin: 35, // 속삭임 최소 간격 (초)
+      whisperMax: 75, // 최대 간격 (초)
+      whisperVol: 0.2, // 속삭임 크기
+      heartLoud: 0.9, // 괴물이 코앞일 때 심장 소리가 커지는 비율
+    },
     minRatio: 0.6, // 가장 낮은 화면 해상도 배율
     maxRatio: 1.5, // 가장 높은 화면 해상도 배율
     touchRatio: 1.1, // 태블릿이 시작하는 해상도 배율. 여유가 있으면 maxRatio 까지 오른다

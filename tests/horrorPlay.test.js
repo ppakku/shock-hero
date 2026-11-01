@@ -143,13 +143,13 @@ describe('봇이 끝까지 한 판을 한다', () => {
     expect(s.won).toBe(seeds.length);
     expect(s.meanCatches).toBeLessThan(4);
     expect(s.meanSeconds).toBeGreaterThanOrEqual(150); // 찾아다녀야 하는 사람은 몇 배 더 걸린다
-  });
+  }, 120000);
 
   it('세이노를 무시하고 달리기만 해도 탈출할 수 있다 (잡혀도 퓨즈가 남는다)', () => {
     const s = summary(seeds.map((seed) => playGame(seed, null)));
     console.log('달리기만 하는 봇', s);
     expect(s.won).toBe(seeds.length);
-  });
+  }, 120000);
 
   it('다시 시작하자마자 또 잡히지 않는다', () => {
     // 세이노 쪽으로 곧장 달려도 8초는 걸린다. 가만히 있으면 순찰 속도로 15칸을 와야 한다

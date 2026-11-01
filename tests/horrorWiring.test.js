@@ -2,7 +2,7 @@
 // 규칙은 따로 시험하므로, 여기서는 게임이 규칙과 재료를 제대로 잇는지만 본다.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
-import { center, frontOf, reachable, lineOfSight } from '../src/logic/horrorGrid.js';
+import { center, frontOf, reachable, lineOfSight, cellOf } from '../src/logic/horrorGrid.js';
 import { MAPS, MONSTERS } from '../src/horror/content.js';
 
 const fakes = vi.hoisted(() => ({ loads: [], failArt: null, audio: [], late: [] }));
@@ -46,6 +46,7 @@ vi.mock('../src/horror/hud.js', () => {
     setStamina() {}
     showSlit() {}
     fade() {}
+    setDread() {}
     closeLayer() {}
     setNotice() {}
     showPause() {}
@@ -82,7 +83,8 @@ vi.mock('../src/horror/audio.js', () => ({
     }
     update() {}
     updateStalker() {}
-    play() {}
+    play(name) { (this.played ??= []).push(name); }
+    hush() {}
     suspend() {}
     resume() {}
     setActive() {}
@@ -102,10 +104,10 @@ const { HorrorGame } = await import('../src/horror/HorrorGame.js');
 const DT = 1 / 30;
 const idle = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false });
 
-function makeGame(mapId, monsterId) {
+function makeGame(mapId, monsterId, o = {}) {
   const onExit = vi.fn();
   const onAgain = vi.fn();
-  const g = new HorrorGame({ appendChild() {} }, { round: { mapId, monsterId }, touch: false, device: 'pc', lowFx: false, muted: true, onExit, onAgain });
+  const g = new HorrorGame({ appendChild() {} }, { round: { mapId, monsterId }, touch: false, device: 'pc', lowFx: false, muted: true, onExit, onAgain, ...o });
   fakes.late.splice(0).forEach((fail) => fail());
   g.start();
   g.hud.intro.onStart();
@@ -278,16 +280,97 @@ describe('땅속이', () => {
     g.warmUp();
     expect(rises[0]).toBe(1);
     expect(g.model.face.visible).toBe(false);
+
+describe('놀람 장면', () => {
+  // 시작하자마자 놀람 칸을 밟게 한다
+  const stepOnScare = (id = 'seino', o) => {
+    const g = makeGame('factory', id, o);
+    g.state = 'play';
+    g.audio = { play: vi.fn(), hush: vi.fn(), update() {}, updateStalker() {}, suspend() {}, resume() {}, setHum() {}, setActive() {}, destroy() {} };
+    const c = cellOf(g.p);
+    g.scaresLeft = [{ cx: c.cx, cy: c.cy }, { cx: c.cx, cy: c.cy }];
+    Object.assign(g.stalker, { x: 1.5, y: 1.5, graceT: 99 }); // 진짜 괴물은 멀리 둔다
+    g.readInput = idle;
+    return g;
+  };
+
+  it('불이 꺼지고 소리가 죽었다가, 얼굴이 나타나며 터지고, 모두 돌아온다', () => {
+    const g = stepOnScare();
+    g.scaresLeft.pop();
+    const k = g.k.scare;
+    frames(g, k.dark / 2);
+    expect(g.flash.intensity).toBe(0);
+    expect(g.ambientLight.intensity).toBeLessThan(g.k.ambient);
+    expect(g.audio.hush).toHaveBeenCalledWith(true);
+    expect(g.audio.play).not.toHaveBeenCalledWith('scare');
+    expect(g.gun.root.visible).toBe(false);
+    frames(g, k.dark / 2 + k.show / 2);
+    expect(g.audio.play).toHaveBeenCalledWith('scare');
+    expect(g.model.group.visible).toBe(true);
+    const head = g.model.head.getWorldPosition(new THREE.Vector3());
+    expect(Math.hypot(head.x - g.p.x * 3, head.z - g.p.y * 3)).toBeLessThan(2);
+    expect(g.stalker.x).toBe(1.5); // 진짜 괴물은 오지 않았다
+    frames(g, k.show);
+    expect(g.scare).toBe(null);
+    expect(g.ambientLight.intensity).toBe(g.k.ambient);
+    expect(g.audio.hush).toHaveBeenLastCalledWith(false);
+    expect(g.hud.said.length).toBeGreaterThan(0);
+    g.exit();
+  });
+
+  it('두 번째 놀람은 얼굴 없이 어둠과 소리만 있다', () => {
+    const g = stepOnScare();
+    frames(g, g.k.scare.dark + g.k.scare.show + 0.1);
+    const again = g.audio.play.mock.calls.length;
+    frames(g, g.k.scare.dark + 0.1);
+    expect(g.audio.play.mock.calls.length).toBeGreaterThan(again);
+    expect(g.model.group.visible).toBe(false);
+    g.exit();
+  });
+
+  it('일시정지하면 끊기고 불이 돌아온다', () => {
+    const g = stepOnScare();
+    frames(g, 0.2);
+    g.pause();
+    expect(g.scare).toBe(null);
+    expect(g.flash.intensity).toBe(g.k.flashIntensity);
+    expect(g.ambientLight.intensity).toBe(g.k.ambient);
+    expect(g.audio.hush).toHaveBeenLastCalledWith(false);
+    g.exit();
+  });
+
+  it('효과 줄이기면 화면이 흔들리지 않는다', () => {
+    const g = stepOnScare('seino', { lowFx: true });
+    frames(g, g.k.scare.dark + 0.05);
+    expect(g.shakeT).toBe(0);
     g.exit();
   });
 });
 
 describe('잡히는 장면', () => {
   it.each(['seino', 'gazer', 'maw', 'mole'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
+
+  it('정적이 먼저 오고 그 뒤에 비명과 얼굴이 온다', () => {
+    const g = makeGame('factory', 'seino');
+    g.state = 'play';
+    g.audio = { play: vi.fn(), hush: vi.fn(), update() {}, updateStalker() {}, suspend: vi.fn(), resume() {}, setHum() {}, setActive() {}, destroy() {} };
+    g.readInput = idle;
+    Object.assign(g.stalker, { x: g.p.x + 0.4, y: g.p.y });
+    g.getCaught();
+    expect(g.audio.hush).toHaveBeenCalledWith(true);
+    expect(g.audio.play).not.toHaveBeenCalled();
+    expect(g.model.group.visible).toBe(false);
+    frames(g, g.k.scare.hush + 0.05);
+    expect(g.audio.play).toHaveBeenCalledWith('caught');
+    expect(g.model.group.visible).toBe(true);
+    g.exit();
+  });
+
+  it.each(['seino', 'gazer', 'maw'])('%s: 얼굴은 정해진 거리에서 멈춘다', (id) => {
     const g = makeGame('factory', id);
     Object.assign(g.stalker, { x: g.p.x + 0.4, y: g.p.y });
     g.getCaught();
-    frames(g, 0.4);
+    frames(g, 0.6);
     g.model.group.updateMatrixWorld(true);
     const head = g.model.head.getWorldPosition(new THREE.Vector3());
     const d = Math.hypot(head.x - g.p.x * 3, head.z - g.p.y * 3);

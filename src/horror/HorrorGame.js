@@ -6,6 +6,7 @@ import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun
 import { createStalker, tickStalker, sendAway, stunStalker, isUnderground } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
+import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
 import { saveStore } from '../save.js';
 import { sfx } from '../audio/sfx.js';
@@ -28,16 +29,16 @@ const FPS_GAP = 0.5; // 이보다 긴 프레임은 화면이 가려졌던 틈이
 const LOST_TEXT = '화면이 잠깐 꺼졌어요. 돌아올 때까지 기다려 주세요';
 const BACK_TEXT = '화면이 돌아왔어요. 계속하기를 누르세요';
 const HIDE_LOOK = 0.6; // 사물함 안에서 고개를 돌릴 수 있는 각도 (라디안)
-// 잡히는 장면 (초): 얼굴이 달려든다, 화면 가득 찬 채 있다가 어두워진다, 가까운 돌아올 곳으로 돌아간다
+// 잡히는 장면 (초): 잠깐 깜깜하고 조용하다가 얼굴이 달려든다, 화면 가득 찬 채 있다가 어두워진다, 가까운 돌아올 곳으로 돌아간다
 const LUNGE_TIME = 0.16;
-const FADE_AT = 0.8;
-const BACK_AT = 1.5;
+const FADE_AT = 1.3;
+const BACK_AT = 2;
 const FACE_FAR = 1.5; // 달려들기 시작하는 얼굴 거리 (미터)
 const FACE_NEAR = 0.6; // 화면을 채우는 얼굴 거리 (미터)
 const FACE_UP = 0.2; // 머리 받침점에서 화면 가운데로 올 곳까지 높이 (미터). 웃는 입까지 보이게 낮춰 잡는다
 const SHAKE = 0.035; // 땅이 흔들릴 때 눈높이가 떨리는 폭 (미터)
 const FACE_LIGHT = 0.14; // 코앞의 얼굴이 하얗게 날아가지 않게 줄이는 손전등 비율
-// 놀람 장면 (map.scares) 에서 한 번씩 뜨는 글. 피나 다친 모습 없이 소리와 불빛으로만 놀라게 한다
+// 놀람 장면 (map.scares) 이 끝난 뒤 뜨는 글. 피나 다친 모습 없이 어둠과 소리, 갑작스러운 얼굴로만 놀라게 한다
 const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어디선가 무언가 바닥을 긁는다', '불빛이 깜빡인다. {name}가 가까이 있나?', '쇠 긁는 소리가 천장에서 난다'];
 const BLINK_STEP = 0.09; // 손전등이 켜졌다 꺼지는 간격 (초)
 const BLINK_COUNT = 7;
@@ -70,6 +71,14 @@ export class HorrorGame {
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
     this.scaresLeft = [...this.map.scares];
     this.blink = null; // 손전등 깜빡임 진행 상태. 잡힘과 나가기에서 끊는다
+    this.scare = null; // 놀람 장면 진행 상태
+    this.scaresSeen = 0;
+    this.figure = null; // 멀리 잠깐 서 있는 형체
+    this.figureT = cfg.horror.scare.figureMin;
+    this.flickerT = 0;
+    this.flickering = false;
+    this.shakeT = 0;
+    this.shakeTime = 1;
     this.playTime = 0;
     this.audio = null;
     this.fps = 60;
@@ -105,8 +114,9 @@ export class HorrorGame {
     this.scene = new THREE.Scene();
     const { theme } = this.place;
     this.scene.background = new THREE.Color(theme.fog);
-    this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.viewCells * CELL);
-    this.scene.add(new THREE.AmbientLight(theme.ambient, this.k.ambient));
+    this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.fogCells * CELL);
+    this.ambientLight = new THREE.AmbientLight(theme.ambient, this.k.ambient);
+    this.scene.add(this.ambientLight);
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
     this.scene.add(this.camera);
@@ -238,6 +248,7 @@ export class HorrorGame {
       this.playFrame(inp, dt);
     }
     else if (this.state === 'caught') this.caughtFrame(dt);
+    this.shakeT = Math.max(0, this.shakeT - dt);
     this.placeCamera();
     this.camera.updateMatrixWorld();
     this.updateGun(dt);
@@ -251,7 +262,7 @@ export class HorrorGame {
 
   // 일시정지 때는 손도 멈춘다. 숨거나 잡힌 동안에는 손을 치운다
   updateGun(dt) {
-    const holding = this.state === 'play' && this.hidden === null;
+    const holding = this.state === 'play' && this.hidden === null && !this.scare;
     const s = this.stalker;
     this.audio?.setHum(holding && this.run.shock);
     this.gun.setCharged(this.run.shock);
@@ -287,7 +298,10 @@ export class HorrorGame {
     this.model.update(this.stalker, dt, this.p);
     this.cullCreature();
     this.checkScare();
+    this.tickScare(dt);
+    this.tickFigure(dt);
     this.tickBlink(dt);
+    this.tickDread(dt);
     const target = this.nearestUse();
     this.hud.setPrompt(this.promptFor(target));
     if (inp.use && !this.hud.closeNote()) this.doUse(target); // 쪽지가 열려 있으면 닫기만 한다
@@ -306,15 +320,106 @@ export class HorrorGame {
     this.model.group.visible = this.hidden !== null || canSeeBody(this.map, this.p, this.stalker, this.k.creatureNear);
   }
 
-  // 놀람 칸을 처음 밟으면 큰 소리가 나고 손전등이 깜빡인다. 효과 줄이기를 켜면 깜빡임은 뺀다
+  // 놀람 칸을 처음 밟으면 불이 툭 꺼지고 소리가 죽는다. 첫 번째와 세 번째처럼 번갈아 얼굴이 코앞에 나타난다
   checkScare() {
+    if (this.scare) return;
     const c = cellOf(this.p);
     const i = this.scaresLeft.findIndex((s) => s.cx === c.cx && s.cy === c.cy);
     if (i < 0) return;
     this.scaresLeft.splice(i, 1);
+    this.scaresSeen += 1;
+    this.scare = createScare(this.scaresSeen % 2 === 1, this.k.scare);
+    this.cancelBlink();
+    this.flash.intensity = 0;
+    this.ambientLight.intensity = this.k.ambient * this.k.scare.darkAmbient;
+    this.audio?.hush(true);
+  }
+
+  tickScare(dt) {
+    const s = this.scare;
+    if (!s) return;
+    const was = s.phase;
+    const phase = stepScare(s, dt);
+    if (phase === 'dark') return;
+    if (was === 'dark') this.scareHits(phase === 'face');
+    if (phase === 'done') {
+      this.scare = null;
+      if (!this.lowFx) this.blink = { t: 0, n: 0 };
+      this.hud.say(this.named(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)]), 3);
+      return;
+    }
+    s.lunge.t += dt;
+    this.flash.visible = true;
+    this.placeFace(s.lunge, dt);
+    this.model.group.visible = true;
+  }
+
+  // 어둠이 끝나는 순간: 소리가 터지고, 큰 놀람이면 얼굴이 코앞에 나타난다
+  scareHits(face) {
+    this.ambientLight.intensity = this.k.ambient;
+    this.flash.intensity = this.k.flashIntensity * (face ? FACE_LIGHT : 1);
+    this.audio?.hush(false);
     this.audio?.play('scare');
-    this.hud.say(this.named(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)]), 3);
-    if (!this.lowFx) this.blink = { t: 0, n: 0 };
+    this.startShake(this.k.scare.shakeTime);
+    if (!face) return;
+    this.scare.lunge = { t: 0, dir: this.yaw, shown: { x: this.p.x, y: this.p.y, heading: this.yaw, mode: 'chase' } };
+    this.model.yaw = this.yaw;
+  }
+
+  // 놀람을 중간에 끊는다 (일시정지, 잡힘, 숨기)
+  cancelScare() {
+    if (!this.scare) return;
+    this.scare = null;
+    this.ambientLight.intensity = this.k.ambient;
+    this.flash.intensity = this.k.flashIntensity;
+    this.audio?.hush(false);
+  }
+
+  // 복도 끝에 괴물의 형체가 잠깐 서 있다가 사라진다. 진짜 괴물은 그대로 다른 곳에 있다
+  tickFigure(dt) {
+    const k = this.k.scare;
+    this.figureT -= dt;
+    const f = this.figure;
+    if (f) {
+      f.t -= dt;
+      if (f.t <= 0 || this.scare) this.figure = null;
+      else {
+        this.model.update(f.shown, 0, this.p);
+        this.model.group.visible = true;
+      }
+      return;
+    }
+    if (this.figureT > 0 || this.scare || this.hidden !== null || this.model.group.visible || this.stalker.mode === 'chase') return;
+    this.figureT = k.figureMin + Math.random() * (k.figureMax - k.figureMin);
+    const spot = figureSpot(this.map, this.p, this.yaw, k.figureNear, k.figureFar);
+    if (!spot) return;
+    const heading = Math.atan2(this.p.x - spot.x, this.p.y - spot.y);
+    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: 'patrol' } };
+    this.model.yaw = heading;
+  }
+
+  // 괴물이 가까우면 화면 가장자리가 어두워지고, 쫓기는 동안 손전등이 떨린다
+  tickDread(dt) {
+    const s = this.stalker;
+    const chased = s.mode === 'chase';
+    this.hud.setDread(dreadLevel(Math.hypot(s.x - this.p.x, s.y - this.p.y), chased, this.k.scare));
+    if (this.scare || this.blink) return;
+    if (!chased || this.lowFx) {
+      if (this.flickering) this.flash.intensity = this.k.flashIntensity;
+      this.flickering = false;
+      return;
+    }
+    this.flickering = true;
+    this.flickerT -= dt;
+    if (this.flickerT > 0) return;
+    this.flickerT = this.k.scare.flickerEvery;
+    this.flash.intensity = this.k.flashIntensity * (1 - Math.random() * this.k.scare.chaseFlicker);
+  }
+
+  startShake(time) {
+    if (this.lowFx) return;
+    this.shakeT = time;
+    this.shakeTime = time;
   }
 
   // 시간으로 깜빡임을 돌린다 (일시정지 때는 같이 멈춘다)
@@ -407,6 +512,7 @@ export class HorrorGame {
   }
 
   toggleLocker(i) {
+    this.cancelScare();
     if (this.hidden === null) {
       this.beforeHide = this.p;
       this.hidden = i;
@@ -449,11 +555,13 @@ export class HorrorGame {
   getCaught() {
     if (this.state !== 'play') return;
     this.state = 'caught';
+    this.cancelScare();
     this.cancelBlink(); // 깜빡임이 잡히는 장면의 밝기를 덮어쓰지 않게 한다
+    this.figure = null;
     this.noteCut = this.hud.closeNote();
     caught(this.run);
     this.audio?.suspend();
-    this.audio?.play('caught');
+    this.audio?.hush(true); // 비명 전에 소리를 뚝 끊는다
     this.hidden = null;
     this.hud.showSlit(false);
     this.hud.setPrompt('');
@@ -462,18 +570,33 @@ export class HorrorGame {
     const dx = s.x - this.p.x;
     const dy = s.y - this.p.y;
     const heading = Math.atan2(-dx, -dy); // 괴물이 주인공을 보는 쪽이자 주인공이 괴물을 보는 yaw
-    this.lunge = { t: 0, faded: false, dir: heading, shown: { x: s.x, y: s.y, heading, mode: 'chase' } };
+    this.lunge = { t: 0, faded: false, hush: this.k.scare.hush, dir: heading, shown: { x: s.x, y: s.y, heading, mode: 'chase' } };
     this.model.yaw = heading;
+    this.model.group.visible = false;
+    this.flash.visible = false;
+    this.ambientLight.intensity = this.k.ambient * this.k.scare.darkAmbient;
+  }
+
+  // 정적이 끝나는 순간 비명과 함께 얼굴이 달려든다
+  caughtHits() {
+    this.audio?.play('caught');
     this.model.group.visible = true; // 사물함 밖에서 벽 너머로 잡혀도 얼굴은 보여야 한다
     this.flash.visible = true;
     this.flash.intensity = this.k.flashIntensity * FACE_LIGHT;
+    this.ambientLight.intensity = this.k.ambient;
+    this.startShake(this.k.scare.caughtShake);
   }
 
   caughtFrame(dt) {
     const l = this.lunge;
-    l.t += dt;
     this.yaw += wrapAngle(l.dir - this.yaw) * Math.min(1, dt * 22);
     this.pitch += (0 - this.pitch) * Math.min(1, dt * 22);
+    if (l.hush > 0) {
+      l.hush -= dt;
+      if (l.hush <= 0) this.caughtHits();
+      return;
+    }
+    l.t += dt;
     this.placeFace(l, dt);
     if (!l.faded && l.t >= FADE_AT) {
       l.faded = true;
@@ -509,6 +632,8 @@ export class HorrorGame {
     this.cullCreature();
     this.flash.intensity = this.k.flashIntensity;
     this.flash.visible = this.lightOn;
+    this.ambientLight.intensity = this.k.ambient;
+    this.audio?.hush(false);
     this.audio?.resume();
     this.hud.fade(false);
     this.hud.setStatus(this.statusNow());
@@ -523,6 +648,8 @@ export class HorrorGame {
     const result = escape(this.run);
     if (!result) return;
     this.state = 'end';
+    this.cancelScare();
+    this.hud.setDread(0);
     this.audio?.suspend();
     this.audio?.play('door');
     const save = saveStore.load();
@@ -541,6 +668,7 @@ export class HorrorGame {
   pause() {
     if (this.state !== 'play') return;
     this.state = 'paused';
+    this.cancelScare();
     this.cancelBlink();
     this.noteAtPause = this.hud.noteLines; // 계속하기를 누르면 다시 펼친다
     this.hud.closeNote();
@@ -575,6 +703,11 @@ export class HorrorGame {
     const quake = this.state === 'play' && !this.lowFx && this.stalker.monsterId === 'mole' && this.stalker.mode === 'investigate';
     this.camera.position.set(this.p.x * CELL, EYE + (quake ? SHAKE * Math.sin(this.playTime * 47) : 0), this.p.y * CELL);
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    if (this.shakeT <= 0) return;
+    const r = this.k.scare.shakePower * (this.shakeT / this.shakeTime);
+    this.camera.position.x += (Math.random() - 0.5) * r;
+    this.camera.position.y += (Math.random() - 0.5) * r;
+    this.camera.rotation.z = (Math.random() - 0.5) * r * 0.4;
   }
 
   trackFps(dt) {
