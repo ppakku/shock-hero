@@ -536,6 +536,12 @@ describe('마지막 밤', () => {
     const g = quiet(start());
     Object.assign(g.stalkers[1], { x: g.p.x + 0.3, y: g.p.y, mode: 'chase' });
     Object.assign(g.stalkers[0], { x: g.p.x + 2, y: g.p.y, mode: 'chase' });
+    const respawn = g.respawn.bind(g);
+    let sent = null; // 보낸 순간의 순찰 지점. 다음 프레임부터는 각자 새 지점을 뽑아서 우연히 같을 수 있다
+    g.respawn = () => {
+      respawn();
+      sent = g.stalkers.map((s) => s.patrolIndex);
+    };
     g.getCaught(g.hunters[1]);
     expect(g.lunge.model).toBe(g.hunters[1].model);
     frames(g, g.k.scare.hush + 0.05);
@@ -548,7 +554,7 @@ describe('마지막 밤', () => {
       expect(s.mode).not.toBe('chase');
       expect(Math.hypot(s.x - g.p.x, s.y - g.p.y)).toBeGreaterThan(8);
     }
-    expect(g.stalkers[0].patrolIndex).not.toBe(g.stalkers[1].patrolIndex);
+    expect(sent[0]).not.toBe(sent[1]);
     g.exit();
   });
 
