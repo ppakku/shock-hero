@@ -22,8 +22,9 @@ if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진�
     ARGS = ['--use-angle=metal', '--ignore-gpu-blocklist']
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-URL = 'http://localhost:5288/?timer&fps&map=factory&monster=seino'  # 좌표를 쓰는 검사는 공장과 세이노로 고정한다
-FREE_URL = 'http://localhost:5288/?timer&fps'  # 맵과 괴물을 게임이 고른다
+PORT = os.environ.get('HORROR_PORT', '5288')  # 다른 일과 겹치면 포트를 바꿔 돌린다
+URL = f'http://localhost:{PORT}/?timer&fps&map=factory&monster=seino'  # 좌표를 쓰는 검사는 공장과 세이노로 고정한다
+FREE_URL = f'http://localhost:{PORT}/?timer&fps'  # 맵과 괴물을 게임이 고른다
 os.makedirs(OUT, exist_ok=True)
 fails = []
 
@@ -1535,7 +1536,7 @@ FACE_MONSTER = """([near, far, mode]) => {
 
 
 def open_round(pg, mapId, monsterId):
-    pg.goto(f'http://localhost:5288/?timer&fps&map={mapId}&monster={monsterId}')
+    pg.goto(f'http://localhost:{PORT}/?timer&fps&map={mapId}&monster={monsterId}')
     time.sleep(2.5)
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
     pg.wait_for_function('window.__horror', timeout=20000)
