@@ -102,6 +102,7 @@
     return near ? keepWatching(out) : out;
   };
 
+  const HIDE_TIRED = 12; // 이만큼 숨었다 나왔으면 더 숨지 않고 달려서 끝낸다. 숨기만 하면 판이 끝나지 않는다
   const HIDE_LIMIT = 1200; // 괴물이 곁을 맴돌아도 이만큼 숨었으면 나온다 (프레임). 사람도 끝없이 숨어 있지 않는다
   const brain = () => {
     const inp = blank();
@@ -126,10 +127,13 @@
     if (g.hidden !== null) {
       B.hideFrames = (B.hideFrames || 0) + 1;
       const safe = g.stalker.mode === 'patrol' || (g.stalker.mode !== 'chase' && stalkerDist() > 9) || B.hideFrames > HIDE_LIMIT;
-      if (safe) B.hideFrames = 0;
+      if (safe) {
+        B.hideFrames = 0;
+        B.hides = (B.hides || 0) + 1;
+      }
       return safe ? press(inp) : inp;
     }
-    if (careful && kind !== 'gazer' && kind !== 'maw' && chased()) {
+    if (careful && kind !== 'gazer' && kind !== 'maw' && chased() && (B.hides || 0) < HIDE_TIRED) {
       const s = g.stalker;
       if (g.run.shock && stalkerDist() <= g.k.shockRange - 0.2 && lineOfSight(g.map, g.p, s)) {
         inp.punch = true;
