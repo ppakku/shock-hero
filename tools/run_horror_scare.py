@@ -86,7 +86,7 @@ def scare(pw):
     pg = b.new_page(viewport={'width': 1280, 'height': 720})
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    for monster in ('seino', 'gazer', 'maw', 'mole'):
+    for monster in ('seino', 'gazer', 'maw', 'ward'):
         begin(pg, f'?timer&fps&map=factory&monster={monster}')
         time.sleep(0.6)
         pg.evaluate("""() => { const g = window.__horror, L = window.__horrorLogic; const c = L.cellOf(g.p); g.scaresLeft = [{ cx: c.cx, cy: c.cy }]; g.stalker.graceT = 99; }""")
