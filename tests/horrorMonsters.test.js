@@ -402,11 +402,20 @@ describe('큰입이: 소리로만 찾는다', () => {
     expect(events).not.toContain('found');
   });
 
-  it('한 번 돌아선 뒤에 소리 없이 닿아도 잡지 않고, 움직이면 잡는다', () => {
+  it('달려드는 중이 아니면 닿아도 잡지 않는다 (경고 없는 잡힘이 없다)', () => {
     const s = monster('maw', { x: 20.3, y: 1.5, brushT: 9, warnT: 0 });
     expect(tickStalker(s, { map: hall, player: player() }, k, DT, () => 0.5)).not.toContain('caught');
-    s.rushRestT = 9; // 달려들지 않고 걸어오는 중에도 움직이다 닿으면 잡힌다
-    expect(tickStalker(s, { map: hall, player: player({ x: s.x + 0.2, noise: k.walkNoise }) }, k, DT, () => 0.5)).toContain('caught');
+    s.rushRestT = 9; // 쉬는 중이면 소리를 들어도 걸어올 뿐이다
+    const e = run(s, { map: hall, player: player({ x: s.x + 0.2, noise: k.walkNoise }) }, 1);
+    expect(s.mode).not.toBe('chase');
+    expect(e).not.toContain('caught');
+  });
+
+  it('걷는 소리는 퓨즈를 다 찾아도 멀리서 듣지 못한다. 달리는 소리만 멀어진다', () => {
+    const walk = monster('maw', { x: 20.5 - mw.hearWalk - 0.5, y: 1.5 });
+    expect(run(walk, { map: hall, player: player({ noise: k.walkNoise }), pressure: 1 }, DT)).not.toContain('chase');
+    const far = monster('maw', { x: 20.5 - mw.hearRun - 1, y: 1.5 });
+    expect(run(far, { map: hall, player: player({ noise: k.runNoise }), pressure: 1 }, DT)).toContain('chase');
   });
 
   it('냄새를 맡으면 바로 돌아서지 않고 잠깐 멈춘다 (도망칠 틈)', () => {
@@ -431,10 +440,17 @@ describe('큰입이: 소리로만 찾는다', () => {
   });
 
   it('달려서 사물함에 들어가는데 바로 옆이면 들킨다', () => {
-    const s = monster('maw', { x: 3.5, y: 3.5 });
+    const s = monster('maw', { x: 3.5, y: 3.5, rushRestT: 9 }); // 이미 곁에 와 있다
     run(s, { map: hall, player: player({ x: 2.5, y: 3.5, noise: k.runNoise }) }, DT);
     const hid = player({ ...center(hall.lockers[0]), hidden: 0 });
     expect(run(s, { map: hall, player: hid }, DT)).toContain('found');
+  });
+
+  it('달려들기 시작한 순간에 뛰어든 사물함은 들키지 않는다', () => {
+    const s = monster('maw', { x: 3.5, y: 3.5 });
+    run(s, { map: hall, player: player({ x: 2.5, y: 3.5, noise: k.runNoise }) }, DT);
+    const hid = player({ ...center(hall.lockers[0]), hidden: 0 });
+    expect(run(s, { map: hall, player: hid }, 1, seeded(2))).not.toContain('found');
   });
 
   it('달려서 들어가도 멀리 있으면 안전하고, 달린 지 오래면 안전하다', () => {

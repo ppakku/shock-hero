@@ -500,11 +500,11 @@ function tickMaw(s, world, m, k, dt, rand, events) {
     tickPatrol(s, map, k, dt, rand);
     return;
   }
-  if (slammed && dist(s, player) <= m.lockerNear) {
+  if (slammed && s.warnT <= 0 && dist(s, player) <= m.lockerNear) {
     events.push('found');
     return;
   }
-  const range = (loud ? m.hearRun : m.hearWalk) * (1 + k.pressureHear * s.pressure);
+  const range = loud ? m.hearRun * (1 + k.pressureHear * s.pressure) : m.hearWalk; // 걷는 소리는 끝까지 가까이서만 듣는다
   const heard = !hiding && (loud || player.noise > 0) && dist(s, player) <= range;
   if (heard) hearAt(s, map, cellOf(player), m, events);
   const rushing = s.mode === 'chase';
@@ -528,8 +528,8 @@ function tickMaw(s, world, m, k, dt, rand, events) {
     if (!walk(s, walkSpeed(s, k), dt)) startSniff(s, m);
   } else if (s.mode === 'search') tickSearch(s, world, k, dt, rand, events);
   else tickPatrol(s, map, k, dt, rand);
-  // 달려드는 중이거나 주인공이 움직일 때만 닿으면 잡힌다. 가만히 있으면 코앞에서 돌아선다
-  if (s.warnT <= 0 && !hiding && (rushing || player.noise > 0) && dist(s, player) < m.touchDist) events.push('caught');
+  // 달려드는 중에 닿아야 잡힌다. 그래서 잡기 전에 늘 달려드는 소리가 난다
+  if (rushing && s.warnT <= 0 && !hiding && dist(s, player) < m.touchDist) events.push('caught');
 }
 
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.

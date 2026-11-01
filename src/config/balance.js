@@ -871,7 +871,7 @@ export const balance = {
       },
       maw: {
         hearRun: 13, // 달리는 소리와 문 여는 소리를 듣는 거리
-        hearWalk: 2.5, // 걷는 소리를 듣는 거리
+        hearWalk: 2, // 걷는 소리를 듣는 거리. 퓨즈를 다 찾아도 늘지 않는다
         rushSpeed: 2.8, // 소리 난 곳으로 달려드는 속도. 달리기보다 빠르다
         rushTime: 2.5, // 달려드는 시간 (초)
         rushRest: 2, // 달려든 뒤 다시 달려들 때까지 쉬는 시간 (초)
