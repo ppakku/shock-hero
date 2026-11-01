@@ -668,7 +668,7 @@ def play_stalk(pw):
       Object.assign(g.stalker, { x: 22.5, y: 21.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [], calmT: 99, graceT: 0, patrolIndex: 0 });
     }""")
     pg.wait_for_function("window.__horror.stalker.mode === 'watch'", timeout=8000, polling=30)
-    time.sleep(1.2)
+    becomes(pg, 'window.__horror.model.glow > 0.8')  # 눈빛은 게임 시간으로 밝아져서 느린 시험에서는 늦다
     w = pg.evaluate("({ mode: window.__horror.stalker.mode, x: window.__horror.stalker.x, glow: window.__horror.model.glow, stretch: window.__horror.model.pose.stretch, lean: window.__horror.model.pose.lean, shown: window.__horror.model.group.visible, say: window.__horror.hud.message.textContent })")
     print('watch', w)
     pg.screenshot(path=f'{OUT}/watch_live.png')

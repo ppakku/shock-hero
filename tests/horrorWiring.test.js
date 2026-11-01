@@ -348,6 +348,24 @@ describe('놀람 장면', () => {
     expect(g.shakeT).toBe(0);
     g.exit();
   });
+
+  it('효과 줄이기여도 얼굴이 지나가면 손전등 밝기가 돌아온다', () => {
+    const g = stepOnScare('seino', { lowFx: true });
+    g.scaresLeft.pop();
+    frames(g, g.k.scare.dark + g.k.scare.show + 0.1);
+    expect(g.scare).toBe(null);
+    expect(g.flash.intensity).toBe(g.k.flashIntensity);
+    g.exit();
+  });
+
+  it('얼굴이 뜰 때 땅속이의 구멍은 바닥에 남는다', () => {
+    const g = stepOnScare('mole');
+    g.scaresLeft.pop();
+    frames(g, g.k.scare.dark + g.k.scare.show / 2);
+    g.model.group.updateMatrixWorld(true);
+    expect(g.model.hole.getWorldPosition(new THREE.Vector3()).y).toBeCloseTo(0.03, 2);
+    g.exit();
+  });
 });
 
 describe('잡히는 장면', () => {

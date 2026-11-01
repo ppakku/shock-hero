@@ -344,6 +344,7 @@ export class HorrorGame {
     if (was === 'dark') this.scareHits(phase === 'face');
     if (phase === 'done') {
       this.scare = null;
+      this.flash.intensity = this.k.flashIntensity; // 얼굴을 비추던 낮은 밝기를 돌려놓는다
       if (!this.lowFx) this.blink = { t: 0, n: 0 };
       this.hud.say(this.named(SCARE_LINES[Math.floor(Math.random() * SCARE_LINES.length)]), 3);
       return;
@@ -394,7 +395,7 @@ export class HorrorGame {
     const spot = figureSpot(this.map, this.p, this.yaw, k.figureNear, k.figureFar);
     if (!spot) return;
     const heading = Math.atan2(this.p.x - spot.x, this.p.y - spot.y);
-    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: this.round.monsterId === 'mole' ? 'watch' : 'patrol' } }; // 땅속이는 패트롤 자세면 땅속에 있어 보이지 않는다
+    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: isUnderground({ ...this.stalker, mode: 'patrol' }) ? 'watch' : 'patrol' } }; // 땅속 괴물도 몸이 보이는 자세로 세운다
     this.model.yaw = heading;
   }
 
@@ -619,6 +620,7 @@ export class HorrorGame {
     m.group.position.x += this.p.x * CELL + fx * near - face.x;
     m.group.position.y += EYE - face.y - FACE_UP;
     m.group.position.z += this.p.y * CELL + fz * near - face.z;
+    if (m.hole) m.hole.position.y -= m.group.position.y; // 땅속이의 구멍은 몸을 따라 뜨지 않고 바닥에 남는다
   }
 
   respawn() {
