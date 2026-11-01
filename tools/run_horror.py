@@ -480,6 +480,7 @@ def play_controls(pw):
     pg.evaluate('window.__horror.yaw = 0')
     time.sleep(0.5)
     # 문 앞 칸의 눈길은 이때 저장된다. 날개 안쪽 구역은 문이 열려야 그린다
+    pg.wait_for_function("window.__horror.scene.children.find((c) => c.userData.index === Math.floor(window.__horror.run.doors[0].cy / 7) * Math.ceil(window.__horror.map.w / 7) + Math.floor(window.__horror.run.doors[0].cx / 7)).visible", timeout=10000)
     wing_chunk = "window.__horror.scene.children.find((c) => c.userData.index === (Math.floor((window.__horror.run.doors[0].cy - 7) / 7) * Math.ceil(window.__horror.map.w / 7) + Math.floor(window.__horror.run.doors[0].cx / 7))).visible"
     check('door: wing chunk hidden while shut', not pg.evaluate(wing_chunk))
     pg.screenshot(path=f'{OUT}/door_locked.png')

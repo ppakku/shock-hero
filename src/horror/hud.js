@@ -1,7 +1,7 @@
 // 공포 모드 글자, 안내 화면. 어두운 화면에서 잘 보이도록 3D 위에 HTML 로 올린다.
 const LAYER = 'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;text-align:center;background:rgba(0,0,0,.82);color:#eee;font:18px sans-serif;padding:12px;box-sizing:border-box;overflow:auto';
 const NOTE_BOX = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;width:min(520px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:hidden;pointer-events:none;box-sizing:border-box;padding:16px 20px;background:rgba(18,12,8,.93);color:#f0e6d0;border:1px solid #8a6a3a;border-radius:6px;font:20px/1.5 sans-serif;text-align:center';
-const NOTE_PHONE = 'left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
+const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { NOTE_DANGER_LINE, FINAL_LINE } from './story.js';
@@ -108,7 +108,7 @@ export class HorrorHud {
     this.closeNote();
     this.noteLines = lines;
     const box = document.createElement('div');
-    // 휴대폰은 오른쪽 버튼을 가리지 않게 좁히고 버튼 왼쪽 공간의 가운데에 놓는다
+    // 휴대폰은 오른쪽 버튼을 가리지 않게 좁히고 버튼 왼쪽 공간의 가운데에 놓는다. 안내 줄이 보이게 조금 올린다
     box.style.cssText = compact ? `${NOTE_BOX};${NOTE_PHONE};font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
     for (const line of lines) {
       const p = document.createElement('div');
