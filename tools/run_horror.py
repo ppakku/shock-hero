@@ -1330,7 +1330,7 @@ def run_touch(pw):
     tap(t, button_xy(pg, '손전등'))
     check('light button toggles back', state(pg)['light'] == on0)
 
-    # 사용 버튼, 펀치 버튼. 세이노는 멀리 세워 두고 시작 방 상자 옆으로 간다
+    # 사용 버튼, 쇼크 버튼. 세이노는 멀리 세워 두고 시작 방 상자 옆으로 간다
     pg.evaluate(PARK_STALKER)
     stand_at(pg, 2.5, 25.5)
     check('touch: prompt says 사용', '사용: 쇼크 충전' in game(pg)['prompt'], game(pg))
@@ -1338,7 +1338,7 @@ def run_touch(pw):
     tap(t, button_xy(pg, '사용'))
     check('touch: use button charges', game(pg)['shock'], game(pg))
     pg.evaluate("Object.assign(window.__horror.stalker, { x: 4.5, y: 25.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [] })")
-    tap(t, button_xy(pg, '펀치'))
+    tap(t, button_xy(pg, '쇼크'))
     check('touch: punch button stuns', game(pg)['mode'] == 'stunned' and not game(pg)['shock'], game(pg))
     pg.evaluate(PARK_STALKER)
 
