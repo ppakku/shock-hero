@@ -6,6 +6,8 @@ const NOTE_PAPER = 'background:#c9b48a url(art/horror_note_paper.jpg) center/cov
 const NOTE_PAPER_WARN = '#7a2414';
 const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-width:min(24vw,calc(47vw - 280px));max-height:60vh;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent)'; // 글자 왼쪽 빈자리에 놓고 위아래 잘린 자리는 서서히 지운다
 const TAGS = 'position:absolute;left:192px;top:31px;display:flex;gap:14px;white-space:nowrap;font-size:15px;text-shadow:0 0 4px #000,0 0 4px #000'; // 체력 막대 오른쪽. 휴대폰에서도 알림 글과 겹치지 않는다
+const TONIGHT = 'position:absolute;left:16px;top:52px;font-size:14px;color:#ffd24a;text-shadow:0 0 4px #000,0 0 4px #000'; // 체력 막대 아래
+const TONIGHT_BROKEN = '#ff7a60';
 const TAG_LOOK = { chase: { text: '쫓아온다!', color: '#ff7a60' }, still: { text: '멈췄다', color: '#9ad0ff' }, near: { text: '가까이 있다', color: '#ffd080' }, far: { text: '멀리 있다', color: '#9a9a9a' } };
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
@@ -40,10 +42,11 @@ export function controlLines(device) {
 }
 
 // 시작 전 안내 이야기. 맨 앞은 이번 판의 맵, 괴물, 힌트다. 휴대폰은 화면이 작아서 이야기 앞의 두 줄을 빼고 맵과 힌트를 한 줄로 쓴다
-// round: { mapName, monsterName, hint }
-export function introLines(device, { mapName, monsterName, hint }) {
-  if (device === 'phone') return [`${mapName}: ${monsterName}. ${hint}`, ...fillName(INTRO.slice(2), monsterName)];
-  return [`${mapName}: ${monsterName}`, hint, ...fillName(INTRO, monsterName)];
+// round: { mapName, monsterName, hint, tonight }. tonight 는 오늘의 밤 조건 줄이고, 없으면 빠진다
+export function introLines(device, { mapName, monsterName, hint, tonight }) {
+  const rule = tonight ? [tonight] : [];
+  if (device === 'phone') return [`${mapName}: ${monsterName}. ${hint}`, ...rule, ...fillName(INTRO.slice(2), monsterName)];
+  return [`${mapName}: ${monsterName}`, hint, ...rule, ...fillName(INTRO, monsterName)];
 }
 
 // 시작한 뒤 잠깐 띄우는 알림
@@ -100,6 +103,7 @@ export class HorrorHud {
     this.staminaFill.style.cssText = 'width:100%;height:100%;background:#e8b84a';
     this.staminaBar.appendChild(this.staminaFill);
     this.staminaShown = 100;
+    this.tonightEl = this.add(TONIGHT);
     // 손전등이 비춘 밝은 벽에서도 읽히게 그림자를 겹친다
     this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 6px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
@@ -147,6 +151,14 @@ export class HorrorHud {
       this.tagEls[i].textContent = `${name}: ${TAG_LOOK[state].text}`;
       this.tagEls[i].style.color = TAG_LOOK[state].color;
     });
+  }
+
+  // 오늘의 밤 조건 줄. line: logic/horrorTonight.js 의 tonightLine. 매 프레임 불린다
+  setTonight({ text, broken }) {
+    if (text === this.tonightShown) return;
+    this.tonightShown = text;
+    this.tonightEl.textContent = `오늘의 밤: ${text}`;
+    this.tonightEl.style.color = broken ? TONIGHT_BROKEN : '';
   }
 
   // 쪽지 읽기. 세이노는 멈추지 않는다. Enter 나 버튼으로 닫고, 사용 키는 Game 이 closeNote 로 닫는다
@@ -397,15 +409,18 @@ export class HorrorHud {
 
   // notes: { found, total, final } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다. notes.ending 은 한 줄이나 여러 줄이다
   // news: 도장 소식. 결과 바로 아래에 금색으로 놓는다
-  showEnd(text, onAgain, onDone, notes, news = [], compact = false) {
-    const lines = [...(notes?.ending ? [notes.ending].flat() : []), text, ...news];
+  // tonight: 오늘의 밤 판이면 { text, met }. 결과 바로 아래에 놓고, 못 지켰으면 빨간색으로 보인다
+  showEnd(text, onAgain, onDone, notes, news = [], compact = false, tonight = null) {
+    const lines = [...(notes?.ending ? [notes.ending].flat() : []), text, ...(tonight ? [tonight.text] : []), ...news];
     if (notes) {
       lines.push(`쪽지 ${notes.found}/${notes.total}`);
       if (notes.total > 0 && notes.found >= notes.total) lines.push(notes.final);
     }
     this.openLayer(lines, [{ text: '한 판 더', onPress: onAgain }, { text: '타이틀로', onPress: onDone }], compact);
     const first = lines.indexOf(text) + 1;
-    for (let i = first; i < first + news.length; i++) this.layer.children[i].style.color = '#ffd24a';
+    if (tonight) this.layer.children[first].style.color = tonight.met ? '#ffd24a' : TONIGHT_BROKEN;
+    const firstNews = first + (tonight ? 1 : 0);
+    for (let i = firstNews; i < firstNews + news.length; i++) this.layer.children[i].style.color = '#ffd24a';
     this.backdrop();
   }
 

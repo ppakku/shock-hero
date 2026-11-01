@@ -4,6 +4,11 @@
 //   { careful: true }         걸어 다니고, 쫓기면 펀치와 사물함을 쓴다
 //                             눈뜬이는 쳐다본 채 뒷걸음으로 가고, 큰입이 곁에서는 달리지 않는다
 //   없음                      괴물을 무시하고 목표로 달린다
+// 오늘의 밤 조건은 위 옵션에 더한다
+//   { noRun: true }           달리지 않는다
+//   { noShock: true }         전기충격기를 쏘지 않는다
+//   { notes: 3 }              그만큼 쪽지를 읽고 나간다
+//   { sneak: true }           안 잡히려고 손전등을 끄고 걷고, 괴물이 가까우면 먼저 숨거나 물러난다
 // 괴물이 둘이면 가장 가까운 쪽을 보고 판단한다
 (() => {
   const g = window.__horror;
@@ -36,6 +41,13 @@
   // 잠긴 문 앞의 이쪽 칸
   const doorSide = (d) => [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([x, y]) => ({ cx: d.cx + x, cy: d.cy + y })).find(canWalk);
 
+  // 아직 더 읽어야 하면 가장 가까운 쪽지
+  const noteGoal = () => {
+    if (g.notes.found >= (opts().notes || 0)) return null;
+    const cells = g.notes.spots.filter((_, i) => !g.notes.taken[i]).map(cellOf).filter(canWalk);
+    return cells.sort((a, b) => Math.hypot(a.cx - g.p.x, a.cy - g.p.y) - Math.hypot(b.cx - g.p.x, b.cy - g.p.y))[0] || null;
+  };
+
   // 지금 걸어갈 수 있는 퓨즈, 쓸 수 있는 문, 열쇠 순서. 다 끝나면 전원, 정문
   const goalNow = () => {
     const fuse = g.run.fuses.find((f) => !f.taken && canWalk(f));
@@ -47,6 +59,8 @@
     if (key) return { cx: key.cx, cy: key.cy };
     const clue = g.run.clues.find((c) => !c.taken && canWalk(c));
     if (clue) return { cx: clue.cx, cy: clue.cy };
+    const note = noteGoal();
+    if (note) return note;
     return frontOf(g.map, g.run.powered ? g.map.gate : g.map.panel);
   };
 
@@ -105,6 +119,23 @@
     return near ? keepWatching(out) : out;
   };
 
+  // 괴물에게서 가장 먼 사물함 앞이나 순찰 지점으로 물러난다
+  const awayGoal = () => {
+    const s = foe();
+    const spots = [...g.map.patrol.filter(canWalk), ...g.map.lockers.map((c) => frontOf(g.map, c)).filter(canWalk)];
+    const score = (c) => Math.hypot(c.cx + 0.5 - s.x, c.cy + 0.5 - s.y) - Math.hypot(c.cx + 0.5 - g.p.x, c.cy + 0.5 - g.p.y) / 2;
+    return spots.sort((a, b) => score(b) - score(a))[0];
+  };
+
+  const SNEAK_NEAR = 6; // 이 칸보다 가까우면 하던 일을 멈춘다
+  const SNEAK_OUT = 8; // 숨었다가 나오는 거리
+  const sneakBrain = (inp, target) => {
+    if (g.lightOn) inp.light = true;
+    if (stalkerDist() >= SNEAK_NEAR && !chased()) return null;
+    if (target?.kind === 'locker') return press(inp);
+    return walkTo(inp, hideGoal() || awayGoal(), chased());
+  };
+
   const HIDE_TIRED = 12; // 이만큼 숨었다 나왔으면 더 숨지 않고 달려서 끝낸다. 숨기만 하면 판이 끝나지 않는다
   const HIDE_LIMIT = 1200; // 괴물이 곁을 맴돌아도 이만큼 숨었으면 나온다 (프레임). 사람도 끝없이 숨어 있지 않는다
   const brain = () => {
@@ -129,12 +160,17 @@
     }
     if (g.hidden !== null) {
       B.hideFrames = (B.hideFrames || 0) + 1;
-      const safe = g.stalkers.every((s) => s.mode === 'patrol' || (s.mode !== 'chase' && gapTo(s) > 9)) || B.hideFrames > HIDE_LIMIT;
+      const near = opts().sneak && stalkerDist() < SNEAK_OUT;
+      const safe = (!near && g.stalkers.every((s) => s.mode === 'patrol' || (s.mode !== 'chase' && gapTo(s) > 9))) || B.hideFrames > HIDE_LIMIT;
       if (safe) {
         B.hideFrames = 0;
         B.hides = (B.hides || 0) + 1;
       }
       return safe ? press(inp) : inp;
+    }
+    if (opts().sneak && kind !== 'gazer') {
+      const out = sneakBrain(inp, target);
+      if (out) return out;
     }
     if (careful && kind !== 'gazer' && kind !== 'maw' && chased() && (B.hides || 0) < HIDE_TIRED) {
       const s = foe();
@@ -146,12 +182,19 @@
       const hide = hideGoal();
       if (hide) return walkTo(inp, hide, true);
     }
-    const wanted = ['fuse', 'key', 'clue', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
+    const reading = target?.kind === 'note' && g.notes.found < (opts().notes || 0);
+    const wanted = reading || ['fuse', 'key', 'clue', 'lock', 'gate', 'box'].includes(target?.kind) || (target?.kind === 'panel' && g.run.have >= g.k.fuseCount);
     if (wanted) return press(inp);
     if (careful && kind === 'gazer') return gazerBrain(inp);
     return walkTo(inp, goalNow(), !careful || (chased() && kind !== 'maw'));
   };
 
-  g.readInput = brain;
+  // 조건을 지키는 봇도 쫓기면 똑같이 판단하고, 달리기와 쏘기만 빠진다
+  g.readInput = () => {
+    const inp = brain();
+    if (opts().noRun) inp.move.run = false;
+    if (opts().noShock) inp.punch = false;
+    return inp;
+  };
   return 'bot on';
 })();

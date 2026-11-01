@@ -3,12 +3,14 @@ import { readFileSync } from 'node:fs';
 import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
-import { createStalkers, nearestStalker, sendAllAway } from '../src/logic/horrorHunters.js';
+import { anyChasing, createStalkers, nearestStalker, sendAllAway } from '../src/logic/horrorHunters.js';
+import { createNotes, takeNote } from '../src/logic/horrorNotes.js';
 import { createRun, takeClue, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { ALL_MAPS } from '../src/horror/content.js';
 import { LAST_ROUND, MAP_IDS, MONSTER_IDS, roundMonsters } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
+import { TONIGHT_RULES, tonightMet } from '../src/logic/horrorTonight.js';
 
 vi.setConfig({ testTimeout: 120000 }); // 봇이 한 판을 끝까지 돌아서 다른 시험과 함께 돌면 몇 초를 넘는다
 
@@ -34,14 +36,17 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
   const run = createRun(ALL_MAPS[mapId].map, k, rand);
   const map = run.level;
   const stalkers = createStalkers(map, k, rand, monsterIds);
+  const notes = createNotes(map.notes.map(center), rand);
+  const lightOn = !options?.noLight;
+  let ranFor = 0;
   const g = {
-    map, run, k,
+    map, run, k, notes,
     p: center(map.start),
     yaw: 0,
     hidden: null,
     stalker: stalkers[0],
     stalkers,
-    nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
+    nearestUse: () => nearestUse(run, map, g.p, g.hidden, k, options?.notes && !anyChasing(stalkers) ? notes : undefined),
   };
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
   if (options?.child) {
@@ -62,7 +67,8 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     if (g.hidden === null) g.p = stepPlayer(g.p, inp.move, g.yaw, running ? k.runSpeed : k.walkSpeed, DT, map, 0.2);
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
-    const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
+    if (running && moving) ranFor += DT;
+    const player = { ...g.p, hidden: g.hidden, lightOn, noise: noiseFor(moving, running, k) };
     const pressure = run.have / k.fuseCount;
     let got = false;
     for (const s of stalkers) {
@@ -85,6 +91,7 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
       if (target.kind === 'fuse') takeFuse(run, target.index);
       if (target.kind === 'key') takeKey(run, target.index);
       if (target.kind === 'clue') takeClue(run, target.index);
+      if (target.kind === 'note') takeNote(notes, target.index);
       if (target.kind === 'lock') openDoor(run, target.index);
       if (target.kind === 'box') chargeShock(run, target.index);
       if (target.kind === 'panel') insertFuses(run, k);
@@ -108,7 +115,8 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
       if (Math.hypot(s.x - g.p.x, s.y - g.p.y) <= k.shockRange && lineOfSight(map, g.p, s)) stunStalker(s, k);
     }
   }
-  return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length };
+  const counts = { lit: lightOn, ranFor, shocks: run.shocks, catches: catches.length, notes: notes.found };
+  return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length, counts };
 }
 
 const summary = (games) => ({

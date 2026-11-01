@@ -11,6 +11,7 @@ import { isLastNight, roundMonsters } from '../logic/horrorPick.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
+import { NO_LIGHT, finishTonight, tonightEndText, tonightLine, tonightMet, tonightRuleText } from '../logic/horrorTonight.js';
 import { saveStore } from '../save.js';
 import { addStamp, wornLook, openedLooks, stampCount, boardSize } from '../logic/horrorStamps.js';
 import { sfx } from '../audio/sfx.js';
@@ -54,9 +55,11 @@ const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class HorrorGame {
   // round: { mapId, monsterId } 에 괴물이 여럿이면 monsterIds. onAgain: 끝 화면의 한 판 더. 정리를 마친 뒤에 부른다
-  constructor(root, { round, touch, device, lowFx, muted, onExit, onAgain }) {
+  // tonight: 오늘의 밤 판이면 logic/horrorTonight.js 의 { date, rule }. 날짜는 시작한 날로 끝까지 간다
+  constructor(root, { round, tonight = null, touch, device, lowFx, muted, onExit, onAgain }) {
     this.root = root;
     this.round = round;
+    this.tonight = tonight;
     this.place = ALL_MAPS[round.mapId];
     this.monsters = roundMonsters(round).map((id) => MONSTERS[id]);
     this.allNames = joinNames(this.monsters.map((m) => m.name));
@@ -77,7 +80,9 @@ export class HorrorGame {
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
-    this.lightOn = true;
+    this.lightOn = tonight?.rule !== NO_LIGHT; // 손전등 조건은 꺼진 채로 시작한다
+    this.lit = this.lightOn; // 이번 판에 손전등을 켠 적이 있는지
+    this.ranFor = 0; // 이번 판에 달린 시간 (초)
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
     this.scaresLeft = [...this.map.scares];
     this.blink = null; // 손전등 깜빡임 진행 상태. 잡힘과 나가기에서 끊는다
@@ -164,6 +169,7 @@ export class HorrorGame {
     this.hud = new HorrorHud(root, fillName(NOTE_DANGER_LINE, this.allNames), this.round);
     this.hud.setZapColor(this.bolt.screen);
     this.hud.setStatus(this.statusNow());
+    this.showTonight();
     if (this.showFps) {
       this.fpsLabel = document.createElement('div');
       this.fpsLabel.style.cssText = 'position:absolute;left:16px;top:56px;color:#8f8;font:14px monospace;z-index:4';
@@ -222,7 +228,7 @@ export class HorrorGame {
   }
 
   start() {
-    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint) };
+    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? `오늘의 밤 조건: ${tonightRuleText(this.tonight.rule, this.k)}` : null };
     this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
@@ -287,6 +293,7 @@ export class HorrorGame {
     this.world.update(this.p, this.k.viewCells, this.playTime, this.lowFx);
     if (this.state === 'intro' && !this.warmed && this.hunters.every((h) => h.model.textures.every((t) => t.image))) this.warmUp();
     if (this.state !== 'play') return;
+    this.showTonight();
     const near = this.gapTo(nearestStalker(this.stalkers, this.p));
     this.audio?.update(dt);
     for (const { index, stalker: s } of this.hunters) this.audio?.updateStalker(this.camera, { x: s.x * CELL, y: 1.5, z: s.y * CELL }, s.mode, near, dt, index);
@@ -315,6 +322,7 @@ export class HorrorGame {
       return;
     }
     if (inp.light) this.lightOn = !this.lightOn;
+    this.lit ||= this.lightOn;
     this.flash.visible = this.lightOn && this.hidden === null; // 숨으면 불빛도 가린다
     this.yaw -= inp.lookX;
     if (this.hidden !== null) this.yaw = this.hideYaw + Math.max(-HIDE_LOOK, Math.min(HIDE_LOOK, wrapAngle(this.yaw - this.hideYaw)));
@@ -329,6 +337,7 @@ export class HorrorGame {
     const noise = this.alarmT > 0 ? this.k.runNoise : noiseFor(moving, running, this.k);
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise };
     this.tickStamina(running && moving, dt);
+    if (running && moving) this.ranFor += dt;
     const pressure = this.run.have / this.k.fuseCount;
     for (const h of this.hunters) {
       const seen = playerSees(this, this.hud.noteOpen, h.stalker);
@@ -515,6 +524,15 @@ export class HorrorGame {
     this.stamina = stepStamina(this.stamina, running, this.k, dt);
     if (this.stamina.tired && !wasTired) this.hud.say('숨이 찼다! 잠깐 걸어야 해', 2);
     this.hud.setStamina(this.stamina);
+  }
+
+  tonightCounts() {
+    return { lit: this.lit, ranFor: this.ranFor, shocks: this.run.shocks, catches: this.run.caughtCount, notes: this.notes.found };
+  }
+
+  // 조건과 깨졌는지를 작은 줄로 놓아서 끝 화면에서 놀라지 않게 한다
+  showTonight() {
+    if (this.tonight) this.hud.setTonight(tonightLine(this.tonight.rule, this.tonightCounts(), this.k));
   }
 
   statusNow() {
@@ -779,12 +797,12 @@ export class HorrorGame {
     this.hud.setDread(0);
     this.audio?.suspend();
     this.audio?.play('door');
-    const { text, news } = isLastNight(this.round) ? this.settleLastNight(result.clean) : this.settleEscape(result.clean);
+    const { text, news, tonight } = isLastNight(this.round) ? this.settleLastNight(result.clean) : this.settleEscape(result.clean);
     document.exitPointerLock?.();
     this.input.clearTouch();
     this.hud.closeNote();
     this.hud.setPrompt('');
-    this.hud.showEnd(text, () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) }, news, this.device === 'phone');
+    this.hud.showEnd(text, () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) }, news, this.device === 'phone', tonight);
   }
 
   // 보통 판: 탈출 보석과 도장을 저장하고 끝 화면 글을 돌려준다
@@ -794,10 +812,13 @@ export class HorrorGame {
     const reward = escapeReward(save.horror, clean, today, this.k);
     const was = save.horror.stamps;
     const { stamps, earned } = addStamp(was, this.round, clean);
-    save.gems += reward.gems;
+    const result = this.tonight && finishTonight(save.horror, this.tonight.date, tonightMet(this.tonight.rule, this.tonightCounts(), this.k), this.k);
+    save.gems += reward.gems + (result?.gems ?? 0);
     save.horror = { ...recordEscape(save.horror, clean, today), stamps };
+    if (result) save.horror.tonightDone = result.done;
     saveStore.save(save);
-    return { text: escapeText(reward, clean), news: stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) }) };
+    const tonight = result && { text: tonightEndText(this.tonight.rule, result, this.k), met: result.met };
+    return { text: escapeText(reward, clean), tonight, news: stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) }) };
   }
 
   // 마지막 밤: 처음 깼을 때만 보석을 준다. 도장판과 오늘의 탈출 보석은 건드리지 않는다
