@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { cfg } from '../src/config/index.js';
 import { createGunFx, fireGunFx, chargeGunFx, stepGunFx, gunPush, jagged, ribbonPositions } from '../src/logic/horrorStunGun.js';
 import { StunGun } from '../src/horror/stunGun.js';
+import { faceBox } from '../src/horror/art.js';
+import * as THREE from 'three';
 
 const k = cfg.horror.stunGun;
 const litArcs = (g) => g.arcs.filter((a) => a.core.visible).length;
@@ -136,5 +138,63 @@ describe('손에 든 전기충격기', () => {
     expect(r.clearDepth).toHaveBeenCalled();
     expect(r.render).toHaveBeenCalled();
     expect(r.autoClear).toBe(true);
+  });
+});
+
+describe('손 그림', () => {
+  const fakeLoader = () => {
+    const calls = {};
+    return { calls, load: (url, ok, prog, err) => { const t = new THREE.Texture(); calls[url] = { t, ok, err }; return t; } };
+  };
+  const cold = 'art/horror_hand_cold.webp';
+  const live = 'art/horror_hand_live.webp';
+
+  it('두 장을 다 받아야 3D 손과 바꾸고, 충전하면 그림이 바뀐다', () => {
+    const loader = fakeLoader();
+    const g = make({ loader });
+    loader.calls[cold].ok();
+    expect(g.model.visible).toBe(true);
+    expect(g.art.visible).toBe(false);
+    loader.calls[live].ok();
+    expect(g.model.visible).toBe(false);
+    expect(g.art.visible).toBe(true);
+    expect(g.artMat.map).toBe(loader.calls[cold].t);
+    g.setCharged(true);
+    expect(g.artMat.map).toBe(loader.calls[live].t);
+  });
+
+  it('한 장이라도 못 받으면 3D 손을 그대로 쓴다', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const loader = fakeLoader();
+    const g = make({ loader });
+    const tip = g.tipA.position.clone();
+    loader.calls[cold].ok();
+    loader.calls[live].err();
+    expect(g.model.visible).toBe(true);
+    expect(g.art.visible).toBe(false);
+    expect(g.tipA.position.equals(tip)).toBe(true);
+    spy.mockRestore();
+  });
+
+  it('번개는 그림 속 침 끝에서 나간다', () => {
+    const loader = fakeLoader();
+    const g = make({ loader });
+    loader.calls[cold].ok();
+    loader.calls[live].ok();
+    const { hand } = k;
+    const spot = (t) => new THREE.Vector3((t[0] - 0.5) * hand.w, (0.5 - t[1]) * hand.h, 0).applyEuler(g.art.rotation).add(g.art.position);
+    expect(g.tipA.position.distanceTo(spot(hand.tips[0]))).toBeLessThan(1e-6);
+    expect(g.tipB.position.distanceTo(spot(hand.tips[1]))).toBeLessThan(1e-6);
+  });
+});
+
+describe('앞면 그림 상자', () => {
+  it('앞뒤는 그림 전체, 옆은 비율대로 가운데만 쓴다', () => {
+    const uv = faceBox(1, 2, 0.5).getAttribute('uv');
+    const us = (first) => Array.from({ length: 4 }, (_, i) => uv.getX(first + i));
+    expect(Math.min(...us(16))).toBeCloseTo(0);
+    expect(Math.max(...us(16))).toBeCloseTo(1);
+    expect(Math.min(...us(0))).toBeCloseTo(0.25);
+    expect(Math.max(...us(0))).toBeCloseTo(0.75);
   });
 });

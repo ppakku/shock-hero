@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { CELL, chunksInSight } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
+import { artLoader, loadArt, faceBox } from './art.js';
 
 const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
@@ -9,12 +10,13 @@ const LOCKER = { w: 1.3, h: 2.2, d: 1.1 };
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
 const NOTE = { w: 0.4, h: 0.55, color: 0xe8dcc0, y: 0.03, turn: 1.1 }; // 쪽지 크기 (미터), 색, 바닥에서 높이 (미터), 자리마다 돌아가는 각도 (라디안)
 const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
+const LOCK_NAMES = ['red', 'blue']; // 그림 파일 이름. map.locks 순서
 
 const lambert = (color) => new THREE.MeshLambertMaterial({ color });
 const place = new THREE.Object3D();
 
 function prop(group, cell, w, h, d, material) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  const mesh = new THREE.Mesh(faceBox(w, h, d), material);
   mesh.position.set((cell.cx + 0.5) * CELL, h / 2, (cell.cy + 0.5) * CELL);
   mesh.castShadow = true;
   group.add(mesh);
@@ -23,7 +25,7 @@ function prop(group, cell, w, h, d, material) {
 
 // 같은 모양 여러 개를 한 번에 그린다
 function propSet(group, cells, w, h, d, material) {
-  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(w, h, d), material, cells.length);
+  const mesh = new THREE.InstancedMesh(faceBox(w, h, d), material, cells.length);
   const m = new THREE.Matrix4();
   cells.forEach((c, i) => mesh.setMatrixAt(i, m.makeTranslation((c.cx + 0.5) * CELL, h / 2, (c.cy + 0.5) * CELL)));
   mesh.castShadow = true;
@@ -146,11 +148,19 @@ export function buildWorld(scene, map, k, theme) {
   const doorPart = theme.doorArt || 'wall';
   const dropDoorArt = () => {
     for (const d of doors) {
+      if (d.ownArt) continue;
       d.mesh.material.map = null;
       d.mesh.material.needsUpdate = true;
     }
   };
   const mats = themeMaterials(theme, (name) => { if (name === doorPart) dropDoorArt(); });
+  const loader = artLoader();
+  const textures = Object.values(mats.textures);
+  // 새 그림을 받아 끼운다. 못 받으면 ready 가 불리지 않아 지금 모습 그대로다
+  const art = (file, ready) => {
+    const tex = loadArt(loader, file, () => ready(tex));
+    if (tex) textures.push(tex);
+  };
   const wallMat = mats.wall;
   const floorMat = mats.floor;
   const ceilMat = lambert(theme.ceil);
@@ -213,17 +223,32 @@ export function buildWorld(scene, map, k, theme) {
   // 어둠 속에서도 찾을 수 있게 전기 상자, 전원, 정문은 살짝 빛낸다
   const glow = (m, color, power) => {
     m.emissive.setHex(color);
-    m.emissiveIntensity = power;
+    m.emissiveIntensity = power * (m.emissiveMap ? k.art.lift : 1);
   };
   glow(boxMat, 0x3060c0, 0.5);
   glow(panelMat, 0xc03020, 0.6);
   glow(gateMat, 0x402808, 0.5);
+  // 그림을 받으면 색을 빼고, 빛도 그림 모양대로 나게 한다
+  const paint = (m, tex, lift = k.art.lift) => {
+    m.map = tex;
+    m.emissiveMap = tex;
+    m.emissiveIntensity *= lift;
+    m.color.setHex(0x8a8a8a); // 가까이서 손전등에 하얗게 날아가지 않게 누른다
+    m.needsUpdate = true;
+  };
+  art('horror_box.jpg', (tex) => paint(boxMat, tex));
+  art('horror_panel.jpg', (tex) => paint(panelMat, tex));
+  art('horror_gate.jpg', (tex) => paint(gateMat, tex));
 
   const { lightMat, counts } = addDecor(scene, map, k, mats, theme.decor);
   const lightColor = new THREE.Color(theme.lightColor);
   const flow = theme.floor.flow;
   let lightLevel = -1;
   const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], mats[doorPart]));
+  doors.forEach((d, i) => art(`${theme.doorSet}_${LOCK_NAMES[i]}.jpg`, (tex) => {
+    d.ownArt = true;
+    paint(d.mesh.material, tex, 1);
+  }));
   const rising = [];
   let lastT = 0;
 
@@ -247,17 +272,48 @@ export function buildWorld(scene, map, k, theme) {
     group.add(mesh);
     return mesh;
   };
-  const addFuses = (fuses) => fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040));
-  const addKeys = (keys) => keys.map((c) => pickup(c, new THREE.BoxGeometry(0.1, 0.34, 0.04), DOOR_COLORS[c.lock]));
+  // 그림을 받으면 물건마다 어디서 봐도 정면인 그림을 띄우고 3D 모양은 그리지 않는다
+  const wear = (meshes, file, size) => {
+    const mat = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.1 });
+    mat.color.setScalar(k.art.glow); // 어둠 속에서 찾을 수 있게 그림보다 밝게 그린다
+    const sprites = meshes.map((mesh) => {
+      const s = new THREE.Sprite(mat);
+      s.scale.set(size, size, 1);
+      s.visible = false;
+      mesh.add(s);
+      return s;
+    });
+    art(file, (tex) => {
+      mat.map = tex;
+      mat.needsUpdate = true;
+      sprites.forEach((s) => { s.visible = true; });
+      meshes.forEach((m) => { m.material.visible = false; });
+    });
+    return meshes;
+  };
+  const addFuses = (fuses) => wear(fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040)), 'horror_fuse.webp', k.art.fuse);
+  const addKeys = (keys) => {
+    const meshes = keys.map((c) => pickup(c, new THREE.BoxGeometry(0.1, 0.34, 0.04), DOOR_COLORS[c.lock]));
+    LOCK_NAMES.forEach((name, lock) => wear(meshes.filter((_, i) => keys[i].lock === lock), `horror_key_${name}.webp`, k.art.key));
+    return meshes;
+  };
   // 쪽지는 바닥에 떨어진 종이 한 장이다. 어느 쪽에서 봐도 납작해지지 않는다.
   // 구역에 넣어서 벽 너머에 있으면 같이 그리지 않는다. spots: horrorNotes 의 자리 (칸 가운데 좌표)
-  const addNotes = (spots) => spots.map((s, i) => {
-    const c = { cx: Math.floor(s.x), cy: Math.floor(s.y) };
-    const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), NOTE.color, chunkOf(c.cx, c.cy));
-    mesh.position.y = NOTE.y;
-    mesh.rotation.set(0, NOTE.turn * i, 0);
-    return mesh;
-  });
+  const addNotes = (spots) => {
+    const meshes = spots.map((s, i) => {
+      const c = { cx: Math.floor(s.x), cy: Math.floor(s.y) };
+      const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), NOTE.color, chunkOf(c.cx, c.cy));
+      mesh.position.y = NOTE.y;
+      mesh.rotation.set(0, NOTE.turn * i, 0);
+      return mesh;
+    });
+    art('horror_note.jpg', (tex) => meshes.forEach((m) => {
+      m.material.map = tex;
+      m.material.color.setHex(0xffffff);
+      m.material.needsUpdate = true;
+    }));
+    return meshes;
+  };
 
   return {
     addFuses,
@@ -271,7 +327,7 @@ export function buildWorld(scene, map, k, theme) {
       shownCell = -1;
     },
     lightMat,
-    textures: Object.values(mats.textures),
+    textures,
     // 전원이 켜지면 전원은 초록으로, 정문은 밝게 바뀐다
     setPowered() {
       glow(panelMat, 0x20c040, 0.8);

@@ -1,11 +1,13 @@
 # 사용법: npx vite --port 5288 --strictPort 를 켠 뒤 python3 tools/run_stun_gun.py 출력폴더 (포트를 바꾸면 HORROR_PORT 로 알려 준다)
 # 공포 모드 전기충격기를 진짜 키 입력으로 확인한다: 충전 전, 충전, 빗나감, 맞힘, 숨기, 키 바뀜, 터치 위치
-import os, sys, time
+import os, re, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
+if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
+    ARGS = ['--use-angle=metal', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
 URL = f"http://localhost:{os.environ.get('HORROR_PORT', '5288')}/?timer&fps"
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
@@ -19,8 +21,8 @@ def check(name, ok, info=''):
         fails.append(name)
 
 
-def open_game(pg):
-    pg.goto(URL)
+def open_game(pg, extra=''):
+    pg.goto(URL + extra)
     time.sleep(3)
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
     pg.wait_for_function('window.__horror', timeout=20000)
@@ -50,6 +52,7 @@ def desktop(pw):
     s = state(pg)
     pg.screenshot(path=f'{OUT}/1_empty.png')
     check('시작하면 손이 보이고 전기는 없다', s['shown'] and s['arcs'] == 0 and not s['halo'] and not s['hum'], s)
+    check('손은 그림으로 그린다', pg.evaluate('window.__horror.gun.art.visible && !window.__horror.gun.model.visible'))
 
     pg.keyboard.press('j')
     time.sleep(0.2)
@@ -127,7 +130,36 @@ def touch(pw, name, w, h, ua):
     b.close()
 
 
+# 새 그림을 하나도 못 받아도 원래 모습으로 놀 수 있고, 그림을 받았을 때 그리기 횟수가 늘지 않아야 한다
+NEW_ART = r'horror_(hand|fuse|key|note|box|panel|gate|door|intro|face)'
+
+
+def art_lost(pw):
+    calls = {}
+    for name, block in (('있음', False), ('없음', True)):
+        b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+        pg = b.new_page(viewport={'width': 1280, 'height': 720})
+        errs = []
+        pg.on('pageerror', lambda e: errs.append(str(e)))
+        if block:
+            pg.route(re.compile(NEW_ART), lambda r: r.abort())
+        open_game(pg, '&map=factory&monster=seino')
+        time.sleep(1)
+        look = pg.evaluate("() => { const g = window.__horror, f = g.gun; g.hud.showNote(['글']); const note = g.hud.noteEl.style.cssText; g.hud.closeNote(); return { art: f.art.visible, model: f.model.visible, fuse: g.fuseMeshes[0].material.visible, key: g.keyMeshes[0].material.visible, paper: note.includes('horror_note_paper'), calls: g.renderer.info.render.calls }; }")
+        # 한 화면을 다 그리는 데 든 횟수. 게임 장면, 그림자, 손 장면을 합친다
+        calls[name] = pg.evaluate("async () => { const g = window.__horror, i = g.renderer.info; g.p = window.__horrorLogic.center(g.map.start); g.yaw = 0; await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame); i.autoReset = false; i.reset(); await new Promise(requestAnimationFrame); const n = i.render.calls; i.autoReset = true; return n; }")
+        pg.screenshot(path=f'{OUT}/art_{name}.png')
+        if block:
+            check('그림이 없으면 3D 손, 퓨즈, 열쇠, 어두운 쪽지로 남는다', look['model'] and not look['art'] and look['fuse'] and look['key'], look)
+        else:
+            check('그림이 있으면 손, 퓨즈, 열쇠를 그림으로 그린다', look['art'] and not look['model'] and not look['fuse'] and not look['key'] and look['paper'], look)
+        check(f'그림 {name}: 페이지 오류 없음', not errs, errs)
+        b.close()
+    check('그림을 입혀도 그리기 횟수가 늘지 않는다', calls['있음'] <= calls['없음'], calls)
+
+
 with sync_playwright() as pw:
+    art_lost(pw)
     desktop(pw)
     touch(pw, 'tablet', 1024, 768, IPAD_UA)
     touch(pw, 'phone', 844, 390, PHONE_UA)

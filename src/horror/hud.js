@@ -2,6 +2,9 @@
 const LAYER = 'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;text-align:center;background:rgba(0,0,0,.82);color:#eee;font:18px sans-serif;padding:12px;box-sizing:border-box;overflow:auto';
 const NOTE_BOX = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;width:min(520px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:hidden;pointer-events:none;box-sizing:border-box;padding:16px 20px;background:rgba(18,12,8,.93);color:#f0e6d0;border:1px solid #8a6a3a;border-radius:6px;font:20px/1.5 sans-serif;text-align:center';
 const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
+const NOTE_PAPER = 'background:#c9b48a url(art/horror_note_paper.jpg) center/cover;color:#2a1c10;border:none;border-radius:2px;box-shadow:0 6px 30px #000';
+const NOTE_PAPER_WARN = '#7a2414';
+const FACE = 'position:absolute;left:3vw;top:50%;transform:translateY(-50%);max-width:min(24vw,calc(47vw - 280px));max-height:60vh;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 86%,transparent)'; // 글자 왼쪽 빈자리에 놓고 위아래 잘린 자리는 서서히 지운다
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { fillName } from './story.js';
@@ -53,10 +56,18 @@ export function escapeText({ gems, daily, bonus }, clean) {
 }
 
 export class HorrorHud {
-  // dangerLine: 쪽지 아래에 붙는 작은 줄
-  constructor(root, dangerLine) {
+  // dangerLine: 쪽지 아래에 붙는 작은 줄, place: 이번 판의 { mapId, monsterId } (안내 화면 그림을 고른다)
+  constructor(root, dangerLine, place = {}) {
     this.root = root;
     this.dangerLine = dangerLine;
+    this.place = place;
+    // 종이가 밝아서 글자도 어둡게 바꾼다. 그림을 다 받은 뒤에만 써야 글자가 어두운 상자에 묻히지 않는다
+    this.paper = false;
+    if (globalThis.Image) {
+      const img = new Image();
+      img.onload = () => { this.paper = true; };
+      img.src = 'art/horror_note_paper.jpg';
+    }
     this.box = document.createElement('div');
     // 휴대폰 노치에 글자가 가리지 않게 안전 여백만큼 안쪽에 놓는다
     this.box.style.cssText = 'position:absolute;top:env(safe-area-inset-top,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);z-index:4;pointer-events:none;color:#ddd;font:18px sans-serif';
@@ -111,7 +122,8 @@ export class HorrorHud {
     this.noteLines = lines;
     const box = document.createElement('div');
     // 휴대폰은 오른쪽 버튼을 가리지 않게 좁히고 버튼 왼쪽 공간의 가운데에 놓는다. 안내 줄이 보이게 조금 올린다
-    box.style.cssText = compact ? `${NOTE_BOX};${NOTE_PHONE};font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
+    const paper = this.paper ? `;${NOTE_PAPER}` : '';
+    box.style.cssText = (compact ? `${NOTE_BOX};${NOTE_PHONE};font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX) + paper;
     for (const line of lines) {
       const p = document.createElement('div');
       p.textContent = line;
@@ -119,7 +131,7 @@ export class HorrorHud {
     }
     const warn = document.createElement('div');
     warn.textContent = this.dangerLine;
-    warn.style.cssText = `margin-top:${compact ? 4 : 10}px;font-size:${compact ? 12 : 14}px;color:#e08a7a`;
+    warn.style.cssText = `margin-top:${compact ? 4 : 10}px;font-size:${compact ? 12 : 14}px;color:${this.paper ? NOTE_PAPER_WARN : '#e08a7a'}`;
     box.appendChild(warn);
     const btn = document.createElement('button');
     btn.textContent = '닫기';
@@ -192,6 +204,25 @@ export class HorrorHud {
     this.black.style.opacity = on ? '1' : '0';
   }
 
+  // 맵 그림을 어둡게 깐다. 그림을 못 받으면 원래의 어두운 판이 남는다
+  backdrop() {
+    if (!this.layer || !this.place.mapId) return;
+    this.layer.style.backgroundImage = `linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.72)),url(art/horror_intro_${this.place.mapId}.jpg)`;
+    this.layer.style.backgroundSize = 'cover';
+    this.layer.style.backgroundPosition = 'center';
+  }
+
+  // 시작 화면에 이번 판 괴물 얼굴을 놓는다. 못 받으면 없앤다
+  addFace() {
+    if (!this.place.monsterId) return;
+    const face = document.createElement('img');
+    face.alt = '';
+    face.style.cssText = FACE;
+    face.onerror = () => face.remove();
+    face.src = `art/horror_face_${this.place.monsterId}.webp`;
+    this.layer.appendChild(face);
+  }
+
   // compact: 휴대폰 가로 화면에 다 들어가게 글자를 줄이고 버튼을 옆으로 놓는다
   openLayer(lines, buttons, compact = false) {
     this.closeLayer();
@@ -234,6 +265,8 @@ export class HorrorHud {
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
+    this.backdrop();
+    if (device !== 'phone') this.addFace(); // 휴대폰은 자리가 없다
   }
 
   // onNotes: 읽은 쪽지가 있을 때만 준다
@@ -266,6 +299,7 @@ export class HorrorHud {
       if (notes.total > 0 && notes.found >= notes.total) lines.push(notes.final);
     }
     this.openLayer(lines, [{ text: '한 판 더', onPress: onAgain }, { text: '타이틀로', onPress: onDone }]);
+    this.backdrop();
   }
 
   destroy() {

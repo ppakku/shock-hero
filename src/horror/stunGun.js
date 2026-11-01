@@ -1,6 +1,7 @@
 // 공포 모드 1인칭 손과 전기충격기. 벽을 뚫고 보이지 않게 자기 장면을 따로 그려 맨 앞에 겹친다.
 import * as THREE from 'three';
 import { createGunFx, fireGunFx, chargeGunFx, stepGunFx, gunPush, jagged, ribbonPositions } from '../logic/horrorStunGun.js';
+import { artLoader, loadArt } from './art.js';
 
 const FOV = 70; // 게임 카메라와 같아야 번개가 괴물에 닿아 보인다
 const DEPTH = 0.5; // 손이 놓이는 카메라 앞 거리 (미터)
@@ -31,6 +32,23 @@ function glowTexture() {
   }
   const tex = new THREE.DataTexture(data, size, size);
   tex.magFilter = THREE.LinearFilter; // 크게 번쩍여도 모서리가 각지지 않게 한다
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// 찌를 때 소매 끝이 화면 안으로 들어와도 잘린 자리가 안 보이게, 오른쪽과 아래 끝을 서서히 지운다. fade: 그림 폭에 대한 비율
+function edgeFade(fade) {
+  const size = 32;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const a = Math.min(1, (1 - x / (size - 1)) / fade) * Math.min(1, y / (size - 1) / fade) * 255;
+      data.set([a, a, a, 255], (y * size + x) * 4);
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
   tex.needsUpdate = true;
   return tex;
 }
@@ -81,7 +99,7 @@ class Arc {
 }
 
 export class StunGun {
-  constructor({ aspect, touch, lowFx, k }) {
+  constructor({ aspect, touch, lowFx, k, loader = artLoader() }) {
     this.k = k;
     this.spotX = touch ? SPOT_X.touch : SPOT_X.pc;
     this.arcLimit = lowFx ? k.arcsLow : k.arcs;
@@ -100,8 +118,11 @@ export class StunGun {
     this.root = new THREE.Group();
     this.scene.add(this.root);
     this.mats = [];
+    this.model = new THREE.Group(); // 그림을 못 받았을 때 보이는 3D 손
+    this.root.add(this.model);
     this.buildBody();
     this.buildHand();
+    this.buildArt(loader);
     this.glowTex = glowTexture();
     this.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: 0x66c8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false }));
     this.halo.renderOrder = 1;
@@ -122,7 +143,7 @@ export class StunGun {
   box(w, h, d, mat, x, y, z) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     m.position.set(x, y, z);
-    this.root.add(m);
+    this.model.add(m);
     return m;
   }
 
@@ -130,7 +151,7 @@ export class StunGun {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8), mat);
     m.rotation.x = Math.PI / 2;
     m.position.set(x, y, z);
-    this.root.add(m);
+    this.model.add(m);
     return m;
   }
 
@@ -169,6 +190,37 @@ export class StunGun {
     arm.rotation.x = 0.55;
   }
 
+  // 손 그림 두 장을 다 받아야 3D 손과 바꾼다. 충전하는 순간 그림만 갈아 끼우니 움직임은 그대로다
+  buildArt(loader) {
+    const { hand } = this.k;
+    this.fadeTex = edgeFade(hand.fade);
+    this.artMat = new THREE.MeshBasicMaterial({ alphaMap: this.fadeTex, transparent: true, depthTest: false, depthWrite: false, fog: false });
+    this.art = new THREE.Mesh(new THREE.PlaneGeometry(hand.w, hand.h), this.artMat);
+    this.art.position.y = -hand.drop;
+    this.art.rotation.set(-hand.turn[0], -hand.turn[1], 0);
+    this.art.visible = false;
+    this.root.add(this.art);
+    const got = {};
+    const ready = (name) => (tex) => {
+      got[name] = tex;
+      if (got.cold && got.live) this.useArt(got);
+    };
+    this.artTex = [loadArt(loader, 'horror_hand_cold.webp', ready('cold')), loadArt(loader, 'horror_hand_live.webp', ready('live'))];
+  }
+
+  useArt(tex) {
+    const { hand } = this.k;
+    this.handArt = tex;
+    this.artWaiting = true;
+    this.model.visible = false;
+    this.art.visible = true;
+    const spot = ([u, v]) => new THREE.Vector3((u - 0.5) * hand.w, (0.5 - v) * hand.h, 0).applyEuler(this.art.rotation).add(this.art.position);
+    this.tipA.position.copy(spot(hand.tips[0]));
+    this.tipB.position.copy(spot(hand.tips[1]));
+    this.paint();
+    this.artMat.needsUpdate = true;
+  }
+
   resize(aspect) {
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
@@ -194,6 +246,7 @@ export class StunGun {
     this.bodyMat.color.setHex(look.body);
     this.stripMat.color.setHex(look.strip);
     this.lampMat.color.setHex(look.lamp);
+    if (this.handArt) this.artMat.map = this.charged ? this.handArt.live : this.handArt.cold;
   }
 
   fire(result) {
@@ -212,6 +265,7 @@ export class StunGun {
     this.time += dt;
     this.ambient.intensity = lit ? 1 : 0.55; // 손전등을 꺼도 손은 보여야 한다
     this.sun.intensity = lit ? 2 : 0.5;
+    this.artMat.color.setScalar(lit ? 1 : this.k.hand.dark);
     if (walking) this.bob = Math.sin(this.time * BOB_SPEED) * BOB;
     const push = gunPush(this.fx, this.k) * PUSH_LEN;
     this.root.position.set(this.home.x - push * 0.3, this.home.y + this.bob + push * 0.25, this.home.z - push);
@@ -267,6 +321,11 @@ export class StunGun {
 
   // 게임 화면을 그린 다음에 부른다
   render(renderer) {
+    if (this.artWaiting) { // 첫 충전 때 멈칫하지 않게 두 장 다 미리 올린다
+      this.artWaiting = false;
+      renderer.initTexture(this.handArt.cold);
+      renderer.initTexture(this.handArt.live);
+    }
     renderer.autoClear = false;
     renderer.clearDepth();
     renderer.render(this.scene, this.camera);
@@ -279,5 +338,7 @@ export class StunGun {
       o.material?.dispose();
     });
     this.glowTex.dispose();
+    this.fadeTex.dispose();
+    this.artTex.forEach((t) => t?.dispose());
   }
 }

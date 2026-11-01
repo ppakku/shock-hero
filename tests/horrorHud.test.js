@@ -149,3 +149,39 @@ describe('쪽지 화면', () => {
     for (const d of ['pc', 'tablet', 'phone']) expect(controlLines(d).join(' ')).toContain('쪽지');
   });
 });
+
+describe('안내 화면 그림', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const hudFor = (place) => {
+    fakeHud();
+    return new HorrorHud(fakeEl(), '조심', place);
+  };
+
+  it('쪽지는 종이 그림을 다 받기 전에는 원래 어두운 상자로 뜬다', () => {
+    let img;
+    vi.stubGlobal('Image', class { constructor() { img = this; } });
+    const hud = hudFor({});
+    hud.showNote(['글']);
+    expect(hud.noteEl.style.cssText).not.toContain('horror_note_paper');
+    img.onload();
+    hud.showNote(['글']);
+    expect(hud.noteEl.style.cssText).toContain('horror_note_paper');
+    hud.closeNote();
+  });
+
+  it('시작 화면에 맵 그림과 괴물 얼굴을 놓고, 얼굴을 못 받으면 없앤다', () => {
+    const hud = hudFor({ mapId: 'sewer', monsterId: 'maw' });
+    hud.showIntro('pc', ROUND, () => {}, () => {});
+    expect(hud.layer.style.backgroundImage).toContain('horror_intro_sewer.jpg');
+    const face = hud.layer.kids.at(-1);
+    expect(face.src).toContain('horror_face_maw.webp');
+    face.onerror();
+    expect(face.gone).toBe(true);
+  });
+
+  it('휴대폰은 얼굴을 놓지 않는다', () => {
+    const hud = hudFor({ mapId: 'sewer', monsterId: 'maw' });
+    hud.showIntro('phone', ROUND, () => {}, () => {});
+    expect(hud.layer.kids.at(-1).src).toBeUndefined();
+  });
+});
