@@ -843,6 +843,7 @@ def play_no_art(pw):
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     pg = b.new_page(viewport={'width': 640, 'height': 360})
     pg.route('**/art/horror_wall.jpg', lambda r: r.abort())
+    pg.route('**/art/horror_door_factory_*.jpg', lambda r: r.abort())  # 문은 자기 그림을 먼저 쓰므로 함께 막아야 벽 그림 대비를 본다
     open_horror(pg)
     time.sleep(1)
     door = pg.evaluate("window.__horror.run.doors[0]")
