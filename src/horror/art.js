@@ -1,5 +1,6 @@
 // 공포 모드 그림 불러오기. 받기 전이나 못 받았을 때는 부르는 쪽이 지금 모습을 그대로 둔다.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // 그림을 받을 수 없는 곳(시험)에서는 null 을 돌려준다
 export const artLoader = () => (globalThis.document ? new THREE.TextureLoader() : null);
@@ -31,4 +32,16 @@ export function bandBox(band) {
   const uv = geo.getAttribute('uv');
   for (let i = 0; i < 16; i++) uv.setY(i, 1 - band + uv.getY(i) * band);
   return geo;
+}
+
+// 상판과 다리처럼 떨어진 조각들을 합친 크기 1 모양. 조각마다 그림의 한 구역을 입힌다. 재질 하나로 그려서 그리기 횟수가 늘지 않는다
+// parts: [{ x, y, z, u, v }]. 전부 [처음, 끝] 이고 0~1 비율이다. y 와 v 는 아래가 0 이다
+export function piecesBox(parts) {
+  return mergeGeometries(parts.map(({ x, y, z, u, v }) => {
+    const geo = new THREE.BoxGeometry(x[1] - x[0], y[1] - y[0], z[1] - z[0]);
+    geo.translate((x[0] + x[1]) / 2 - 0.5, (y[0] + y[1]) / 2 - 0.5, (z[0] + z[1]) / 2 - 0.5);
+    const uv = geo.getAttribute('uv');
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, u[0] + uv.getX(i) * (u[1] - u[0]), v[0] + uv.getY(i) * (v[1] - v[0]));
+    return geo;
+  }));
 }

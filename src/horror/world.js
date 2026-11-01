@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { CELL, chunksInSight } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
-import { artLoader, loadArt, faceBox, bandBox } from './art.js';
+import { artLoader, loadArt, faceBox, bandBox, piecesBox } from './art.js';
 
 const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
@@ -106,7 +106,7 @@ function addDecor(scene, map, k, mats, decor, tiled) {
   if (low) {
     const lowMat = lambert(low.color);
     tiled(`${low.art}.jpg`, 1, 1, (tex) => paintPlain(lowMat, tex, low.tint));
-    const lows = new THREE.InstancedMesh(bandBox(low.band), lowMat, spots.lows.length);
+    const lows = new THREE.InstancedMesh(piecesBox(low.parts), lowMat, spots.lows.length);
     spots.lows.forEach((f, i) => setOnWall(lows, i, f, low.w, low.h, low.d, low.h / 2));
     meshes.push(lows);
   }

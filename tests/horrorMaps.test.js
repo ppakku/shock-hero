@@ -8,6 +8,7 @@ import { factoryMap, factoryTheme } from '../src/horror/maps/factory.js';
 import { sewerMap, sewerTheme } from '../src/horror/maps/sewer.js';
 import { schoolMap, schoolTheme } from '../src/horror/maps/school.js';
 import { stationMap, stationTheme } from '../src/horror/maps/station.js';
+import { piecesBox } from '../src/horror/art.js';
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
@@ -303,6 +304,15 @@ describe('테마', () => {
       expect(theme.decor.machine.tints.length).toBeGreaterThan(0);
       expect(theme.decor.pipe.ys.length).toBeGreaterThan(0);
       if (theme.doorArt) expect(theme[theme.doorArt].art).toMatch(/^horror_/);
+    }
+  });
+
+  it('책상과 긴 의자는 다리 사이가 비어 있고 한 모양으로 합쳐진다', () => {
+    for (const { low } of [schoolTheme.decor, stationTheme.decor]) {
+      const onFloor = low.parts.filter((p) => p.y[0] === 0);
+      expect(onFloor.length).toBeGreaterThanOrEqual(3);
+      for (const leg of onFloor) expect(leg.x[1] - leg.x[0]).toBeLessThan(0.05);
+      expect(piecesBox(low.parts).getAttribute('position').count).toBe(low.parts.length * 24);
     }
   });
 
