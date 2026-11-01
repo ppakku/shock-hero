@@ -77,7 +77,7 @@ function playGame(seed, options, maxSeconds = 900) {
         }
       }
     }
-    if (inp.punch && useShock(run) && Math.hypot(g.stalker.x - g.p.x, g.stalker.y - g.p.y) <= k.shockRange) stunStalker(g.stalker, k);
+    if (inp.punch && useShock(run) && Math.hypot(g.stalker.x - g.p.x, g.stalker.y - g.p.y) <= k.shockRange && lineOfSight(map, g.p, g.stalker)) stunStalker(g.stalker, k);
   }
   return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length };
 }
@@ -139,7 +139,7 @@ describe('봇이 끝까지 한 판을 한다', () => {
   it('다시 시작하자마자 또 잡히지 않는다', () => {
     // 세이노 쪽으로 곧장 달려도 8초는 걸린다. 가만히 있으면 순찰 속도로 15칸을 와야 한다
     expect(summary(seeds.map((seed) => playGame(seed, null))).minGap).toBeGreaterThanOrEqual(8);
-    const map = factoryMap;
+    const map = createRun(factoryMap, k, seeded(1)).level; // 게임처럼 지금 갈 수 있는 순찰 지점만 쓴다
     const s = createStalker(map);
     const p = center(map.start);
     Object.assign(s, { x: p.x + 0.3, y: p.y, mode: 'chase', stunT: 0 });

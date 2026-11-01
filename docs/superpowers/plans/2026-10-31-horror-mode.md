@@ -2752,6 +2752,6 @@ main 을 base 로 PR 을 만들고 머지한다. 사용자에게 남기는 확�
 - 쪽지는 `nearestUse` 의 마지막 인자로 넘겨서 다른 것과 거리로 겨룬다. 시험 봇은 이 인자를 주지 않으므로 쪽지를 모르고 시뮬레이션 결과도 달라지지 않는다.
 - E 는 `HorrorInput` 에서만 읽고, `HorrorHud` 는 Enter 만 듣는다. `playFrame` 은 `closeNote()` 가 true 면 `doUse` 를 부르지 않는다.
 - `showNote` 상자는 `pointer-events: none`, 닫기 버튼만 받는다.
-- 추격 시작, 잡힘, 일시정지, 탈출에서 `closeNote(false)` 를 부른다.
+- 추격 시작, 잡힘, 일시정지, 탈출에서 `closeNote()` 를 부른다. 일시정지는 글을 기억했다가 `resumePlay` 에서 다시 펼치고, 나머지는 `notes.read` 로 일시정지 화면에서 다시 본다.
 
 브라우저 확인은 `tools/run_horror.py` 의 기본 실행과 `--touch`, `--creature`, `--phone`, `--stalk` 이다.

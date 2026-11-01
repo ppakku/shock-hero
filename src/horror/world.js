@@ -207,6 +207,13 @@ export function buildWorld(scene, map, k, mats = {}) {
     addFuses,
     addKeys,
     addNotes,
+    // 벽 그림을 못 받으면 셔터도 그림을 버린다. 안 그러면 까맣게 나와서 문 색을 알 수 없다
+    dropDoorArt() {
+      for (const d of doors) {
+        d.mesh.material.map = null;
+        d.mesh.material.needsUpdate = true;
+      }
+    },
     counts,
     // 문을 열면 눈길이 달라지니 계산해 둔 구역도 버린다
     openDoor(i) {

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { parseMap, blocked, cellOf, center, frontOf, findPath, lineOfSight, reachable, canSeeBody, withOpen, chunksInSight } from '../src/logic/horrorGrid.js';
+import { createRun } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
+import { balance } from '../src/config/balance.js';
 
 const small = parseMap([
   '#######',
@@ -157,9 +159,10 @@ describe('공장 맵', () => {
 
   it('돌아올 곳은 잠긴 날개 밖이고 세이노를 멀리 보낼 자리가 있다', () => {
     const base = reachable(factoryMap, factoryMap.start);
+    const { patrol } = createRun(factoryMap, balance.horror, () => 0.3).level; // 판이 시작할 때의 순찰 지점. 게임이 쓰는 목록이다
     for (const c of m.returns) {
       expect(base.has(`${c.cx},${c.cy}`)).toBe(true);
-      const far = Math.max(...m.patrol.map((r) => Math.hypot(r.cx - c.cx, r.cy - c.cy)));
+      const far = Math.max(...patrol.map((r) => Math.hypot(r.cx - c.cx, r.cy - c.cy)));
       expect(far).toBeGreaterThanOrEqual(15);
     }
   });
@@ -204,8 +207,9 @@ describe('눈에 닿는 구역', () => {
     const front = { cx: before.cx, cy: before.cy + 1 };
     const shut = sightOf(factoryMap, front);
     const open = sightOf(withOpen(factoryMap, [0]), front);
-    expect(open.has(chunkOf(factoryMap, { cx: before.cx, cy: before.cy - 3 }))).toBe(true);
-    expect(open.size).toBeGreaterThanOrEqual(shut.size);
+    const wing = chunkOf(factoryMap, { cx: before.cx, cy: before.cy - 7 }); // 문 구역 바로 위, 날개 안쪽 구역
+    expect(shut.has(wing)).toBe(false);
+    expect(open.has(wing)).toBe(true);
   });
 });
 

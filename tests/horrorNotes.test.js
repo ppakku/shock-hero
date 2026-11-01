@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createNotes, takeNote, noteNear, allFound, NOTE_TOTAL } from '../src/logic/horrorNotes.js';
+import { createNotes, takeNote, NOTE_TOTAL } from '../src/logic/horrorNotes.js';
 import { NOTES, FINAL_LINE } from '../src/horror/story.js';
 
 const spots = Array.from({ length: 12 }, (_, i) => ({ x: i + 0.5, y: 2.5 }));
@@ -43,24 +43,18 @@ describe('쪽지 위치와 줍기', () => {
     expect(takeNote(s, -1)).toBe(-1);
     expect(takeNote(s, 99)).toBe(-1);
   });
-  it('8개를 다 주워야 allFound 이고 마지막 번호는 7이다', () => {
+  it('마지막 번호는 7이다', () => {
     const s = createNotes(spots, seeded(5));
     let last = -1;
-    for (let i = 0; i < s.total; i++) {
-      expect(allFound(s)).toBe(false);
-      last = takeNote(s, i);
-    }
+    for (let i = 0; i < s.total; i++) last = takeNote(s, i);
     expect(last).toBe(NOTE_TOTAL - 1);
-    expect(allFound(s)).toBe(true);
   });
-  it('가까운 쪽지만 찾고, 주운 것은 건너뛴다', () => {
-    const s = createNotes(spots, seeded(2));
-    const p = s.spots[4];
-    expect(noteNear(s, p.x + 0.3, p.y, 1.2)).toBe(4);
-    takeNote(s, 4);
-    expect(noteNear(s, p.x, p.y, 0.5)).toBe(-1);
-  });
-  it('자리가 없으면 allFound 가 아니다', () => {
-    expect(allFound(createNotes([], Math.random))).toBe(false);
+  it('읽은 쪽지는 찾은 순서대로 남고, 같은 쪽지는 두 번 남지 않는다', () => {
+    const s = createNotes(spots, seeded(4));
+    expect(s.read).toEqual([]);
+    takeNote(s, 3);
+    takeNote(s, 3);
+    takeNote(s, 1);
+    expect(s.read).toEqual([0, 1]);
   });
 });

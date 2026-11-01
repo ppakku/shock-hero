@@ -281,7 +281,7 @@ def stand_at_note(pg, i, off=0):
 def note_checks(pg):
     check('note: all spots placed', pg.evaluate('window.__horror.notes.total') == 8 and all(pg.evaluate('window.__horror.notes.spots.map((s) => Number.isFinite(s.x) && Number.isFinite(s.y))')))
     check('note: status starts at 0', '쪽지 0/8' in note_state(pg)['status'], note_state(pg))
-    # 쪽지 자리는 판마다 달라서, 벽이 아닌 옆 칸에 서서 쪽지를 내려다본다
+    # 쪽지 자리 번호는 판마다 섞여서 어느 칸이 나올지 모른다. 벽이 아닌 옆 칸에 서서 내려다본다
     pg.evaluate("""() => {
       const g = window.__horror, s = g.notes.spots[0];
       const [dx, dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([x, y]) => g.map.rows[Math.floor(s.y) + y][Math.floor(s.x) + x] === '.');
@@ -353,8 +353,15 @@ def note_checks(pg):
     pg.keyboard.press('Escape')
     time.sleep(0.4)
     check('note: pause closes it', game(pg)['state'] == 'paused' and not note_state(pg)['open'], note_state(pg))
+    pg.screenshot(path=f'{OUT}/pause_with_notes.png')
+    read_notes_keyboard(pg)
     pg.click('#horror button:has-text("계속하기")')
     time.sleep(0.3)
+    held = note_state(pg)
+    check('note: resume shows the same note again', held['open'] and held['found'] == 4 and pg.evaluate("window.__horror.hud.noteEl.textContent.includes(window.__horror.hud.noteLines[0])"), held)
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    check('note: reopened note closes with E', not note_state(pg)['open'] and note_state(pg)['hidden'] is None, note_state(pg))
     stand_at_note(pg, 4)
     pg.keyboard.press('e')
     time.sleep(0.3)
@@ -362,10 +369,12 @@ def note_checks(pg):
     pg.evaluate(FAKE_LOCK)
     pg.evaluate('window.__horror.getCaught()')
     check('note: caught closes it', not note_state(pg)['open'] and not pg.evaluate("document.querySelector('#horror button')"), note_state(pg))
+    check('note: caught note can be read later', pg.evaluate('window.__horror.notes.read.length') == 5)
     pg.keyboard.press('e')  # 잡히는 장면의 E 는 아무 일도 없다
     pg.wait_for_function("window.__horror.state === 'play'", timeout=20000)
     time.sleep(0.3)
     check('note: play goes on after the catch', not note_state(pg)['open'] and game(pg)['state'] == 'play', game(pg))
+    check('note: says where to read it again', '일시정지' in pg.evaluate('window.__horror.hud.message.textContent'), pg.evaluate('window.__horror.hud.message.textContent'))
     pg.evaluate("delete document.pointerLockElement")
     pg.evaluate(PARK_STALKER)
     stand_at_note(pg, 5)
@@ -373,7 +382,38 @@ def note_checks(pg):
     time.sleep(0.3)
     pg.evaluate("window.__horror.onStalkerEvents(['chase'])")
     check('note: a chase clears the view', not note_state(pg)['open'], note_state(pg))
+    check('note: chase says where to read it again', '일시정지' in pg.evaluate('window.__horror.hud.message.textContent'), pg.evaluate('window.__horror.hud.message.textContent'))
     time.sleep(0.2)
+    # 쫓기는 동안에는 쪽지를 고르지 않는다
+    stand_at_note(pg, 6)
+    use = pg.evaluate("""() => {
+      const g = window.__horror, was = g.stalker.mode, before = g.nearestUse().kind;
+      g.stalker.mode = 'chase';
+      const during = g.nearestUse()?.kind ?? null;
+      g.stalker.mode = was;
+      return { before, during };
+    }""")
+    check('note: not offered during a chase', use['before'] == 'note' and use['during'] != 'note', use)
+
+
+# 키보드만으로 읽은 쪽지를 넘겨 보고 일시정지로 돌아온다
+def read_notes_keyboard(pg):
+    layer = lambda: pg.inner_text('#horror')
+    check('read notes: button on the pause layer', '읽은 쪽지' in layer())
+    pg.keyboard.press('Tab')  # 계속하기 다음 버튼
+    pg.keyboard.press('Enter')
+    time.sleep(0.2)
+    check('read notes: Enter opens the latest', '읽은 쪽지 4/4' in layer(), layer()[:80])
+    pg.screenshot(path=f'{OUT}/read_notes.png')
+    pg.keyboard.press('Enter')  # 처음 초점은 이전 쪽지
+    time.sleep(0.2)
+    check('read notes: previous note', '읽은 쪽지 3/4' in layer(), layer()[:80])
+    pg.keyboard.press('Tab')
+    pg.keyboard.press('Tab')
+    pg.keyboard.press('Enter')
+    time.sleep(0.2)
+    check('read notes: back to pause', '계속하기' in layer() and '돌아가기' not in layer(), layer()[:80])
+    check('read notes: still paused', game(pg)['state'] == 'paused')
 
 
 # 파란 문: 진짜 E 키로 열쇠를 줍고 열고 지나간다
@@ -439,6 +479,9 @@ def play_controls(pw):
     stand_at(pg, *front)
     pg.evaluate('window.__horror.yaw = 0')
     time.sleep(0.5)
+    # 문 앞 칸의 눈길은 이때 저장된다. 날개 안쪽 구역은 문이 열려야 그린다
+    wing_chunk = "window.__horror.scene.children.find((c) => c.userData.index === (Math.floor((window.__horror.run.doors[0].cy - 7) / 7) * Math.ceil(window.__horror.map.w / 7) + Math.floor(window.__horror.run.doors[0].cx / 7))).visible"
+    check('door: wing chunk hidden while shut', not pg.evaluate(wing_chunk))
     pg.screenshot(path=f'{OUT}/door_locked.png')
     check('door: needs key', '열쇠가 필요해' in game(pg)['prompt'], game(pg))
     pg.keyboard.press('e')
@@ -458,6 +501,7 @@ def play_controls(pw):
     time.sleep(1)
     pg.screenshot(path=f'{OUT}/door_open.png')
     check('door: E opens it', pg.evaluate('window.__horror.run.doors[0].open') and '열쇠 0' in game(pg)['status'], game(pg))
+    check('door: saved sight is dropped, wing chunk drawn from the same cell', pg.evaluate(wing_chunk))
     pg.evaluate("([x, y]) => { const g = window.__horror; g.readInput = () => ({ move: { x: 0, z: 1, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false }); }", list(front))
     time.sleep(2.5)
     pg.evaluate(IDLE_INPUT)
@@ -780,9 +824,27 @@ def play_lost(pw):
     b.close()
 
 
+# 벽 그림을 못 받으면 셔터도 색만 남는다. 색이 열쇠와 맞춰 보는 표시다
+def play_no_art(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 640, 'height': 360})
+    pg.route('**/art/horror_wall.jpg', lambda r: r.abort())
+    open_horror(pg)
+    time.sleep(1)
+    door = pg.evaluate("window.__horror.run.doors[0]")
+    stand_at(pg, door['cx'] + 0.5, door['cy'] + 1.5)
+    pg.evaluate("window.__horror.yaw = 0")
+    time.sleep(0.5)
+    pg.screenshot(path=f'{OUT}/door_no_art.png')
+    bare = pg.evaluate("window.__horror.scene.children.flatMap((c) => c.children).filter((m) => m.geometry?.parameters?.height === 3 && m.material?.emissiveIntensity === 0.12).map((m) => m.material.map === null)")
+    check('no wall art: shutters drop the broken picture', len(bare) == 2 and all(bare), bare)
+    b.close()
+
+
 def play_robust(pw):
     play_rewards(pw)
     play_lost(pw)
+    play_no_art(pw)
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     pg = b.new_page(viewport={'width': 640, 'height': 360})
     errs = []
@@ -1032,19 +1094,27 @@ def touch_notes(pg, t, w, h):
     print('note box', box)
     check(f'{label}: fits the screen', box['top'] >= 0 and box['bottom'] <= h and box['scroll'] <= box['height'] + 1 and box['btnBottom'] <= box['bottom'], box)
     longest = pg.evaluate("""async () => {
-      const { NOTES } = await import('/src/horror/story.js'), g = window.__horror, onClose = g.hud.noteClose, lines = [...g.hud.noteEl.children].slice(0, -2).map((e) => e.textContent), compact = g.device === 'phone';
-      let worst = 0, fits = true;
+      const { NOTES } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
+      let worst = 0, fits = true, hits = [];
       for (const n of NOTES) {
-        g.hud.showNote(n, null, compact);
+        g.hud.showNote(n, compact);
         const el = g.hud.noteEl, b = el.querySelector('button').getBoundingClientRect(), r = el.getBoundingClientRect();
         worst = Math.max(worst, r.height);
         fits = fits && b.bottom <= r.bottom && el.scrollHeight <= r.height + 1;
+        for (const btn of g.input.buttons) {
+          const o = btn.getBoundingClientRect();
+          if (o.left < r.right && r.left < o.right && o.top < r.bottom && r.top < o.bottom) hits.push(btn.textContent);
+        }
       }
-      g.hud.showNote(lines, onClose, compact);
-      return { worst, fits };
+      g.hud.showNote(NOTES[NOTES.length - 1], compact);
+      await new Promise((f) => setTimeout(f, 150));
+      return { worst, fits, hits: [...new Set(hits)], lines };
     }""")
     print('longest note', longest)
+    pg.screenshot(path=f'{OUT}/note_longest_{w}x{h}.png')
+    pg.evaluate("(lines) => window.__horror.hud.showNote(lines, window.__horror.device === 'phone')", longest['lines'])
     check(f'{label}: every story note fits', longest['fits'] and longest['worst'] <= h - 16, longest)
+    check(f'{label}: note clears every button', not longest['hits'], longest['hits'])
     mid_y = (box['top'] + box['bottom']) / 2
     # 왼쪽 손가락이 쪽지 위에 닿아도 걷는다
     x0 = max(box['left'] + 20, 40)
@@ -1086,6 +1156,17 @@ def touch_notes(pg, t, w, h):
     check(f'{label}: close button closes', not note_state(pg)['open'], note_state(pg))
     check(f'{label}: close button is not a stick', not stuck)
     time.sleep(0.2)
+    # 손가락으로 읽은 쪽지를 본다
+    tap(t, button_xy(pg, '멈춤'))
+    pg.screenshot(path=f'{OUT}/pause_{w}x{h}.png')
+    tap(t, button_xy(pg, '읽은 쪽지'))
+    check(f'{label}: read notes opens by touch', '읽은 쪽지 2/2' in pg.inner_text('#horror'), pg.inner_text('#horror')[:80])
+    pg.screenshot(path=f'{OUT}/read_notes_{w}x{h}.png')
+    tap(t, button_xy(pg, '이전 쪽지'))
+    check(f'{label}: previous note by touch', '읽은 쪽지 1/2' in pg.inner_text('#horror'))
+    tap(t, button_xy(pg, '돌아가기'))
+    tap(t, button_xy(pg, '계속하기'))
+    check(f'{label}: back to play', game(pg)['state'] == 'play', game(pg))
 
 
 def run_phone(pw):

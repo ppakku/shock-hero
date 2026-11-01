@@ -1,5 +1,5 @@
 // 공포 모드 한 판의 규칙과 기록 (화면과 상관없는 부분)
-import { reachable, center, withOpen } from './horrorGrid.js';
+import { reachable, withOpen } from './horrorGrid.js';
 
 export const KEY_NAMES = ['빨간', '파란']; // 잠긴 문과 열쇠의 색. map.locks 순서
 

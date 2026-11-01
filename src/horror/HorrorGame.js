@@ -24,7 +24,7 @@ const FPS_GAP = 0.5; // 이보다 긴 프레임은 화면이 가려졌던 틈이
 const LOST_TEXT = '화면이 잠깐 꺼졌어요. 돌아올 때까지 기다려 주세요';
 const BACK_TEXT = '화면이 돌아왔어요. 계속하기를 누르세요';
 const HIDE_LOOK = 0.6; // 사물함 안에서 고개를 돌릴 수 있는 각도 (라디안)
-// 잡히는 장면 (초): 얼굴이 달려든다, 화면 가득 찬 채 있다가 어두워진다, 시작 지점으로 돌아간다
+// 잡히는 장면 (초): 얼굴이 달려든다, 화면 가득 찬 채 있다가 어두워진다, 가까운 돌아올 곳으로 돌아간다
 const LUNGE_TIME = 0.16;
 const FADE_AT = 0.8;
 const BACK_AT = 1.5;
@@ -37,6 +37,7 @@ const SCARE_LINES = ['바로 뒤에서 숨소리가 들린 것 같다...', '어�
 const BLINK_STEP = 0.09; // 손전등이 켜졌다 꺼지는 간격 (초)
 const BLINK_COUNT = 7;
 const BLINK_DIM = 0.1; // 꺼진 순간에 남는 밝기 비율
+const NOTE_AGAIN = '쪽지는 일시정지 화면에서 다시 읽을 수 있어'; // 쪽지가 저절로 닫혔을 때 덧붙인다
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class HorrorGame {
@@ -169,6 +170,7 @@ export class HorrorGame {
           if (!reported) console.error('공포 모드 재질 그림을 못 받아 밋밋한 색으로 둡니다:', name);
           reported = true;
           mat.map = null;
+          if (name === 'wall') this.world?.dropDoorArt();
           mat.color.setHex(plain);
           mat.needsUpdate = true;
         },
@@ -339,14 +341,15 @@ export class HorrorGame {
   onStalkerEvents(events) {
     this.lastEvents = events;
     if (events.includes('chase')) {
-      this.hud.closeNote(false); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
-      this.hud.say(`${MONSTER_NAME}에게 들켰다! 도망쳐!`, 2);
+      const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
+      this.hud.say(`${MONSTER_NAME}에게 들켰다! 도망쳐!${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
     if (events.includes('caught') || events.includes('found')) this.getCaught();
   }
 
   nearestUse() {
-    return nearestUse(this.run, this.map, this.p, this.hidden, this.k, this.notes);
+    // 쫓기는 동안에는 쪽지를 고르지 않는다. 열자마자 앞을 가리고 숨기가 한 번 늦어진다
+    return nearestUse(this.run, this.map, this.p, this.hidden, this.k, this.stalker.mode === 'chase' ? undefined : this.notes);
   }
 
   doUse(t) {
@@ -384,7 +387,7 @@ export class HorrorGame {
     if (order < 0) return;
     this.noteMeshes[i].visible = false;
     this.audio?.play('fuse');
-    this.hud.showNote(NOTES[order], null, this.device === 'phone');
+    this.hud.showNote(NOTES[order], this.device === 'phone');
   }
 
   toggleLocker(i) {
@@ -425,7 +428,7 @@ export class HorrorGame {
     if (this.state !== 'play') return;
     this.state = 'caught';
     this.cancelBlink(); // 깜빡임이 잡히는 장면의 밝기를 덮어쓰지 않게 한다
-    this.hud.closeNote(false);
+    this.noteCut = this.hud.closeNote();
     caught(this.run);
     this.audio?.suspend();
     this.audio?.play('caught');
@@ -486,7 +489,7 @@ export class HorrorGame {
     this.audio?.resume();
     this.hud.fade(false);
     this.hud.setStatus(this.statusNow());
-    this.hud.say('안전한 곳으로 돌아왔다. 찾은 것은 그대로야.', 4);
+    this.hud.say(`안전한 곳으로 돌아왔다. 찾은 것은 그대로야.${this.noteCut ? ` ${NOTE_AGAIN}` : ''}`, 4);
     this.state = 'play';
     // 잡히는 동안 Esc 로 마우스가 풀렸거나 화면이 꺼졌으면 쫓기기 전에 멈춘다
     if (this.contextLost || (!this.touch && !this.input.locked())) this.pause();
@@ -506,7 +509,8 @@ export class HorrorGame {
     save.horror = recordEscape(save.horror, result.clean, today);
     saveStore.save(save);
     document.exitPointerLock?.();
-    this.hud.closeNote(false);
+    this.input.clearTouch();
+    this.hud.closeNote();
     this.hud.setPrompt('');
     this.hud.showEnd(escapeText(reward, result.clean), () => this.exit(), { found: this.notes.found, total: this.notes.total });
   }
@@ -515,11 +519,19 @@ export class HorrorGame {
     if (this.state !== 'play') return;
     this.state = 'paused';
     this.cancelBlink();
-    this.hud.closeNote(false);
+    this.noteAtPause = this.hud.noteLines; // 계속하기를 누르면 다시 펼친다
+    this.hud.closeNote();
     this.input.clearTouch();
     this.audio?.suspend();
     document.exitPointerLock?.();
-    this.hud.showPause(() => this.resumePlay(), () => this.exit());
+    this.openPause();
+  }
+
+  openPause() {
+    const read = this.notes.read.map((order) => NOTES[order]);
+    const phone = this.device === 'phone';
+    const onNotes = read.length ? () => this.hud.showReadNotes(read, () => this.openPause(), phone) : null;
+    this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone);
   }
 
   // 계속하기를 누른 순간에 부른다. iPad 는 밖에 나갔다 오면 소리를 멈춰 두므로 여기서 다시 깨운다
@@ -528,6 +540,8 @@ export class HorrorGame {
     sfx.unlock();
     this.hud.setNotice('');
     this.hud.hidePause();
+    if (this.noteAtPause) this.hud.showNote(this.noteAtPause, this.device === 'phone');
+    this.noteAtPause = null;
     this.audio?.resume();
     this.state = 'play';
     this.relock();

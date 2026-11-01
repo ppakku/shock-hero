@@ -18,6 +18,3 @@ export const FINAL_LINE = '쪽지를 다 모았어요. 세이노는 문 앞까�
 
 // 쪽지를 읽는 동안 세이노는 멈추지 않는다. 읽는 사람에게 알려 주는 작은 줄
 export const NOTE_DANGER_LINE = '읽는 동안에도 세이노는 움직이고 있어요';
-
-// 줍자마자 짧게 띄우는 알림. 몇 번째인지 숫자를 받는다
-export const noteFoundLine = (n, total) => `쪽지를 주웠다 (${n}/${total})`;

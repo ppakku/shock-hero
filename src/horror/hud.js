@@ -1,6 +1,7 @@
 // 공포 모드 글자, 안내 화면. 어두운 화면에서 잘 보이도록 3D 위에 HTML 로 올린다.
 const LAYER = 'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;text-align:center;background:rgba(0,0,0,.82);color:#eee;font:18px sans-serif;padding:12px;box-sizing:border-box;overflow:auto';
 const NOTE_BOX = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;width:min(520px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:hidden;pointer-events:none;box-sizing:border-box;padding:16px 20px;background:rgba(18,12,8,.93);color:#f0e6d0;border:1px solid #8a6a3a;border-radius:6px;font:20px/1.5 sans-serif;text-align:center';
+const NOTE_PHONE = 'left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { NOTE_DANGER_LINE, FINAL_LINE } from './story.js';
@@ -103,11 +104,12 @@ export class HorrorHud {
     return !!this.noteEl;
   }
 
-  showNote(lines, onClose, compact = false) {
-    this.closeNote(false);
+  showNote(lines, compact = false) {
+    this.closeNote();
+    this.noteLines = lines;
     const box = document.createElement('div');
-    // 휴대폰은 양옆 버튼을 가리지 않게 좁힌다
-    box.style.cssText = compact ? `${NOTE_BOX};width:min(420px,calc(100% - 190px));font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
+    // 휴대폰은 오른쪽 버튼을 가리지 않게 좁히고 버튼 왼쪽 공간의 가운데에 놓는다
+    box.style.cssText = compact ? `${NOTE_BOX};${NOTE_PHONE};font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
     for (const line of lines) {
       const p = document.createElement('div');
       p.textContent = line;
@@ -126,7 +128,6 @@ export class HorrorHud {
       this.closeNote();
     });
     box.appendChild(btn);
-    this.noteClose = onClose;
     this.noteEl = box;
     this.noteKey = (e) => {
       if (e.code === 'Enter' && !e.repeat) {
@@ -140,14 +141,12 @@ export class HorrorHud {
   }
 
   // 사용 키와 사용 버튼이 눌리면 Game 이 부른다. 열려 있었으면 true
-  closeNote(callback = true) {
+  closeNote() {
     if (!this.noteEl) return false;
     window.removeEventListener('keydown', this.noteKey);
     this.noteEl.remove();
     this.noteEl = null;
-    const cb = this.noteClose;
-    this.noteClose = null;
-    if (callback) cb?.();
+    this.noteLines = null;
     return true;
   }
 
@@ -230,8 +229,22 @@ export class HorrorHud {
     );
   }
 
-  showPause(onResume, onQuit) {
-    this.openLayer(['일시정지'], [{ text: '계속하기', onPress: onResume }, { text: '타이틀로', onPress: onQuit }]);
+  // onNotes: 읽은 쪽지가 있을 때만 준다
+  showPause(onResume, onQuit, onNotes, compact = false) {
+    const buttons = [{ text: '계속하기', onPress: onResume }];
+    if (onNotes) buttons.push({ text: '읽은 쪽지', onPress: onNotes });
+    buttons.push({ text: '타이틀로', onPress: onQuit });
+    this.openLayer(['일시정지'], buttons, compact);
+  }
+
+  // 읽은 쪽지를 한 장씩 보여 준다. notes: 줄 배열의 배열. 처음에는 가장 최근 쪽지를 보여 준다
+  showReadNotes(notes, onBack, compact = false, page = notes.length - 1) {
+    const go = (n) => () => this.showReadNotes(notes, onBack, compact, n);
+    const buttons = [];
+    if (page > 0) buttons.push({ text: '이전 쪽지', onPress: go(page - 1) });
+    if (page < notes.length - 1) buttons.push({ text: '다음 쪽지', onPress: go(page + 1) });
+    buttons.push({ text: '돌아가기', onPress: onBack });
+    this.openLayer([`읽은 쪽지 ${page + 1}/${notes.length}`, ...notes[page]], buttons, compact);
   }
 
   hidePause() {
@@ -250,7 +263,7 @@ export class HorrorHud {
 
   destroy() {
     clearTimeout(this.sayTimer);
-    this.closeNote(false);
+    this.closeNote();
     this.closeLayer();
     this.box.remove();
     this.slit.remove();
