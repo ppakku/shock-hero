@@ -32,6 +32,13 @@ export const stationMap = { ...parseMap([
   '########################################',
 ]), solidLockers: true }; // 보관함이 칸을 꽉 채워서 눈을 막는다
 
+// 앉는 판과 세 다리. 그 아래는 비어서 뒤의 벽과 바닥이 보인다. u, v 는 horror_bench 그림에서 그 부분의 자리
+const BENCH_LEG = { y: [0, 0.84], z: [0.2, 0.8], u: [0.47, 0.52], v: [0.1, 0.78] };
+const BENCH_PARTS = [
+  { x: [0, 1], y: [0.84, 1], z: [0, 1], u: [0, 1], v: [0.88, 1] },
+  ...[[0.07, 0.11], [0.48, 0.52], [0.89, 0.93]].map((x) => ({ ...BENCH_LEG, x })),
+];
+
 export const stationTheme = {
   doorSet: 'horror_door_station', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_station_wall', plain: 0x6a7068, repeat: 1, tint: 0x4f5561 },
@@ -49,7 +56,7 @@ export const stationTheme = {
     light: { w: 0.8, h: 0.26, d: 0.08, y: 2.5, art: 'horror_light_station' }, // 노란 역 등
     machine: { w: [2.4, 1.3], h: [1.1, 0.9], y: 1.05, depth: 0.07, tints: [0xb0a890, 0x8fa0b0, 0xc8b070, 0xa0a8a0] },
     pipe: { r: 0.05, off: 0.1, ys: [0.3, 0.42], color: 0x4a4a46, art: 'horror_pipe_station', repeat: 6, tint: 0xffffff },
-    low: { w: 1.6, h: 0.5, d: 0.5, color: 0x3a3028, art: 'horror_bench', band: 0.09, tint: 0xc0c0c0 }, // 벽에 붙은 긴 의자
+    low: { w: 1.6, h: 0.5, d: 0.5, color: 0x3a3028, art: 'horror_bench', parts: BENCH_PARTS, tint: 0xc0c0c0 }, // 벽에 붙은 긴 의자
     lintel: { h: 0.7 },
   },
 };

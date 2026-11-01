@@ -34,6 +34,14 @@ export const schoolMap = { ...parseMap([
   '############################L#####L#####',
 ]), solidLockers: true }; // 사물함이 칸을 꽉 채워서 눈을 막는다
 
+// 상판, 서랍, 네 다리. 그 아래는 비어서 뒤의 벽과 바닥이 보인다. u, v 는 horror_desk 그림에서 그 부분의 자리
+const DESK_LEG = { y: [0, 0.93], u: [0.058, 0.08], v: [0, 0.9] };
+const DESK_PARTS = [
+  { x: [0, 1], y: [0.93, 1], z: [0, 1], u: [0, 1], v: [0.965, 1] },
+  { x: [0.08, 0.92], y: [0.62, 0.93], z: [0.08, 0.92], u: [0.08, 0.92], v: [0.635, 0.89] },
+  ...[[0.05, 0.09], [0.91, 0.95]].flatMap((x) => [[0.06, 0.14], [0.86, 0.94]].map((z) => ({ ...DESK_LEG, x, z }))),
+];
+
 export const schoolTheme = {
   doorSet: 'horror_door_school', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_school_wall', plain: 0x6a7068, repeat: 1, tint: 0x565c68 }, // 달밤처럼 푸르게 누른다. 밝은 그림이라 더 밝으면 손전등에 하얗게 날아간다
@@ -51,7 +59,7 @@ export const schoolTheme = {
     light: { w: 0.8, h: 0.3, d: 0.08, y: 2.5, art: 'horror_light_school' }, // 초록 비상구 등
     machine: { w: [2.4, 1.3], h: [1.1, 0.9], y: 1.05, depth: 0.07, tints: [0x5f9a80, 0xc8a070, 0x5f9a80, 0xb8b4a0] }, // 칠판과 게시판
     pipe: { r: 0.05, off: 0.1, ys: [0.3, 0.42], color: 0x4a4a46, art: 'horror_pipe_school', repeat: 6, tint: 0x6c737c }, // 낮은 난방 관
-    low: { w: 1.1, h: 0.72, d: 0.5, color: 0x3e2e24, art: 'horror_desk', band: 0.03, tint: 0x8a8a8a }, // 벽으로 밀어 둔 책상
+    low: { w: 1.1, h: 0.72, d: 0.5, color: 0x3e2e24, art: 'horror_desk', parts: DESK_PARTS, tint: 0x8a8a8a }, // 벽으로 밀어 둔 책상
     lintel: { h: 0.7 }, // 문 위를 막아 교실 문처럼 보이게 한다
   },
 };
