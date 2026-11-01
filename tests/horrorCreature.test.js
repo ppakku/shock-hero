@@ -255,7 +255,7 @@ describe('createCreature', () => {
   it('gazer holds still while frozen, only the pupils follow the player', () => {
     const model = stand(build('gazer'), 'patrol', 40);
     const snap = () => [
-      model.root.rotation.x, model.root.rotation.z, model.root.position.y, model.neck.rotation.z, model.jaw.rotation.x,
+      model.root.rotation.x, model.root.rotation.z, model.root.position.y, model.neck.rotation.z, model.mouth,
       model.head.rotation.x, model.head.rotation.y, model.yaw, ...model.bodyMesh.geometry.attributes.position.array.slice(-60),
     ];
     const s = { x: 5, y: 5, heading: 0.7, mode: 'watch' };
@@ -271,7 +271,7 @@ describe('createCreature', () => {
     const rest = vi.spyOn(Math, 'random').mockReturnValue(0);
     const patrol = stand(build('gazer'), 'patrol', 90);
     const chase = stand(build('gazer'), 'chase', 90);
-    expect(chase.jaw.rotation.x).toBeGreaterThan(patrol.jaw.rotation.x + 0.1);
+    expect(chase.mouth).toBeGreaterThan(patrol.mouth + 0.1);
     expect(chase.root.rotation.x).toBeGreaterThan(patrol.root.rotation.x);
     expect(stand(build('gazer'), 'stunned', 90).glow).toBeLessThan(patrol.glow * 0.5);
     rest.mockRestore();

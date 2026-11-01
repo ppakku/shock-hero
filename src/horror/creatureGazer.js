@@ -1,182 +1,128 @@
-// 눈뜬이: 아이 그림(3487)을 따라 달걀처럼 긴 머리, 큰 고리 눈, 큰 입, 가는 목, 고깔 몸을 짠다. 팔다리는 없다. 앞은 +Z 다.
+// 눈뜬이: 아이 그림(3487)과 초상화를 따라 Gemini 가 그린 앞뒤 그림을 입힌다. 달걀처럼 긴 머리, 가는 목, 고깔 몸. 팔다리는 없다. 앞은 +Z 다.
 // 바라보는 동안에는 몸이 완전히 굳고 눈동자만 주인공을 따라온다.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL } from '../logic/horrorGrid.js';
 import { CreatureBase, EYE_GLOW, damp, lookYaw, wrapAngle } from './creatureBase.js';
-import { TAU, bone, clamp, lerp, sampleKeys, smooth, surface } from './creatureGeometry.js';
-import { disc, shellHead, strip, throat, toothRow } from './creatureShell.js';
+import { TAU, clamp, lerp, sampleKeys, surface } from './creatureGeometry.js';
+import { disc, shellHead, throat } from './creatureShell.js';
 
 const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 
-// 그림의 키는 2.7m. 머리가 키의 절반쯤을 차지한다
-const HEAD_H = 1.2;
-const CHIN_Y = 1.5; // 턱 끝 높이
-const PIVOT = 0.47; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 눈과 입이 함께 화면에 들어온다
-const HINGE = { y: 0.47, z: -0.08 };
-const LIP = { top: 0.5, bottom: 0.05 };
-const MOUTH_W = 0.97;
-const EYE = { x: 0.112, y: 0.895, rx: 0.076, ry: 0.102 };
-const NOSE_TIP = 0.565;
-const FACE_KEYS = [
-  [HEAD_H, 0.02, 0.02, -0.02],
-  [1.18, 0.09, 0.09, -0.02],
-  [1.12, 0.15, 0.15, -0.02],
-  [1.02, 0.187, 0.18, -0.02],
-  [0.9, 0.205, 0.19, -0.01],
-  [0.7, 0.205, 0.185, 0],
-  [0.5, 0.197, 0.175, 0],
-  [0.3, 0.16, 0.15, 0.005],
-  [0.12, 0.125, 0.12, 0.01],
-  [0.04, 0.09, 0.09, 0.01],
-  [0, 0.02, 0.02, 0.01],
+// 치수는 Gemini 그림의 윤곽에서 쟀다 (tools/make_gazer_art.py 가 찍어 준다). 키는 2.7m
+const HEAD_H = 1.05;
+const CHIN_Y = 1.65; // 턱 끝 높이
+const PIVOT = 0.3; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 눈과 입이 함께 화면에 들어온다
+const MOUTH = { y: 0.277, w: 0.56, x: 0.128, drop: 0.13 }; // 그림 속 까만 입안을 가르는 선의 높이, 입꼬리 각도와 반폭, 쫓을 때 내려가는 턱
+const EYE = { x: 0.14, y: 0.685, r: 0.056, iris: 0.034 };
+const NOSE = { y: 0.45, top: 0.71 };
+const HEAD_KEYS = [ // [높이, 반폭, 반두께, 앞뒤 치우침]
+  [HEAD_H, 0.02, 0.02, -0.03], [0.977, 0.184, 0.19, -0.03], [0.908, 0.238, 0.25, -0.03], [0.838, 0.265, 0.28, -0.03], [0.768, 0.275, 0.29, -0.03],
+  [0.698, 0.276, 0.285, -0.03], [0.628, 0.271, 0.275, -0.025], [0.559, 0.28, 0.265, -0.02], [0.489, 0.253, 0.24, -0.01], [0.419, 0.228, 0.215, 0],
+  [0.349, 0.212, 0.195, 0.01], [0.279, 0.202, 0.18, 0.02], [0.209, 0.187, 0.16, 0.03], [0.14, 0.157, 0.135, 0.04], [0.07, 0.127, 0.105, 0.045], [0, 0.03, 0.03, 0.05],
 ];
-// 목에서 바닥까지 넓어지는 고깔: [높이, 반폭, 반두께, 앞뒤 치우침]
+// 목에서 바닥까지 넓어지는 고깔: [높이, 반폭, 반두께]
+const BODY_TOP = 1.75;
 const BODY_KEYS = [
-  [1.57, 0.02, 0.02, 0],
-  [1.55, 0.082, 0.08, 0],
-  [1.46, 0.09, 0.088, 0],
-  [1.38, 0.115, 0.105, 0],
-  [1.28, 0.17, 0.135, 0],
-  [1.1, 0.26, 0.195, 0],
-  [0.8, 0.36, 0.27, 0],
-  [0.5, 0.42, 0.31, 0],
-  [0.2, 0.465, 0.34, 0],
-  [0, 0.48, 0.35, 0],
-];
-const FOLD = [-0.45, 0.72]; // 앞판 양옆의 긴 주름 각도
+  [BODY_TOP + 0.02, 0.02], [BODY_TOP, 0.1], [1.62, 0.125], [1.52, 0.17], [1.42, 0.27], [1.3, 0.31], [1.1, 0.34], [0.9, 0.37], [0.7, 0.4], [0.5, 0.43], [0.3, 0.47], [0.12, 0.52], [0, 0.55],
+].map(([y, hw]) => [y, hw, hw * 0.8, 0]);
+const FRONT_HEAD = 2 / 3; // 그림 폭 가운데 앞면이 차지하는 몫. 양쪽 끝이 뒷면이다
+const FRONT_BODY = 1 / 2;
+const BEND = 0.96; // 이 각도까지는 정면 그림 그대로, 그 뒤로는 옆구리로 곧게 잇는다 (옆에서 봐도 줄무늬로 늘어지지 않게)
 const HEM_Y = 0.55; // 이 아래 옷자락이 흔들린다
 
 const POSE = {
-  walk: { lean: 0.03, nod: 0.02, mouth: 0.2 },
-  chase: { lean: 0.17, nod: 0.2, mouth: 1 },
+  walk: { lean: 0.03, nod: 0.02, mouth: 0 },
+  chase: { lean: 0.17, nod: 0.12, mouth: 1 },
 };
 const POSE_KEYS = Object.keys(POSE.walk);
-const SKIN_COLOR = 0x4a4c42; // 그림이 없을 때 머리 색
-const ROBE_COLOR = 0x23272c; // 그림이 없을 때 몸 색
-const WHITE = new THREE.Color(0xdfe6c4);
-const RING = new THREE.Color(0x9fe0ac);
+const SKIN_COLOR = 0x6a6e5e; // 그림이 없을 때 머리 색
+const ROBE_COLOR = 0x3f4238; // 그림이 없을 때 몸 색
+const WHITE_COLOR = 0xdfe6c4; // 그림이 없을 때 흰자 색
+const RING_COLOR = 0x0a0a08; // 그림이 없을 때 눈동자 색
+const LIT = new THREE.Color(0xffffff);
+const PLAIN_WHITE = new THREE.Color(WHITE_COLOR);
+const PLAIN_RING = new THREE.Color(RING_COLOR);
 
-// 코, 눈두덩, 볼. 옆에서 봐도 얼굴이 보이게 한다
+const bent = (a) => (a < BEND ? Math.sin(a) : Math.sin(BEND) + Math.cos(BEND) * (a - BEND));
+const SIDE = bent(Math.PI / 2);
+
+// 각도 w 를 그림의 가로 자리로 바꾼다. 가운데가 앞면, 양쪽 끝이 뒷면이다
+function wrapU(w, front) {
+  const a = Math.abs(w);
+  const u = a <= Math.PI / 2 ? (front / 2) * bent(a) / SIDE : front / 2 + (0.5 - front / 2) * (1 - bent(Math.PI - a) / SIDE);
+  return 0.5 + Math.sign(w) * u;
+}
+
+const headUv = (p, t, w) => [wrapU(w, FRONT_HEAD), p.y / HEAD_H];
+const mouthLine = () => MOUTH.y;
+
+// 코, 눈두덩, 광대, 턱. 옆에서 봐도 얼굴 윤곽이 보이게 한다
 function relief(x, y) {
   const ax = Math.abs(x);
-  const noseUp = clamp((y - NOSE_TIP) / (EYE.y + 0.03 - NOSE_TIP), 0, 1);
-  const ridge = y > NOSE_TIP ? lerp(0.07, 0.03, noseUp) * bump(x, lerp(0.024, 0.016, noseUp)) * (1 - smooth(clamp((y - EYE.y) / 0.08, 0, 1))) : 0;
+  const up = clamp((y - NOSE.y) / (NOSE.top - NOSE.y), 0, 1);
+  const ridge = y > NOSE.y ? lerp(0.06, 0.02, up) * bump(x, lerp(0.05, 0.03, up)) * bump(Math.max(0, y - NOSE.top), 0.04) : 0;
   return ridge
-    + 0.075 * bump(x, 0.034) * bump(y - NOSE_TIP, 0.034)
-    + 0.022 * bump(ax - 0.036, 0.018) * bump(y - NOSE_TIP + 0.012, 0.022)
-    - 0.03 * bump((ax - EYE.x) / 0.11, 1) * bump((y - EYE.y) / 0.14, 1)
-    + 0.016 * bump(y - (EYE.y + 0.145), 0.03) * bump(ax - EYE.x, 0.1)
-    - 0.014 * bump(ax - 0.15, 0.05) * bump(y - 0.68, 0.09);
+    + 0.075 * bump(x, 0.06) * bump(y - NOSE.y, 0.05)
+    - 0.03 * bump((ax - EYE.x) / 0.1, 1) * bump((y - EYE.y) / 0.11, 1)
+    + 0.02 * bump(y - (EYE.y + 0.13), 0.04) * bump(ax - EYE.x, 0.13)
+    + 0.015 * bump(ax - 0.19, 0.05) * bump(y - 0.5, 0.07);
 }
 
-// 그림의 콧대 선과 콧구멍, 눈 밑 그늘을 점 밝기로 그린다
-function faceShade(x, y) {
-  const ax = Math.abs(x);
-  const beside = y > NOSE_TIP && y < EYE.y ? bump(ax - 0.03, 0.012) * 0.5 : 0;
-  const nostril = 0.6 * bump(ax - 0.03, 0.014) * bump(y - NOSE_TIP + 0.03, 0.014);
-  const socket = 0.4 * bump((ax - EYE.x) / 0.1, 1) * bump((y - EYE.y) / 0.135, 1);
-  return 1 - Math.min(0.8, beside + nostril + socket);
+// 아래턱을 따로 잘라 돌리지 않고 입 둘레만 늘린다. 입꼬리는 그대로라서 볼에 틈이 생기지 않는다
+function jawMorph(g) {
+  const pos = g.attributes.position;
+  const d = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const open = (1 - clamp(Math.abs(pos.getX(i)) / MOUTH.x, 0, 1) ** 2) ** 1.5 * clamp((pos.getZ(i) + 0.1) / 0.12, 0, 1);
+    d[i * 3 + 1] = -MOUTH.drop * open;
+    d[i * 3 + 2] = -0.3 * MOUTH.drop * open;
+  }
+  return d;
 }
 
-function edgeU(w) {
-  const a = Math.abs(w);
-  const edge = LIP.top - 0.018 * (a / MOUTH_W) ** 2;
-  return lerp(edge, HINGE.y, smooth(clamp((a - MOUTH_W * 0.86) / 0.22, 0, 1)));
-}
-
-function edgeL(w) {
-  return lerp(LIP.bottom, HINGE.y, clamp(Math.abs(w) / MOUTH_W, 0, 1) ** 2.4);
+function morphed(g, delta = new Float32Array(g.attributes.position.count * 3)) {
+  g.morphAttributes.position = [new THREE.BufferAttribute(delta, 3)];
+  g.morphTargetsRelative = true;
+  return g;
 }
 
 function bodyAt(y, w, out) {
   const [hw, hd, cz] = sampleKeys(BODY_KEYS, y);
-  const flare = clamp((1.28 - y) / 0.5, 0, 1); // 목에는 주름이 없다
-  const fold = 1 - flare * (0.06 * (bump(w - FOLD[0], 0.08) + bump(w - FOLD[1], 0.08)) + 0.035 * (bump(Math.abs(w) - 1.32, 0.09)) - 0.014 * Math.sin(w * 6 + y * 2.3));
+  const low = clamp((1 - y) / 0.8, 0, 1); // 그림의 긴 주름을 따라 옷자락이 물결친다
+  const fold = 1 + low * 0.03 * Math.sin(w * 7 + 0.6) + low * 0.016 * Math.sin(w * 13 + y * 3);
   return out.set(Math.sin(w) * hw * fold, y, Math.cos(w) * hd * fold + cz);
 }
 
-function bodyZ(x, y) {
-  const [hw, hd, cz] = sampleKeys(BODY_KEYS, y);
-  return Math.sqrt(Math.max(0, 1 - (x / hw) ** 2)) * hd + cz;
-}
-
-// 갈비뼈: 그림처럼 왼쪽(화면)은 길게 비스듬히, 오른쪽은 짧게 굽는다
-function ribs() {
-  const parts = [];
-  const lift = 0.008;
-  for (let i = 0; i < 7; i++) {
-    const y = lerp(1.14, 0.78, i / 6);
-    const len = lerp(0.19, 0.25, i / 6);
-    const line = [0, 1, 2, 3].map((n) => {
-      const u = n / 3;
-      const x = -0.02 - u * len;
-      const yy = y - u * 0.07 - 0.02 * Math.sin(u * Math.PI);
-      return [x, yy, bodyZ(x, yy) + lift];
-    });
-    for (let n = 0; n < 3; n++) parts.push(bone(line[n], line[n + 1], 0.0085, 0.0075, 1.5));
-  }
-  for (let i = 0; i < 7; i++) {
-    const y = lerp(1.13, 0.84, i / 6);
-    const line = [0, 1, 2].map((n) => {
-      const u = n / 2;
-      const x = 0.03 + u * 0.07;
-      const yy = y + 0.018 * Math.sin(u * Math.PI);
-      return [x, yy, bodyZ(x, yy) + lift];
-    });
-    for (let n = 0; n < 2; n++) parts.push(bone(line[n], line[n + 1], 0.0075, 0.0065, 1.5));
-  }
-  return parts;
-}
-
-// 앞자락을 세로로 가르는 들쭉날쭉한 틈
-function splitLine() {
-  const n = 16;
-  const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const u = i / n;
-    const y = lerp(0.78, 0, u);
-    const x = lerp(0.13, 0.07, smooth(clamp(u * 1.6, 0, 1))) + 0.13 * smooth(clamp((u - 0.62) / 0.38, 0, 1)) + (i % 2 ? 0.026 : -0.02) * (0.5 + u);
-    pts.push([x, y]);
-  }
-  return strip(pts, (u) => lerp(0.006, 0.042, u * u), (x, y) => bodyZ(x, y) + 0.007);
-}
-
 function bodyGeometry() {
-  const top = BODY_KEYS[0][0];
-  const panel = (w) => (w > FOLD[0] && w < FOLD[1] ? 1 : 0.6);
-  const robe = surface({
+  return surface({
     rows: 22,
-    segs: 36,
-    at: (t, w, out) => bodyAt(lerp(top, 0, t), w, out),
-    uv: (p, t, w) => [(w / Math.PI) * 2, p.y * 1.4],
-    shade: (p, t, w) => {
-      if (p.y > 1.3) return 0.9;
-      const f = 1 - 0.55 * (bump(w - FOLD[0], 0.06) + bump(w - FOLD[1], 0.06));
-      return panel(w) * f * lerp(0.55, 1, clamp(p.y / 0.6, 0, 1));
-    },
+    segs: 40,
+    at: (t, w, out) => bodyAt(lerp(BODY_KEYS[0][0], 0, t), w, out),
+    uv: (p, t, w) => [wrapU(w, FRONT_BODY), Math.min(1, p.y / BODY_TOP)],
+    shade: (p) => lerp(0.62, 1, clamp(p.y / 0.5, 0, 1)),
   });
-  return mergeGeometries([robe, ...ribs(), splitLine()]);
 }
 
+// 그림에서 뜬 흰자와 고리 눈동자. 왼쪽 눈은 거울처럼 뒤집어 쓴다
 function eyeGeometries() {
-  const head = EYE;
   const white = (frontZ) => [-1, 1].map((side) => {
     const g = disc({
-      rx: head.rx,
-      ry: head.ry,
-      rings: [[0, 1], [0.5, 1], [0.86, 0.95], [1, 0.4]],
-      depth: (x, y, r) => frontZ(side * head.x + x, head.y + y) + 0.016 * (1 - r * r) + 0.002,
+      rx: EYE.r,
+      ry: EYE.r,
+      rings: [[0, 1], [0.5, 1], [0.86, 0.96], [1, 0.45]],
+      uv: (p) => [0.5 + (side * 0.42 * p.x) / EYE.r, 0.5 + (0.42 * p.y) / EYE.r],
+      depth: (x, y, r) => frontZ(side * EYE.x + x, EYE.y + y) + 0.02 * (1 - r * r) + 0.004,
     });
-    g.translate(side * head.x, head.y, 0);
+    g.translate(side * EYE.x, EYE.y, 0);
     return g;
   });
-  // 고리 눈동자: 까만 고리, 빛나는 고리, 까만 가운데
   const ring = (frontZ, side) => disc({
-    rx: head.rx * 0.74,
-    ry: head.ry * 0.74,
-    rings: [[0, 0], [0.34, 0], [0.4, 0.9], [0.62, 0.9], [0.68, 0], [0.92, 0], [1, 0]],
-    depth: (x, y, r) => frontZ(side * head.x + x, head.y + y) - frontZ(side * head.x, head.y) + 0.016 * (1 - (r * 0.74) ** 2) + 0.014,
+    rx: EYE.iris,
+    ry: EYE.iris,
+    rings: [[0, 1], [0.5, 1], [1, 1]],
+    uv: (p) => [0.5 + (side * 0.5 * p.x) / EYE.iris, 0.5 + (0.5 * p.y) / EYE.iris],
+    depth: (x, y, r) => frontZ(side * EYE.x + x, EYE.y + y) - frontZ(side * EYE.x, EYE.y) + 0.02 * (1 - (r * EYE.iris / EYE.r) ** 2) + 0.012,
   });
   return { white, ring };
 }
@@ -184,8 +130,11 @@ function eyeGeometries() {
 export class GazerModel extends CreatureBase {
   constructor(scene, loader) {
     super(scene, loader);
-    const skin = this.paper('art/horror_gazer_skin.jpg', SKIN_COLOR);
-    const robe = this.paper('art/horror_gazer_robe.jpg', ROBE_COLOR);
+    const skin = this.paper('art/horror_gazer_head.jpg', SKIN_COLOR);
+    const robe = this.paper('art/horror_gazer_body.jpg', ROBE_COLOR);
+    const glow = (o) => new THREE.MeshBasicMaterial({ ...o, fog: false });
+    this.whiteMat = this.paper('art/horror_gazer_white.jpg', WHITE_COLOR, 0xffffff, glow); // 흰자는 어둠에서도 희미하게 뜬다
+    this.ringMat = this.paper('art/horror_gazer_iris.jpg', RING_COLOR, 0xffffff, glow);
 
     this.root = this.pivot(this.group);
     this.bodyMesh = this.add(this.root, bodyGeometry(), robe, true);
@@ -194,26 +143,10 @@ export class GazerModel extends CreatureBase {
     this.head.rotation.order = 'YXZ';
     const inner = this.pivot(this.head, 0, -PIVOT);
 
-    const shell = shellHead({ keys: FACE_KEYS, edgeU, edgeL, mouthW: MOUTH_W, relief, skin: faceShade, rows: 24, segs: 40 });
-    this.add(inner, mergeGeometries([shell.skull, throat(0.13, 0.28, -0.03)]), skin, true);
-    this.jaw = this.pivot(inner, 0, HINGE.y, HINGE.z);
-    const jaw = mergeGeometries([shell.jaw, throat(0.1, 0.14, -0.02)]); // 벌어진 입으로 목이 보이지 않게 막는다
-    jaw.translate(0, -HINGE.y, -HINGE.z);
-    this.add(this.jaw, jaw, skin, true);
+    const shell = shellHead({ keys: HEAD_KEYS, edgeU: mouthLine, edgeL: mouthLine, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 26, segs: 44 });
+    const jaw = morphed(shell.jaw, jawMorph(shell.jaw));
+    this.face = this.add(inner, mergeGeometries([morphed(shell.skull), jaw, morphed(throat(0.12, 0.3, -0.03))]), skin, true);
 
-    // 이빨: 위는 네모나게, 아래는 U 자로 뾰족하게 (그림 그대로)
-    this.teethMat = new THREE.MeshStandardMaterial({ color: 0x8a8670, roughness: 0.7, vertexColors: true });
-    const on = (edge) => (w, out) => shell.point(edge(w), w, 0.97, out);
-    const upper = toothRow({ count: 8, reach: MOUTH_W * 0.82, width: 0.024, wide: 1.1, base: on(edgeU), sign: -1, length: () => 0.1, inward: 0.03 });
-    upper.forEach((t, i) => upper[i] = squareTooth(t));
-    this.add(inner, mergeGeometries(upper), this.teethMat, false);
-    const lower = mergeGeometries(toothRow({ count: 7, reach: MOUTH_W * 0.7, width: 0.022, base: on(edgeL), sign: 1, length: (u) => lerp(0.12, 0.06, u), inward: 0.05 }));
-    lower.translate(0, -HINGE.y, -HINGE.z);
-    this.add(this.jaw, lower, this.teethMat, false);
-
-    // 눈: 흰자는 어둠에서도 희미하게 뜨고, 고리 눈동자는 따로 움직인다
-    this.whiteMat = new THREE.MeshBasicMaterial({ color: WHITE.clone(), vertexColors: true, fog: false });
-    this.ringMat = new THREE.MeshBasicMaterial({ color: RING.clone(), vertexColors: true, fog: false });
     const eyes = eyeGeometries();
     this.add(inner, mergeGeometries(eyes.white(shell.frontZ)), this.whiteMat, false).renderOrder = 1;
     this.pupils = [-1, 1].map((side) => {
@@ -226,7 +159,7 @@ export class GazerModel extends CreatureBase {
 
     this.setupHem();
     this.headHeight = CHIN_Y + 0.7;
-    this.faceNear = 0.8; // 잡히는 장면에서 머리 받침점까지 거리 (미터). 얼굴이 카메라에 파고들지 않는다
+    this.faceNear = 0.95; // 잡히는 장면에서 머리 받침점까지 거리 (미터). 얼굴이 카메라에 파고들지 않는다
     this.pose = { ...POSE.walk };
     this.phase = 0;
     this.gait = 0;
@@ -235,6 +168,7 @@ export class GazerModel extends CreatureBase {
     this.tilt = 0;
     this.tiltGoal = 0;
     this.gape = 0;
+    this.mouth = 0;
     this.driftT = 0;
     this.gazeX = 0;
     this.gazeY = 0;
@@ -286,14 +220,15 @@ export class GazerModel extends CreatureBase {
     if (this.driftT <= 0) {
       this.driftT = 0.7 + Math.random() * 0.8;
       this.tiltGoal = (Math.random() - 0.5) * 0.44;
-      this.gape = Math.random() * 0.28;
+      this.gape = Math.random() * 0.2;
     }
     this.tilt += (this.tiltGoal - this.tilt) * damp(9, dt);
     const near = 1 - clamp(Math.hypot(player.x - s.x, player.y - s.y) / LOOK_NEAR, 0, 1); // 가까울수록 입이 벌어진다
     this.root.rotation.set(p.lean, 0, 0.02 * this.gait * Math.sin(this.phase));
     this.root.position.y = 0.012 * this.gait * Math.sin(this.phase * 2);
     this.neck.rotation.z = this.tilt;
-    this.jaw.rotation.x = lerp(-0.08, 0.3, clamp(p.mouth + this.gape + near * 0.5, 0, 1));
+    this.mouth = clamp(p.mouth + this.gape + near * 0.5, 0, 1);
+    this.face.morphTargetInfluences[0] = this.mouth;
     if (this.group.visible) this.rippleHem();
   }
 
@@ -331,8 +266,8 @@ export class GazerModel extends CreatureBase {
     this.gazeY += (goalY - this.gazeY) * k;
     for (let i = 0; i < this.pupils.length; i++) {
       const p = this.pupils[i];
-      p.mesh.position.x = p.x + this.gazeX * EYE.rx * 0.22;
-      p.mesh.position.y = p.y + this.gazeY * EYE.ry * 0.22;
+      p.mesh.position.x = p.x + this.gazeX * GAZE;
+      p.mesh.position.y = p.y + this.gazeY * GAZE;
     }
   }
 
@@ -340,8 +275,8 @@ export class GazerModel extends CreatureBase {
     const goal = this.frozen ? 1 : EYE_GLOW[s.mode] ?? EYE_GLOW.patrol;
     this.glow += (goal - this.glow) * damp(s.mode === 'chase' || this.frozen ? 9 : 4, dt);
     const light = 0.3 + 0.7 * this.glow;
-    this.whiteMat.color.copy(WHITE).multiplyScalar(light);
-    this.ringMat.color.copy(RING).multiplyScalar(light);
+    this.whiteMat.color.copy(this.whiteMat.map ? LIT : PLAIN_WHITE).multiplyScalar(light);
+    this.ringMat.color.copy(this.ringMat.map ? LIT : PLAIN_RING).multiplyScalar(light);
     // 흥분할수록 눈동자가 바늘처럼 작아진다
     const size = lerp(1.1, 0.72, this.glow);
     if (size !== this.pupilScale) {
@@ -353,31 +288,4 @@ export class GazerModel extends CreatureBase {
 }
 
 const LOOK_NEAR = 6; // 이 칸 안에서 입이 점점 벌어진다
-
-// 뾰족한 뿔을 그림 속 네모난 이빨로 만든다: 끝을 뭉툭하게 자른다
-function squareTooth(g) {
-  const p = g.attributes.position;
-  let top = -Infinity;
-  let bottom = Infinity;
-  for (let i = 0; i < p.count; i++) {
-    top = Math.max(top, p.getY(i));
-    bottom = Math.min(bottom, p.getY(i));
-  }
-  const mid = (top + bottom) / 2;
-  let cx = 0;
-  let cz = 0;
-  let n = 0;
-  for (let i = 0; i < p.count; i++) {
-    if (p.getY(i) > mid) continue;
-    cx += p.getX(i);
-    cz += p.getZ(i);
-    n += 1;
-  }
-  cx /= n;
-  cz /= n;
-  for (let i = 0; i < p.count; i++) {
-    if (p.getY(i) > mid) continue;
-    p.setXYZ(i, lerp(cx, p.getX(i), 7), p.getY(i), lerp(cz, p.getZ(i), 7));
-  }
-  return g;
-}
+const GAZE = EYE.r - EYE.iris - 0.002; // 눈동자가 흰자 안에서 움직이는 거리
