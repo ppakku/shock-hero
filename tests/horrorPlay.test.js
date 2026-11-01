@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen } from '../src/logic/horrorGrid.js';
+import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, inPlayerView } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
+import { MAPS } from '../src/horror/content.js';
+import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
@@ -21,16 +23,16 @@ function seeded(seed) {
 }
 
 // HorrorGame.playFrame 과 같은 순서로 그림 없이 한 판을 돌린다. 봇은 진짜 bot_horror.js 다.
-function playGame(seed, options, maxSeconds = 900) {
+function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId = 'seino') {
   const rand = seeded(seed);
-  const run = createRun(factoryMap, k, rand);
+  const run = createRun(MAPS[mapId].map, k, rand);
   const map = run.level;
   const g = {
     map, run, k,
     p: center(map.start),
     yaw: 0,
     hidden: null,
-    stalker: createStalker(map),
+    stalker: createStalker(map, k, rand, monsterId),
     nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
   };
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
@@ -48,7 +50,8 @@ function playGame(seed, options, maxSeconds = 900) {
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
     const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
-    const events = tickStalker(g.stalker, { map, player, pressure: run.have / k.fuseCount }, k, DT, rand);
+    const seen = inPlayerView(g.p, g.yaw, g.stalker, map, k);
+    const events = tickStalker(g.stalker, { map, player, seen, pressure: run.have / k.fuseCount }, k, DT, rand);
     if (events.includes('caught') || events.includes('found')) {
       caught(run);
       catches.push(t);
@@ -71,6 +74,8 @@ function playGame(seed, options, maxSeconds = 900) {
           hideFrom = g.p;
           g.hidden = target.index;
           g.p = center(map.lockers[target.index]);
+          const f = center(frontOf(map, map.lockers[target.index]));
+          g.yaw = Math.atan2(-(f.x - g.p.x), -(f.y - g.p.y));
         } else {
           g.hidden = null;
           g.p = hideFrom;
@@ -146,5 +151,22 @@ describe('봇이 끝까지 한 판을 한다', () => {
     sendAway(s, map, p);
     expect(Math.hypot(s.x - p.x, s.y - p.y)).toBeGreaterThanOrEqual(15);
     expect(s.mode).toBe('patrol');
+  });
+});
+
+describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, monsterId])))('%s 맵의 %s', (mapId, monsterId) => {
+  const seeds = Array.from({ length: 40 }, (_, i) => i + 1);
+
+  it('조심하는 봇은 언제나 탈출하고 잡히는 일이 적다', () => {
+    const s = summary(seeds.map((seed) => playGame(seed, { careful: true }, 900, mapId, monsterId)));
+    console.log(mapId, monsterId, '조심하는 봇', s);
+    expect(s.won).toBe(seeds.length);
+    expect(s.meanCatches).toBeLessThan(4);
+  });
+
+  it('달리기만 하는 봇도 언제나 탈출한다', () => {
+    const s = summary(seeds.map((seed) => playGame(seed, null, 900, mapId, monsterId)));
+    console.log(mapId, monsterId, '달리기만 하는 봇', s);
+    expect(s.won).toBe(seeds.length);
   });
 });

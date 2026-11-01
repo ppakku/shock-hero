@@ -1,7 +1,7 @@
 // 공포 모드 3D 화면 전체 흐름
 import * as THREE from 'three';
 import { cfg } from '../config/index.js';
-import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable } from '../logic/horrorGrid.js';
+import { CELL, center, cellOf, frontOf, findPath, lineOfSight, canSeeBody, reachable, inPlayerView } from '../logic/horrorGrid.js';
 import { stepPlayer, nextPixelRatio, startRatio, noiseFor, createStamina, canRun, stepStamina } from '../logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../logic/horrorStalker.js';
 import { createRun, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, nearestUse } from '../logic/horrorRun.js';
@@ -113,7 +113,7 @@ export class HorrorGame {
     this.camera.add(this.flash, this.flash.target);
 
     this.world = buildWorld(this.scene, this.map, this.k, theme);
-    this.stalker = createStalker(this.map);
+    this.stalker = createStalker(this.map, this.k, Math.random, this.round.monsterId);
     this.model = new CreatureModel(this.scene);
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
@@ -251,7 +251,8 @@ export class HorrorGame {
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
-    this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
+    const seen = inPlayerView(this.p, this.yaw, this.stalker, this.map, this.k);
+    this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, seen, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
     this.cullCreature();
@@ -320,8 +321,10 @@ export class HorrorGame {
     this.lastEvents = events;
     if (events.includes('chase')) {
       const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
-      this.hud.say(`${this.monster.name}에게 들켰다! 도망쳐!${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
+      this.hud.say(`${this.named(this.monster.alarm)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
+    if (events.includes('slip')) this.hud.say(this.named('{name}가 사라졌다...'), 3);
+    if (events.includes('sniff')) this.hud.say(this.named('움직이지 마! {name}가 냄새를 맡고 있다'), 2);
     if (events.includes('caught') || events.includes('found')) this.getCaught();
   }
 
