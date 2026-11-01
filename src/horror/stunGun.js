@@ -205,7 +205,7 @@ export class StunGun {
       got[name] = tex;
       if (got.cold && got.live) this.useArt(got);
     };
-    this.artTex = [loadArt(loader, 'horror_hand_cold.png', ready('cold')), loadArt(loader, 'horror_hand_live.png', ready('live'))];
+    this.artTex = [loadArt(loader, 'horror_hand_cold.webp', ready('cold')), loadArt(loader, 'horror_hand_live.webp', ready('live'))];
   }
 
   useArt(tex) {

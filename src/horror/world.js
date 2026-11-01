@@ -291,10 +291,10 @@ export function buildWorld(scene, map, k, theme) {
     });
     return meshes;
   };
-  const addFuses = (fuses) => wear(fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040)), 'horror_fuse.png', k.art.fuse);
+  const addFuses = (fuses) => wear(fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040)), 'horror_fuse.webp', k.art.fuse);
   const addKeys = (keys) => {
     const meshes = keys.map((c) => pickup(c, new THREE.BoxGeometry(0.1, 0.34, 0.04), DOOR_COLORS[c.lock]));
-    LOCK_NAMES.forEach((name, lock) => wear(meshes.filter((_, i) => keys[i].lock === lock), `horror_key_${name}.png`, k.art.key));
+    LOCK_NAMES.forEach((name, lock) => wear(meshes.filter((_, i) => keys[i].lock === lock), `horror_key_${name}.webp`, k.art.key));
     return meshes;
   };
   // 쪽지는 바닥에 떨어진 종이 한 장이다. 어느 쪽에서 봐도 납작해지지 않는다.

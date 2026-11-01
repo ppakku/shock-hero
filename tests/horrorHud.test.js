@@ -174,7 +174,7 @@ describe('안내 화면 그림', () => {
     hud.showIntro('pc', ROUND, () => {}, () => {});
     expect(hud.layer.style.backgroundImage).toContain('horror_intro_sewer.jpg');
     const face = hud.layer.kids.at(-1);
-    expect(face.src).toContain('horror_face_maw.png');
+    expect(face.src).toContain('horror_face_maw.webp');
     face.onerror();
     expect(face.gone).toBe(true);
   });

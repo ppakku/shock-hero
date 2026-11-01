@@ -219,7 +219,7 @@ export class HorrorHud {
     face.alt = '';
     face.style.cssText = FACE;
     face.onerror = () => face.remove();
-    face.src = `art/horror_face_${this.place.monsterId}.png`;
+    face.src = `art/horror_face_${this.place.monsterId}.webp`;
     this.layer.appendChild(face);
   }
 

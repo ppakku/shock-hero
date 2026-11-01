@@ -146,8 +146,8 @@ describe('손 그림', () => {
     const calls = {};
     return { calls, load: (url, ok, prog, err) => { const t = new THREE.Texture(); calls[url] = { t, ok, err }; return t; } };
   };
-  const cold = 'art/horror_hand_cold.png';
-  const live = 'art/horror_hand_live.png';
+  const cold = 'art/horror_hand_cold.webp';
+  const live = 'art/horror_hand_live.webp';
 
   it('두 장을 다 받아야 3D 손과 바꾸고, 충전하면 그림이 바뀐다', () => {
     const loader = fakeLoader();
