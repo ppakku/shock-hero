@@ -118,6 +118,30 @@ const opaque = (map, cx, cy) => {
   return ch === undefined || ch === '#' || ch === 'G' || map.locked.has(cellKey(map, cx, cy));
 };
 
+// 주인공 눈에서 (x, y) 까지 벽이나 잠긴 문이 없는지. 주인공 눈에 그린 그대로 보이는 쪽을 따른다
+function clearView(map, a, x, y) {
+  const n = Math.max(1, Math.ceil(Math.hypot(x - a.x, y - a.y) / 0.1));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    if (opaque(map, Math.floor(a.x + (x - a.x) * t), Math.floor(a.y + (y - a.y) * t))) return false;
+  }
+  return true;
+}
+
+// 주인공이 괴물 쪽을 보고 있는지. 손전등과 상관없이 고개 방향과 가린 것만 본다.
+// 몸 일부만 보여도 친다. 눈으로 보고 있는데 움직이면 안 되기 때문이다
+export function inPlayerView(p, yaw, s, map, k) {
+  const dx = s.x - p.x;
+  const dy = s.y - p.y;
+  const d = Math.hypot(dx, dy);
+  if (d > k.viewCells) return false;
+  if (d > 0.001 && (-Math.sin(yaw) * dx - Math.cos(yaw) * dy) / d < Math.cos((k.viewFov / 2) * Math.PI / 180)) return false;
+  for (const [ox, oy] of BODY) {
+    if (clearView(map, p, s.x + ox, s.y + oy)) return true;
+  }
+  return false;
+}
+
 const VIEW_RAYS = 240; // 한 자리에서 쏘는 시선 수
 const VIEW_STEP = 0.25; // 시선을 따라가는 간격 (칸)
 const VIEW_FROM = [[0.5, 0.5], [0.05, 0.05], [0.95, 0.05], [0.05, 0.95], [0.95, 0.95]]; // 칸 안 어디에 서도 빠지지 않게 가운데와 네 구석에서 본다
