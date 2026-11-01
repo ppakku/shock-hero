@@ -10,8 +10,7 @@ export const MONSTER_NAME = '세이노';
 const INTRO = [
   '밤의 고철 공장을 조사하다가 문이 잠겼다.',
   '볼트와의 통신도 끊겼다.',
-  '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자.',
-  '잠긴 문은 같은 색 열쇠를 찾아야 열린다.',
+  '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자. 잠긴 문은 같은 색 열쇠로 연다.',
   '달리면 소리가 나고, 손전등 빛은 들킨다.',
   `${MONSTER_NAME}는 쓰러뜨릴 수 없다. 사물함에 숨어!`,
 ];
@@ -106,7 +105,8 @@ export class HorrorHud {
   showNote(lines, onClose, compact = false) {
     this.closeNote(false);
     const box = document.createElement('div');
-    box.style.cssText = compact ? `${NOTE_BOX};font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
+    // 휴대폰은 양옆 버튼을 가리지 않게 좁힌다
+    box.style.cssText = compact ? `${NOTE_BOX};width:min(420px,calc(100% - 190px));font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
     for (const line of lines) {
       const p = document.createElement('div');
       p.textContent = line;
