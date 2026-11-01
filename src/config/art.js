@@ -12,6 +12,10 @@ export const customArt = {
   // player: 'player.png', // 주인공 (오른쪽을 보는 모습으로 그려 주세요)
   // 주인공 동작 한 장에 20칸 (Gemini 그림, tools/make_hero_sheet.py, 칸 순서는 heroTextures.js 의 HERO_ART_POSES)
   heroart_hero: 'heroart_shock.webp',
+  heroart_gunner: 'heroart_gunner.webp',
+  heroart_giant: 'heroart_giant.webp',
+  heroart_ninja: 'heroart_ninja.webp',
+  heroart_mage: 'heroart_mage.webp',
   monster: { file: 'monster_green.png', cols: 4, rows: 2, frameRate: 8 }, // 초록 몬스터 (Gemini 그림, 8장 걷기, 오른쪽을 봄)
   monster_fast: { file: 'monster_red.png', cols: 4, rows: 2, frameRate: 14 }, // 빨강 날쌘돌이 (Gemini 그림, 8장 달리기, 오른쪽을 봄)
   monster_tank: { file: 'monster_blue.png', cols: 4, rows: 2, frameRate: 7 }, // 파랑 뚱보 (Gemini 그림, 8장 쿵쿵 걷기, 오른쪽을 봄)
@@ -131,6 +135,8 @@ export const customArt = {
   fx_frost_pool: 'fx_frost_pool.png', // 냉기 브레스가 얼린 바닥
   fx_frost_puff: 'fx_frost_puff.png', // 급강하 뒤에 남는 냉기 구름
   fx_slash: 'fx_slash.png', // 초승달 칼바람 (주인공 펀치 자국으로도 씀)
+  fx_hit: 'fx_hit.png', // 공격이 맞은 자리에 터지는 타격 그림
+  fx_charge_blast: 'fx_charge_blast.png', // 충전 펀치의 에너지 (오른쪽으로 뻗음)
   fx_star: 'fx_star.png', // 어지러울 때 도는 별 (Gemini 그림, 투명 배경)
   // 특별한 힘 아이콘 5개와 레벨 업 카드 아이콘 4개 (Gemini 그림, 80x80 정사각형)
   pw_speed: 'icon_pw_speed.png', // 번개 신발

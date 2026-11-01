@@ -9,8 +9,14 @@ import { parseMonsterSpot } from './monsters.js';
 
 // 처음에 받는 그림 (타이틀, 상점, 레벨 업 카드, HUD, 모든 스테이지에서 쓴다)
 export const BOOT_ART = [
+  'fx_hit',
+  'fx_charge_blast',
   'fx_slash',
   'heroart_hero',
+  'heroart_gunner',
+  'heroart_giant',
+  'heroart_ninja',
+  'heroart_mage',
   'robot',
   'heart',
   'flag',
