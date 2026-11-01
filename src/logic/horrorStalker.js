@@ -13,7 +13,7 @@ export function createStalker(map, k, rand, monsterId = 'seino') {
   return {
     monsterId, frozenT: 0, doorT: 0, rushT: 0, rushRestT: 0, ranT: 0, pauseT: 0, brushT: 0, wasHidden: false, lockedN: map.locked.size,
     x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
-    inWall: false, wallSlow: k.monsters[monsterId]?.wallSlow ?? 1,
+    inWall: false, wallSlow: 1,
     pressure: 0, graceT: 0, warnT: 0, calmT: 0, watchT: 0, ambushT: 0, ambushKind: null,
     heat: new Float32Array(map.w * map.h), heatW: map.w, heatT: 0, // 주인공이 걸어 다닌 자리. 저장하지 않는다
     weights: new Float32Array(map.patrol.length), recent: new Int16Array(8).fill(-1), recentAt: 0,
@@ -560,6 +560,7 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
     const inside = wallAt(map, Math.floor(s.x), Math.floor(s.y));
     if (inside && !s.inWall) events.push('wall');
     s.inWall = inside;
+    s.wallSlow = k.monsters.ward.wallSlow;
   }
   if (player.hidden === null && player.noise > 0) {
     trailCell.cx = Math.floor(player.x);
@@ -607,7 +608,7 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
       s.repathT = k.repathTime;
     }
     if (sees && sameCell(cellOf(s), cellOf(player))) closeIn(s, player, k.stalkerChase * dt);
-    else walk(s, k.monsters[s.monsterId]?.chase ?? k.stalkerChase, dt);
+    else walk(s, k.stalkerChase, dt);
     if (!sees) {
       s.lostT += dt;
       if (s.lostT >= k.loseTime) {

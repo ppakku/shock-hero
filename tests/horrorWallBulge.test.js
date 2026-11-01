@@ -25,14 +25,16 @@ const outward = (mesh) => {
 
 describe('벽 튀어나옴', () => {
   it('머리와 몸 자리가 가장 많이 튀어나오고 옆은 그대로다', () => {
-    expect(bodyShape(0, 2.25)).toBeCloseTo(1, 1);
-    expect(bodyShape(0, 1)).toBeGreaterThan(0.5);
-    expect(bodyShape(2.5, 1.5)).toBeLessThan(0.01);
+    expect(bodyShape(0, 2.1)).toBeCloseTo(1, 1);
+    expect(bodyShape(0, 1)).toBeCloseTo(1, 1);
+    expect(bodyShape(0.6, 0.2)).toBeGreaterThan(bodyShape(0.6, 1.4)); // 아래로 갈수록 넓다
+    expect(bodyShape(3, 1.5)).toBeLessThan(0.01);
   });
 
   it('표면 근처에서 세고, 깊거나 다 나오면 없다', () => {
     expect(pushAt(0.1)).toBeGreaterThan(0.8);
     expect(pushAt(5)).toBe(0);
+    expect(pushAt(2.8)).toBeGreaterThan(0.3); // 맞은편에서 들어와도 곧 보인다
     expect(pushAt(-1)).toBe(0);
   });
 

@@ -5,36 +5,53 @@ import { CELL, wallAt } from '../logic/horrorGrid.js';
 
 const WALL_H = 3;
 const POOL = 4; // 몸 곁의 벽 칸은 많아야 넷이다
-const SEG = 14; // 벽 한 면을 나누는 수
-const SEG_Y = 12;
+const SEG = 20; // 벽 한 면을 나누는 수
+const SEG_Y = 16;
 const PROUD = 0.02; // 덧씌운 상자가 벽보다 큰 만큼 (미터)
-const PUSH = 0.62; // 가장 많이 튀어나오는 길이 (미터)
+const PUSH = 1; // 가장 많이 튀어나오는 길이 (미터)
 const OUT = 0.5; // 몸이 벽 밖으로 이만큼 나오면 벽이 제자리로 돌아간다 (미터)
-const DEEP = 2.4; // 벽 속 이만큼 깊이 들어가면 겉으로 드러나지 않는다 (미터)
-const HEAD = { y: 2.25, ry: 0.62, r: 0.42 }; // 그림의 머리와 몸 크기로 튀어나온다 (미터)
-const BODY = { y: 1, ry: 1.25, r: 0.5 };
+const DEEP = 3.3; // 벽 속 이만큼 깊이 들어가면 겉으로 드러나지 않는다 (미터). 벽 한 칸보다 커서 들어가자마자 맞은편이 부푼다
+// 그림의 머리와 옷자락 몸 크기로 튀어나온다 (미터). 몸은 아래로 갈수록 넓다
+const HEAD = { y: 2.1, ry: 0.62, r: 0.5 };
+const BODY = { top: 1.65, topR: 0.34, bottomR: 0.8 };
 const JITTER = 0.022; // 벽이 떨리는 폭 (미터)
 const THROB = 0.14; // 튀어나온 곳이 꿈틀대는 비율
 const THROB_RATE = 24;
+const RIM_DARK = 0.88; // 윤곽을 따라 생기는 그늘의 세기
+const RIM_AT = 0.3; // 그늘이 가장 진한 자리 (0 은 벽, 1 은 꼭대기)
+const RIM_WIDTH = 0.26;
+const CROWN_LIGHT = 0.45; // 꼭대기가 밝아지는 세기
 
-const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-// 벽 면을 따라 잰 자리(t)와 높이(y)에서 몸 모양이 얼마나 미는지 (0~1)
+// 벽 면을 따라 잰 자리(t)와 높이(y)에서 몸 모양이 얼마나 미는지 (0~1). 꼭대기는 판판하고 가장자리가 가파르다
 export function bodyShape(t, y) {
-  return Math.max(bump(t, HEAD.r) * bump(y - HEAD.y, HEAD.ry / 1.6), 0.8 * bump(t, BODY.r) * bump(y - BODY.y, BODY.ry));
+  const head = (t / HEAD.r) ** 2 + ((y - HEAD.y) / HEAD.ry) ** 2;
+  const low = clamp01(y / BODY.top);
+  const across = (t / (BODY.bottomR + (BODY.topR - BODY.bottomR) * low)) ** 2;
+  const body = y <= BODY.top ? across : across + ((y - BODY.top) / 0.25) ** 2;
+  return Math.exp(-(Math.min(head, body) ** 2));
 }
 
 // 몸이 벽 면 뒤로 depth 미터 들어가 있을 때 미는 세기 (0~1). 표면 가까이에서 가장 세다
 export function pushAt(depth) {
-  return clamp01((depth + OUT) / OUT) * clamp01((DEEP - depth) / DEEP);
+  return clamp01((depth + OUT) / OUT) * Math.sqrt(clamp01((DEEP - depth) / DEEP)); // 멀리서도 일찍 부풀기 시작한다
 }
 
 export class WallBulge {
-  constructor(scene, map, material) {
+  // wallMaterial: 벽 재질. 그림이 나중에 끼워져도 따라간다
+  constructor(scene, map, wallMaterial) {
     this.map = map;
+    this.source = wallMaterial;
     this.time = 0;
     this.meshes = [];
+    // 벽 그림은 스스로 빛나서 빛으로는 굴곡이 안 보인다. 그래서 점마다 칠한 밝기를 마지막 색에 곱한다
+    const material = wallMaterial.clone();
+    material.vertexColors = true;
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', 'outgoingLight *= vColor.rgb;\n#include <opaque_fragment>');
+    };
+    this.material = material;
     for (let i = 0; i < POOL; i++) {
       const geo = new THREE.BoxGeometry(CELL + PROUD, WALL_H, CELL + PROUD, SEG, SEG_Y, SEG);
       geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), CELL * 1.2); // 휘어도 다시 재지 않는다
@@ -43,6 +60,7 @@ export class WallBulge {
       mesh.visible = false;
       mesh.userData.base = geo.attributes.position.array.slice();
       mesh.userData.normal = geo.attributes.normal.array.slice();
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3).fill(1), 3));
       scene.add(mesh);
       this.meshes.push(mesh);
     }
@@ -55,6 +73,7 @@ export class WallBulge {
   // s 는 칸 좌표의 괴물. 곁의 벽을 몸이 지나는 만큼 휜다
   update(s, dt, lowFx) {
     this.time += dt;
+    this.followArt();
     const shakeX = lowFx ? 0 : (Math.random() - 0.5) * JITTER;
     const shakeZ = lowFx ? 0 : (Math.random() - 0.5) * JITTER;
     const left = Math.floor(s.x - 0.5);
@@ -71,6 +90,29 @@ export class WallBulge {
       }
     }
     for (let i = used; i < POOL; i++) this.meshes[i].visible = false;
+  }
+
+  followArt() {
+    const { source: from, material: to } = this;
+    if (to.map === from.map && to.emissiveMap === from.emissiveMap) return;
+    to.map = from.map;
+    to.emissiveMap = from.emissiveMap;
+    to.emissive.copy(from.emissive);
+    to.emissiveIntensity = from.emissiveIntensity;
+    to.color.copy(from.color);
+    to.needsUpdate = true;
+  }
+
+  // 윤곽을 따라 그늘을 칠하고 꼭대기를 밝힌다
+  paint(mesh) {
+    const { lift } = mesh.userData;
+    const color = mesh.geometry.attributes.color;
+    for (let v = 0; v < lift.length; v++) {
+      const rim = Math.exp(-(((lift[v] - RIM_AT) / RIM_WIDTH) ** 2)) * Math.min(1, lift[v] * 12);
+      const shade = (1 - RIM_DARK * rim) * (1 + CROWN_LIGHT * lift[v] ** 3);
+      color.setXYZ(v, shade, shade, shade);
+    }
+    color.needsUpdate = true;
   }
 
   // 사람이 볼 수 있는 면만 민다. 민 곳이 있으면 true
@@ -90,16 +132,21 @@ export class WallBulge {
     const middleZ = (cy + 0.5) * CELL;
     const throb = 1 + (lowFx ? 0 : THROB * Math.sin(this.time * THROB_RATE));
     a.set(base);
+    const lift = (mesh.userData.lift ??= new Float32Array(a.length / 3));
+    lift.fill(0);
     for (let i = 0; i < a.length; i += 3) {
       const face = faces.find((f) => f.nx === normal[i] && f.nz === normal[i + 2]);
       if (!face?.power) continue;
       const t = face.nx ? base[i + 2] + middleZ - mz : base[i] + middleX - mx;
-      const push = PUSH * face.power * throb * bodyShape(t, base[i + 1] + WALL_H / 2);
+      const shape = face.power * bodyShape(t, base[i + 1] + WALL_H / 2);
+      const push = PUSH * throb * shape;
+      lift[i / 3] = shape;
       a[i] += face.nx * push;
       a[i + 2] += face.nz * push;
     }
     pos.needsUpdate = true;
     mesh.geometry.computeVertexNormals();
+    this.paint(mesh);
     return true;
   }
 }

@@ -1624,8 +1624,11 @@ def ward_rule(pg, tag):
     check(f'{tag}: found a wall to come through', place is not None, place)
     pg.wait_for_function('window.__horror.stalker.inWall && window.__horror.bulge.active', timeout=6000)
     check(f'{tag}: ward passes into a wall and the wall bulges', True)
-    time.sleep(0.25)
+    # 벽 앞면 바로 뒤에 왔을 때 세워 두고 찍는다
+    pg.wait_for_function(f'(() => {{ const g = window.__horror, s = g.stalker; if (Math.hypot(s.x - g.p.x, s.y - g.p.y) > {place} - 0.2) return false; s.wallSlow = 0; g.k.monsters.ward.wallSlow = 0; return true; }})()', timeout=6000, polling=30)
+    time.sleep(0.3)
     pg.screenshot(path=f'{OUT}/{tag}_bulge.png')
+    pg.evaluate('window.__horror.k.monsters.ward.wallSlow = 0.35')
     pg.wait_for_function('!window.__horror.stalker.inWall', timeout=8000)
     check(f'{tag}: ward comes out the other side', True)
     pg.evaluate('window.__horror.stalker.warnT = 0')

@@ -543,10 +543,12 @@ describe('호러워드', () => {
     expect(events.filter((e) => e === 'wall')).toHaveLength(1);
   });
 
-  it('벽 너머에 숨 쉬고 있어도 닿으면 잡는다', () => {
-    const s = monster('ward', { x: 15.5, y: 2.5, warnT: 0 }); // 벽 속
-    const p = player({ x: 15.5, y: 1.9 });
-    expect(run(s, { map: hall, player: p }, DT)).toContain('caught');
+  it('쫓는 중이면 벽 속에서도 닿으면 잡고, 그냥 지나갈 때는 잡지 않는다', () => {
+    const p = player({ x: 15.5, y: 1.9, hidden: null });
+    const hunting = monster('ward', { x: 15.5, y: 2.3, mode: 'chase', lastSeen: { cx: 15, cy: 1 }, warnT: 0, inWall: true });
+    expect(run(hunting, { map: hall, player: p }, DT)).toContain('caught');
+    const passing = monster('ward', { x: 15.5, y: 2.3, heading: Math.PI, inWall: true }); // 등지고 지나간다
+    expect(run(passing, { map: hall, player: p }, DT)).not.toContain('caught');
   });
 
   it('사물함 안은 세이노처럼 안전하고, 뒤질 때는 벽을 뚫고 간다', () => {
