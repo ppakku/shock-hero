@@ -9,9 +9,9 @@ const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function parseMap(rows) {
   const w = rows[0].length;
-  const map = { w, h: rows.length, rows, start: null, stalker: null, panel: null, gate: null, fuses: [], lockers: [], boxes: [], patrol: [], scares: [], notes: [], keys: [], returns: [], locks: [], locked: new Set() };
+  const map = { w, h: rows.length, rows, start: null, stalker: null, stalker2: null, panel: null, gate: null, fuses: [], lockers: [], boxes: [], patrol: [], scares: [], notes: [], keys: [], returns: [], locks: [], locked: new Set() };
   const lists = { F: map.fuses, L: map.lockers, E: map.boxes, R: map.patrol, X: map.scares, N: map.notes, K: map.keys, C: map.returns };
-  const ones = { S: 'start', M: 'stalker', P: 'panel', G: 'gate' };
+  const ones = { S: 'start', M: 'stalker', Y: 'stalker2', P: 'panel', G: 'gate' };
   rows.forEach((row, cy) => {
     if (row.length !== w) throw new Error(`맵 ${cy}번 줄 길이가 다릅니다`);
     [...row].forEach((ch, cx) => {
@@ -152,9 +152,9 @@ export function inPlayerView(p, yaw, s, map, k, hidden = false) {
   return false;
 }
 
-// 게임과 시험이 같이 부른다. g: { p, yaw, stalker, map, k, hidden }. 쪽지가 앞을 가리면 본 것이 아니다
-export function playerSees(g, noteOpen = false) {
-  return !noteOpen && inPlayerView(g.p, g.yaw, g.stalker, g.map, g.k, g.hidden !== null);
+// 게임과 시험이 같이 부른다. g: { p, yaw, stalker, map, k, hidden }, s: 볼 괴물. 쪽지가 앞을 가리면 본 것이 아니다
+export function playerSees(g, noteOpen = false, s = g.stalker) {
+  return !noteOpen && inPlayerView(g.p, g.yaw, s, g.map, g.k, g.hidden !== null);
 }
 
 const VIEW_RAYS = 240; // 한 자리에서 쏘는 시선 수

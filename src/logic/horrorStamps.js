@@ -26,6 +26,9 @@ export function normalizeStamps(data) {
 export const stampCount = (stamps) => boardCells(stamps).filter((c) => c.stamp).length;
 export const goldCount = (stamps) => boardCells(stamps).filter((c) => c.stamp === GOLD).length;
 
+// 마지막 밤을 여는 데 남은 도장 수. 색은 상관없다. 0 이면 열렸다
+export const stampsLeft = (stamps) => boardSize() - stampCount(stamps);
+
 // 강제로 정한 판이든 랜덤 판이든 실제로 한 판에 찍는다. 금 도장은 일반 도장으로 돌아가지 않는다.
 // earned: 이번에 새로 받은 도장. 칸이 그대로면 null
 export function addStamp(stamps, round, clean) {

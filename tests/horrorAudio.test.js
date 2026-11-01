@@ -93,7 +93,7 @@ describe('HorrorAudio 세이노 소리', () => {
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 30, 0.1);
     const patrol = steps.mock.calls.length;
     steps.mockClear();
-    a.stepT = 0;
+    a.lead.stepT = 0;
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'chase', 30, 0.1);
     expect(patrol).toBeGreaterThan(0);
     expect(steps.mock.calls.length).toBeGreaterThan(patrol);
@@ -117,7 +117,7 @@ describe('HorrorAudio 세이노 소리', () => {
 
   it('추격 때 숨소리 목표 크기가 순찰보다 크다', () => {
     const a = new HorrorAudio({ muted: false });
-    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    const set = vi.spyOn(a.lead.breathLevel.gain, 'setTargetAtTime');
     a.updateStalker(cam, pos, 'patrol', 10, 0.1);
     a.updateStalker(cam, pos, 'chase', 10, 0.1);
     expect(set.mock.calls[1][0]).toBeGreaterThan(set.mock.calls[0][0]);
@@ -125,7 +125,7 @@ describe('HorrorAudio 세이노 소리', () => {
 
   it('숨소리 크기는 목표가 바뀔 때만 정한다', () => {
     const a = new HorrorAudio({ muted: false });
-    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    const set = vi.spyOn(a.lead.breathLevel.gain, 'setTargetAtTime');
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 10, 0.016);
     expect(set).toHaveBeenCalledTimes(1);
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'chase', 10, 0.016);
@@ -136,7 +136,7 @@ describe('HorrorAudio 세이노 소리', () => {
     const a = new HorrorAudio({ muted: false });
     a.updateStalker(cam, pos, 'patrol', 10, 0.016);
     a.suspend();
-    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    const set = vi.spyOn(a.lead.breathLevel.gain, 'setTargetAtTime');
     a.updateStalker(cam, pos, 'patrol', 10, 0.016);
     expect(set).not.toHaveBeenCalled(); // 잡혀 있는 동안은 조용하다
     a.resume();
@@ -148,7 +148,7 @@ describe('HorrorAudio 세이노 소리', () => {
   it('추격에는 배경 음악을 낮추고 세이노 소리를 키우고, 놓치면 돌려놓는다', () => {
     const a = new HorrorAudio({ muted: false });
     const music = vi.spyOn(a.music.gain, 'setTargetAtTime');
-    const creature = vi.spyOn(a.creatureOut.gain, 'setTargetAtTime');
+    const creature = vi.spyOn(a.lead.creatureOut.gain, 'setTargetAtTime');
     a.updateStalker(cam, pos, 'chase', 10, 0.1);
     expect(music.mock.calls[0][0]).toBeCloseTo(a.k.musicVolume * a.k.musicChaseDuck);
     expect(creature.mock.calls[0][0]).toBe(a.k.chaseCreatureGain);
@@ -159,7 +159,7 @@ describe('HorrorAudio 세이노 소리', () => {
 
   it('suspend 후에는 숨소리가 0으로 가고 다시 올라오지 않는다', () => {
     const a = new HorrorAudio({ muted: false });
-    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    const set = vi.spyOn(a.lead.breathLevel.gain, 'setTargetAtTime');
     a.suspend();
     a.updateStalker(cam, pos, 'chase', 3, 0.1);
     expect(set).toHaveBeenCalledTimes(1);
@@ -242,7 +242,7 @@ describe('HorrorAudio 세이노 소리', () => {
     const a = new HorrorAudio({ muted: false });
     a.suspend();
     a.resume();
-    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    const set = vi.spyOn(a.lead.breathLevel.gain, 'setTargetAtTime');
     a.updateStalker(cam, pos, 'chase', 3, 0.016);
     expect(set.mock.calls.some(([v]) => v > 0)).toBe(true);
   });
@@ -254,22 +254,22 @@ describe('HorrorAudio 세이노 소리', () => {
     a.heartbeat();
     for (let i = 0; i < 30; i++) a.updateStalker(cam, pos, 'chase', 3, 0.1);
     expect(beat).not.toHaveBeenCalled();
-    expect(a.breathLevel.gain.setTargetAtTime).toBeDefined();
+    expect(a.lead.breathLevel.gain.setTargetAtTime).toBeDefined();
   });
 });
 
 describe('HorrorAudio 괴물 목소리', () => {
   it('기본은 세이노이고 세이노 값을 그대로 쓴다', () => {
     const a = new HorrorAudio({ muted: false });
-    expect(a.voice).toBe('seino');
-    expect(a.v).toBe(a.k);
+    expect(a.lead.voice).toBe('seino');
+    expect(a.lead.v).toBe(a.k);
   });
 
   it.each(['gazer', 'maw', 'ward'])('%s 은 자기 표를 쓰고 세이노와 다른 소리 높이를 낸다', (voice) => {
     const a = new HorrorAudio({ muted: false, voice });
-    expect(a.v).toBe(a.k.voices[voice]);
-    expect(a.v.breathFreq).not.toBe(a.k.breathFreq);
-    expect(a.v.tone.freqs.length).toBeGreaterThan(0);
+    expect(a.lead.v).toBe(a.k.voices[voice]);
+    expect(a.lead.v.breathFreq).not.toBe(a.k.breathFreq);
+    expect(a.lead.v.tone.freqs.length).toBeGreaterThan(0);
   });
 
   it('세 괴물의 숨소리 높이가 크게 떨어져 있다', () => {
@@ -282,7 +282,7 @@ describe('HorrorAudio 괴물 목소리', () => {
   it('눈뜬이는 굳으면 끌리는 소리도 숨소리도 멈춘다', () => {
     const a = new HorrorAudio({ muted: false, voice: 'gazer' });
     const steps = vi.spyOn(a, 'dragStep');
-    const set = vi.spyOn(a.breathLevel.gain, 'setTargetAtTime');
+    const set = vi.spyOn(a.lead.breathLevel.gain, 'setTargetAtTime');
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 30, 0.1);
     expect(steps).toHaveBeenCalled();
     steps.mockClear();
@@ -293,12 +293,12 @@ describe('HorrorAudio 괴물 목소리', () => {
 
   it('큰입이의 돌진은 음악을 낮추고 걸음이 빨라진다', () => {
     const a = new HorrorAudio({ muted: false, voice: 'maw' });
-    const creature = vi.spyOn(a.creatureOut.gain, 'setTargetAtTime');
+    const creature = vi.spyOn(a.lead.creatureOut.gain, 'setTargetAtTime');
     const steps = vi.spyOn(a, 'heavyStep');
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'patrol', 30, 0.1);
     const walk = steps.mock.calls.length;
     steps.mockClear();
-    a.stepT = 0;
+    a.lead.stepT = 0;
     for (let i = 0; i < 20; i++) a.updateStalker(cam, pos, 'chase', 30, 0.1);
     expect(steps.mock.calls.length).toBeGreaterThan(walk);
     expect(creature.mock.calls.at(-1)[0]).toBe(a.k.chaseCreatureGain);

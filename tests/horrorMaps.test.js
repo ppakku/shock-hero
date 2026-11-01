@@ -6,6 +6,7 @@ import { createStalker, sendAway } from '../src/logic/horrorStalker.js';
 import { factoryMap, factoryTheme } from '../src/horror/maps/factory.js';
 import { sewerMap, sewerTheme } from '../src/horror/maps/sewer.js';
 import { schoolMap, schoolTheme } from '../src/horror/maps/school.js';
+import { stationMap, stationTheme } from '../src/horror/maps/station.js';
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
@@ -13,6 +14,7 @@ const MAPS = [
   { id: 'factory', map: factoryMap, theme: factoryTheme, rooms: [18, 24] },
   { id: 'sewer', map: sewerMap, theme: sewerTheme, rooms: [1, 3] }, // 문이 잠긴 문 둘뿐이라 방은 셋이다
   { id: 'school', map: schoolMap, theme: schoolTheme, rooms: [14, 24] },
+  { id: 'station', map: stationMap, theme: stationTheme, rooms: [8, 16] },
 ];
 
 function seeded(seed) {

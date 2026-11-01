@@ -2,6 +2,7 @@
 // 괴물 자리는 화면에 보일 때와 소리가 들릴 때만 쓴다. 쪽지와 물건 자리는 몰라서 돌아다니다 찾는다.
 // 가는 쪽을 보고 걷고, 몇 초에 한 번 뒤를 돌아보고, 놀라면 늦게 반응하고, 가끔 겁먹고 달린다.
 // window.__horrorBot = { rand } 로 난수를 넣으면 같은 판이 다시 난다.
+// 괴물이 둘이면 눈에 보이는 쪽을, 안 보이면 가까운 쪽을 살핀다.
 (() => {
   const g = window.__horror;
   const { findPath, cellOf, frontOf, center, lineOfSight, reachable } = window.__horrorLogic;
@@ -19,8 +20,10 @@
   const blank = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false });
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const yawTo = (c) => Math.atan2(-(c.x - g.p.x), -(c.y - g.p.y));
-  const monster = () => g.stalker;
-  const gap = () => Math.hypot(monster().x - g.p.x, monster().y - g.p.y);
+  const gapTo = (s) => Math.hypot(s.x - g.p.x, s.y - g.p.y);
+  const inSight = (s) => gapTo(s) <= SEE && Math.abs(wrap(yawTo(s) - g.yaw)) <= (g.k.viewFov / 2) * Math.PI / 180 && lineOfSight(g.map, g.p, s);
+  const monster = () => g.stalkers.find(inSight) ?? g.stalkers.reduce((a, s) => (gapTo(s) < gapTo(a) ? s : a));
+  const gap = () => gapTo(monster());
 
   const canWalk = (c) => {
     const opened = g.run.doors.filter((d) => d.open).length;
@@ -84,13 +87,7 @@
     return inp;
   };
 
-  const seesMonster = () => {
-    const s = monster();
-    const d = gap();
-    if (d > SEE) return false;
-    if (Math.abs(wrap(yawTo(s) - g.yaw)) > (g.k.viewFov / 2) * Math.PI / 180) return false;
-    return lineOfSight(g.map, g.p, s);
-  };
+  const seesMonster = () => inSight(monster());
   const hearsMonster = () => {
     const mode = monster().mode;
     if (mode === 'stunned') return false;

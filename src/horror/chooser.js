@@ -1,6 +1,6 @@
 // 공포 모드에 들어가면 맨 먼저 나오는 맵과 괴물 고르기 화면
-import { MAP_IDS, MONSTER_IDS, RANDOM } from '../logic/horrorPick.js';
-import { boardCells, boardSize, cellKey, cssColor, goldCount, isCurrentCell, lookOptions, nextUnlock, stampCount, GOLD } from '../logic/horrorStamps.js';
+import { LAST_ROUND, MAP_IDS, MONSTER_IDS, RANDOM, roundMonsters } from '../logic/horrorPick.js';
+import { boardCells, boardSize, cellKey, cssColor, goldCount, isCurrentCell, lookOptions, nextUnlock, stampCount, stampsLeft, GOLD } from '../logic/horrorStamps.js';
 import { cfg } from '../config/index.js';
 import { MAPS, MONSTERS } from './content.js';
 
@@ -30,6 +30,9 @@ const CURRENT = 'outline:3px solid #fff;outline-offset:1px;box-shadow:0 0 12px 3
 const SWATCH = 'box-sizing:border-box;width:36px;height:36px;padding:0;border-radius:50%;font:13px sans-serif;cursor:pointer;touch-action:manipulation';
 const LOOK_ROWS = [['bolt', '번개', 'bolts', 'glow'], ['light', '손전등', 'lights', 'color']];
 const ALL_OPEN = '색을 모두 열었어요';
+const LAST = 'box-sizing:border-box;width:100%;border-radius:8px;font:15px sans-serif;padding:7px 10px;touch-action:manipulation';
+const LAST_OPEN = 'background:#2a1c3a;color:#fff;border:2px solid #c8a8ff;cursor:pointer';
+const LAST_SHUT = 'background:#101014;color:#8a8a92;border:2px dashed #3a3a42';
 
 // 맵 칸과 괴물 칸의 이름과 설명. 랜덤 칸이 맨 뒤에 온다
 export function chooserOptions() {
@@ -45,9 +48,17 @@ function nextLine(stamps, k) {
   return next ? `도장 ${next.need}개면 열려요: ${next.looks.map((look) => look.name).join(', ')}` : ALL_OPEN;
 }
 
+// 마지막 밤 칸의 글. 도장판을 다 채우면 열리고, 깬 뒤에는 다시 할 수 있다고 알린다
+export function lastNightCard(record) {
+  const left = stampsLeft(record.stamps);
+  const names = roundMonsters(LAST_ROUND).map((id) => MONSTERS[id].name).join(', ');
+  if (left > 0) return { open: false, text: `마지막 밤: 도장 ${left}개 더 모으면 열려요` };
+  return { open: true, text: `${record.lastCleared ? '마지막 밤 다시 하기' : '마지막 밤 들어가기'}: ${names}` };
+}
+
 // choice: { mapId, monsterId }. record: 저장된 공포 모드 기록. onStart 에 고른 값을 준다. 화면은 스스로 닫는다
-// onLook(key, id): 번개 ('bolt') 나 손전등 ('light') 색을 고르면 부른다
-export function showChooser(root, { choice, compact, record, onLook, onStart, onQuit }) {
+// onLook(key, id): 번개 ('bolt') 나 손전등 ('light') 색을 고르면 부른다. onLastNight: 마지막 밤 칸을 누르면 부른다
+export function showChooser(root, { choice, compact, record, onLook, onStart, onLastNight, onQuit }) {
   const picked = { ...choice };
   const worn = { bolt: record.bolt, light: record.light };
   const k = cfg.horror.stamps;
@@ -167,12 +178,17 @@ export function showChooser(root, { choice, compact, record, onLook, onStart, on
   back.addEventListener('click', close(onQuit));
   actions.append(go, back);
   side.appendChild(actions);
+  const card = lastNightCard(record);
+  const last = add('button', `${LAST};${card.open ? LAST_OPEN : LAST_SHUT}${compact ? ';font-size:13px;padding:3px 8px' : ''}`, card.text);
+  last.dataset.lastNight = card.open ? 'open' : 'locked';
+  last.disabled = !card.open;
+  last.addEventListener('click', close(onLastNight));
   buildBoard();
   paintBoard();
   const gold = goldCount(record.stamps);
   panel.append(add('div', compact ? `${COUNT};font-size:14px` : COUNT, `도장 ${stampCount(record.stamps)}/${boardSize()}${gold ? `, 금 ${gold}` : ''}`), board);
   LOOK_ROWS.forEach(lookRow);
-  panel.appendChild(lookHint);
+  panel.append(lookHint, last);
   root.appendChild(layer);
   go.focus(); // Enter 로도 누를 수 있다
 }

@@ -3,10 +3,11 @@ import { readFileSync } from 'node:fs';
 import { center, cellOf, frontOf, findPath, lineOfSight, reachable, blocked, withOpen, playerSees } from '../src/logic/horrorGrid.js';
 import { stepPlayer, noiseFor, createStamina, canRun, stepStamina } from '../src/logic/horrorInput.js';
 import { createStalker, tickStalker, sendAway, stunStalker } from '../src/logic/horrorStalker.js';
+import { createStalkers, nearestStalker, sendAllAway } from '../src/logic/horrorHunters.js';
 import { createRun, takeClue, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
-import { MAPS } from '../src/horror/content.js';
-import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
+import { ALL_MAPS } from '../src/horror/content.js';
+import { LAST_ROUND, MAP_IDS, MONSTER_IDS, roundMonsters } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
 
 vi.setConfig({ testTimeout: 120000 }); // 봇이 한 판을 끝까지 돌아서 다른 시험과 함께 돌면 몇 초를 넘는다
@@ -27,16 +28,19 @@ function seeded(seed) {
 }
 
 // HorrorGame.playFrame 과 같은 순서로 그림 없이 한 판을 돌린다. 봇은 진짜 bot_horror.js 다.
-function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId = 'seino') {
+// monsterId 대신 monsterIds 를 주면 그 괴물들이 함께 나온다
+function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId = 'seino', monsterIds = [monsterId], onFrame = () => {}) {
   const rand = seeded(seed);
-  const run = createRun(MAPS[mapId].map, k, rand);
+  const run = createRun(ALL_MAPS[mapId].map, k, rand);
   const map = run.level;
+  const stalkers = createStalkers(map, k, rand, monsterIds);
   const g = {
     map, run, k,
     p: center(map.start),
     yaw: 0,
     hidden: null,
-    stalker: createStalker(map, k, rand, monsterId),
+    stalker: stalkers[0],
+    stalkers,
     nearestUse: () => nearestUse(run, map, g.p, g.hidden, k),
   };
   const window = { __horror: g, __horrorBot: options, __horrorLogic: { findPath, cellOf, frontOf, center, lineOfSight, reachable } };
@@ -59,17 +63,23 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
     const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
-    const seen = playerSees(g);
-    const events = tickStalker(g.stalker, { map, player, seen, pressure: run.have / k.fuseCount }, k, DT, rand);
-    if (events.includes('caught') || events.includes('found')) {
+    const pressure = run.have / k.fuseCount;
+    let got = false;
+    for (const s of stalkers) {
+      const events = tickStalker(s, { map, player, seen: playerSees(g, false, s), pressure }, k, DT, rand);
+      got = events.includes('caught') || events.includes('found');
+      if (got) break; // 게임도 잡히는 순간 나머지 괴물을 움직이지 않는다
+    }
+    if (got) {
       caught(run);
       catches.push(t);
       g.hidden = null;
       stamina = createStamina();
       g.p = center(respawnSpot(map, g.p));
-      sendAway(g.stalker, map, g.p, rand);
+      sendAllAway(stalkers, map, g.p, rand);
       continue;
     }
+    onFrame(g, t);
     const target = g.nearestUse();
     if (inp.use && target) {
       if (target.kind === 'fuse') takeFuse(run, target.index);
@@ -93,7 +103,10 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
         }
       }
     }
-    if (inp.punch && useShock(run) && Math.hypot(g.stalker.x - g.p.x, g.stalker.y - g.p.y) <= k.shockRange && lineOfSight(map, g.p, g.stalker)) stunStalker(g.stalker, k);
+    if (inp.punch && useShock(run)) {
+      const s = nearestStalker(stalkers, g.p);
+      if (Math.hypot(s.x - g.p.x, s.y - g.p.y) <= k.shockRange && lineOfSight(map, g.p, s)) stunStalker(s, k);
+    }
   }
   return { won: run.escaped, seconds: t, catches, powered: run.powered, doors: run.doors.filter((d) => d.open).length };
 }
@@ -179,6 +192,42 @@ describe.each(MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, 
     const s = summary(seeds.map((seed) => playGame(seed, null, 900, mapId, monsterId)));
     console.log(mapId, monsterId, '달리기만 하는 봇', s);
     expect(s.won).toBe(seeds.length);
+  });
+});
+
+describe('마지막 밤: 둘이 함께 나온다', () => {
+  const seeds = Array.from({ length: 40 }, (_, i) => i + 1);
+  const ids = roundMonsters(LAST_ROUND);
+  const last = (seed, options, onFrame) => playGame(seed, options, 1500, LAST_ROUND.mapId, ids[0], ids, onFrame);
+
+  it('조심하는 봇은 40판 모두 탈출한다', () => {
+    const s = summary(seeds.map((seed) => last(seed, { careful: true })));
+    console.log('마지막 밤 조심하는 봇', s);
+    expect(s.won).toBe(40);
+    expect(s.meanCatches).toBeLessThan(8);
+  });
+
+  it('달리기만 하는 봇도 40판 모두 탈출한다', () => {
+    const s = summary(seeds.map((seed) => last(seed, null)));
+    console.log('마지막 밤 달리기만 하는 봇', s);
+    expect(s.won).toBe(40);
+  });
+
+  it('아이처럼 노는 봇은 40판 모두 탈출한다', () => {
+    const s = summary(seeds.map((seed) => last(seed, { child: true })));
+    console.log('마지막 밤 아이 봇', s);
+    expect(s.won).toBe(40);
+    expect(s.minGap).toBeGreaterThanOrEqual(8); // 잡힌 뒤 둘 다 쉬어서 바로 또 잡히지 않는다
+  });
+
+  it('둘 다 잠긴 문을 넘어가지 않는다', () => {
+    const base = reachable(createRun(ALL_MAPS[LAST_ROUND.mapId].map, k, seeded(1)).level, ALL_MAPS[LAST_ROUND.mapId].map.start);
+    for (const seed of seeds.slice(0, 10)) {
+      last(seed, { child: true }, (g) => {
+        const closed = g.run.doors.every((d) => !d.open);
+        if (closed) for (const s of g.stalkers) expect(base.has(`${Math.floor(s.x)},${Math.floor(s.y)}`)).toBe(true);
+      });
+    }
   });
 });
 

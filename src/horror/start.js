@@ -1,7 +1,7 @@
 // 공포 모드 입구. 3D 묶음은 고를 때만 내려받는다 (이 파일은 three 를 import 하지 않는다).
 import { isPhone, isTouchDevice } from '../ui/touch.js';
 import { saveStore } from '../save.js';
-import { RANDOM, chooseRound, forcedRound } from '../logic/horrorPick.js';
+import { LAST_ROUND, RANDOM, chooseRound, forcedRound, isRound } from '../logic/horrorPick.js';
 
 // 안내 화면에 어느 기기의 조작법을 보여 줄지 고른다
 export function deviceKind(phone = isPhone(), touch = isTouchDevice()) {
@@ -62,7 +62,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     let horror = null;
     try {
       const save = saveStore.load();
-      save.horror.last = round;
+      if (isRound(round)) save.horror.last = round; // 마지막 밤은 다음 판 고르기에 끼어들지 않는다
       saveStore.save(save);
       horror = new HorrorGame(root, {
         round,
@@ -102,6 +102,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
       choice = picked;
       play(chooseRound(picked, saveStore.load().horror.last));
     },
+    onLastNight: () => play(LAST_ROUND),
     onQuit: leave,
   });
   const forced = forcedRound(globalThis.location?.search ?? '');
