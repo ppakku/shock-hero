@@ -1114,7 +1114,7 @@ def touch_notes(pg, t, w, h):
     check(f'{label}: fits the screen', box['top'] >= 0 and box['bottom'] <= h and box['scroll'] <= box['height'] + 1 and box['btnBottom'] <= box['bottom'], box)
     longest = pg.evaluate("""async () => {
       const { NOTES, fillName } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
-      const all = Object.values(NOTES).flat().map((n) => fillName(n, g.monster.name));
+      const all = Object.values(NOTES).flat().map((n) => fillName(n, g.monsters[0].name));
       let worst = 0, fits = true, hits = [];
       for (const n of all) {
         g.hud.showNote(n, compact);
@@ -1471,7 +1471,7 @@ def play_replay(pw):
         print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
         seen.append(now['round'])
         first = first or now
-        names = pg.evaluate('(() => { const g = window.__horror; return [g.place.name, g.monster.name, g.monster.hint]; })()')
+        names = pg.evaluate('(() => { const g = window.__horror; return [g.place.name, g.monsters[0].name, g.monsters[0].hint]; })()')
         check(f'replay {i}: intro names the round', all(n in now['text'] for n in names), names)
         check(f'replay {i}: fresh game', now['state'] == 'intro' and now['have'] == 0 and now['caught'] == 0 and now['notes'] == 0 and now['home'], {k: v for k, v in now.items() if k != 'text'})
         check(f'replay {i}: nothing left behind', now['canvases'] == 1 and now['kids'] == first['kids'] and now['listeners'] == first['listeners'], (now['kids'], now['listeners']))

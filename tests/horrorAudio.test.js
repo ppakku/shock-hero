@@ -74,6 +74,44 @@ beforeEach(async () => {
   ({ HorrorAudio } = await import('../src/horror/audio.js'));
 });
 
+describe('HorrorAudio 괴물 둘', () => {
+  it('괴물마다 목소리가 따로 있고 발소리도 따로 난다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'seino', more: ['gazer'] });
+    expect(a.creatures.map((c) => c.voice)).toEqual(['seino', 'gazer']);
+    const steps = vi.spyOn(a, 'footstep');
+    a.updateStalker(cam, pos, 'chase', 3, 0.1, 1);
+    expect(steps).toHaveBeenCalledWith(a.creatures[1]);
+  });
+
+  it('심장은 하나만 뛴다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'seino', more: ['gazer'] });
+    const beat = vi.spyOn(a, 'heartbeat');
+    a.updateStalker(cam, pos, 'patrol', 5, 0.1, 1);
+    expect(beat).not.toHaveBeenCalled();
+    a.updateStalker(cam, pos, 'patrol', 5, 0.1, 0);
+    expect(beat).toHaveBeenCalledTimes(1);
+  });
+
+  it('한쪽만 쫓아도 음악이 줄고, 둘 다 놓쳐야 돌아온다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'seino', more: ['gazer'] });
+    const calm = a.musicLevel();
+    a.updateStalker(cam, pos, 'chase', 5, 0.1, 1);
+    expect(a.musicLevel()).toBeLessThan(calm);
+    a.updateStalker(cam, pos, 'chase', 5, 0.1, 0);
+    a.updateStalker(cam, pos, 'patrol', 5, 0.1, 1);
+    expect(a.musicLevel()).toBeLessThan(calm);
+    a.updateStalker(cam, pos, 'patrol', 5, 0.1, 0);
+    expect(a.musicLevel()).toBe(calm);
+  });
+
+  it('잡히면 둘 다 조용해진다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'seino', more: ['gazer'] });
+    const sets = a.creatures.map((c) => vi.spyOn(c.breathLevel.gain, 'setTargetAtTime'));
+    a.suspend();
+    for (const set of sets) expect(set).toHaveBeenCalledWith(0, expect.anything(), expect.anything());
+  });
+});
+
 describe('HorrorAudio 세이노 소리', () => {
   it('오디오가 없어도 안전하다', async () => {
     sfx.ctx = null;
