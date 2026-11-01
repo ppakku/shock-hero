@@ -34,7 +34,7 @@ export const stationMap = { ...parseMap([
 
 export const stationTheme = {
   doorSet: 'horror_door_station', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
-  wall: { art: 'horror_station_wall', plain: 0x6a7068, repeat: 1, tint: 0x8a94a8 },
+  wall: { art: 'horror_station_wall', plain: 0x6a7068, repeat: 1, tint: 0x4f5561 },
   floor: { art: 'horror_station_floor', plain: 0x4a4a4e, repeat: 7, tint: 0xa0a0a8 },
   locker: { art: 'horror_station_locker', plain: 0x5a6a78, repeat: 2, repeatY: 1, tint: 0xc8c8c8, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 물품 보관함
   doorArt: 'locker',
@@ -42,7 +42,7 @@ export const stationTheme = {
   ceil: 0x1c1e26,
   ceilArt: { art: 'horror_ceil_station', repeat: 7, tint: 0x8fa8e6 },
   fog: 0x03040c,
-  ambient: 0x6a78a0,
+  ambient: 0x98ace6, // 벽을 누른 만큼 키워서 손전등을 끈 어둠이 그대로다
   lightColor: 0xffc060, // 남아 있는 노란 역 전등
   decor: {
     tile: 7,
