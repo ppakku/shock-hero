@@ -398,7 +398,7 @@ export class HorrorGame {
     const spot = figureSpot(this.map, this.p, this.yaw, k.figureNear, k.figureFar);
     if (!spot) return;
     const heading = Math.atan2(this.p.x - spot.x, this.p.y - spot.y);
-    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: isUnderground({ ...this.stalker, mode: 'patrol' }) ? 'watch' : 'patrol' } }; // 땅속 괴물도 몸이 보이는 자세로 세운다
+    this.figure = { t: k.figureShow, shown: { ...spot, heading, mode: 'patrol' } };
     this.model.yaw = heading;
   }
 
@@ -632,7 +632,6 @@ export class HorrorGame {
     m.group.position.x += this.p.x * CELL + fx * near - face.x;
     m.group.position.y += EYE - face.y - FACE_UP;
     m.group.position.z += this.p.y * CELL + fz * near - face.z;
-    if (m.hole) m.hole.position.y -= m.group.position.y; // 땅속이의 구멍은 몸을 따라 뜨지 않고 바닥에 남는다
   }
 
   respawn() {
