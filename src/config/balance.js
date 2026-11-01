@@ -763,9 +763,9 @@ export const balance = {
     heartFar: 14, // 이보다 멀면 심장 소리가 없다 (칸)
     heartFast: 0.35, // 가장 가까울 때 심장이 뛰는 간격 (초)
     heartSlow: 0.85, // 멀어질수록 간격에 더해지는 시간 (초). 가장 먼 곳의 간격은 두 값의 합
-    breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1.1, stunned: 0.2 }, // 상태별 숨소리 크기
-    breathSwellSec: { patrol: 1.4, investigate: 1.4, search: 1.4, chase: 0.7, stunned: 1.4 }, // 상태별 들숨날숨 한 번 시간 (초)
-    stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0 }, // 상태별 발소리 간격 (초). 0 은 소리 없음
+    breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1.1, stunned: 0.2, ambush: 0, watch: 0.15 }, // 상태별 숨소리 크기
+    breathSwellSec: { patrol: 1.4, investigate: 1.4, search: 1.4, chase: 0.7, stunned: 1.4, ambush: 1.4, watch: 2.2 }, // 상태별 들숨날숨 한 번 시간 (초)
+    stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0, ambush: 0, watch: 0 }, // 상태별 발소리 간격 (초). 0 은 소리 없음
     breathFreq: 1300, // 숨소리 중심 주파수 (Hz). 작은 스피커에도 들리게 300Hz 위만 쓴다
     stalkerRefDist: 6, // 세이노 소리가 줄어들기 시작하는 거리 (미터)
     scareVol: 0.77, // 놀람 소리 크기
@@ -784,6 +784,7 @@ export const balance = {
     shockRange: 2.5, // 쇼크 펀치가 닿는 거리
     useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
     fuseCount: 3, // 찾아야 하는 퓨즈 수
+    wingFuses: 1, // 잠긴 날개마다 꼭 들어가는 퓨즈 수. 그래서 문을 열어야만 끝낼 수 있다
     gemsEscape: 5, // 탈출 보석. 날마다 첫 탈출에만 준다
     gemsClean: 5, // 한 번도 안 잡히고 탈출한 추가 보석. 처음 한 번만 준다
     musicVolume: 0.7, // 배경 음악 크기
@@ -810,6 +811,32 @@ export const balance = {
     ratioStep: 0.1, // 한 번에 바꾸는 배율
     lowFps: 32, // 초당 장수가 이보다 낮으면 해상도를 낮춘다
     highFps: 55, // 초당 장수가 이보다 높으면 해상도를 높인다
+    respawnGrace: 8, // 잡힌 뒤 세이노가 주인공을 보지도 듣지도 잡지도 않는 시간 (초)
+    heatHalfLife: 150, // 주인공이 다닌 자리 기억이 절반으로 줄어드는 시간 (초)
+    heatRadius: 3, // 순찰 지점 둘레 몇 칸의 기억을 더해 볼지
+    patrolHeatPull: 2, // 가장 뜨거운 순찰 지점이 뽑히는 비율에 더해지는 값 (기본 1)
+    patrolMemory: 3, // 방금 다녀온 곳으로 치는 순찰 지점 수. 지금 있는 곳을 포함한다 (8 이하)
+    patrolRecent: 0.1, // 방금 다녀온 곳이 다시 뽑히는 비율
+    ambushChance: 0.35, // 추격 중 놓쳤을 때 수색 대신 매복할 확률. 사물함에 숨었으면 늘 수색한다
+    ambushWaitChance: 0.5, // 매복 중 길목에서 기다릴 확률. 나머지는 돌아서 다가간다
+    ambushWaitMin: 6, // 길목에서 기다리는 가장 짧은 시간 (초)
+    ambushWaitMax: 12, // 길목에서 기다리는 가장 긴 시간 (초)
+    ambushSpeed: 1.5, // 매복하러 가는 속도. 달리기보다 느려야 한다
+    ambushRadius: 6, // 뜨거운 곳에서 몇 칸 안의 길목을 고를지
+    ambushMinDist: 4, // 주인공에게서 이보다 가까운 길목은 고르지 않는다
+    ambushMaxPath: 45, // 이보다 먼 길이면 매복하지 않고 수색한다 (칸)
+    ambushSpring: 2.5, // 매복 중 주인공이 이만큼 가까이 보이면 뛰쳐나온다
+    pounceWarn: 0.5, // 추격이 시작된 뒤 이 시간 동안은 잡지 않는다 (초)
+    watchChance: 0.4, // 멀리서 봤을 때 바로 쫓지 않고 바라볼 확률
+    watchCalm: 25, // 쫓지 않은 시간이 이만큼 지나야 바라본다 (초)
+    watchMinDist: 4, // 이보다 멀어야 바라본다
+    watchBreak: 2.5, // 바라보는 중 주인공이 이만큼 다가오면 바로 쫓는다
+    watchMin: 2, // 바라보는 가장 짧은 시간 (초)
+    watchMax: 4, // 바라보는 가장 긴 시간 (초)
+    pressureWalk: 0.35, // 퓨즈를 다 찾았을 때 걷는 속도가 늘어나는 비율. 추격 속도는 그대로다
+    pressureHear: 0.6, // 퓨즈를 다 찾았을 때 듣는 거리가 늘어나는 비율
+    pressureSearch: 0.5, // 퓨즈를 다 찾았을 때 수색 시간이 늘어나는 비율
+    pressureLocker: 0.3, // 퓨즈를 다 찾았을 때 사물함을 뒤질 확률에 더해지는 값
   },
 
   // ---------- 효과 ----------

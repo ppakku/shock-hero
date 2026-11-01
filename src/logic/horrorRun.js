@@ -1,18 +1,63 @@
 // 공포 모드 한 판의 규칙과 기록 (화면과 상관없는 부분)
-import { reachable, center } from './horrorGrid.js';
+import { reachable, withOpen } from './horrorGrid.js';
 
-export function createRun(map, k, rand = Math.random) {
-  const open = reachable(map, map.start);
-  const spots = map.fuses.filter((c) => open.has(`${c.cx},${c.cy}`));
+export const KEY_NAMES = ['빨간', '파란']; // 잠긴 문과 열쇠의 색. map.locks 순서
+
+const inArea = (area) => (c) => area.has(`${c.cx},${c.cy}`);
+
+function shuffled(list, rand) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+// 앞 문들을 연 뒤에 갈 수 있는 곳에서 고른다. 그래서 어떤 판이든 열쇠 1, 날개 1, 열쇠 2, 날개 2 순서로 풀린다
+function placeKeys(map, rand) {
+  const used = [];
+  return map.locks.map((_, lock) => {
+    const area = reachable(withOpen(map, map.locks.map((__, i) => i).slice(0, lock)), map.start);
+    const spot = shuffled(map.keys.filter(inArea(area)), rand).find((c) => !used.includes(c));
+    if (!spot) throw new Error(`${lock + 1}번 열쇠 자리가 없습니다`);
+    used.push(spot);
+    return { ...spot, lock, taken: false };
+  });
+}
+
+// 날개마다 퓨즈를 정해진 수만큼 먼저 놓는다. 그래야 잠긴 문을 꼭 열게 된다
+function placeFuses(map, k, rand) {
+  const all = map.locks.map((_, i) => i);
+  const base = reachable(map, map.start);
+  const spots = map.fuses.filter(inArea(reachable(withOpen(map, all), map.start)));
   if (spots.length < k.fuseCount) {
     throw new Error(`퓨즈 자리가 모자랍니다: ${spots.length} / ${k.fuseCount}`);
   }
-  for (let i = spots.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [spots[i], spots[j]] = [spots[j], spots[i]];
+  const picked = [];
+  for (const lock of all) {
+    const wing = inArea(reachable(withOpen(map, [lock]), map.start));
+    picked.push(...shuffled(spots.filter((c) => wing(c) && !base.has(`${c.cx},${c.cy}`)), rand).slice(0, k.wingFuses));
   }
+  const rest = shuffled(spots.filter((c) => !picked.includes(c)), rand);
+  return shuffled([...picked, ...rest].slice(0, k.fuseCount), rand);
+}
+
+// 세이노가 지금 갈 수 있는 순찰 지점만 남긴다. 닫힌 날개로 보내면 나오지 못한다
+function refreshPatrol(level, all) {
+  const area = reachable(level, level.stalker || level.start);
+  level.patrol = all.filter(inArea(area));
+}
+
+export function createRun(map, k, rand = Math.random) {
+  const level = withOpen(map); // 판마다 따로 여는 맵 사본
+  refreshPatrol(level, map.patrol);
   return {
-    fuses: spots.slice(0, k.fuseCount).map((c) => ({ ...c, taken: false })),
+    level,
+    allPatrol: map.patrol,
+    fuses: placeFuses(map, k, rand).map((c) => ({ ...c, taken: false })),
+    keys: placeKeys(map, rand),
+    doors: map.locks.map((c) => ({ ...c, open: false })),
     have: 0,
     shock: false,
     usedBoxes: [],
@@ -29,6 +74,26 @@ export function takeFuse(run, i) {
   run.have += 1;
   return true;
 }
+
+export function takeKey(run, i) {
+  const key = run.keys[i];
+  if (!key || key.taken) return false;
+  key.taken = true;
+  return true;
+}
+
+// 맞는 열쇠가 있어야 열린다. 열린 뒤로는 주인공도 세이노도 지나다니고 시선도 통한다
+export function openDoor(run, i) {
+  const door = run.doors[i];
+  if (!door || door.open || !run.keys[i].taken) return false;
+  door.open = true;
+  run.level.locked.delete(door.cy * run.level.w + door.cx);
+  refreshPatrol(run.level, run.allPatrol);
+  return true;
+}
+
+// 주웠고 아직 쓰지 않은 열쇠 수
+export const keysHeld = (run) => run.keys.filter((key) => key.taken && !run.doors[key.lock].open).length;
 
 export function chargeShock(run, box) {
   if (run.shock || run.usedBoxes.includes(box)) return false;
@@ -49,23 +114,40 @@ export function insertFuses(run, k) {
   return true;
 }
 
-// 손이 닿는 가장 가까운 것. 없으면 null. hidden 은 숨어 있는 사물함 번호 (아니면 null)
-export function nearestUse(run, map, p, hidden, k) {
+// 손이 닿는 가장 가까운 것. 없으면 null. hidden 은 숨어 있는 사물함 번호 (아니면 null).
+// 'locked' 는 맞는 열쇠가 없는 문이다. 누를 수 없고 안내만 보인다
+// notes: logic/horrorNotes.js 의 쪽지 상태. 사물함과 거리로 겨뤄서, 쫓길 때 쪽지가 숨기를 가로막지 않는다
+export function nearestUse(run, map, p, hidden, k, notes) {
   if (hidden !== null) return { kind: 'locker', index: hidden, label: '사물함에서 나오기' };
-  const list = [];
+  let best = null;
+  let bestD = Infinity;
   const add = (kind, index, label, cell) => {
-    const c = center(cell);
-    list.push({ kind, index, label, d: Math.hypot(c.x - p.x, c.y - p.y) });
+    const d = Math.hypot(cell.cx + 0.5 - p.x, cell.cy + 0.5 - p.y);
+    if (d > k.useRange || d >= bestD) return;
+    bestD = d;
+    best = { kind, index, label };
   };
   run.fuses.forEach((f, i) => !f.taken && add('fuse', i, '퓨즈 줍기', f));
+  run.keys.forEach((c, i) => !c.taken && add('key', i, `${KEY_NAMES[i]} 열쇠 줍기`, c));
+  notes?.spots.forEach((s, i) => !notes.taken[i] && add('note', i, '쪽지 읽기', { cx: s.x - 0.5, cy: s.y - 0.5 }));
+  run.doors.forEach((c, i) => {
+    if (!c.open) add(run.keys[i].taken ? 'lock' : 'locked', i, run.keys[i].taken ? '문 열기' : `${KEY_NAMES[i]} 열쇠가 필요해`, c);
+  });
   map.lockers.forEach((c, i) => add('locker', i, '사물함에 숨기', c));
   if (!run.shock) map.boxes.forEach((c, i) => !run.usedBoxes.includes(i) && add('box', i, '쇼크 충전', c));
   if (!run.powered) add('panel', 0, run.have >= k.fuseCount ? '퓨즈 꽂기' : `퓨즈가 ${k.fuseCount}개 필요해`, map.panel);
   else add('gate', 0, '정문으로 탈출', map.gate);
-  const near = list.filter((t) => t.d <= k.useRange);
-  if (!near.length) return null;
-  const { kind, index, label } = near.reduce((a, b) => (b.d < a.d ? b : a));
-  return { kind, index, label };
+  return best;
+}
+
+// 잡힌 자리에서 가장 가까운 돌아올 곳 (시작 지점 포함). 맵이 커서 늘 시작 지점으로 보내면
+// 세이노도 늘 시작 지점에서 먼 곳, 곧 남은 목표 옆으로 가서 같은 자리에서 또 잡힌다
+export function respawnSpot(map, p) {
+  let best = map.start;
+  for (const c of map.returns) {
+    if (Math.hypot(c.cx + 0.5 - p.x, c.cy + 0.5 - p.y) < Math.hypot(best.cx + 0.5 - p.x, best.cy + 0.5 - p.y)) best = c;
+  }
+  return best;
 }
 
 export function caught(run) {

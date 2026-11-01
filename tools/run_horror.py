@@ -5,18 +5,21 @@
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --robust  (화면 꺼짐, 보석, 소리 실패, 나가기 실패, 세이노 숨기기, 비상등. --play 에도 들어 있다)
+#   python3 tools/run_horror.py 출력폴더 --phone   (휴대폰 가로 화면: 안내, 쪽지, 손가락이 쪽지를 지나 걷기)
+#   python3 tools/run_horror.py 출력폴더 --stalk   (진짜 행동 코드로 바라보기와 매복. --play 에도 들어 있다)
 #   python3 tools/run_horror.py 출력폴더 --play    (줍기, 숨기, 펀치, 일시정지, 잡힘, 봇의 탈출까지. 기본 실행에도 들어 있다)
 # 시스템 Chrome 으로 타이틀에서 공포 모드를 켜고 확인한다.
 import json, math, os, sys, time
 from playwright.sync_api import sync_playwright
 
 OUT = sys.argv[1]
-MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'keys'
+MODE = 'touch' if '--touch' in sys.argv else 'shots' if '--shots' in sys.argv else 'creature' if '--creature' in sys.argv else 'play' if '--play' in sys.argv else 'sound' if '--sound' in sys.argv else 'robust' if '--robust' in sys.argv else 'phone' if '--phone' in sys.argv else 'stalk' if '--stalk' in sys.argv else 'keys'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
 if os.environ.get('HORROR_GPU'):  # 소프트웨어 대신 이 컴퓨터의 진짜 그래픽 칩으로 잰다
     ARGS = ['--use-angle=metal', '--ignore-gpu-blocklist']
 IPAD_UA = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 URL = 'http://localhost:5288/?timer&fps'
 os.makedirs(OUT, exist_ok=True)
 fails = []
@@ -126,8 +129,8 @@ def creature_checks(pg):
     pg.evaluate('(() => { const g = window.__horror; g.trackFps = () => {}; g.ratio = 1.5; g.renderer.setPixelRatio(1.5); })()')
     # 시작 방에서 오른쪽을 보면 문(7, 15)을 지나 8칸까지 트여 있다
     east = -math.pi / 2
-    near = {'x': 2.5, 'y': 15.5}
-    front = {'at': {'x': 5.0, 'y': 15.5}, 'heading': -math.pi / 2, 'player': near, 'yaw': east, 'pitch': 0.05, 'light': True}
+    near = {'x': 2.5, 'y': 16.5}
+    front = {'at': {'x': 5.0, 'y': 16.5}, 'heading': -math.pi / 2, 'player': near, 'yaw': east, 'pitch': 0.05, 'light': True}
     side = {**front, 'heading': 0}
     zoom = {'fov': 22, 'pitch': -0.04}
     creature_shot(pg, 'stalker', **front)
@@ -139,9 +142,9 @@ def creature_checks(pg):
     creature_shot(pg, 'zoom_chase_side', **side | zoom, pose='chase', speed=2, wait=1.4)
     creature_shot(pg, 'zoom_chase_front', **front | zoom, pose='chase', speed=2, wait=1.4)
     creature_shot(pg, 'zoom_stunned', **front | zoom, pose='stunned')
-    creature_shot(pg, 'creature_face', **{**front, 'player': {'x': 3.8, 'y': 15.5}, 'pitch': 0.42})
-    creature_shot(pg, 'creature_dark', **{**front, 'at': {'x': 9.5, 'y': 15.5}, 'player': {'x': 1.5, 'y': 15.5}, 'light': False, 'pitch': 0.05})
-    creature_shot(pg, 'creature_dark_chase', **{**front, 'at': {'x': 9.5, 'y': 15.5}, 'player': {'x': 1.5, 'y': 15.5}, 'light': False, 'pitch': 0.05}, pose='chase')
+    creature_shot(pg, 'creature_face', **{**front, 'player': {'x': 3.8, 'y': 16.5}, 'pitch': 0.42})
+    creature_shot(pg, 'creature_dark', **{**front, 'at': {'x': 9.5, 'y': 16.5}, 'player': {'x': 1.5, 'y': 16.5}, 'light': False, 'pitch': 0.05})
+    creature_shot(pg, 'creature_dark_chase', **{**front, 'at': {'x': 9.5, 'y': 16.5}, 'player': {'x': 1.5, 'y': 16.5}, 'light': False, 'pitch': 0.05}, pose='chase')
     box = pg.evaluate("""() => {
       const g = window.__horror;
       g.model.group.updateMatrixWorld(true);
@@ -176,12 +179,12 @@ def creature_checks(pg):
 
 # 진짜 행동 코드로 걷게 해서 앞면이 가는 쪽을 보는지, 머리가 움찔하는지, 눈이 상태를 따르는지 잰다
 def creature_motion(pg, front):
-    pg.evaluate(PLACE_CREATURE, {**front, 'at': {'x': 6.5, 'y': 15.5}, 'pose': 'patrol', 'speed': 0, 'fov': 70})
+    pg.evaluate(PLACE_CREATURE, {**front, 'at': {'x': 6.5, 'y': 16.5}, 'pose': 'patrol', 'speed': 0, 'fov': 70})
     pg.evaluate("""() => {
       const g = window.__horror;
       g.model.update = g.model.constructor.prototype.update;
-      g.p = { x: 1.5, y: 15.5 };
-      Object.assign(g.stalker, { mode: 'investigate', stunT: 0, target: { cx: 2, cy: 15 }, path: [{ cx: 5, cy: 15 }, { cx: 4, cy: 15 }, { cx: 3, cy: 15 }] });
+      g.p = { x: 1.5, y: 16.5 };
+      Object.assign(g.stalker, { mode: 'investigate', stunT: 0, target: { cx: 2, cy: 16 }, path: [{ cx: 5, cy: 16 }, { cx: 4, cy: 16 }, { cx: 3, cy: 16 }] });
     }""")
     time.sleep(1.2)
     go = pg.evaluate("""() => {
@@ -196,8 +199,8 @@ def creature_motion(pg, front):
     # 움찔: 15초 동안 머리 기울기가 한 번 이상 크게 튀어야 한다
     twitch = pg.evaluate("""async () => {
       const g = window.__horror, m = g.model;
-      Object.assign(g.stalker, { x: 5.5, y: 15.5, mode: 'stunned', stunT: 999, path: [] });
-      const shown = { x: 5.5, y: 15.5, heading: 0, mode: 'search' }; // 주인공이 옆에 있다
+      Object.assign(g.stalker, { x: 5.5, y: 16.5, mode: 'stunned', stunT: 999, path: [] });
+      const shown = { x: 5.5, y: 16.5, heading: 0, mode: 'search' }; // 주인공이 옆에 있다
       const real = m.constructor.prototype.update.bind(m);
       m.update = (s, dt, p) => real(shown, dt, p);
       let peak = 0, jumps = 0, last = 0;
@@ -216,7 +219,7 @@ def creature_motion(pg, front):
 
     glow = pg.evaluate("""async () => {
       const g = window.__horror, m = g.model, out = { search: m.glow };
-      const shown = { x: 5.5, y: 15.5, heading: -Math.PI / 2, mode: 'chase' };
+      const shown = { x: 5.5, y: 16.5, heading: -Math.PI / 2, mode: 'chase' };
       const real = m.constructor.prototype.update.bind(m);
       m.update = (s, dt, p) => real(shown, dt, p);
       await new Promise((r) => setTimeout(r, 1200));
@@ -259,9 +262,198 @@ def game(pg):
     }""")
 
 
+# 바쁜 컴퓨터에서는 프레임이 늦다. 정해진 시간을 재우는 대신 그렇게 될 때까지 기다린다
+def becomes(pg, expr, timeout=5000):
+    try:
+        pg.wait_for_function(expr, timeout=timeout, polling=30)
+        return True
+    except Exception:
+        return False
+
+
 def stand_at(pg, x, y):
     pg.evaluate('([x, y]) => { window.__horror.p = { x, y }; }', [x, y])
     time.sleep(0.4)
+
+
+def note_state(pg):
+    return pg.evaluate("({ open: window.__horror.hud.noteOpen, found: window.__horror.notes.found, hidden: window.__horror.hidden, status: window.__horror.hud.status.textContent, prompt: window.__horror.hud.prompt.textContent })")
+
+
+def stand_at_note(pg, i, off=0):
+    s = pg.evaluate('(i) => window.__horror.notes.spots[i]', i)
+    stand_at(pg, s['x'] + off, s['y'])
+    return s
+
+
+# 쪽지: 진짜 E 와 Enter 로 읽고 닫는다. 닫는 키는 닫기만 하고, 세이노와 걷기는 멈추지 않는다
+def note_checks(pg):
+    check('note: all spots placed', pg.evaluate('window.__horror.notes.total') == 8 and all(pg.evaluate('window.__horror.notes.spots.map((s) => Number.isFinite(s.x) && Number.isFinite(s.y))')))
+    check('note: status starts at 0', '쪽지 0/8' in note_state(pg)['status'], note_state(pg))
+    # 쪽지 자리 번호는 판마다 섞여서 어느 칸이 나올지 모른다. 벽이 아닌 옆 칸에 서서 내려다본다
+    pg.evaluate("""() => {
+      const g = window.__horror, s = g.notes.spots[0];
+      const [dx, dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([x, y]) => g.map.rows[Math.floor(s.y) + y][Math.floor(s.x) + x] === '.');
+      g.p = { x: s.x + dx * 0.9, y: s.y + dy * 0.9 };
+      g.yaw = Math.atan2(dx, dy);
+      g.pitch = -0.6;
+    }""")
+    time.sleep(0.5)
+    pg.screenshot(path=f'{OUT}/note_world.png')
+    check('note: prompt', 'E: 쪽지 읽기' in note_state(pg)['prompt'], note_state(pg))
+    check('note: paper is drawn', pg.evaluate('window.__horror.noteMeshes[0].visible && window.__horror.noteMeshes[0].parent.visible'))
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    n = note_state(pg)
+    check('note: E opens it', n['open'] and n['found'] == 1 and '쪽지 1/8' in n['status'], n)
+    check('note: paper is gone from the world', not pg.evaluate('window.__horror.noteMeshes[0].visible'))
+    check('note: shows the first story note', pg.evaluate("window.__horror.hud.noteEl.textContent.includes('밤 근무표')"))
+    check('note: prompt says how to close', 'E: 쪽지 닫기' in n['prompt'], n)
+    pg.screenshot(path=f'{OUT}/note_1280.png')
+    t0 = pg.evaluate('window.__horror.playTime')
+    time.sleep(0.5)
+    check('note: the game keeps running', pg.evaluate('window.__horror.playTime') > t0 + 0.2)
+    p0 = game(pg)['p']
+    pg.keyboard.down('w')
+    time.sleep(0.5)
+    pg.keyboard.up('w')
+    p1 = game(pg)['p']
+    check('note: keys still walk while it is open', math.hypot(p1['x'] - p0['x'], p1['y'] - p0['y']) > 0.2 and note_state(pg)['open'], (p0, p1))
+    # 사물함 앞에서 닫아도 숨지 않는다
+    lock = pg.evaluate('window.__horror.map.lockers[0]')
+    front = pg.evaluate("(c) => { const g = window.__horror, f = window.__horrorLogic.frontOf(g.map, c); return { x: f.cx + 0.5, y: f.cy + 0.5 }; }", lock)
+    stand_at(pg, front['x'], front['y'])
+    check('note: a locker is in reach', pg.evaluate("window.__horror.nearestUse().kind") == 'locker')
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    n = note_state(pg)
+    check('note: E only closes, it does not hide', not n['open'] and n['hidden'] is None, n)
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    check('note: next E uses the locker', note_state(pg)['hidden'] is not None, note_state(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    # 나란히 있는 쪽지가 있어도 닫는 키가 다음 쪽지를 집지 않는다
+    stand_at_note(pg, 1)
+    pg.evaluate("(() => { const g = window.__horror; g.notes.spots[2] = { ...g.notes.spots[1], x: g.notes.spots[1].x + 0.4 }; })()")
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    check('note: second note', note_state(pg)['found'] == 2 and note_state(pg)['open'], note_state(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    check('note: closing does not take the next one', note_state(pg)['found'] == 2 and not note_state(pg)['open'], note_state(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    check('note: third note opens', note_state(pg)['found'] == 3 and note_state(pg)['open'], note_state(pg))
+    # 누르고 있어서 생긴 반복 입력은 닫지 않는다, Enter 는 닫는다
+    pg.keyboard.down('Enter')
+    time.sleep(0.2)
+    check('note: Enter closes', not note_state(pg)['open'], note_state(pg))
+    pg.keyboard.up('Enter')
+    stand_at_note(pg, 3)
+    pg.keyboard.down('e')
+    time.sleep(0.2)
+    pg.keyboard.down('e')  # 두 번째 down 은 반복 입력이다
+    pg.keyboard.down('e')
+    time.sleep(0.3)
+    pg.keyboard.up('e')
+    check('note: holding E does not flick it shut', note_state(pg)['open'] and note_state(pg)['found'] == 4, note_state(pg))
+    # 일시정지, 잡힘, 쫓김은 쪽지를 닫는다
+    pg.keyboard.press('Escape')
+    time.sleep(0.4)
+    check('note: pause closes it', game(pg)['state'] == 'paused' and not note_state(pg)['open'], note_state(pg))
+    pg.screenshot(path=f'{OUT}/pause_with_notes.png')
+    read_notes_keyboard(pg)
+    pg.click('#horror button:has-text("계속하기")')
+    time.sleep(0.3)
+    held = note_state(pg)
+    check('note: resume shows the same note again', held['open'] and held['found'] == 4 and pg.evaluate("window.__horror.hud.noteEl.textContent.includes(window.__horror.hud.noteLines[0])"), held)
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    check('note: reopened note closes with E', not note_state(pg)['open'] and note_state(pg)['hidden'] is None, note_state(pg))
+    stand_at_note(pg, 4)
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    check('note: open before the catch', note_state(pg)['open'])
+    pg.evaluate(FAKE_LOCK)
+    pg.evaluate('window.__horror.getCaught()')
+    check('note: caught closes it', not note_state(pg)['open'] and not pg.evaluate("document.querySelector('#horror button')"), note_state(pg))
+    check('note: caught note can be read later', pg.evaluate('window.__horror.notes.read.length') == 5)
+    pg.keyboard.press('e')  # 잡히는 장면의 E 는 아무 일도 없다
+    pg.wait_for_function("window.__horror.state === 'play'", timeout=20000)
+    time.sleep(0.3)
+    check('note: play goes on after the catch', not note_state(pg)['open'] and game(pg)['state'] == 'play', game(pg))
+    check('note: says where to read it again', '일시정지' in pg.evaluate('window.__horror.hud.message.textContent'), pg.evaluate('window.__horror.hud.message.textContent'))
+    pg.evaluate("delete document.pointerLockElement")
+    pg.evaluate(PARK_STALKER)
+    stand_at_note(pg, 5)
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    pg.evaluate("window.__horror.onStalkerEvents(['chase'])")
+    check('note: a chase clears the view', not note_state(pg)['open'], note_state(pg))
+    check('note: chase says where to read it again', '일시정지' in pg.evaluate('window.__horror.hud.message.textContent'), pg.evaluate('window.__horror.hud.message.textContent'))
+    time.sleep(0.2)
+    # 쫓기는 동안에는 쪽지를 고르지 않는다
+    stand_at_note(pg, 6)
+    use = pg.evaluate("""() => {
+      const g = window.__horror, was = g.stalker.mode, before = g.nearestUse().kind;
+      g.stalker.mode = 'chase';
+      const during = g.nearestUse()?.kind ?? null;
+      g.stalker.mode = was;
+      return { before, during };
+    }""")
+    check('note: not offered during a chase', use['before'] == 'note' and use['during'] != 'note', use)
+
+
+# 키보드만으로 읽은 쪽지를 넘겨 보고 일시정지로 돌아온다
+def read_notes_keyboard(pg):
+    layer = lambda: pg.inner_text('#horror')
+    check('read notes: button on the pause layer', '읽은 쪽지' in layer())
+    pg.keyboard.press('Tab')  # 계속하기 다음 버튼
+    pg.keyboard.press('Enter')
+    time.sleep(0.2)
+    check('read notes: Enter opens the latest', '읽은 쪽지 4/4' in layer(), layer()[:80])
+    pg.screenshot(path=f'{OUT}/read_notes.png')
+    pg.keyboard.press('Enter')  # 처음 초점은 이전 쪽지
+    time.sleep(0.2)
+    check('read notes: previous note', '읽은 쪽지 3/4' in layer(), layer()[:80])
+    pg.keyboard.press('Tab')
+    pg.keyboard.press('Tab')
+    pg.keyboard.press('Enter')
+    time.sleep(0.2)
+    check('read notes: back to pause', '계속하기' in layer() and '돌아가기' not in layer(), layer()[:80])
+    check('read notes: still paused', game(pg)['state'] == 'paused')
+
+
+# 파란 문: 진짜 E 키로 열쇠를 줍고 열고 지나간다
+def blue_door(pg):
+    door = pg.evaluate('window.__horror.run.doors[1]')
+    front = (door['cx'] + 0.5, door['cy'] - 0.5)  # 날개 2 는 문 아래쪽이다
+    stand_at(pg, *front)
+    pg.evaluate('window.__horror.yaw = Math.PI; window.__horror.pitch = 0')
+    time.sleep(0.5)
+    pg.screenshot(path=f'{OUT}/door_blue.png')
+    check('blue door: asks for the blue key', '파란 열쇠가 필요해' in game(pg)['prompt'], game(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    check('blue door: stays shut without key', not pg.evaluate('window.__horror.run.doors[1].open'))
+    key = pg.evaluate('window.__horror.run.keys[1]')
+    stand_at(pg, key['cx'] + 0.5, key['cy'] + 0.5)
+    check('blue key: prompt', '파란 열쇠 줍기' in game(pg)['prompt'], game(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    check('blue key: E takes it', pg.evaluate('window.__horror.run.keys[1].taken && !window.__horror.keyMeshes[1].visible') and '열쇠 1' in game(pg)['status'], game(pg))
+    stand_at(pg, *front)
+    check('blue door: prompt with key', 'E: 문 열기' in game(pg)['prompt'], game(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.6)
+    pg.screenshot(path=f'{OUT}/door_blue_opening.png')
+    time.sleep(1)
+    check('blue door: E opens it', pg.evaluate('window.__horror.run.doors[1].open') and '열쇠 0' in game(pg)['status'], game(pg))
+    pg.keyboard.down('w')
+    time.sleep(2.5)
+    pg.keyboard.up('w')
+    check('blue door: walks through', game(pg)['p']['y'] > door['cy'] + 0.5, game(pg))
 
 
 def play_controls(pw):
@@ -285,13 +477,52 @@ def play_controls(pw):
     check('fuse: E takes it', game(pg)['have'] == 1 and not pg.evaluate('window.__horror.fuseMeshes[0].visible'), game(pg))
 
     # 패널은 모자라면 안 켜진다
-    stand_at(pg, 25.5, 16.5)
+    stand_at(pg, 23.5, 25.5)
     pg.keyboard.press('e')
     time.sleep(0.4)
     check('panel: needs fuses', not game(pg)['powered'] and '필요해' in game(pg)['prompt'], game(pg))
 
-    # 숨기: 시작 방 옆 사물함 (6, 13)
-    stand_at(pg, 5.5, 13.5)
+    # 잠긴 문: 열쇠가 없으면 안내만, 진짜 E 키로 줍고 연다
+    door = pg.evaluate('window.__horror.run.doors[0]')
+    front = (door['cx'] + 0.5, door['cy'] + 1.5)
+    stand_at(pg, *front)
+    pg.evaluate('window.__horror.yaw = 0')
+    time.sleep(0.5)
+    # 문 앞 칸의 눈길은 이때 저장된다. 날개 안쪽 구역은 문이 열려야 그린다
+    pg.wait_for_function("window.__horror.scene.children.find((c) => c.userData.index === Math.floor(window.__horror.run.doors[0].cy / 7) * Math.ceil(window.__horror.map.w / 7) + Math.floor(window.__horror.run.doors[0].cx / 7)).visible", timeout=10000)
+    wing_chunk = "window.__horror.scene.children.find((c) => c.userData.index === (Math.floor((window.__horror.run.doors[0].cy - 7) / 7) * Math.ceil(window.__horror.map.w / 7) + Math.floor(window.__horror.run.doors[0].cx / 7))).visible"
+    check('door: wing chunk hidden while shut', not pg.evaluate(wing_chunk))
+    pg.screenshot(path=f'{OUT}/door_locked.png')
+    check('door: needs key', '열쇠가 필요해' in game(pg)['prompt'], game(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.3)
+    check('door: stays shut without key', not pg.evaluate('window.__horror.run.doors[0].open'))
+    key = pg.evaluate('window.__horror.run.keys[0]')
+    stand_at(pg, key['cx'] + 0.5, key['cy'] + 0.5)
+    check('key: prompt', '열쇠 줍기' in game(pg)['prompt'], game(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.4)
+    check('key: E takes it', pg.evaluate('window.__horror.run.keys[0].taken && !window.__horror.keyMeshes[0].visible') and '열쇠 1' in game(pg)['status'], game(pg))
+    stand_at(pg, *front)
+    check('door: prompt with key', 'E: 문 열기' in game(pg)['prompt'], game(pg))
+    pg.keyboard.press('e')
+    time.sleep(0.6)
+    pg.screenshot(path=f'{OUT}/door_opening.png')
+    time.sleep(1)
+    pg.screenshot(path=f'{OUT}/door_open.png')
+    check('door: E opens it', pg.evaluate('window.__horror.run.doors[0].open') and '열쇠 0' in game(pg)['status'], game(pg))
+    check('door: saved sight is dropped, wing chunk drawn from the same cell', pg.evaluate(wing_chunk))
+    pg.evaluate("([x, y]) => { const g = window.__horror; g.readInput = () => ({ move: { x: 0, z: 1, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false }); }", list(front))
+    time.sleep(2.5)
+    pg.evaluate(IDLE_INPUT)
+    check('door: walks through', game(pg)['p']['y'] < door['cy'], game(pg))
+    pg.evaluate('delete window.__horror.readInput')
+
+    note_checks(pg)
+    blue_door(pg)
+
+    # 숨기: 시작 방 사물함 (6, 25)
+    stand_at(pg, 5.5, 25.5)
     pg.keyboard.press('e')
     time.sleep(0.5)
     hid = game(pg)
@@ -303,12 +534,12 @@ def play_controls(pw):
     check('locker: E leaves where you were', out['hidden'] is None and abs(out['p']['x'] - 5.5) < 0.01, out)
 
     # 전기 상자와 펀치: 시작 방 상자 (1, 17) 옆. 세이노가 가까이 오면 진짜 클릭으로 친다
-    stand_at(pg, 2.5, 17.5)
+    stand_at(pg, 2.5, 25.5)
     pg.keyboard.press('e')
     time.sleep(0.4)
     check('box: E charges', game(pg)['shock'] and '충전됨' in game(pg)['status'], game(pg))
     # 느린 Chrome 에서 먼저 잡히지 않게 세이노는 멈춘 채 옆에 두고, 펀치가 멈춤 시간을 새로 맞추는지 본다
-    pg.evaluate("Object.assign(window.__horror.stalker, { x: 4.5, y: 17.5, stunT: 9999 })")
+    pg.evaluate("Object.assign(window.__horror.stalker, { x: 4.5, y: 25.5, stunT: 9999 })")
     pg.evaluate(FAKE_LOCK)
     pg.mouse.click(640, 360)
     time.sleep(0.5)
@@ -343,7 +574,7 @@ def play_controls(pw):
     check('scare: not again on the same cell', pg.evaluate('window.__horror.blink') is None, '')
     sc2 = pg.evaluate('window.__horror.map.scares[1]')
     stand_at(pg, sc2['cx'] + 0.5, sc2['cy'] + 0.5)
-    check('scare: second cell starts a flicker', pg.evaluate('window.__horror.blink') is not None, '')
+    check('scare: second cell starts a flicker', becomes(pg, 'window.__horror.blink !== null') or pg.evaluate('window.__horror.scaresLeft.length') == left - 1, (pg.evaluate('window.__horror.state'), pg.evaluate('window.__horror.scaresLeft.length'), left))
     pg.evaluate(FAKE_LOCK)  # 마우스가 잠겨 있으면 잡힌 뒤 바로 이어진다
     pg.evaluate("window.__horror.getCaught()")
     k_ = pg.evaluate("({ blink: window.__horror.blink, i: window.__horror.flash.intensity, base: window.__horror.k.flashIntensity })")
@@ -404,6 +635,86 @@ def play_bot(pw):
     check('escape: back to title', pg.evaluate("window.__shockGame.scene.isActive('Title') && !window.__horror"))
     print('errors', errs)
     check('bot: no errors', not errs, errs)
+    b.close()
+
+
+# 진짜 행동 코드로 바라보기와 매복에 들어가게 해서 눈빛, 자세, 빠져나오기를 본다
+def play_stalk(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 1280, 'height': 720})
+    errs = []
+    watch(pg, errs)
+    open_horror(pg)
+    pg.evaluate(IDLE_INPUT)
+    time.sleep(2)
+    pg.evaluate(FAKE_LOCK)
+    pg.evaluate('(() => { const g = window.__horror; g.trackFps = () => {}; g.ratio = 1.5; g.renderer.setPixelRatio(1.5); })()')
+
+    # 바라보기: 넓은 방 끝에서 손전등을 켠 주인공을 본다
+    pg.evaluate("""() => {
+      const g = window.__horror;
+      g.k.watchChance = 1;
+      g.lightOn = true;
+      g.p = { x: 15.5, y: 21.5 };
+      g.yaw = -Math.PI / 2;
+      g.pitch = 0.05;
+      Object.assign(g.stalker, { x: 22.5, y: 21.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [], calmT: 99, graceT: 0, patrolIndex: 0 });
+    }""")
+    pg.wait_for_function("window.__horror.stalker.mode === 'watch'", timeout=8000, polling=30)
+    time.sleep(1.2)
+    w = pg.evaluate("({ mode: window.__horror.stalker.mode, x: window.__horror.stalker.x, glow: window.__horror.model.glow, stretch: window.__horror.model.pose.stretch, lean: window.__horror.model.pose.lean, shown: window.__horror.model.group.visible, say: window.__horror.hud.message.textContent })")
+    print('watch', w)
+    pg.screenshot(path=f'{OUT}/watch_live.png')
+    check('watch: stands still, eyes bright', w['mode'] == 'watch' and w['x'] == 22.5 and w['glow'] > 0.8, w)
+    check('watch: tall upright pose', w['stretch'] > 1.08 and w['lean'] < 0.42, w)
+    check('watch: drawn from far', w['shown'], w)
+    check('watch: no text warning', w['say'] == '', w)
+    pg.evaluate("window.__horror.lightOn = false")
+    time.sleep(0.15)
+    pg.screenshot(path=f'{OUT}/watch_live_dark.png')
+    pg.evaluate("window.__horror.lightOn = true")
+    pg.wait_for_function("window.__horror.stalker.mode === 'chase'", timeout=8000, polling=30)
+    check('watch: ends in a chase with a warning', '들켰다' in pg.evaluate('window.__horror.hud.message.textContent') and pg.evaluate('window.__horror.stalker.warnT') > 0)
+
+    # 매복: 추격 중 벽 너머로 놓치게 한다
+    pg.evaluate("""() => {
+      const g = window.__horror;
+      g.k.ambushChance = 1;
+      g.k.ambushWaitChance = 1;
+      g.p = { x: 3.5, y: 8.5 };
+      Object.assign(g.stalker, { x: 22.5, y: 21.5, mode: 'chase', path: [], lostT: 99, warnT: 0, stunT: 0 });
+    }""")
+    pg.wait_for_function("window.__horror.stalker.mode === 'ambush'", timeout=8000, polling=30)
+    pg.wait_for_function("window.__horror.stalker.path.length === 0", timeout=60000, polling=100)
+    a = pg.evaluate("({ mode: window.__horror.stalker.mode, kind: window.__horror.stalker.ambushKind, say: window.__horror.hud.message.textContent, glow: window.__horror.model.glow })")
+    print('ambush', a)
+    check('ambush: waits silently', a['mode'] == 'ambush' and a['kind'] == 'wait', a)
+    time.sleep(1.5)
+    check('ambush: eyes nearly dark', pg.evaluate('window.__horror.model.glow') < 0.2, pg.evaluate('window.__horror.model.glow'))
+    # 가까이 가서 눈빛과 자세를 찍는다. 시선이 닿으면 뛰쳐나온다
+    spot = pg.evaluate("""() => {
+      const g = window.__horror, s = g.stalker, L = window.__horrorLogic;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        for (let n = 5; n >= 3; n--) {
+          const c = { x: s.x + dx * n, y: s.y + dy * n };
+          if (L.lineOfSight(g.map, c, s)) return { ...c, yaw: Math.atan2(-(s.x - c.x), -(s.y - c.y)) };
+        }
+      }
+      return null;
+    }""")
+    print('ambush view', spot)
+    if spot:
+        pg.evaluate("(c) => { const g = window.__horror; g.lightOn = true; g.p = { x: c.x, y: c.y }; g.yaw = c.yaw; g.pitch = 0.05; }", spot)
+        time.sleep(0.5)
+        pg.screenshot(path=f'{OUT}/ambush_live.png')
+    a2 = pg.evaluate("({ mode: window.__horror.stalker.mode, lean: window.__horror.model.pose.lean, stretch: window.__horror.model.pose.stretch, shown: window.__horror.model.group.visible })")
+    print('ambush near', a2)
+    check('ambush: crouched pose', a2['stretch'] < 0.97, a2)
+    pg.evaluate("(() => { const g = window.__horror; const s = g.stalker; g.p = { x: s.x + 2, y: s.y }; if (!window.__horrorLogic.lineOfSight(g.map, g.p, s)) g.p = { x: s.x - 2, y: s.y }; if (!window.__horrorLogic.lineOfSight(g.map, g.p, s)) g.p = { x: s.x, y: s.y + 2 }; if (!window.__horrorLogic.lineOfSight(g.map, g.p, s)) g.p = { x: s.x, y: s.y - 2 }; })()")
+    pg.wait_for_function("window.__horror.stalker.mode === 'chase'", timeout=5000, polling=30)
+    check('ambush: springs into a chase with a warning', '들켰다' in pg.evaluate('window.__horror.hud.message.textContent') and pg.evaluate('window.__horror.stalker.warnT') > 0)
+    print('errors', errs)
+    check('stalk: no errors', not errs, errs)
     b.close()
 
 
@@ -471,6 +782,7 @@ def play_rewards(pw):
     pg.evaluate("localStorage.removeItem('shock-hero-save-v1')")
     t1, s1 = quick_escape(pg, True)
     check('gems: first escape pays both', '보석 10개' in t1 and s1['gems'] == 10, (t1, s1['gems']))
+    check('end screen: counts notes', '쪽지 0/8' in t1, t1)
     t2, s2 = quick_escape(pg, True)
     check('gems: second escape today pays none and says so', '오늘은 이미 보석을 받았어요' in t2 and s2['gems'] == 10 and s2['horror']['escapes'] == 2, (t2, s2['gems']))
     # 어제 받은 것으로 바꾸면 탈출 보석만 다시 받는다
@@ -522,9 +834,27 @@ def play_lost(pw):
     b.close()
 
 
+# 벽 그림을 못 받으면 셔터도 색만 남는다. 색이 열쇠와 맞춰 보는 표시다
+def play_no_art(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    pg = b.new_page(viewport={'width': 640, 'height': 360})
+    pg.route('**/art/horror_wall.jpg', lambda r: r.abort())
+    open_horror(pg)
+    time.sleep(1)
+    door = pg.evaluate("window.__horror.run.doors[0]")
+    stand_at(pg, door['cx'] + 0.5, door['cy'] + 1.5)
+    pg.evaluate("window.__horror.yaw = 0")
+    time.sleep(0.5)
+    pg.screenshot(path=f'{OUT}/door_no_art.png')
+    bare = pg.evaluate("window.__horror.scene.children.flatMap((c) => c.children).filter((m) => m.geometry?.parameters?.height === 3 && m.material?.emissiveIntensity === 0.12).map((m) => m.material.map === null)")
+    check('no wall art: shutters drop the broken picture', len(bare) == 2 and all(bare), bare)
+    b.close()
+
+
 def play_robust(pw):
     play_rewards(pw)
     play_lost(pw)
+    play_no_art(pw)
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     pg = b.new_page(viewport={'width': 640, 'height': 360})
     errs = []
@@ -539,14 +869,14 @@ def play_robust(pw):
         time.sleep(0.25)
         return pg.evaluate('window.__horror.model.group.visible')
     check('cull: far behind walls is hidden', not shown())
-    pg.evaluate("Object.assign(window.__horror.stalker, { x: 9.5, y: 15.5 }); window.__horror.p = { x: 1.5, y: 15.5 }")
+    pg.evaluate("Object.assign(window.__horror.stalker, { x: 9.5, y: 16.5 }); window.__horror.p = { x: 1.5, y: 16.5 }")
     check('cull: far down a corridor is drawn', shown())
-    pg.evaluate("Object.assign(window.__horror.stalker, { x: 9.5, y: 14.5 }); window.__horror.p = { x: 1.5, y: 14.5 }")
+    pg.evaluate("Object.assign(window.__horror.stalker, { x: 9.5, y: 15.5 }); window.__horror.p = { x: 1.5, y: 15.5 }")
     check('cull: same distance behind a wall is hidden', not shown())
     pg.evaluate("window.__horror.toggleLocker(0)")
     check('cull: always drawn from inside a locker', shown())
     pg.evaluate("window.__horror.toggleLocker(0)")
-    check('cull: hidden again after leaving', not shown())
+    check('cull: hidden again after leaving', becomes(pg, '!window.__horror.model.group.visible'))
     pg.evaluate(FAKE_LOCK)
     pg.evaluate("window.__horror.getCaught()")
     check('cull: drawn in the caught scene', pg.evaluate('window.__horror.model.group.visible'))
@@ -634,6 +964,7 @@ def play_robust(pw):
 def run_play(pw):
     play_robust(pw)
     play_controls(pw)
+    play_stalk(pw)
     play_sound(pw)
     play_bot(pw)
 
@@ -759,6 +1090,131 @@ def tap(t, xy):
     time.sleep(0.4)
 
 
+# 손가락으로 쪽지를 읽고 닫는다. 쪽지 위에 닿은 손가락도 걷고 둘러볼 수 있어야 한다
+def touch_notes(pg, t, w, h):
+    pg.evaluate(PARK_STALKER)
+    label = f'touch {w}x{h}'
+    stand_at_note(pg, 0)
+    check(f'{label}: prompt', '사용: 쪽지 읽기' in note_state(pg)['prompt'], note_state(pg))
+    tap(t, button_xy(pg, '사용'))
+    n = note_state(pg)
+    check(f'{label}: use button opens the note', n['open'] and n['found'] == 1 and '쪽지 1/8' in n['status'], n)
+    pg.screenshot(path=f'{OUT}/note_{w}x{h}.png')
+    box = pg.evaluate("(() => { const r = window.__horror.hud.noteEl.getBoundingClientRect(), b = window.__horror.hud.noteEl.querySelector('button').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height, scroll: window.__horror.hud.noteEl.scrollHeight, btnBottom: b.bottom, btnTop: b.top }; })()")
+    print('note box', box)
+    check(f'{label}: fits the screen', box['top'] >= 0 and box['bottom'] <= h and box['scroll'] <= box['height'] + 1 and box['btnBottom'] <= box['bottom'], box)
+    longest = pg.evaluate("""async () => {
+      const { NOTES } = await import('/src/horror/story.js'), g = window.__horror, lines = g.hud.noteLines, compact = g.device === 'phone';
+      let worst = 0, fits = true, hits = [];
+      for (const n of NOTES) {
+        g.hud.showNote(n, compact);
+        const el = g.hud.noteEl, b = el.querySelector('button').getBoundingClientRect(), r = el.getBoundingClientRect();
+        worst = Math.max(worst, r.height);
+        fits = fits && b.bottom <= r.bottom && el.scrollHeight <= r.height + 1;
+        for (const btn of g.input.buttons) {
+          const o = btn.getBoundingClientRect();
+          if (o.left < r.right && r.left < o.right && o.top < r.bottom && r.top < o.bottom) hits.push(btn.textContent);
+        }
+      }
+      g.hud.showNote(NOTES[NOTES.length - 1], compact);
+      await new Promise((f) => setTimeout(f, 150));
+      return { worst, fits, hits: [...new Set(hits)], lines };
+    }""")
+    print('longest note', longest)
+    pg.screenshot(path=f'{OUT}/note_longest_{w}x{h}.png')
+    pg.evaluate("(lines) => window.__horror.hud.showNote(lines, window.__horror.device === 'phone')", longest['lines'])
+    check(f'{label}: every story note fits', longest['fits'] and longest['worst'] <= h - 16, longest)
+    check(f'{label}: note clears every button', not longest['hits'], longest['hits'])
+    mid_y = (box['top'] + box['bottom']) / 2
+    # 왼쪽 손가락이 쪽지 위에 닿아도 걷는다
+    x0 = max(box['left'] + 20, 40)
+    s0 = state(pg)
+    t.down(1, x0, mid_y)
+    t.drag(1, x0, mid_y, x0, mid_y - 40)
+    time.sleep(0.5)
+    s1 = state(pg)
+    t.up(1)
+    check(f'{label}: a thumb on the note still walks', math.hypot(s1['x'] - s0['x'], s1['y'] - s0['y']) > 0.1 and note_state(pg)['open'], (s0, s1))
+    # 오른쪽 손가락이 쪽지 위에 닿아도 둘러본다
+    x1 = box['right'] - 20
+    s0 = state(pg)
+    t.down(2, x1, mid_y)
+    t.drag(2, x1, mid_y, x1 - 60, mid_y, steps=10)
+    time.sleep(0.2)
+    t.up(2)
+    s1 = state(pg)
+    check(f'{label}: a finger on the note still looks', abs(s1['yaw'] - s0['yaw']) > 0.05 and note_state(pg)['open'], (s0['yaw'], s1['yaw']))
+    tap(t, button_xy(pg, '손전등'))
+    check(f'{label}: light button works under the note', not state(pg)['light'], state(pg))
+    tap(t, button_xy(pg, '손전등'))
+    # 사물함 앞에서 사용 버튼: 닫기만 한다
+    pg.evaluate("(() => { const g = window.__horror, f = window.__horrorLogic.frontOf(g.map, g.map.lockers[0]); g.p = { x: f.cx + 0.5, y: f.cy + 0.5 }; })()")
+    time.sleep(0.3)
+    tap(t, button_xy(pg, '사용'))
+    n = note_state(pg)
+    check(f'{label}: use button only closes', not n['open'] and n['hidden'] is None, n)
+    # 닫기 버튼: 손가락이 조이스틱이 되지 않는다
+    stand_at_note(pg, 1)
+    tap(t, button_xy(pg, '사용'))
+    check(f'{label}: second note opens', note_state(pg)['open'] and note_state(pg)['found'] == 2, note_state(pg))
+    xy = button_xy(pg, '닫기')
+    t.down(9, xy['x'], xy['y'])
+    time.sleep(0.08)
+    stuck = pg.evaluate('Boolean(window.__horror.input.stick || window.__horror.input.lookTouch)')
+    t.up(9)
+    time.sleep(0.4)
+    check(f'{label}: close button closes', not note_state(pg)['open'], note_state(pg))
+    check(f'{label}: close button is not a stick', not stuck)
+    time.sleep(0.2)
+    # 손가락으로 읽은 쪽지를 본다
+    tap(t, button_xy(pg, '멈춤'))
+    pg.screenshot(path=f'{OUT}/pause_{w}x{h}.png')
+    tap(t, button_xy(pg, '읽은 쪽지'))
+    check(f'{label}: read notes opens by touch', '읽은 쪽지 2/2' in pg.inner_text('#horror'), pg.inner_text('#horror')[:80])
+    pg.screenshot(path=f'{OUT}/read_notes_{w}x{h}.png')
+    tap(t, button_xy(pg, '이전 쪽지'))
+    check(f'{label}: previous note by touch', '읽은 쪽지 1/2' in pg.inner_text('#horror'))
+    tap(t, button_xy(pg, '돌아가기'))
+    tap(t, button_xy(pg, '계속하기'))
+    check(f'{label}: back to play', game(pg)['state'] == 'play', game(pg))
+
+
+def run_phone(pw):
+    b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
+    errs = []
+    for w, h in ((844, 390), (667, 375), (568, 320)):
+        ctx = b.new_context(viewport={'width': w, 'height': h}, has_touch=True, is_mobile=True, user_agent=PHONE_UA, device_scale_factor=2)
+        pg = ctx.new_page()
+        watch(pg, errs)
+        t = Touch(ctx.new_cdp_session(pg))
+        pg.goto(URL)
+        time.sleep(3)
+        pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
+        pg.wait_for_function('window.__horror', timeout=20000)
+        time.sleep(1)
+        pg.screenshot(path=f'{OUT}/phone_intro_{w}x{h}.png')
+        check(f'phone {w}: device', pg.evaluate('window.__horror.device') == 'phone')
+        intro = pg.evaluate("(() => { const l = window.__horror.hud.layer, r = l.getBoundingClientRect(); const bs = [...l.querySelectorAll('button')].map((x) => x.getBoundingClientRect().bottom); return { scroll: l.scrollHeight, height: r.height, bottom: Math.max(...bs), text: l.textContent }; })()")
+        print('phone intro', {k: v for k, v in intro.items() if k != 'text'})
+        check(f'phone {w}: intro mentions keys', '열쇠' in intro['text'])
+        if intro['scroll'] > intro['height'] + 1:
+            print(f'phone {w}: intro needs a scroll', intro['scroll'], intro['height'])
+        pg.evaluate("window.__horror.hud.layer.scrollTop = 1e4")
+        tap(t, button_xy(pg, '시작'))
+        check(f'phone {w}: start', pg.evaluate('window.__horror.state') == 'play')
+        touch_notes(pg, t, w, h)
+        if w == 844:
+            t.down(1, 120, 300)
+            t.drag(1, 120, 300, 120, 248)
+            time.sleep(0.3)
+            pg.screenshot(path=f'{OUT}/joystick_phone.png')
+            t.up(1)
+        ctx.close()
+    print('errors', errs)
+    check('phone: no errors', not errs, errs)
+    b.close()
+
+
 def run_touch(pw):
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     ctx = b.new_context(viewport={'width': 1024, 'height': 768}, has_touch=True, is_mobile=False,
@@ -821,6 +1277,13 @@ def run_touch(pw):
     side = dx * r[0] + dy * r[1]
     check('stick left strafes left', side < -0.2, f'right={side:.2f}')
 
+    t.down(1, 200, 500)
+    t.drag(1, 200, 500, 200, 425)
+    time.sleep(0.2)
+    pg.screenshot(path=f'{OUT}/joystick_tablet.png')
+    t.up(1)
+    time.sleep(0.2)
+
     # 오른쪽 반 끌기: 오른쪽으로 끌면 오른쪽으로 돈다 (yaw 가 줄어든다), 아래로 끌면 아래를 본다 (pitch 가 줄어든다)
     s0 = state(pg)
     t.down(2, 700, 400)
@@ -864,18 +1327,18 @@ def run_touch(pw):
 
     # 사용 버튼, 펀치 버튼. 세이노는 멀리 세워 두고 시작 방 상자 옆으로 간다
     pg.evaluate(PARK_STALKER)
-    stand_at(pg, 2.5, 17.5)
+    stand_at(pg, 2.5, 25.5)
     check('touch: prompt says 사용', '사용: 쇼크 충전' in game(pg)['prompt'], game(pg))
     pg.screenshot(path=f'{OUT}/hud_1024.png')
     tap(t, button_xy(pg, '사용'))
     check('touch: use button charges', game(pg)['shock'], game(pg))
-    pg.evaluate("Object.assign(window.__horror.stalker, { x: 4.5, y: 17.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [] })")
+    pg.evaluate("Object.assign(window.__horror.stalker, { x: 4.5, y: 25.5, heading: -Math.PI / 2, mode: 'patrol', stunT: 0, path: [] })")
     tap(t, button_xy(pg, '펀치'))
     check('touch: punch button stuns', game(pg)['mode'] == 'stunned' and not game(pg)['shock'], game(pg))
     pg.evaluate(PARK_STALKER)
 
     # 숨은 채로도 사용 버튼이 보이고 눌린다
-    stand_at(pg, 5.5, 13.5)
+    stand_at(pg, 5.5, 25.5)
     tap(t, button_xy(pg, '사용'))
     check('touch: use button hides', game(pg)['hidden'] is not None, game(pg))
     pg.screenshot(path=f'{OUT}/touch_locker.png')
@@ -886,6 +1349,8 @@ def run_touch(pw):
     }"""))
     tap(t, button_xy(pg, '사용'))
     check('touch: use button leaves', game(pg)['hidden'] is None, game(pg))
+
+    touch_notes(pg, t, 1024, 768)
 
     # 멈춤 버튼: 일시정지하고, 타이틀로 버튼으로 돌아온다
     tap(t, button_xy(pg, '멈춤'))
@@ -946,7 +1411,7 @@ def run_touch(pw):
 
 
 with sync_playwright() as pw:
-    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust}[MODE](pw)
+    {'keys': run_keys, 'shots': run_shots, 'touch': run_touch, 'creature': run_creature, 'play': run_play, 'sound': play_sound, 'robust': play_robust, 'phone': run_phone, 'stalk': play_stalk}[MODE](pw)
     if MODE == 'keys':
         run_play(pw)
 if fails:

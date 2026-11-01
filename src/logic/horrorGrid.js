@@ -3,26 +3,40 @@
 export const CELL = 3; // 칸 하나의 3D 크기 (미터)
 
 const SOLID = new Set(['#', 'L', 'E', 'P', 'G']);
+const LOCK_LETTERS = ['A', 'B']; // 잠긴 문. 글자 순서가 열쇠 순서다
+const cellKey = (map, cx, cy) => cy * map.w + cx;
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 export function parseMap(rows) {
   const w = rows[0].length;
-  const map = { w, h: rows.length, rows, start: null, stalker: null, panel: null, gate: null, fuses: [], lockers: [], boxes: [], patrol: [], scares: [] };
-  const lists = { F: map.fuses, L: map.lockers, E: map.boxes, R: map.patrol, X: map.scares };
+  const map = { w, h: rows.length, rows, start: null, stalker: null, panel: null, gate: null, fuses: [], lockers: [], boxes: [], patrol: [], scares: [], notes: [], keys: [], returns: [], locks: [], locked: new Set() };
+  const lists = { F: map.fuses, L: map.lockers, E: map.boxes, R: map.patrol, X: map.scares, N: map.notes, K: map.keys, C: map.returns };
   const ones = { S: 'start', M: 'stalker', P: 'panel', G: 'gate' };
   rows.forEach((row, cy) => {
     if (row.length !== w) throw new Error(`맵 ${cy}번 줄 길이가 다릅니다`);
     [...row].forEach((ch, cx) => {
       if (lists[ch]) lists[ch].push({ cx, cy });
       if (ones[ch]) map[ones[ch]] = { cx, cy };
+      const lock = LOCK_LETTERS.indexOf(ch);
+      if (lock >= 0) {
+        map.locks[lock] = { cx, cy };
+        map.locked.add(cellKey(map, cx, cy));
+      }
     });
   });
   return map;
 }
 
+// 잠긴 문 일부를 연 맵 사본. 글자와 자리는 같이 쓰고 locked 만 따로 가진다 (원본 맵은 그대로다)
+export function withOpen(map, opened = []) {
+  const locked = new Set(map.locked);
+  for (const i of opened) locked.delete(cellKey(map, map.locks[i].cx, map.locks[i].cy));
+  return { ...map, locked };
+}
+
 export function blocked(map, cx, cy) {
   if (cx < 0 || cy < 0 || cx >= map.w || cy >= map.h) return true;
-  return SOLID.has(map.rows[cy][cx]);
+  return SOLID.has(map.rows[cy][cx]) || map.locked.has(cellKey(map, cx, cy));
 }
 
 export const cellOf = (p) => ({ cx: Math.floor(p.x), cy: Math.floor(p.y) });
@@ -96,4 +110,34 @@ export function reachable(map, from) {
     }
   }
   return seen;
+}
+
+// 눈을 막는 칸. 사물함과 상자는 칸보다 작아서 뒤가 보이므로 벽과 정문, 잠긴 문만 친다
+const opaque = (map, cx, cy) => {
+  const ch = map.rows[cy]?.[cx];
+  return ch === undefined || ch === '#' || ch === 'G' || map.locked.has(cellKey(map, cx, cy));
+};
+
+const VIEW_RAYS = 240; // 한 자리에서 쏘는 시선 수
+const VIEW_STEP = 0.25; // 시선을 따라가는 간격 (칸)
+const VIEW_FROM = [[0.5, 0.5], [0.05, 0.05], [0.95, 0.05], [0.05, 0.95], [0.95, 0.95]]; // 칸 안 어디에 서도 빠지지 않게 가운데와 네 구석에서 본다
+
+// 이 칸에 선 사람 눈에 닿는 구역들 (구역 번호는 cy 묶음 * perRow + cx 묶음).
+// mark(구역 번호) 를 부른다. 칸이 바뀔 때만 부르면 되고, 시선은 viewCells 칸까지만 간다
+export function chunksInSight(map, cell, viewCells, chunk, mark) {
+  const perRow = Math.ceil(map.w / chunk);
+  for (const [ox, oy] of VIEW_FROM) {
+    for (let r = 0; r < VIEW_RAYS; r++) {
+      const a = (r / VIEW_RAYS) * Math.PI * 2;
+      const dx = Math.cos(a) * VIEW_STEP;
+      const dy = Math.sin(a) * VIEW_STEP;
+      const steps = viewCells / VIEW_STEP;
+      for (let i = 0; i <= steps; i++) {
+        const cx = Math.floor(cell.cx + ox + dx * i);
+        const cy = Math.floor(cell.cy + oy + dy * i);
+        if (cx >= 0 && cy >= 0 && cx < map.w && cy < map.h) mark(Math.floor(cy / chunk) * perRow + Math.floor(cx / chunk));
+        if (opaque(map, cx, cy)) break;
+      }
+    }
+  }
 }

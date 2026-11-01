@@ -1,13 +1,60 @@
-// 파쇄자 행동 (화면과 상관없는 부분). 순찰, 조사, 추격, 수색, 멈춤 다섯 상태로 움직인다.
+// 파쇄자 행동 (화면과 상관없는 부분). 순찰, 조사, 추격, 수색, 멈춤, 매복, 응시 일곱 상태로 움직인다.
 import { cellOf, center, findPath, frontOf, lineOfSight, blocked } from './horrorGrid.js';
+
+// 소리와 몸짓 표가 읽는 상태 이름
+export const MODES = ['patrol', 'investigate', 'chase', 'search', 'stunned', 'ambush', 'watch'];
+
+const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const trailCell = { cx: 0, cy: 0 }; // 매 프레임 새로 만들지 않는다
 
 export function createStalker(map) {
   const c = center(map.stalker);
-  return { x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null };
+  return {
+    x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
+    pressure: 0, graceT: 0, warnT: 0, calmT: 0, watchT: 0, ambushT: 0, ambushKind: null,
+    heat: new Float32Array(map.w * map.h), heatW: map.w, heatT: 0, // 주인공이 걸어 다닌 자리. 저장하지 않는다
+    weights: new Float32Array(map.patrol.length), recent: new Int16Array(8).fill(-1), recentAt: 0,
+  };
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const sameCell = (a, b) => !!b && a.cx === b.cx && a.cy === b.cy;
+const walkSpeed = (s, k) => k.stalkerWalk * (1 + k.pressureWalk * s.pressure);
+
+// 주인공이 걸어간 자리를 기억한다. 식는 일은 coolHeat 가 맡는다
+export function noteTrail(s, cell, dt) {
+  s.heat[cell.cy * s.heatW + cell.cx] += dt;
+}
+
+// 배열 전체를 도는 일이라 1초에 한 번만 식힌다
+function coolHeat(s, k, dt) {
+  s.heatT += dt;
+  if (s.heatT < 1) return;
+  const keep = 0.5 ** (s.heatT / k.heatHalfLife);
+  for (let i = 0; i < s.heat.length; i++) s.heat[i] *= keep;
+  s.heatT = 0;
+}
+
+function heatAround(s, map, c, r) {
+  let sum = 0;
+  for (let y = Math.max(0, c.cy - r); y <= Math.min(map.h - 1, c.cy + r); y++) {
+    for (let x = Math.max(0, c.cx - r); x <= Math.min(map.w - 1, c.cx + r); x++) sum += s.heat[y * s.heatW + x];
+  }
+  return sum;
+}
+
+// 가장 뜨거운 칸. 아무 데도 안 걸어 봤으면 null
+function hottest(s, map) {
+  let best = -1;
+  let top = 0;
+  for (let i = 0; i < s.heat.length; i++) {
+    if (s.heat[i] > top) {
+      top = s.heat[i];
+      best = i;
+    }
+  }
+  return best < 0 ? null : { cx: best % map.w, cy: Math.floor(best / map.w) };
+}
 
 export function seesPlayer(s, player, map, k) {
   if (player.hidden !== null) return false;
@@ -19,11 +66,14 @@ export function seesPlayer(s, player, map, k) {
   return lineOfSight(map, s, player);
 }
 
+function hears(s, player, k) {
+  return player.noise > 0 && dist(s, player) <= player.noise * (1 + k.pressureHear * s.pressure);
+}
+
 function notices(s, player, map, k) {
   if (player.hidden !== null) return false;
-  const d = dist(s, player);
-  if (player.noise > 0 && d <= player.noise) return true;
-  return player.lightOn && d <= k.noticeLight && lineOfSight(map, s, player);
+  if (hears(s, player, k)) return true;
+  return player.lightOn && dist(s, player) <= k.noticeLight && lineOfSight(map, s, player);
 }
 
 function goTo(s, map, cell) {
@@ -63,12 +113,13 @@ function closeIn(s, player, step) {
 }
 
 function startSearch(s, map, k, rand) {
+  const chance = k.lockerCheckChance + k.pressureLocker * s.pressure;
   s.mode = 'search';
-  s.searchT = k.searchTime;
+  s.searchT = k.searchTime * (1 + k.pressureSearch * s.pressure);
   s.checking = null;
   s.lockers = map.lockers
     .map((c, i) => ({ i, d: dist(center(c), s) }))
-    .filter((l) => l.d <= k.searchRadius && rand() < k.lockerCheckChance)
+    .filter((l) => l.d <= k.searchRadius && rand() < chance)
     .sort((a, b) => a.d - b.d)
     .map((l) => l.i);
   if (s.lastSeen) goTo(s, map, s.lastSeen);
@@ -111,7 +162,7 @@ function tickSearch(s, world, k, dt, rand, events) {
     s.path = [];
     return;
   }
-  if (walk(s, k.stalkerWalk, dt)) return;
+  if (walk(s, walkSpeed(s, k), dt)) return;
   if (s.checking !== null) {
     events.push('locker');
     if (world.player.hidden === s.checking) events.push('found');
@@ -120,10 +171,204 @@ function tickSearch(s, world, k, dt, rand, events) {
   if (!nextLocker(s, world.map)) wander(s, world.map, k, rand);
 }
 
-function tickPatrol(s, map, k, dt) {
-  if (walk(s, k.stalkerWalk, dt)) return;
-  s.patrolIndex = (s.patrolIndex + 1) % map.patrol.length;
-  goTo(s, map, map.patrol[s.patrolIndex]);
+function recentlyVisited(s, i, k) {
+  const size = s.recent.length;
+  for (let n = 1; n <= k.patrolMemory; n++) {
+    if (s.recent[(s.recentAt - n + size) % size] === i) return true;
+  }
+  return false;
+}
+
+// 주인공이 자주 다니는 곳일수록, 방금 다녀온 곳이 아닐수록 잘 뽑힌다
+function pickPatrol(s, map, k, rand) {
+  const n = map.patrol.length;
+  if (s.weights.length < n) s.weights = new Float32Array(n); // 문이 열리면 순찰 지점이 늘어난다
+  const w = s.weights;
+  let top = 0;
+  for (let i = 0; i < n; i++) {
+    w[i] = heatAround(s, map, map.patrol[i], k.heatRadius);
+    top = Math.max(top, w[i]);
+  }
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const pull = i === s.patrolIndex ? 0 : 1 + (top > 0 ? (k.patrolHeatPull * w[i]) / top : 0);
+    w[i] = recentlyVisited(s, i, k) ? pull * k.patrolRecent : pull;
+    total += w[i];
+  }
+  let left = rand() * total;
+  for (let i = 0; i < n; i++) {
+    left -= w[i];
+    if (w[i] > 0 && left < 0) return i;
+  }
+  return (s.patrolIndex + 1) % n;
+}
+
+function tickPatrol(s, map, k, dt, rand) {
+  if (walk(s, walkSpeed(s, k), dt) || !map.patrol.length) return;
+  s.recent[s.recentAt] = s.patrolIndex;
+  s.recentAt = (s.recentAt + 1) % s.recent.length;
+  // 잠긴 곳처럼 길이 없는 지점을 뽑으면 다시 뽑는다
+  for (let tries = 0; tries < 3 && !s.path.length; tries++) {
+    s.patrolIndex = pickPatrol(s, map, k, rand);
+    goTo(s, map, map.patrol[s.patrolIndex]);
+  }
+}
+
+// avoid 로 표시한 칸을 밟지 않는 길. 없으면 null
+function pathAround(map, from, to, avoid) {
+  const size = map.w * map.h;
+  const prev = new Int32Array(size).fill(-1);
+  const queue = new Int32Array(size);
+  const start = from.cy * map.w + from.cx;
+  const goal = to.cy * map.w + to.cx;
+  prev[start] = start;
+  queue[0] = start;
+  for (let head = 0, tail = 1; head < tail; head++) {
+    const at = queue[head];
+    if (at === goal) {
+      const path = [];
+      for (let i = at; i !== start; i = prev[i]) path.unshift({ cx: i % map.w, cy: Math.floor(i / map.w) });
+      return path;
+    }
+    for (const [dx, dy] of STEPS) {
+      const x = at % map.w + dx;
+      const y = Math.floor(at / map.w) + dy;
+      if (blocked(map, x, y) || prev[y * map.w + x] !== -1 || avoid[y * map.w + x]) continue;
+      prev[y * map.w + x] = at;
+      queue[tail++] = y * map.w + x;
+    }
+  }
+  return null;
+}
+
+// 지름길과 그 둘레를 막고 돌아가는 길을 찾는다. 돌아서 다른 쪽으로 다가간다
+function planFlank(s, map, player, k) {
+  const goal = cellOf(player);
+  const from = cellOf(s);
+  const direct = findPath(map, from, goal);
+  if (!direct || direct.length < 4) return false;
+  const avoid = new Uint8Array(map.w * map.h);
+  const mark = (x, y) => {
+    if (x >= 0 && y >= 0 && x < map.w && y < map.h) avoid[y * map.w + x] = 1;
+  };
+  direct.slice(0, -1).forEach((c, i) => {
+    mark(c.cx, c.cy);
+    if (i < direct.length - 3) for (const [dx, dy] of STEPS) mark(c.cx + dx, c.cy + dy);
+  });
+  avoid[goal.cy * map.w + goal.cx] = 0;
+  const path = pathAround(map, from, goal, avoid);
+  if (!path || path.length > k.ambushMaxPath) return false;
+  s.path = path;
+  s.ambushKind = 'flank';
+  s.ambushT = path.length / k.ambushSpeed + 1;
+  s.lastSeen = goal;
+  return true;
+}
+
+// 문이나 복도 또는 복도가 만나는 칸
+function isChoke(map, x, y) {
+  const n = !blocked(map, x, y - 1);
+  const s = !blocked(map, x, y + 1);
+  const e = !blocked(map, x + 1, y);
+  const w = !blocked(map, x - 1, y);
+  if ((n && s && !e && !w) || (e && w && !n && !s)) return true;
+  if (n + s + e + w < 3) return false;
+  const walls = blocked(map, x + 1, y + 1) + blocked(map, x + 1, y - 1) + blocked(map, x - 1, y + 1) + blocked(map, x - 1, y - 1);
+  return walls >= 3;
+}
+
+// 뜨거운 곳 가까운 길목으로 가서 기다린다. 주인공 눈앞이나 코앞은 고르지 않는다
+function planWait(s, map, player, k, rand) {
+  const peak = hottest(s, map) ?? s.lastSeen;
+  if (!peak) return false;
+  let best = null;
+  let bestScore = Infinity;
+  const r = k.ambushRadius;
+  for (let cy = peak.cy - r; cy <= peak.cy + r; cy++) {
+    for (let cx = peak.cx - r; cx <= peak.cx + r; cx++) {
+      if (blocked(map, cx, cy) || !isChoke(map, cx, cy)) continue;
+      const c = center({ cx, cy });
+      if (dist(c, player) < k.ambushMinDist || lineOfSight(map, c, player)) continue;
+      const score = dist(c, center(peak)) + rand() * 2;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { cx, cy };
+      }
+    }
+  }
+  const path = best && findPath(map, cellOf(s), best);
+  if (!path || path.length > k.ambushMaxPath) return false;
+  s.path = path;
+  s.ambushKind = 'wait';
+  s.ambushT = path.length / k.ambushSpeed + k.ambushWaitMin + rand() * (k.ambushWaitMax - k.ambushWaitMin);
+  s.target = peak;
+  return true;
+}
+
+function startAmbush(s, map, player, k, rand) {
+  const wait = rand() < k.ambushWaitChance;
+  const planned = wait
+    ? planWait(s, map, player, k, rand) || planFlank(s, map, player, k)
+    : planFlank(s, map, player, k) || planWait(s, map, player, k, rand);
+  if (!planned) return false;
+  s.mode = 'ambush';
+  s.checking = null;
+  return true;
+}
+
+// 길이 끝나면 수색으로 넘어가고, 기다리는 쪽은 시간이 다 되면 넘어간다
+function tickAmbush(s, map, k, dt, rand) {
+  s.ambushT -= dt;
+  const moving = walk(s, k.ambushSpeed, dt);
+  if (!moving && s.ambushKind === 'wait' && s.target) {
+    const t = center(s.target);
+    s.heading = Math.atan2(t.x - s.x, t.y - s.y);
+    s.target = null;
+  }
+  if (s.ambushT > 0 && (moving || s.ambushKind === 'wait')) return;
+  if (s.ambushKind === 'wait') s.lastSeen = null;
+  startSearch(s, map, k, rand);
+}
+
+// 들키지 않은 지 오래됐을 때만, 멀리서 볼 때만 멈춰 서서 바라본다
+function wantsToWatch(s, player, k, rand) {
+  if (s.mode === 'ambush' || s.calmT < k.watchCalm || dist(s, player) < k.watchMinDist || hears(s, player, k)) return false;
+  return rand() < k.watchChance;
+}
+
+function charge(s, k, events) {
+  events.push('chase');
+  s.mode = 'chase';
+  s.repathT = 0;
+  s.warnT = k.pounceWarn; // 들킨 순간에 바로 잡히지 않는다
+}
+
+function startWatch(s, k, rand, events) {
+  events.push('watch');
+  s.mode = 'watch';
+  s.path = [];
+  s.checking = null;
+  s.calmT = 0; // 한 번 바라봤으면 다음에는 바로 쫓는다
+  s.watchT = k.watchMin + rand() * (k.watchMax - k.watchMin);
+}
+
+// 눈이 보이는 동안만 이어진다. 시선이 끊기면 마지막 자리를 수색한다
+function tickWatch(s, map, player, k, dt, rand, events) {
+  if (player.hidden !== null || !lineOfSight(map, s, player)) {
+    startSearch(s, map, k, rand);
+    return;
+  }
+  s.watchT -= dt;
+  s.heading = Math.atan2(player.x - s.x, player.y - s.y);
+  s.lastSeen = cellOf(player);
+  if (s.watchT <= 0 || dist(s, player) <= k.watchBreak || hears(s, player, k)) charge(s, k, events);
+}
+
+function spotted(s, player, map, k) {
+  if (s.graceT > 0) return false;
+  if (s.mode !== 'ambush') return seesPlayer(s, player, map, k);
+  // 매복 중에는 먼 곳을 쫓지 않고 가까이 올 때까지 참는다
+  return player.hidden === null && dist(s, player) <= k.ambushSpring && lineOfSight(map, s, player);
 }
 
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.
@@ -131,6 +376,16 @@ function tickPatrol(s, map, k, dt) {
 export function tickStalker(s, world, k, dt, rand = Math.random) {
   const { map, player } = world;
   const events = [];
+  s.pressure = Math.min(1, world.pressure || 0);
+  s.graceT = Math.max(0, Math.min(s.graceT, k.respawnGrace) - dt); // sendAway 가 넣은 Infinity 를 여기서 맞춘다
+  s.warnT = Math.max(0, s.warnT - dt);
+  s.calmT += dt;
+  if (player.hidden === null && player.noise > 0) {
+    trailCell.cx = Math.floor(player.x);
+    trailCell.cy = Math.floor(player.y);
+    noteTrail(s, trailCell, dt);
+  }
+  coolHeat(s, k, dt);
   if (s.mode === 'stunned') {
     s.stunT -= dt;
     if (s.stunT <= 0) {
@@ -139,14 +394,17 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
     }
     return events;
   }
-  const sees = seesPlayer(s, player, map, k);
-  const heard = !sees && s.mode !== 'chase' && notices(s, player, map, k);
+  if (s.mode === 'watch') {
+    tickWatch(s, map, player, k, dt, rand, events);
+    return events;
+  }
+  const sees = spotted(s, player, map, k);
+  const heard = !sees && s.graceT <= 0 && s.mode !== 'chase' && s.mode !== 'ambush' && notices(s, player, map, k);
   if (sees) {
     if (s.mode !== 'chase') {
-      events.push('chase');
-      s.repathT = 0;
+      if (wantsToWatch(s, player, k, rand)) startWatch(s, k, rand, events);
+      else charge(s, k, events);
     }
-    s.mode = 'chase';
     s.lostT = 0;
     s.lastSeen = cellOf(player);
   } else if (heard) {
@@ -161,6 +419,7 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
   }
 
   if (s.mode === 'chase') {
+    s.calmT = 0;
     s.repathT -= dt;
     if (s.repathT <= 0 && s.lastSeen) {
       goTo(s, map, s.lastSeen);
@@ -172,17 +431,21 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
       s.lostT += dt;
       if (s.lostT >= k.loseTime) {
         events.push('lost');
-        startSearch(s, map, k, rand);
+        // 사물함에 숨은 주인공은 늘 수색한다. 매복을 뽑으면 숨기만 해도 안전해진다
+        if (player.hidden === null && rand() < k.ambushChance && startAmbush(s, map, player, k, rand)) events.push('ambush');
+        else startSearch(s, map, k, rand);
       }
     }
   } else if (s.mode === 'investigate') {
     // 도착해도 소리가 이어지면 그 자리에 머문다. 순찰로 돌아갔다가 다시 알리는 일을 막는다
-    const moving = walk(s, k.stalkerWalk, dt);
+    const moving = walk(s, walkSpeed(s, k), dt);
     if (!moving && !heard) s.mode = 'patrol';
   } else if (s.mode === 'search') tickSearch(s, world, k, dt, rand, events);
-  else tickPatrol(s, map, k, dt);
+  else if (s.mode === 'ambush') tickAmbush(s, map, k, dt, rand);
+  else if (s.mode === 'patrol') tickPatrol(s, map, k, dt, rand);
 
-  if (player.hidden === null && dist(s, player) < k.catchDist) events.push('caught');
+  const armed = s.graceT <= 0 && s.warnT <= 0 && s.mode !== 'ambush' && s.mode !== 'watch';
+  if (armed && player.hidden === null && dist(s, player) < k.catchDist) events.push('caught');
   return events;
 }
 
@@ -190,6 +453,7 @@ export function stunStalker(s, k) {
   s.mode = 'stunned';
   s.stunT = k.stunTime;
   s.path = [];
+  s.calmT = 0;
 }
 
 // 잡은 뒤에는 멀리 옮겨서, 다시 시작하자마자 또 잡히지 않게 한다
@@ -202,7 +466,8 @@ export function sendAway(s, map, player, rand = Math.random) {
   const pick = far[Math.floor(rand() * far.length) % far.length];
   s.patrolIndex = pick.i;
   const c = center(pick.c);
-  Object.assign(s, { x: c.x, y: c.y, mode: 'patrol', path: [], lostT: 0, checking: null, lockers: [], lastSeen: null, target: null });
+  // graceT 는 다음 움직임에서 balance 값으로 줄어든다. 사물함 잡힘 뒤에도 같다
+  Object.assign(s, { x: c.x, y: c.y, mode: 'patrol', path: [], lostT: 0, checking: null, lockers: [], lastSeen: null, target: null, graceT: Infinity, warnT: 0, calmT: 0 });
 }
 
 // 심장이 뛰는 간격(초). 멀면 null. k 는 balance.horror

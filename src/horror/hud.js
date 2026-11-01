@@ -1,21 +1,25 @@
 // 공포 모드 글자, 안내 화면. 어두운 화면에서 잘 보이도록 3D 위에 HTML 로 올린다.
 const LAYER = 'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;text-align:center;background:rgba(0,0,0,.82);color:#eee;font:18px sans-serif;padding:12px;box-sizing:border-box;overflow:auto';
+const NOTE_BOX = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;width:min(520px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:hidden;pointer-events:none;box-sizing:border-box;padding:16px 20px;background:rgba(18,12,8,.93);color:#f0e6d0;border:1px solid #8a6a3a;border-radius:6px;font:20px/1.5 sans-serif;text-align:center';
+const NOTE_PHONE = 'top:calc(50% - 16px);left:calc((100% - 170px - env(safe-area-inset-right,0px) + env(safe-area-inset-left,0px)) / 2);width:min(420px,calc(100% - 190px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))'; // 170px: 오른쪽 버튼 묶음 폭
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
+
+import { NOTE_DANGER_LINE, FINAL_LINE } from './story.js';
 
 export const MONSTER_NAME = '세이노';
 
 const INTRO = [
   '밤의 고철 공장을 조사하다가 문이 잠겼다.',
   '볼트와의 통신도 끊겼다.',
-  '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자.',
+  '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자. 잠긴 문은 같은 색 열쇠로 연다.',
   '달리면 소리가 나고, 손전등 빛은 들킨다.',
   `${MONSTER_NAME}는 쓰러뜨릴 수 없다. 사물함에 숨어!`,
 ];
 
-const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기와 숨기, 충전: 사용 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
+const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기, 숨기, 문 열기, 충전: 사용 버튼', '쪽지 닫기: 사용 버튼 또는 닫기 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
 
 const CONTROLS = {
-  pc: ['조작 방법 (PC)', '이동: W A S D 또는 위아래 방향키', '둘러보기: 마우스 또는 좌우 방향키', '달리기: Shift 를 누른 채 이동 (체력이 줄어요)', '손전등: F', '줍기와 숨기, 충전: E', '쇼크 펀치: J 또는 왼쪽 클릭', '일시정지: Esc'],
+  pc: ['조작 방법 (PC)', '이동: W A S D 또는 위아래 방향키', '둘러보기: 마우스 또는 좌우 방향키', '달리기: Shift 를 누른 채 이동 (체력이 줄어요)', '손전등: F', '줍기, 숨기, 문 열기, 충전: E', '쪽지 닫기: E 또는 Enter', '쇼크 펀치: J 또는 왼쪽 클릭', '일시정지: Esc'],
   tablet: ['조작 방법 (태블릿)', ...TOUCH_CONTROLS],
   phone: ['조작 방법 (휴대폰, 가로로 눕혀 주세요)', ...TOUCH_CONTROLS],
 };
@@ -29,6 +33,11 @@ const HINTS = {
 // 기기에 맞는 조작 안내. device: 'pc' | 'tablet' | 'phone'
 export function controlLines(device) {
   return CONTROLS[device] ?? CONTROLS.pc;
+}
+
+// 시작 전 안내 이야기. 휴대폰은 화면이 작아서 앞의 두 줄을 뺀다
+export function introLines(device) {
+  return device === 'phone' ? INTRO.slice(2) : INTRO;
 }
 
 // 시작한 뒤 잠깐 띄우는 알림
@@ -58,7 +67,8 @@ export class HorrorHud {
     this.staminaFill.style.cssText = 'width:100%;height:100%;background:#e8b84a';
     this.staminaBar.appendChild(this.staminaFill);
     this.staminaShown = 100;
-    this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;text-shadow:0 0 4px #000');
+    // 손전등이 비춘 밝은 벽에서도 읽히게 그림자를 겹친다
+    this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 6px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
     this.dot = this.add('position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(255,255,255,.45)');
     this.black = this.add('position:absolute;inset:0;background:#000;opacity:0;transition:opacity .35s');
@@ -81,8 +91,63 @@ export class HorrorHud {
     return el;
   }
 
-  setStatus({ have, need, shock, powered }) {
-    this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
+  // keys: 가진 열쇠 수 (맵이 알려 줄 때만 보인다). notesFound/notesTotal: 쪽지
+  setStatus({ have, need, shock, powered, keys, notesFound, notesTotal = 8 }) {
+    const keyText = keys === undefined ? '' : `   열쇠 ${keys}`;
+    const noteText = notesFound === undefined ? '' : `   쪽지 ${notesFound}/${notesTotal}`;
+    this.status.textContent = `퓨즈 ${have}/${need}   쇼크 ${shock ? '충전됨' : '없음'}${keyText}${noteText}${powered ? '   전원 켜짐, 정문으로!' : ''}`;
+  }
+
+  // 쪽지 읽기. 세이노는 멈추지 않는다. Enter 나 버튼으로 닫고, 사용 키는 Game 이 closeNote 로 닫는다
+  // 상자는 손가락을 그대로 통과시킨다. 쪽지 위에서도 걷고 둘러보다가 도망칠 수 있어야 한다
+  get noteOpen() {
+    return !!this.noteEl;
+  }
+
+  showNote(lines, compact = false) {
+    this.closeNote();
+    this.noteLines = lines;
+    const box = document.createElement('div');
+    // 휴대폰은 오른쪽 버튼을 가리지 않게 좁히고 버튼 왼쪽 공간의 가운데에 놓는다. 안내 줄이 보이게 조금 올린다
+    box.style.cssText = compact ? `${NOTE_BOX};${NOTE_PHONE};font-size:15px;padding:8px 14px;line-height:1.35` : NOTE_BOX;
+    for (const line of lines) {
+      const p = document.createElement('div');
+      p.textContent = line;
+      box.appendChild(p);
+    }
+    const warn = document.createElement('div');
+    warn.textContent = NOTE_DANGER_LINE;
+    warn.style.cssText = `margin-top:${compact ? 4 : 10}px;font-size:${compact ? 12 : 14}px;color:#e08a7a`;
+    box.appendChild(warn);
+    const btn = document.createElement('button');
+    btn.textContent = '닫기';
+    btn.style.cssText = `${BTN};pointer-events:auto;${compact ? 'padding:6px 20px;font-size:16px;margin-top:4px' : ''}`;
+    btn.addEventListener('pointerdown', (e) => e.stopPropagation()); // 닫기를 누른 손가락이 조이스틱이 되지 않게 한다
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeNote();
+    });
+    box.appendChild(btn);
+    this.noteEl = box;
+    this.noteKey = (e) => {
+      if (e.code === 'Enter' && !e.repeat) {
+        e.preventDefault();
+        this.closeNote();
+      }
+    };
+    window.addEventListener('keydown', this.noteKey);
+    this.root.appendChild(box);
+    btn.focus();
+  }
+
+  // 사용 키와 사용 버튼이 눌리면 Game 이 부른다. 열려 있었으면 true
+  closeNote() {
+    if (!this.noteEl) return false;
+    window.removeEventListener('keydown', this.noteKey);
+    this.noteEl.remove();
+    this.noteEl = null;
+    this.noteLines = null;
+    return true;
   }
 
   // 매 프레임 불린다. 글자가 같으면 화면을 건드리지 않는다
@@ -158,26 +223,47 @@ export class HorrorHud {
 
   showIntro(device, onStart, onQuit) {
     this.openLayer(
-      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...(device === 'phone' ? INTRO.slice(2) : INTRO), ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
+      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...introLines(device), ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
   }
 
-  showPause(onResume, onQuit) {
-    this.openLayer(['일시정지'], [{ text: '계속하기', onPress: onResume }, { text: '타이틀로', onPress: onQuit }]);
+  // onNotes: 읽은 쪽지가 있을 때만 준다
+  showPause(onResume, onQuit, onNotes, compact = false) {
+    const buttons = [{ text: '계속하기', onPress: onResume }];
+    if (onNotes) buttons.push({ text: '읽은 쪽지', onPress: onNotes });
+    buttons.push({ text: '타이틀로', onPress: onQuit });
+    this.openLayer(['일시정지'], buttons, compact);
+  }
+
+  // 읽은 쪽지를 한 장씩 보여 준다. notes: 줄 배열의 배열. 처음에는 가장 최근 쪽지를 보여 준다
+  showReadNotes(notes, onBack, compact = false, page = notes.length - 1) {
+    const go = (n) => () => this.showReadNotes(notes, onBack, compact, n);
+    const buttons = [];
+    if (page > 0) buttons.push({ text: '이전 쪽지', onPress: go(page - 1) });
+    if (page < notes.length - 1) buttons.push({ text: '다음 쪽지', onPress: go(page + 1) });
+    buttons.push({ text: '돌아가기', onPress: onBack });
+    this.openLayer([`읽은 쪽지 ${page + 1}/${notes.length}`, ...notes[page]], buttons, compact);
   }
 
   hidePause() {
     this.closeLayer();
   }
 
-  showEnd(text, onDone) {
-    this.openLayer([text], [{ text: '타이틀로', onPress: onDone }]);
+  // notes: { found, total } 를 주면 쪽지 수를 보여 주고, 다 모았으면 마지막 한 줄을 더한다
+  showEnd(text, onDone, notes) {
+    const lines = [text];
+    if (notes) {
+      lines.push(`쪽지 ${notes.found}/${notes.total}`);
+      if (notes.total > 0 && notes.found >= notes.total) lines.push(FINAL_LINE);
+    }
+    this.openLayer(lines, [{ text: '타이틀로', onPress: onDone }]);
   }
 
   destroy() {
     clearTimeout(this.sayTimer);
+    this.closeNote();
     this.closeLayer();
     this.box.remove();
     this.slit.remove();

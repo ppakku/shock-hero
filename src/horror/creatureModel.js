@@ -15,10 +15,12 @@ const EYE_H = 1.6; // 주인공 눈높이 (미터)
 const POSE = {
   walk: { lean: 0.56, neck: -0.42, stretch: 1, reach: 0, amp: 0.56, knee: 0.8, stride: 2.1, tilt: -0.08 },
   chase: { lean: 1.02, neck: -0.62, stretch: 1.3, reach: 1, amp: 0.82, knee: 1.15, stride: 3, tilt: -0.3 },
+  watch: { lean: 0.3, neck: -0.2, stretch: 1.15, reach: 0, amp: 0.56, knee: 0.8, stride: 2.1, tilt: 0 },
+  ambush: { lean: 0.85, neck: -0.5, stretch: 0.9, reach: 0, amp: 0.56, knee: 0.8, stride: 2.1, tilt: -0.1 },
 };
 const POSE_KEYS = Object.keys(POSE.walk);
 const SKIN_TINT = 0x8a7f74; // 그림을 못 받았을 때 대신 칠하는 살색
-const EYE_GLOW = { patrol: 0.42, investigate: 0.55, search: 0.55, chase: 1, stunned: 0.04 };
+const EYE_GLOW = { patrol: 0.42, investigate: 0.55, search: 0.55, chase: 1, stunned: 0.04, ambush: 0.12, watch: 1 };
 
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const damp = (rate, dt) => 1 - Math.exp(-rate * dt);
@@ -225,7 +227,7 @@ export class CreatureModel {
   }
 
   body(s, dt, moved) {
-    const goal = s.mode === 'chase' ? POSE.chase : POSE.walk;
+    const goal = POSE[s.mode] ?? POSE.walk;
     const k = damp(5, dt);
     const p = this.pose;
     for (let i = 0; i < POSE_KEYS.length; i++) {
