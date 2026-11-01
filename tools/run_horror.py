@@ -581,6 +581,7 @@ def play_controls(pw):
     check('scare: second cell starts a flicker', becomes(pg, 'window.__horror.blink !== null') or pg.evaluate('window.__horror.scaresLeft.length') == left - 1, (pg.evaluate('window.__horror.state'), pg.evaluate('window.__horror.scaresLeft.length'), left))
     pg.evaluate(FAKE_LOCK)  # 마우스가 잠겨 있으면 잡힌 뒤 바로 이어진다
     pg.evaluate("window.__horror.getCaught()")
+    becomes(pg, 'window.__horror.lunge?.hush <= 0')  # 정적이 끝나야 얼굴이 나온다
     k_ = pg.evaluate("({ blink: window.__horror.blink, i: window.__horror.flash.intensity, base: window.__horror.k.flashIntensity })")
     check('scare: caught cancels the flicker and keeps the face light', k_['blink'] is None and k_['i'] < k_['base'] * 0.5, k_)
     pg.wait_for_function("window.__horror.state === 'play'", timeout=20000)
@@ -588,7 +589,8 @@ def play_controls(pw):
     pg.evaluate("delete document.pointerLockElement")
     pg.evaluate(PARK_STALKER)
     low = pg.evaluate("() => { const g = window.__horror; g.lowFx = true; g.p = { x: 1.5, y: 1.5 }; const s = g.map.scares[2]; g.p = { x: s.cx + 0.5, y: s.cy + 0.5 }; return null; }")
-    time.sleep(0.5)
+    becomes(pg, '!window.__horror.scare && window.__horror.scaresLeft.length < window.__horror.map.scares.length')  # 어둠이 끝난 뒤에 본다
+    time.sleep(0.3)
     check('scare: lowFx plays no flicker', pg.evaluate('window.__horror.blink') is None and pg.evaluate('window.__horror.flash.intensity') == base, '')
     pg.evaluate('window.__horror.lowFx = false')
     print('errors', errs)
@@ -884,7 +886,7 @@ def play_robust(pw):
     check('cull: hidden again after leaving', becomes(pg, '!window.__horror.model.group.visible'))
     pg.evaluate(FAKE_LOCK)
     pg.evaluate("window.__horror.getCaught()")
-    check('cull: drawn in the caught scene', pg.evaluate('window.__horror.model.group.visible'))
+    check('cull: drawn in the caught scene', becomes(pg, 'window.__horror.lunge?.hush <= 0 && window.__horror.model.group.visible'))
     pg.wait_for_function("window.__horror.state === 'play'", timeout=20000)
     check('cull: far again after respawn', not shown())
     pg.evaluate("delete document.pointerLockElement")
