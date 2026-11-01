@@ -4,7 +4,7 @@ import { moveFromKeys, moveFromStick, keyTurn } from '../logic/horrorInput.js';
 const STICK_MAX = 70; // 조이스틱 반지름 (px)
 const RUN_AT = 0.92; // 이만큼 밀면 달린다
 const KEYS = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'turnLeft', KeyD: 'right', ArrowRight: 'turnRight', ShiftLeft: 'run', ShiftRight: 'run' };
-const PRESS = { KeyF: 'light', KeyE: 'use', KeyJ: 'punch', Escape: 'pause' };
+const PRESS = { KeyF: 'light', KeyE: 'use', KeyR: 'punch', Escape: 'pause' };
 const SMALL_BUTTONS = 0.68;
 const KNOB = 56; // 손잡이 지름 (px)
 const RING_COLOR = 'rgba(220,220,220,.55)';
@@ -12,7 +12,7 @@ const RUN_COLOR = 'rgba(255,170,60,.9)';
 const BUTTONS = [
   { id: 'light', label: '손전등', right: 150, bottom: 110 },
   { id: 'use', label: '사용', right: 40, bottom: 150 },
-  { id: 'punch', label: '펀치', right: 40, bottom: 40 },
+  { id: 'punch', label: '쇼크', right: 40, bottom: 40 },
   { id: 'pause', label: '멈춤', right: 40, bottom: 262 },
 ];
 

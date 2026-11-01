@@ -15,9 +15,11 @@ import { CreatureModel } from './creatureModel.js';
 import { HorrorInput } from './input.js';
 import { HorrorHud, MONSTER_NAME, startHint, escapeText } from './hud.js';
 import { HorrorAudio } from './audio.js';
+import { StunGun } from './stunGun.js';
 import { NOTES } from './story.js';
 
 const EYE = 1.6; // 눈높이 (미터)
+const GUN_AIM_Y = 1.3; // 전기충격기 번개가 닿는 괴물 몸 높이 (미터)
 const RADIUS = 0.2; // 주인공 몸 반지름 (칸)
 const MAX_DT = 0.05;
 const FPS_GAP = 0.5; // 이보다 긴 프레임은 화면이 가려졌던 틈이라 초당 장수에 넣지 않는다 (초)
@@ -108,6 +110,8 @@ export class HorrorGame {
     this.world = buildWorld(this.scene, this.map, this.k, this.factoryMaterials());
     this.stalker = createStalker(this.map);
     this.model = new CreatureModel(this.scene);
+    this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun });
+    this.gunTarget = new THREE.Vector3();
     this.model.update(this.stalker, 0, this.p); // 시작 전에도 제자리에 서 있게 한다
     this.hidden = null;
     this.stamina = createStamina();
@@ -126,6 +130,7 @@ export class HorrorGame {
       if (this.device === 'phone' && window.innerHeight > window.innerWidth) this.pause(); // 세로로 돌리면 '가로로 돌려 주세요' 화면이 덮는다
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
+      this.gun.resize(this.camera.aspect);
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener('resize', this.onResize);
@@ -200,6 +205,7 @@ export class HorrorGame {
       this.update(Math.min(MAX_DT, real)); // 화면이 끊겨도 벽을 뚫지 않게 자른다
       if (this.dead) return; // 이번 프레임에 나갔으면 그리지 않는다
       this.renderer.render(this.scene, this.camera);
+      this.gun.render(this.renderer);
       this.trackFps(real);
     });
   }
@@ -227,6 +233,8 @@ export class HorrorGame {
     this.flash.visible = false;
     this.renderer.render(this.scene, this.camera);
     this.flash.visible = this.lightOn;
+    this.gun.show(true);
+    this.gun.render(this.renderer);
     m.update(this.stalker, 0, this.p);
   }
 
@@ -247,13 +255,26 @@ export class HorrorGame {
     }
     else if (this.state === 'caught') this.caughtFrame(dt);
     this.placeCamera();
+    this.camera.updateMatrixWorld();
+    this.updateGun(dt);
     this.world.update(this.p, this.k.viewCells, this.playTime, this.lowFx);
     if (this.state === 'intro' && !this.warmed && this.model.textures.every((t) => t.image)) this.warmUp();
     if (this.state !== 'play') return;
-    this.camera.updateMatrixWorld();
     const s = this.stalker;
     this.audio?.update(dt);
     this.audio?.updateStalker(this.camera, { x: s.x * CELL, y: 1.5, z: s.y * CELL }, s.mode, Math.hypot(s.x - this.p.x, s.y - this.p.y), dt);
+  }
+
+  // 일시정지 때는 손도 멈춘다. 숨거나 잡힌 동안에는 손을 치운다
+  updateGun(dt) {
+    const holding = this.state === 'play' && this.hidden === null;
+    const s = this.stalker;
+    this.audio?.setHum(holding && this.run.shock);
+    this.gun.setCharged(this.run.shock);
+    this.gun.show(holding || this.state === 'paused' || this.state === 'intro');
+    if (this.state === 'paused') return;
+    this.camera.worldToLocal(this.gunTarget.set(s.x * CELL, GUN_AIM_Y, s.y * CELL));
+    this.gun.update(dt, { lit: this.lightOn, walking: this.walking, target: this.gunTarget });
   }
 
   playFrame(inp, dt) {
@@ -271,6 +292,7 @@ export class HorrorGame {
     const before = this.p;
     if (this.hidden === null) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
     const moving = this.p.x !== before.x || this.p.y !== before.y;
+    this.walking = moving;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
@@ -370,7 +392,11 @@ export class HorrorGame {
       this.audio?.play('door');
       this.hud.say('문이 열렸다. 세이노도 이제 들어올 수 있어!', 4);
     }
-    if (t.kind === 'box' && chargeShock(this.run, t.index)) this.audio?.play('fuse');
+    if (t.kind === 'box' && chargeShock(this.run, t.index)) {
+      this.audio?.play('shockCharge');
+      this.gun.chargeUp();
+      this.hud.say(`쇼크 충전! ${this.touch ? '쇼크 버튼을' : 'R 키를'} 눌러 쓰자`, 3);
+    }
     if (t.kind === 'panel' && insertFuses(this.run, this.k)) {
       this.world.setPowered();
       this.audio?.play('door');
@@ -411,12 +437,18 @@ export class HorrorGame {
   doPunch() {
     if (this.hidden !== null) return;
     if (!useShock(this.run)) {
+      this.audio?.play('shockEmpty');
+      this.gun.fire('empty');
       this.hud.say('쇼크가 없다. 전기 상자에서 충전하자', 2);
       return;
     }
-    this.audio?.play('punch');
     const s = this.stalker;
-    if (Math.hypot(s.x - this.p.x, s.y - this.p.y) <= this.k.shockRange && lineOfSight(this.map, this.p, s)) {
+    const hit = Math.hypot(s.x - this.p.x, s.y - this.p.y) <= this.k.shockRange && lineOfSight(this.map, this.p, s);
+    const result = hit ? 'hit' : 'miss';
+    this.audio?.play(hit ? 'shockHit' : 'shockMiss');
+    this.gun.fire(result);
+    this.hud.flashShock(this.k.stunGun.flash[result] * (this.lowFx ? this.k.stunGun.flashLow : 1), this.k.stunGun.flashTime);
+    if (hit) {
       stunStalker(s, this.k);
       this.hud.say('맞았다! 지금 도망쳐!', 3);
     } else this.hud.say('빗나갔다...', 2);
@@ -582,6 +614,7 @@ export class HorrorGame {
       this.hud.destroy();
       this.audio?.destroy();
       this.model.dispose();
+      this.gun.dispose();
       this.scene.traverse((o) => {
         o.geometry?.dispose();
         if (o.material) [o.material].flat().forEach((m) => m.dispose());

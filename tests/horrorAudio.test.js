@@ -170,8 +170,29 @@ describe('HorrorAudio 세이노 소리', () => {
     const a = new HorrorAudio({ muted: false });
     a.play('nope');
     const before = counts.osc + counts.noise;
-    for (const n of ['fuse', 'punch', 'scare', 'caught', 'door']) a.play(n);
+    for (const n of ['fuse', 'shockCharge', 'shockHit', 'shockMiss', 'shockEmpty', 'scare', 'caught', 'door']) a.play(n);
     expect(counts.osc + counts.noise).toBeGreaterThan(before);
+  });
+
+  it('충전 소리와 쏘는 소리는 각각 소리를 만든다', () => {
+    const a = new HorrorAudio({ muted: false });
+    for (const n of ['shockCharge', 'shockHit', 'shockMiss', 'shockEmpty']) {
+      const before = counts.osc + counts.noise;
+      a.play(n);
+      expect(counts.osc + counts.noise).toBeGreaterThan(before);
+    }
+  });
+
+  it('웅웅거림은 켜고 끌 때만 크기를 바꾼다', () => {
+    const a = new HorrorAudio({ muted: false });
+    const set = vi.spyOn(a.humLevel.gain, 'setTargetAtTime');
+    a.setHum(true);
+    a.setHum(true);
+    expect(set).toHaveBeenCalledTimes(1);
+    expect(set.mock.calls[0][0]).toBeGreaterThan(0);
+    a.setHum(false);
+    expect(set).toHaveBeenCalledTimes(2);
+    expect(set.mock.calls[1][0]).toBe(0);
   });
 
   it('destroy 는 반복음을 모두 멈추고 out 을 끊는다', () => {
