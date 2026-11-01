@@ -5,6 +5,16 @@ import { bone, clamp, knob, lerp, sampleKeys, surface } from './creatureGeometry
 
 const INNER = 0.95; // 안쪽 면이 겉면보다 작은 비율 (입술 두께)
 export const warp = (w) => w * (0.4 + (0.6 * Math.abs(w)) / Math.PI); // 얼굴 앞쪽에 그물을 촘촘히 모은다. 코처럼 가는 굴곡도 살아남는다
+const BEND = 0.96; // 이 각도까지는 정면 그림 그대로, 그 뒤로는 옆구리로 곧게 잇는다 (옆에서 봐도 줄무늬로 늘어지지 않게)
+const bent = (a) => (a < BEND ? Math.sin(a) : Math.sin(BEND) + Math.cos(BEND) * (a - BEND));
+const SIDE = bent(Math.PI / 2);
+
+// 각도 w 를 그림의 가로 자리로 바꾼다. 가운데가 front 몫만큼 앞면, 양쪽 끝이 뒷면이다
+export function wrapU(w, front) {
+  const a = Math.abs(w);
+  const u = a <= Math.PI / 2 ? (front / 2) * bent(a) / SIDE : front / 2 + (0.5 - front / 2) * (1 - bent(Math.PI - a) / SIDE);
+  return 0.5 + Math.sign(w) * u;
+}
 
 // 머리 그물 만들기.
 // keys: [높이, 반폭, 반두께, 앞뒤 치우침] 위에서 아래로. edgeU, edgeL: 각도 w 에서 윗입술과 아랫입술 높이.

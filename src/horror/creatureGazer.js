@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL } from '../logic/horrorGrid.js';
 import { CreatureBase, EYE_GLOW, damp, lookYaw, wrapAngle } from './creatureBase.js';
 import { TAU, clamp, lerp, sampleKeys, surface } from './creatureGeometry.js';
-import { disc, shellHead, throat, warp } from './creatureShell.js';
+import { disc, shellHead, throat, warp, wrapU } from './creatureShell.js';
 
 const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 
@@ -28,7 +28,6 @@ const BODY_KEYS = [
 ].map(([y, hw]) => [y, hw, hw * 0.8, 0]);
 const FRONT_HEAD = 2 / 3; // 그림 폭 가운데 앞면이 차지하는 몫. 양쪽 끝이 뒷면이다
 const FRONT_BODY = 1 / 2;
-const BEND = 0.96; // 이 각도까지는 정면 그림 그대로, 그 뒤로는 옆구리로 곧게 잇는다 (옆에서 봐도 줄무늬로 늘어지지 않게)
 const HEM_Y = 0.55; // 이 아래 옷자락이 흔들린다
 
 const POSE = {
@@ -46,16 +45,6 @@ const FACE_GLOW = 0.1; // 어둠에서 얼굴이 희미하게 뜨는 세기
 const LIT = new THREE.Color(0xffffff);
 const PLAIN_WHITE = new THREE.Color(WHITE_COLOR);
 const PLAIN_RING = new THREE.Color(RING_COLOR);
-
-const bent = (a) => (a < BEND ? Math.sin(a) : Math.sin(BEND) + Math.cos(BEND) * (a - BEND));
-const SIDE = bent(Math.PI / 2);
-
-// 각도 w 를 그림의 가로 자리로 바꾼다. 가운데가 앞면, 양쪽 끝이 뒷면이다
-function wrapU(w, front) {
-  const a = Math.abs(w);
-  const u = a <= Math.PI / 2 ? (front / 2) * bent(a) / SIDE : front / 2 + (0.5 - front / 2) * (1 - bent(Math.PI - a) / SIDE);
-  return 0.5 + Math.sign(w) * u;
-}
 
 const headUv = (p, t, u) => [wrapU(warp(u), FRONT_HEAD), p.y / HEAD_H];
 const mouthLine = () => MOUTH.y;
