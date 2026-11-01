@@ -21,8 +21,8 @@ def check(name, ok, info=''):
         fails.append(name)
 
 
-def open_game(pg):
-    pg.goto(URL)
+def open_game(pg, extra=''):
+    pg.goto(URL + extra)
     time.sleep(3)
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
     pg.wait_for_function('window.__horror', timeout=20000)
@@ -143,11 +143,11 @@ def art_lost(pw):
         pg.on('pageerror', lambda e: errs.append(str(e)))
         if block:
             pg.route(re.compile(NEW_ART), lambda r: r.abort())
-        open_game(pg)
-        pg.evaluate("window.__horror.gunTest = false")
+        open_game(pg, '&map=factory&monster=seino')
         time.sleep(1)
         look = pg.evaluate("() => { const g = window.__horror, f = g.gun; g.hud.showNote(['글']); const note = g.hud.noteEl.style.cssText; g.hud.closeNote(); return { art: f.art.visible, model: f.model.visible, fuse: g.fuseMeshes[0].material.visible, key: g.keyMeshes[0].material.visible, paper: note.includes('horror_note_paper'), calls: g.renderer.info.render.calls }; }")
-        calls[name] = look['calls']
+        # 한 화면을 다 그리는 데 든 횟수. 게임 장면, 그림자, 손 장면을 합친다
+        calls[name] = pg.evaluate("async () => { const g = window.__horror, i = g.renderer.info; g.p = window.__horrorLogic.center(g.map.start); g.yaw = 0; await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame); i.autoReset = false; i.reset(); await new Promise(requestAnimationFrame); const n = i.render.calls; i.autoReset = true; return n; }")
         pg.screenshot(path=f'{OUT}/art_{name}.png')
         if block:
             check('그림이 없으면 3D 손, 퓨즈, 열쇠, 어두운 쪽지로 남는다', look['model'] and not look['art'] and look['fuse'] and look['key'], look)
