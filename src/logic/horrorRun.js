@@ -1,4 +1,5 @@
 // 공포 모드 한 판의 규칙과 기록 (화면과 상관없는 부분)
+import { isRound } from './horrorPick.js';
 import { reachable, withOpen } from './horrorGrid.js';
 
 export const KEY_NAMES = ['빨간', '파란']; // 잠긴 문과 열쇠의 색. map.locks 순서
@@ -170,8 +171,9 @@ export function escapeReward(record, clean, today, k) {
 }
 
 // gemDay: 탈출 보석을 마지막으로 받은 날. 없으면 아직 받은 적이 없다
+// last: 지난 판의 { mapId, monsterId }. 다음 판을 다르게 고르는 데 쓴다
 export function emptyHorror() {
-  return { escapes: 0, cleanEscapes: 0, gemDay: null };
+  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null };
 }
 
 export function normalizeHorror(data) {
@@ -179,9 +181,10 @@ export function normalizeHorror(data) {
   if (Number.isInteger(data?.escapes) && data.escapes > 0) d.escapes = data.escapes;
   if (Number.isInteger(data?.cleanEscapes) && data.cleanEscapes > 0) d.cleanEscapes = Math.min(data.cleanEscapes, d.escapes);
   if (typeof data?.gemDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.gemDay)) d.gemDay = data.gemDay;
+  if (isRound(data?.last)) d.last = { mapId: data.last.mapId, monsterId: data.last.monsterId };
   return d;
 }
 
 export function recordEscape(record, clean, today) {
-  return { escapes: record.escapes + 1, cleanEscapes: record.cleanEscapes + (clean ? 1 : 0), gemDay: today };
+  return { ...record, escapes: record.escapes + 1, cleanEscapes: record.cleanEscapes + (clean ? 1 : 0), gemDay: today };
 }
