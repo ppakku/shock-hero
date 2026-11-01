@@ -402,6 +402,13 @@ describe('큰입이: 소리로만 찾는다', () => {
     expect(events).not.toContain('found');
   });
 
+  it('한 번 돌아선 뒤에 소리 없이 닿아도 잡지 않고, 움직이면 잡는다', () => {
+    const s = monster('maw', { x: 20.3, y: 1.5, brushT: 9, warnT: 0 });
+    expect(tickStalker(s, { map: hall, player: player() }, k, DT, () => 0.5)).not.toContain('caught');
+    s.rushRestT = 9; // 달려들지 않고 걸어오는 중에도 움직이다 닿으면 잡힌다
+    expect(tickStalker(s, { map: hall, player: player({ x: s.x + 0.2, noise: k.walkNoise }) }, k, DT, () => 0.5)).toContain('caught');
+  });
+
   it('냄새를 맡으면 바로 돌아서지 않고 잠깐 멈춘다 (도망칠 틈)', () => {
     const p = player();
     const s = monster('maw', { x: 19.5, y: 1.5 });
