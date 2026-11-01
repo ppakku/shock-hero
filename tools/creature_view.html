@@ -60,7 +60,7 @@ window.view = async ({ who, mode = 'patrol', frozen = false, cam = [0, 1.6, 4], 
     model.update(s, 1 / 30, player);
   }
   if (face) { // HorrorGame.placeFace 와 같은 자리: 머리 받침점 위 0.2m 가 눈높이, 0.6m 앞
-    model.head.rotation.set(0, 0, 0);
+    model.head.rotation.set(model.faceTilt ?? 0, 0, 0);
     model.group.updateMatrixWorld(true);
     const p = model.head.getWorldPosition(new THREE.Vector3());
     model.group.position.y += 1.6 - p.y - 0.2;

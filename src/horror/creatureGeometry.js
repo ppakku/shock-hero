@@ -128,12 +128,12 @@ const skinUv = (scale = 0.7) => (p, t, w) => [(w / Math.PI) * 0.2, 0.87 + p.y * 
 
 // 팔다리 토막: 어깨에서 아래로 뻗는다. radius(t), push(t) 는 굵기와 앞으로 튀어나온 정도.
 // 맨 위와 맨 아래 줄은 끝을 납작하게 막는 뚜껑이다 (끝이 뾰족하면 나무 인형처럼 보인다)
-export function limb(len, radius, { rows = 8, segs = 6, push = () => 0, shade } = {}) {
+export function limb(len, radius, { rows = 8, segs = 6, push = () => 0, shade, uv = skinUv() } = {}) {
   const lid = 1 / (rows + 2);
   return surface({
     rows: rows + 2,
     segs,
-    uv: skinUv(),
+    uv,
     shade,
     at: (t, w, out) => {
       const open = t > 0.001 && t < 0.999 ? 1 : 0;
@@ -145,11 +145,11 @@ export function limb(len, radius, { rows = 8, segs = 6, push = () => 0, shade } 
 }
 
 // 관절 공: 다음 토막 맨 위에 붙어서 굽혀도 틈이 보이지 않게 한다
-export function knob(r, x = 0, y = 0, z = 0) {
+export function knob(r, x = 0, y = 0, z = 0, uv = skinUv()) {
   return surface({
     rows: 5,
     segs: 6,
-    uv: skinUv(),
+    uv,
     at: (t, w, out) => {
       const a = t * Math.PI;
       out.set(x + Math.sin(w) * Math.sin(a) * r, y + Math.cos(a) * r, z + Math.cos(w) * Math.sin(a) * r);

@@ -6,14 +6,14 @@
 # 끝에 머리와 몸의 높이별 반폭을 찍는다 (creatureGazer.js 의 키 표).
 import sys
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
+from wrap_art import half_widths, keys, load, mask_of, side_tone, smooth, wrap
 
 head_src, head_back_src, body_src, body_back_src = sys.argv[1:5]
 OUT = 'public/art'
 HEIGHT = 2.7  # 게임 속 키 (미터)
 HEAD_H, CHIN_Y = 1.05, 1.65  # 머리 높이와 턱 끝 높이
 FRONT_HEAD, FRONT_BODY = 2 / 3, 1 / 2  # 그림 폭 가운데 앞면이 차지하는 몫
-SIDE = 1.17  # creatureGazer.js 의 wrapS 가 옆구리(90도)에서 내는 값. 앞면 윤곽(1)을 넘는 띠가 옆구리다
 HEAD_W, HEAD_PX = 1536, 1536
 BODY_W, BODY_PX = 1280, 1280
 # 머리 앞 그림에서 잰 자리 (원본 픽셀)
@@ -24,68 +24,6 @@ JAW = [(1700, 295), (1800, 258), (1850, 225), (1900, 170), (1940, 110), (1965, 2
 NECK_FROM = 40  # 전신 그림에서 턱 끝보다 이만큼 아래 줄을 몸 맨 위로 쓴다
 BODY_TOP = 1.75  # 몸 맨 위 높이 (미터). 머리 속으로 들어간다
 BODY_HW = 0.55  # 옷자락 반폭 (미터)
-
-
-def load(path):
-    return np.asarray(Image.open(path).convert('RGB'))
-
-
-def mask_of(rgb):
-    a = rgb.astype(int)
-    solid = np.minimum(a[..., 0], a[..., 2]) - a[..., 1] < 40  # 마젠타와 별 표시를 뺀다
-    im = Image.fromarray((solid * 255).astype('uint8'))
-    return np.asarray(im.filter(ImageFilter.MinFilter(15)).filter(ImageFilter.MaxFilter(15))) > 128
-
-
-def half_widths(mask, mid):
-    hw = np.zeros(mask.shape[0])
-    for y in range(mask.shape[0]):
-        if mask[y, mid]:
-            l = np.where(~mask[y, :mid])[0]
-            r = np.where(~mask[y, mid:])[0]
-            hw[y] = (mid - (l[-1] + 1 if l.size else 0) + (r[0] - 1 if r.size else mask.shape[1] - mid)) / 2
-    return hw
-
-
-def smooth(v, n=31):
-    k = np.ones(n) / n
-    return np.convolve(np.pad(v, n // 2, mode='edge'), k, 'valid')
-
-
-def wrap(rows_f, rows_b, hw_f, hw_b, rgb_f, rgb_b, cx_f, cx_b, width, front, inset, tone):
-    # 그림 한 줄마다: 앞면은 윤곽 안쪽 그림, 뒷면은 뒷모습 그림, 윤곽 밖 띠는 tone 으로 이어 붙인다
-    out = np.zeros((len(rows_f), width, 3))
-    u = (np.arange(width) + 0.5) / width
-    is_front = np.abs(u - 0.5) < front / 2
-    s = np.where(is_front, (u - 0.5) / (front / 2), np.sign(u - 0.5) * (1 - (np.abs(u - 0.5) - front / 2) / (0.5 - front / 2))) * SIDE
-    fade = np.clip((1 - np.abs(s)) / 0.2, 0, 1)[:, None]
-    fade = fade * fade * (3 - 2 * fade)
-    grain = rgb_b.astype(float) - np.asarray(Image.fromarray(rgb_b).filter(ImageFilter.GaussianBlur(30))).astype(float)  # 옆구리에 얹을 잔금
-    shadow = np.where(is_front, 1, 0.68 + 0.32 * np.clip((1 - np.abs(s)) / 0.7, 0, 1))[:, None]  # 뒷면은 옆구리로 갈수록 앞면만큼 어두워진다
-    for y, (rf, rb) in enumerate(zip(rows_f, rows_b)):
-        xf = (cx_f + s * max(hw_f[rf] - inset, 1)).round().astype(int).clip(0, rgb_f.shape[1] - 1)
-        xb = (cx_b - s * max(hw_b[rb] - inset, 1)).round().astype(int).clip(0, rgb_b.shape[1] - 1)
-        row = np.where(is_front[:, None], rgb_f[rf, xf], rgb_b[rb, xb]).astype(float)
-        side = tone[y] + grain[rb, (cx_b - s * max(hw_b[rb] - inset, 1) * 0.6).round().astype(int).clip(0, rgb_b.shape[1] - 1)]
-        out[y] = row * shadow * fade + side * (1 - fade)
-    return out.clip(0, 255).astype('uint8')
-
-
-def side_tone(rgb, rows, hw, cx, inset, gain):
-    # 윤곽 바로 안쪽의 살빛을 줄마다 재서 부드럽게 만든다. 먹선을 피해 안쪽 띠의 밝은 쪽을 쓴다
-    tone = np.zeros((len(rows), 3))
-    for i, r in enumerate(rows):
-        w = max(hw[r] - inset, 2)
-        xs = np.linspace(cx + w * 0.72, cx + w * 0.95, 24).astype(int).clip(0, rgb.shape[1] - 1)
-        xl = np.linspace(cx - w * 0.72, cx - w * 0.95, 24).astype(int).clip(0, rgb.shape[1] - 1)
-        px = np.vstack([rgb[r, xs], rgb[r, xl]])
-        tone[i] = np.percentile(px, 70, axis=0)
-    return np.stack([smooth(tone[:, c], 601) for c in range(3)], -1) * gain
-
-
-def keys(name, base, rows, hw, m, n):
-    print(name)
-    print(', '.join(f'[{round(float((rows[-1] - r) * m + base), 3)}, {round(float(hw[r] * m), 3)}]' for r in np.linspace(rows[0], rows[-1], n).astype(int)))
 
 
 # 머리

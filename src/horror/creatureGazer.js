@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL } from '../logic/horrorGrid.js';
 import { CreatureBase, EYE_GLOW, damp, lookYaw, wrapAngle } from './creatureBase.js';
 import { TAU, clamp, lerp, sampleKeys, surface } from './creatureGeometry.js';
-import { disc, shellHead, throat, warp } from './creatureShell.js';
+import { disc, jawMorph, morphed, shellHead, throat, warp, wrapU } from './creatureShell.js';
 
 const bump = (d, r) => Math.exp(-(d * d) / (r * r));
 
@@ -28,7 +28,6 @@ const BODY_KEYS = [
 ].map(([y, hw]) => [y, hw, hw * 0.8, 0]);
 const FRONT_HEAD = 2 / 3; // 그림 폭 가운데 앞면이 차지하는 몫. 양쪽 끝이 뒷면이다
 const FRONT_BODY = 1 / 2;
-const BEND = 0.96; // 이 각도까지는 정면 그림 그대로, 그 뒤로는 옆구리로 곧게 잇는다 (옆에서 봐도 줄무늬로 늘어지지 않게)
 const HEM_Y = 0.55; // 이 아래 옷자락이 흔들린다
 
 const POSE = {
@@ -47,16 +46,6 @@ const LIT = new THREE.Color(0xffffff);
 const PLAIN_WHITE = new THREE.Color(WHITE_COLOR);
 const PLAIN_RING = new THREE.Color(RING_COLOR);
 
-const bent = (a) => (a < BEND ? Math.sin(a) : Math.sin(BEND) + Math.cos(BEND) * (a - BEND));
-const SIDE = bent(Math.PI / 2);
-
-// 각도 w 를 그림의 가로 자리로 바꾼다. 가운데가 앞면, 양쪽 끝이 뒷면이다
-function wrapU(w, front) {
-  const a = Math.abs(w);
-  const u = a <= Math.PI / 2 ? (front / 2) * bent(a) / SIDE : front / 2 + (0.5 - front / 2) * (1 - bent(Math.PI - a) / SIDE);
-  return 0.5 + Math.sign(w) * u;
-}
-
 const headUv = (p, t, u) => [wrapU(warp(u), FRONT_HEAD), p.y / HEAD_H];
 const mouthLine = () => MOUTH.y;
 
@@ -70,25 +59,6 @@ function relief(x, y) {
     - 0.03 * bump((ax - EYE.x) / 0.1, 1) * bump((y - EYE.y) / 0.11, 1)
     + 0.02 * bump(y - (EYE.y + 0.13), 0.04) * bump(ax - EYE.x, 0.13)
     + 0.015 * bump(ax - 0.19, 0.05) * bump(y - 0.5, 0.07);
-}
-
-// 아래턱을 따로 잘라 돌리지 않고 입 둘레만 늘린다. 입꼬리는 그대로라서 볼에 틈이 생기지 않는다
-function jawMorph(g) {
-  const pos = g.attributes.position;
-  const d = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const reach = MOUTH.x + 0.6 * (MOUTH.y - pos.getY(i)); // 입꼬리는 그대로 두고, 아래로 갈수록 턱 전체가 함께 내려간다
-    const open = (1 - clamp(Math.abs(pos.getX(i)) / reach, 0, 1) ** 4) * clamp((pos.getZ(i) + 0.1) / 0.12, 0, 1);
-    d[i * 3 + 1] = -MOUTH.drop * open;
-    d[i * 3 + 2] = -0.3 * MOUTH.drop * open;
-  }
-  return d;
-}
-
-function morphed(g, delta = new Float32Array(g.attributes.position.count * 3)) {
-  g.morphAttributes.position = [new THREE.BufferAttribute(delta, 3)];
-  g.morphTargetsRelative = true;
-  return g;
 }
 
 function bodyAt(y, w, out) {
@@ -152,7 +122,7 @@ export class GazerModel extends CreatureBase {
     const inner = this.pivot(this.head, 0, -PIVOT);
 
     const shell = shellHead({ keys: HEAD_KEYS, edgeU: mouthLine, edgeL: mouthLine, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 26, segs: 44 });
-    const jaw = morphed(shell.jaw, jawMorph(shell.jaw));
+    const jaw = morphed(shell.jaw, jawMorph(shell.jaw, MOUTH));
     const face = mergeGeometries([morphed(shell.skull), jaw, morphed(throat(0.12, 0.3, -0.03)), morphed(throat(0.125, 0.17, 0.03))]);
     face.morphTargetsRelative = true; // 합치면 이 표시가 사라진다. 까만 덩어리 둘은 벌어진 입으로 목이 보이지 않게 막는다
     this.face = this.add(inner, face, skin, true);

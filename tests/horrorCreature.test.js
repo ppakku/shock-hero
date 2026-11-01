@@ -305,6 +305,46 @@ describe('createCreature', () => {
     expect(a.x).toBeCloseTo(-b.x, 1);
   });
 
+  it('maw opens the painted mouth without moving the skull, and faces the camera when it catches', () => {
+    const model = build('maw');
+    const g = model.face.geometry;
+    const pos = g.attributes.position;
+    const move = g.morphAttributes.position[0];
+    expect(g.morphTargetsRelative).toBe(true);
+    let drop = 0;
+    for (let i = 0; i < pos.count; i++) {
+      drop = Math.max(drop, -move.getY(i));
+      if (pos.getY(i) > 0.32) expect(move.getY(i)).toBe(0);
+    }
+    expect(drop).toBeGreaterThan(0.1);
+    const rush = stand(build('maw'), 'chase', 90);
+    expect(rush.faceTilt).toBeCloseTo(-rush.spine.rotation.x, 5);
+  });
+
+  it('maw hollows the mouth back so the sides are not a flat sticker', () => {
+    const pos = build('maw').face.geometry.attributes.position;
+    let lip = 0;
+    let mouth = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (Math.abs(pos.getX(i)) < 0.02 && y > 0.56 && y < 0.62) lip = Math.max(lip, pos.getZ(i));
+      if (Math.abs(pos.getX(i)) < 0.02 && Math.abs(y - 0.34) < 0.04) mouth = Math.max(mouth, pos.getZ(i));
+    }
+    expect(lip - mouth).toBeGreaterThan(0.1);
+  });
+
+  it('maw keeps a dark mouth and drops the hair sheets when its pictures fail', () => {
+    const fails = [];
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const model = createCreature('maw', new THREE.Scene(), { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } });
+    fails.forEach((f) => f());
+    error.mockRestore();
+    const color = model.face.geometry.attributes.color;
+    expect(Array.from(color.array).some((c) => c === 0)).toBe(true);
+    expect(Array.from(color.array).some((c) => c === 1)).toBe(true);
+    expect(model.hair.geometry.drawRange.count).toBe(model.hair.geometry.userData.strands);
+  });
+
   it('maw has no eyes and never looks at the player', () => {
     const rest = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const a = build('maw');
@@ -323,7 +363,7 @@ describe('createCreature', () => {
     const walk = stand(build('maw'), 'patrol', 90);
     const rush = stand(build('maw'), 'chase', 90);
     expect(rush.spine.rotation.x).toBeGreaterThan(walk.spine.rotation.x + 0.3);
-    expect(rush.jaw.rotation.x).toBeGreaterThan(walk.jaw.rotation.x + 0.1);
+    expect(rush.mouth).toBeGreaterThan(walk.mouth + 0.1);
     expect(rush.arms[0].shoulder.rotation.x).toBeLessThan(walk.arms[0].shoulder.rotation.x - 0.8);
     const sniff = build('maw');
     let swing = 0;
@@ -364,9 +404,7 @@ describe('createCreature', () => {
   it('every skinned point follows a real bone', () => {
     const model = stand(build('maw'));
     const bones = model.skeleton.bones.length;
-    for (const m of [model.skin, model.teeth]) {
-      const index = m.geometry.attributes.skinIndex;
-      for (let i = 0; i < index.count; i++) expect(index.getX(i)).toBeLessThan(bones);
-    }
+    const index = model.skin.geometry.attributes.skinIndex;
+    for (let i = 0; i < index.count; i++) expect(index.getX(i)).toBeLessThan(bones);
   });
 });

@@ -1,47 +1,58 @@
-// 큰입이: 아이 그림(3488)을 따라 눈 없이 머리 전체가 입이고, 위에 엉킨 머리털, 옆으로 뻗은 긴 팔과 가는 손가락,
-// 좁은 몸, 긴 다리를 짠다. 앞은 +Z 다. 못 보는 괴물이라 주인공을 쳐다보지 않고, 손을 벌려 더듬으며 냄새를 맡는다.
+// 큰입이: 아이 그림(3488)과 초상화를 따라 Gemini 가 그린 앞뒤 그림을 입힌다. 눈 없이 머리 전체가 입이고, 위에 엉킨 머리털,
+// 옆으로 뻗은 긴 팔과 가는 손가락, 좁은 몸, 긴 다리. 앞은 +Z 다. 못 보는 괴물이라 주인공을 쳐다보지 않고, 손을 벌려 더듬으며 냄새를 맡는다.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL } from '../logic/horrorGrid.js';
 import { CreatureBase, Rig, damp } from './creatureBase.js';
-import { ANKLE, TAU, bone, clamp, digit, footGeometry, knob, lerp, limb, sampleKeys, smooth, surface } from './creatureGeometry.js';
-import { shellHead, throat, toothRow } from './creatureShell.js';
+import { ANKLE, TAU, bone, clamp, knob, lerp, limb, sampleKeys, smooth, surface } from './creatureGeometry.js';
+import { jawMorph, morphed, shellHead, throat, warp, wrapU } from './creatureShell.js';
 
-// 그림의 키는 2.7m. 머리와 머리털이 키의 40% 다
-const THIGH = 0.5;
-const SHIN = 0.5;
-const UPPER = 0.33;
-const FORE = 0.33;
-const HIPS_Y = 1.1;
+// 치수는 Gemini 그림에서 쟀다 (tools/make_maw_art.py 가 찍어 준다). 머리털까지 키는 2.7m
+const THIGH = 0.53;
+const SHIN = 0.54;
+const UPPER = 0.46;
+const FORE = 0.29;
+const PALM = 0.16;
+const HIPS_Y = 1.29;
 const SPINE_UP = 0.06;
-const CHIN_Y = 1.68;
-const PIVOT = 0.22; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 입이 화면 가운데 온다
-const SHOULDER = { x: 0.25, y: 0.52 }; // 허리에서 잰 어깨 자리
-const HINGE = { y: 0.38, z: -0.17 };
-const LIP = { top: 0.7, bottom: 0.04 };
-const MOUTH_W = 1.42;
-const HEAD_KEYS = [
-  [0.84, 0.02, 0.02, -0.01],
-  [0.82, 0.13, 0.12, -0.01],
-  [0.75, 0.215, 0.19, -0.01],
-  [0.62, 0.265, 0.23, 0],
-  [0.48, 0.28, 0.245, 0],
-  [0.3, 0.285, 0.25, 0],
-  [0.15, 0.265, 0.23, 0.005],
-  [0.06, 0.2, 0.175, 0.005],
-  [0, 0.03, 0.03, 0],
+const CHIN_Y = 1.837;
+const PIVOT = 0.13; // 머리 받침점 (턱에서 잰 높이). 잡히는 장면에서 입이 화면 가운데 온다
+const SHOULDER = { x: 0.224, y: 0.344 }; // 허리에서 잰 어깨 자리
+const HIP_X = 0.105;
+const HEAD_H = 0.913;
+const MOUTH = { y: 0.315, x: 0.245, drop: 0.13, w: 1.05, depth: 0.15, rim: 0.13 }; // 입 가운데 높이, 입꼬리 반폭, 쫓을 때 내려가는 턱, 입꼬리 각도, 파 넣은 깊이와 입술 벽 너비
+// 입 테두리: 윗입술 가운데에서 입꼬리를 지나 아랫입술 가운데까지 15도마다 잰 반지름
+const MOUTH_EDGE = [0.226, 0.231, 0.243, 0.255, 0.259, 0.253, 0.245, 0.241, 0.241, 0.241, 0.237, 0.233, 0.231];
+const HEAD_KEYS = [ // [높이, 반폭, 반두께, 앞뒤 치우침]
+  [HEAD_H, 0.01], [0.908, 0.038], [0.855, 0.155], [0.802, 0.207], [0.748, 0.243], [0.695, 0.267], [0.642, 0.283], [0.588, 0.293], [0.534, 0.297],
+  [0.481, 0.3], [0.427, 0.299], [0.374, 0.283], [0.321, 0.271], [0.267, 0.261], [0.214, 0.249], [0.161, 0.234], [0.107, 0.202], [0.054, 0.161], [0.012, 0.09], [0, 0.02],
+].map(([y, hw]) => [y, hw, hw * 0.86, 0]);
+const TORSO_KEYS = [ // 허리에서 잰 높이
+  [0.56, 0.03, 0.03, 0], [0.54, 0.1, 0.09, 0], [0.42, 0.115, 0.1, 0], [0.39, 0.18, 0.115, 0], [0.353, 0.25, 0.135, 0], [0.298, 0.235, 0.125, 0], [0.245, 0.166, 0.11, 0],
+  [0.19, 0.152, 0.1, 0], [0.137, 0.135, 0.09, 0], [0.082, 0.111, 0.08, 0], [0.029, 0.112, 0.08, 0], [-0.026, 0.147, 0.1, 0], [-0.078, 0.146, 0.105, 0], [-0.133, 0.145, 0.1, 0], [-0.17, 0.09, 0.07, 0], [-0.19, 0.02, 0.02, 0],
 ];
-const TORSO_KEYS = [
-  [0.6, 0.03, 0.03, 0],
-  [0.59, 0.19, 0.12, 0],
-  [0.55, 0.25, 0.15, 0],
-  [0.47, 0.215, 0.13, 0],
-  [0.32, 0.165, 0.105, 0],
-  [0.1, 0.145, 0.095, 0],
-  [-0.05, 0.15, 0.1, 0],
-  [-0.13, 0.125, 0.09, 0],
-  [-0.18, 0.03, 0.03, 0],
+// 손목에서 잰 손가락 중심선: [바깥쪽, 아래쪽]. 바깥쪽은 팔이 뻗은 쪽이다
+const FINGERS = [
+  [[0.018, 0.117], [0.11, 0.211], [0.205, 0.304], [0.2, 0.436], [0.183, 0.568], [0.123, 0.777]],
+  [[0.051, 0.183], [0.095, 0.27], [0.139, 0.348], [0.12, 0.47], [0.088, 0.59], [-0.033, 0.827]],
+  [[0.04, 0.194], [0.065, 0.27], [0.09, 0.348], [0.055, 0.44], [0.018, 0.524], [-0.097, 0.667]],
+  [[-0.015, 0.084], [-0.05, 0.14], [-0.07, 0.194], [-0.066, 0.26], [-0.059, 0.326], [-0.033, 0.469]],
 ];
+const WRIST_DROP = 0.085; // 손가락 뼈가 손목보다 내려간 거리
+const FRONT_HEAD = 2 / 3; // 그림 폭 가운데 앞면이 차지하는 몫. 양쪽 끝이 뒷면이다
+const FRONT_LIMB = 1 / 2;
+const HAIR = { top: 1.005, bottom: 0.4335, x: 0.42, z: 0.34, inner: 0.84 }; // 머리털 그림이 덮는 높이와 둘레
+const INK_UV = [0.004, 0.012]; // 머리털 그림 구석의 먹빛 칸
+// 몸 그림 한 장의 칸: [왼쪽, 위, 폭, 높이] (tools/make_maw_art.py 와 같다)
+const SHEET = 1024;
+const TORSO_CELL = [0, 0, 640, 620];
+const ARM_CELL = [640, 0, 128, 1024];
+const LEG_CELL = [768, 0, 128, 1024];
+const FINGER_CELL = [896, 0, 64, 1024];
+const FOOT_CELL = [0, 640, 256, 256];
+const SKIN_CELL = [300, 660, 300, 300];
+const ART_TOP = 1.756; // 몸통 그림의 맨 위와 맨 아래 줄이 오는 땅 위 높이
+const ART_BOTTOM = 1.162;
 
 // 행동 코드의 chase 는 소리 난 곳으로 달려드는 것, search 는 코로 찾는 것이다
 const POSE = {
@@ -53,18 +64,34 @@ const POSE = {
 const POSE_KEYS = Object.keys(POSE.walk);
 const SKIN_COLOR = 0x2e2522; // 그림이 없을 때 살색
 const HAIR_COLOR = 0x12160f; // 그림이 없을 때 머리털 색
-const TEETH_GLOW = { patrol: 0.3, investigate: 0.45, search: 0.45, chase: 1, stunned: 0.05 };
-const TOOTH_LIGHT = 0.3; // 어둠 속에서 이빨이 뜨는 세기
+const TINT = 0x6e7476; // 그림이 손전등 아래서 희게 날아가지 않게 누른다
+const HEAD_TINT = 0x6e7476;
+const TEETH_GLOW = { patrol: 0.3, investigate: 0.4, search: 0.4, chase: 0.65, stunned: 0.05 };
+const TOOTH_LIGHT = 2.2; // 어둠 속에서 이빨이 뜨는 세기
+const TOOTH_COLOR = 0xe6ddbe;
+const TOOTH_FAR = 3; // 이 칸보다 가까우면 빛을 줄여 그림의 먹선이 보이게 한다
+const TOOTH_NEAR = 0.2; // 코앞에서 남는 빛의 몫
 
-function edgeU(w) {
-  const a = clamp(Math.abs(w) / MOUTH_W, 0, 1);
-  return lerp(HINGE.y, LIP.top, 1 - a ** 2.6);
+const cell = ([x, y, w, h], u, v) => [(x + u * w) / SHEET, 1 - (y + (1 - v) * h) / SHEET];
+const skinUv = () => cell(SKIN_CELL, 0.5, 0.5);
+
+// 입 안쪽이면 1, 입술 바깥이면 0. 그 사이가 입술 벽이다
+function inMouth(x, y) {
+  const dy = y - MOUTH.y;
+  const r = Math.hypot(x, dy);
+  const i = clamp(Math.atan2(Math.abs(x), dy) / (Math.PI / 12), 0, MOUTH_EDGE.length - 1.001);
+  const k = Math.floor(i);
+  return lerp(MOUTH_EDGE[k], MOUTH_EDGE[k + 1], i - k) - r;
 }
 
-function edgeL(w) {
-  const a = clamp(Math.abs(w) / MOUTH_W, 0, 1);
-  return lerp(HINGE.y, LIP.bottom, 1 - a ** 2.6);
+// 입 자리를 머리 속으로 파 넣는다. 정면 그림은 그대로이고, 옆에서 보면 입술이 입안을 가린다
+function relief(x, y) {
+  const d = inMouth(x, y);
+  return -MOUTH.depth * smooth(clamp(d / MOUTH.rim, 0, 1)) + 0.012 * Math.exp(-(((d + 0.012) / 0.02) ** 2));
 }
+
+const headUv = (p, t, u) => [wrapU(warp(u), FRONT_HEAD), p.y / HEAD_H];
+const split = () => MOUTH.y;
 
 // 씨앗이 같으면 머리털 모양도 같다
 function seeded(n) {
@@ -78,24 +105,19 @@ function seeded(n) {
   };
 }
 
-// 머리털: 낮은 덩어리 위에 낙서처럼 엉킨 가닥을 얹고, 이마 쪽은 삐죽한 띠가 두른다
+// 머리털: 그림에서 뜬 낙서 머리털을 두 겹 원통에 두르고, 옆과 뒤 윤곽은 낙서처럼 엉킨 가닥으로 살린다
 function hairGeometry() {
   const rand = seeded(3488);
-  const cy = 0.8;
-  const mound = surface({
-    rows: 8,
-    segs: 18,
-    uv: (p, t, w) => [(w / Math.PI) * 1.5, p.y * 2.5],
-    shade: () => 0.75,
-    at: (t, w, out) => {
-      const a = t * Math.PI;
-      const bumpy = 1 + 0.09 * Math.sin(w * 7 + t * 9) * Math.sin(a);
-      return out.set(Math.sin(w) * Math.sin(a) * 0.31 * bumpy, cy + Math.cos(a) * 0.2 * bumpy, Math.cos(w) * Math.sin(a) * 0.28 * bumpy - 0.01);
-    },
+  const shell = (k, flip) => surface({
+    rows: 3,
+    segs: 28,
+    uv: (p, t, w) => [flip ? 1 - wrapU(w, FRONT_LIMB) : wrapU(w, FRONT_LIMB), (p.y - HAIR.bottom) / (HAIR.top - HAIR.bottom)],
+    at: (t, w, out) => out.set(Math.sin(w) * HAIR.x * k, lerp(HAIR.top, HAIR.bottom + 0.04, t), Math.cos(w) * HAIR.z * k), // 맨 아랫줄의 먹빛 칸은 비켜 간다
   });
-  const parts = [mound];
-  const dot = (x, y, z, r) => [x * r, cy + y * r * 0.72, z * r * 0.92];
-  for (let i = 0; i < 38; i++) {
+  const parts = [];
+  const cy = 0.74;
+  const dot = (x, y, z, r) => [x * r, cy + y * r * 0.72, z * r * 0.9];
+  for (let i = 0; i < 12; i++) {
     let a = rand() * TAU;
     let e = rand() * 1.3;
     const step = 0.5 + rand() * 0.5;
@@ -103,33 +125,30 @@ function hairGeometry() {
     for (let n = 0; n < 5; n++) {
       a += (rand() - 0.5) * step * 2;
       e += (rand() - 0.5) * step;
-      const r = 0.31 + rand() * 0.075;
+      const r = 0.34 + rand() * 0.085;
       const q = dot(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e), r);
-      if (q[1] < 0.72) q[1] = 0.72;
-      if (p) parts.push(bone(p, q, 0.009, 0.008, 0.5 + rand() * 0.7));
+      if (q[1] < 0.5) q[1] = 0.5;
+      if (p) {
+        const g = bone(p, q, 0.006, 0.005, 1);
+        const uv = g.attributes.uv;
+        for (let v = 0; v < uv.count; v++) uv.setXY(v, INK_UV[0], INK_UV[1]);
+        parts.push(g);
+      }
       p = q;
     }
   }
-  // 이마 띠: 그림의 들쭉날쭉한 윤곽선
-  for (let i = 0; i < 26; i++) {
-    const a = (i / 26) * TAU;
-    const b = a + TAU / 26;
-    const r0 = 0.3;
-    const y0 = 0.76 + (i % 2 ? 0.05 : -0.03);
-    const y1 = 0.76 + (i % 2 ? -0.03 : 0.05);
-    parts.push(bone([Math.sin(a) * r0, y0, Math.cos(a) * r0 * 0.9], [Math.sin(b) * r0, y1, Math.cos(b) * r0 * 0.9], 0.012, 0.011, 0.6));
-  }
-  return mergeGeometries(parts);
+  const strands = mergeGeometries(parts);
+  const g = mergeGeometries([strands, shell(1, false), shell(HAIR.inner, true)]);
+  g.userData.strands = strands.index.count; // 그림을 못 받으면 원통은 빼고 가닥만 그린다
+  return g;
 }
 
-function torsoGeometry() {
-  const top = TORSO_KEYS[0][0];
-  const bottom = TORSO_KEYS[TORSO_KEYS.length - 1][0];
+// 몸통: 허리 위아래 두 토막. 몸을 숙여도 틈이 보이지 않게 조금 겹친다
+function torsoGeometry(top, bottom, y0) {
   return surface({
-    rows: 16,
-    segs: 14,
-    uv: (p, t, w) => [w / Math.PI, p.y * 1.4],
-    shade: (p, t, w) => lerp(0.75, 1, Math.max(0, Math.cos(w))),
+    rows: 8,
+    segs: 16,
+    uv: (p, t, w) => cell(TORSO_CELL, wrapU(w, FRONT_LIMB), clamp((p.y + y0 - ART_BOTTOM) / (ART_TOP - ART_BOTTOM), 0, 0.99)),
     at: (t, w, out) => {
       const y = lerp(top, bottom, t);
       const [hw, hd, cz] = sampleKeys(TORSO_KEYS, y);
@@ -138,110 +157,137 @@ function torsoGeometry() {
   });
 }
 
-// 그림처럼 아래로 늘어진 다섯 손가락
-function fingersGeometry() {
-  const parts = [];
-  [[-0.05, -0.028, 0.33], [-0.025, -0.012, 0.4], [0, 0, 0.42], [0.025, 0.012, 0.4], [0.05, 0.028, 0.33]].forEach(([x, fan, l]) => {
-    parts.push(...digit([
-      [x, 0, 0],
-      [x + fan * 0.6, -l * 0.42, -0.006],
-      [x + fan, -l * 0.8, -0.02],
-      [x + fan * 1.2, -l, -0.05],
-    ], 0.011));
+// 팔다리 그림 띠의 from~to 구간을 입힌다
+const stripUv = (strip, len, from, to) => (p, t, w) => cell(strip, wrapU(w, FRONT_LIMB), 1 - lerp(from, to, clamp(-p.y / len, 0, 1)));
+
+// 그림처럼 굽어 뻗는 긴 손가락. 뼈 자리가 원점이고, 끝으로 갈수록 가늘어져 발톱이 된다
+function fingerGeometry(points, side) {
+  const a = new THREE.Vector2();
+  const at = (t) => {
+    const i = t * (points.length - 1);
+    const k = Math.min(Math.floor(i), points.length - 2);
+    const [x0, y0] = points[k];
+    const [x1, y1] = points[k + 1];
+    return a.set(side * lerp(x0, x1, i - k), WRIST_DROP - lerp(y0, y1, i - k));
+  };
+  return surface({
+    rows: 7,
+    segs: 4,
+    uv: (p, t, w) => cell(FINGER_CELL, wrapU(w, FRONT_LIMB), 1 - t),
+    at: (t, w, out) => {
+      const { x: ax, y: ay } = at(Math.max(0, t - 0.02));
+      const { x: bx, y: by } = at(Math.min(1, t + 0.02));
+      const l = Math.hypot(bx - ax, by - ay) || 1;
+      const r = lerp(0.017, 0.0015, t ** 1.6);
+      const c = at(t);
+      return out.set(c.x + (Math.sin(w) * r * -(by - ay)) / l, c.y + (Math.sin(w) * r * (bx - ax)) / l, Math.cos(w) * r - 0.05 * t * t);
+    },
   });
-  return mergeGeometries(parts);
+}
+
+function fingersGeometry(side) {
+  return mergeGeometries(FINGERS.map((f) => fingerGeometry(f, side)));
 }
 
 function palmGeometry() {
   return surface({
     rows: 4,
-    segs: 6,
-    uv: (p, t, w) => [w / Math.PI, p.y],
+    segs: 8,
+    uv: stripUv(ARM_CELL, PALM, (UPPER + FORE) / (UPPER + FORE + PALM), 1),
     at: (t, w, out) => {
       const close = Math.min(1, Math.min(t, 1 - t) * 10 + 0.2);
-      return out.set(Math.sin(w) * 0.062 * close, -t * 0.09, Math.cos(w) * 0.018 * close);
+      return out.set(Math.sin(w) * lerp(0.03, 0.048, t) * close, -t * PALM, Math.cos(w) * 0.02 * close);
     },
   });
+}
+
+// 그림 속 옆모습 발. 발끝이 앞이다
+function footGeometry(side) {
+  const sole = -ANKLE;
+  const g = surface({
+    rows: 8,
+    segs: 8,
+    uv: (p) => cell(FOOT_CELL, 1 - (p.z + 0.08) / 0.3, (p.y - sole) / 0.26),
+    at: (t, w, out) => {
+      const z = lerp(-0.075, 0.2, t);
+      const close = Math.min(1, Math.min(t, 1 - t) * 8 + 0.15);
+      const h = lerp(0.11, 0.022, smooth(t));
+      return out.set(Math.sin(w) * lerp(0.045, 0.062, t) * close, sole + (h * (1 + Math.cos(w) * close)) / 2, z);
+    },
+  });
+  return mergeGeometries([g, knob(0.036, 0, 0, 0, skinUv), limb(0.04, () => 0.03, { rows: 2, uv: skinUv })]);
 }
 
 export class MawModel extends CreatureBase {
   constructor(scene, loader) {
     super(scene, loader);
-    const skin = this.paper('art/horror_maw_skin.jpg', SKIN_COLOR);
-    const hair = this.paper('art/horror_maw_hair.jpg', HAIR_COLOR, 0x9a9a9a);
-    this.teethMat = new THREE.MeshStandardMaterial({ color: 0x8c8672, roughness: 0.6, vertexColors: true, emissive: 0xe6ddbe, emissiveIntensity: 0, fog: false });
+    const matte = (o) => new THREE.MeshLambertMaterial(o); // 반사가 없어야 그림의 까만 입안과 먹선이 손전등 아래서도 까맣다
+    const skin = this.paper('art/horror_maw_head.jpg', SKIN_COLOR, HEAD_TINT, (o) => matte({ ...o, fog: false }), () => this.blackenMouth()); // 어둠 속 이빨 빛이 안개에 묻히지 않게
+    this.glowMap(skin, 'art/horror_maw_glow.jpg', TOOTH_COLOR);
+    this.faceMat = skin;
+    const body = this.paper('art/horror_maw_body.jpg', SKIN_COLOR, TINT, matte);
+    const hair = this.paper('art/horror_maw_hair.webp', HAIR_COLOR, TINT, (o) => new THREE.MeshLambertMaterial({ ...o, alphaTest: 0.3, side: THREE.DoubleSide }), () => this.hair?.geometry.setDrawRange(0, this.hair.geometry.userData.strands));
 
     const rig = new Rig(this.group);
     this.hips = rig.bone(null, 0, HIPS_Y, 0);
-    rig.part('body', this.hips, limbBlock());
+    rig.part('body', this.hips, torsoGeometry(0.04, TORSO_KEYS[TORSO_KEYS.length - 1][0], HIPS_Y + SPINE_UP).translate(0, SPINE_UP, 0));
     this.spine = rig.bone(this.hips, 0, SPINE_UP, 0);
-    rig.part('body', this.spine, torsoGeometry());
+    rig.part('body', this.spine, torsoGeometry(TORSO_KEYS[0][0], -0.03, HIPS_Y + SPINE_UP));
 
     this.head = rig.bone(this.spine, 0, CHIN_Y + PIVOT - HIPS_Y - SPINE_UP, 0.0);
     this.head.rotation.order = 'YXZ';
-    const shell = shellHead({ keys: HEAD_KEYS, edgeU, edgeL, mouthW: MOUTH_W, rows: 18 });
-    rig.part('body', this.head, mergeGeometries([shell.skull, throat(0.16, 0.32, -0.06)]), 0, -PIVOT, 0);
-    this.jaw = rig.bone(this.head, 0, HINGE.y - PIVOT, HINGE.z);
-    const jaw = mergeGeometries([shell.jaw, throat(0.13, 0.15, -0.03)]); // 벌어진 입으로 몸이 보이지 않게 막는다
-    jaw.translate(0, -HINGE.y, -HINGE.z);
-    rig.part('body', this.jaw, jaw);
+    const shell = shellHead({ keys: HEAD_KEYS, edgeU: split, edgeL: split, mouthW: MOUTH.w, relief, uv: headUv, lipShade: 0, rows: 22, segs: 50 });
+    const face = mergeGeometries([morphed(shell.skull), morphed(shell.jaw, jawMorph(shell.jaw, MOUTH)), morphed(throat(0.17, 0.42, -0.08)), morphed(throat(0.15, 0.22, -0.06))]);
+    face.morphTargetsRelative = true; // 합치면 이 표시가 사라진다. 까만 덩어리 둘은 벌어진 입으로 몸이 보이지 않게 막는다
+    this.face = this.add(this.head, face, skin, true, 0, -PIVOT, 0);
 
-    const on = (edge, k) => (w, out) => shell.point(edge(w), w, k, out);
-    const reach = MOUTH_W * 0.86;
-    const longTop = (u) => lerp(0.34, 0.1, u * u);
-    const longLow = (u) => lerp(0.27, 0.09, u * u);
-    const teethU = mergeGeometries([
-      ...toothRow({ count: 13, reach, width: 0.024, base: on(edgeU, 0.97), sign: -1, length: longTop, inward: 0.06 }),
-      ...toothRow({ count: 12, reach: reach * 0.9, width: 0.02, base: on(edgeU, 0.9), sign: -1, length: (u) => longTop(u) * 0.8, inward: 0.1, tone: 0.72 }),
-    ]);
-    rig.part('teeth', this.head, teethU, 0, -PIVOT, 0);
-    const teethL = mergeGeometries([
-      ...toothRow({ count: 13, reach, width: 0.023, base: on(edgeL, 0.97), sign: 1, length: longLow, inward: 0.06 }),
-      ...toothRow({ count: 12, reach: reach * 0.9, width: 0.019, base: on(edgeL, 0.9), sign: 1, length: (u) => longLow(u) * 0.8, inward: 0.1, tone: 0.72 }),
-    ]);
-    teethL.translate(0, -HINGE.y, -HINGE.z);
-    rig.part('teeth', this.jaw, teethL);
-
+    const armLen = UPPER + FORE + PALM;
+    const legLen = THIGH + SHIN;
     this.legs = [-1, 1].map((side) => {
-      const hip = rig.bone(this.hips, side * 0.09, -0.08);
-      rig.part('body', hip, mergeGeometries([knob(0.062, 0, -0.02), limb(THIGH, (t) => lerp(0.06, 0.03, smooth(t)), { rows: 6 })]));
+      const hip = rig.bone(this.hips, side * HIP_X, -0.08);
+      rig.part('body', hip, mergeGeometries([knob(0.062, 0, -0.02, 0, skinUv), limb(THIGH, (t) => lerp(0.06, 0.036, smooth(t)), { rows: 6, segs: 6, uv: stripUv(LEG_CELL, THIGH, 0, THIGH / legLen) })]));
       const knee = rig.bone(hip, 0, -THIGH);
-      rig.part('body', knee, mergeGeometries([knob(0.044, 0, -0.005, 0.01), limb(SHIN, (t) => 0.024 + 0.008 * Math.sin(t * Math.PI), { rows: 6 })]));
+      rig.part('body', knee, mergeGeometries([knob(0.04, 0, -0.005, 0.005, skinUv), limb(SHIN, (t) => 0.026 + 0.01 * Math.sin(t * Math.PI), { rows: 6, segs: 6, uv: stripUv(LEG_CELL, SHIN, THIGH / legLen, 1) })]));
       const ankle = rig.bone(knee, 0, -SHIN);
-      const foot = footGeometry();
-      foot.scale(side, 1, 1);
-      if (side < 0) flipWinding(foot);
-      rig.part('body', ankle, foot);
+      rig.part('body', ankle, footGeometry(side));
       return { hip, knee, ankle, phase: side > 0 ? 0 : Math.PI };
     });
 
     this.arms = [-1, 1].map((side) => {
       const shoulder = rig.bone(this.spine, side * SHOULDER.x, SHOULDER.y, 0);
-      rig.part('body', shoulder, mergeGeometries([knob(0.05), limb(UPPER, (t) => lerp(0.04, 0.026, t), { rows: 5 })]));
+      rig.part('body', shoulder, mergeGeometries([knob(0.05, 0, 0, 0, skinUv), limb(UPPER, (t) => lerp(0.042, 0.03, t), { rows: 5, segs: 6, uv: stripUv(ARM_CELL, UPPER, 0, UPPER / armLen) })]));
       const elbow = rig.bone(shoulder, 0, -UPPER);
-      rig.part('body', elbow, mergeGeometries([knob(0.03), limb(FORE, (t) => lerp(0.027, 0.018, t), { rows: 5 })]));
+      rig.part('body', elbow, mergeGeometries([knob(0.03, 0, 0, 0, skinUv), limb(FORE, (t) => lerp(0.031, 0.021, t), { rows: 5, segs: 6, uv: stripUv(ARM_CELL, FORE, UPPER / armLen, (UPPER + FORE) / armLen) })]));
       const wrist = rig.bone(elbow, 0, -FORE);
-      rig.part('body', wrist, mergeGeometries([knob(0.024), palmGeometry()]));
-      const fingers = rig.bone(wrist, 0, -0.085);
-      rig.part('body', fingers, fingersGeometry());
+      rig.part('body', wrist, mergeGeometries([knob(0.022, 0, 0, 0, skinUv), palmGeometry()]));
+      const fingers = rig.bone(wrist, 0, -WRIST_DROP);
+      rig.part('body', fingers, fingersGeometry(side));
       return { shoulder, elbow, wrist, fingers, side, phase: side > 0 ? Math.PI : 0 };
     });
 
-    const middle = new THREE.Vector3(0, 1.4, 0);
-    this.skin = rig.mesh('body', skin, true, middle, 2.2);
-    this.teeth = rig.mesh('teeth', this.teethMat, false, middle, 2.2);
-    this.skeleton = rig.bind([this.skin, this.teeth]);
-    this.hair = this.add(this.head, hairGeometry(), hair, true, 0, -PIVOT, 0);
+    this.skin = rig.mesh('body', body, true, new THREE.Vector3(0, 1.4, 0), 2.2);
+    this.skeleton = rig.bind([this.skin]);
+    this.hair = this.add(this.head, hairGeometry(), hair, false, 0, -PIVOT, 0);
 
-    this.headHeight = CHIN_Y + 0.4;
-    this.faceNear = 1.05; // 잡히는 장면에서 머리 받침점까지 거리 (미터). 긴 이빨이 카메라를 뚫지 않는다
+    this.headHeight = 2.08;
+    this.faceNear = 0.85; // 잡히는 장면에서 머리 받침점까지 거리 (미터). 입이 화면을 채운다
+    this.faceTilt = 0; // 잡히는 장면의 머리 기울기. 등을 숙인 만큼 되돌려 입이 정면을 본다
     this.pose = { ...POSE.walk };
     this.phase = 0;
     this.gait = 0;
     this.sweep = 0;
     this.chew = 0;
     this.chewT = 1;
+    this.mouth = 0;
     this.glow = TEETH_GLOW.patrol;
+  }
+
+  // 그림을 못 받아도 머리 전체가 입인 것은 보이게 입 자리를 까맣게 칠한다
+  blackenMouth() {
+    if (!this.face) return;
+    const { position: p, color: c } = this.face.geometry.attributes;
+    for (let i = 0; i < p.count; i++) if (p.getZ(i) > 0 && inMouth(p.getX(i), p.getY(i)) > 0) c.setXYZ(i, 0, 0, 0);
+    c.needsUpdate = true;
   }
 
   update(s, dt, player) {
@@ -290,6 +336,7 @@ export class MawModel extends CreatureBase {
 
     // 앞을 못 보니 머리를 좌우로 저으며 냄새를 맡는다
     const sniff = Math.sin(this.sweep) * p.sweep;
+    this.faceTilt = -p.lean;
     this.head.rotation.set(-p.lean * 0.75 + 0.05 * breath, sniff, sniff * 0.22);
     this.chewT -= dt;
     if (this.chewT <= 0) {
@@ -297,7 +344,8 @@ export class MawModel extends CreatureBase {
       this.chew = Math.random() * 0.35;
     }
     this.chew *= 1 - damp(5, dt);
-    this.jaw.rotation.x = lerp(-0.1, 0.3, clamp(p.mouth + this.chew + 0.03 * breath, 0, 1));
+    this.mouth = clamp(p.mouth + this.chew + 0.03 * breath, 0, 1);
+    this.face.morphTargetInfluences[0] = this.mouth;
 
     // 팔은 어깨에서 옆으로 뻗어 허공을 더듬는다
     for (let i = 0; i < this.arms.length; i++) {
@@ -313,34 +361,10 @@ export class MawModel extends CreatureBase {
   }
 
   // 눈이 없으니 어둠에서는 이빨이 희미하게 뜬다
-  lightTeeth(s, dt) {
+  lightTeeth(s, dt, player) {
     const goal = TEETH_GLOW[s.mode] ?? TEETH_GLOW.patrol;
     this.glow += (goal - this.glow) * damp(5, dt);
-    this.teethMat.emissiveIntensity = this.glow * TOOTH_LIGHT;
+    const far = clamp(Math.hypot(player.x - s.x, player.y - s.y) / TOOTH_FAR, 0, 1);
+    this.faceMat.emissiveIntensity = this.glow * TOOTH_LIGHT * lerp(TOOTH_NEAR, 1, far);
   }
-}
-
-// 왼쪽으로 뒤집은 그물이 안쪽을 보지 않게 삼각형 순서를 바꾼다
-function flipWinding(g) {
-  const a = g.index.array;
-  for (let i = 0; i < a.length; i += 3) {
-    const t = a[i + 1];
-    a[i + 1] = a[i + 2];
-    a[i + 2] = t;
-  }
-  const n = g.attributes.normal;
-  for (let i = 0; i < n.count; i++) n.setX(i, -n.getX(i));
-}
-
-function limbBlock() {
-  return surface({
-    rows: 8,
-    segs: 10,
-    uv: (p, t, w) => [w / Math.PI, p.y],
-    at: (t, w, out) => {
-      const y = lerp(0.04, -0.17, t);
-      const close = Math.sin(t * Math.PI) ** 0.5;
-      return out.set(Math.sin(w) * 0.15 * close, y, Math.cos(w) * 0.095 * close);
-    },
-  });
 }

@@ -754,7 +754,7 @@ export class HorrorGame {
   placeFace(l, dt) {
     const m = l.model;
     m.update(l.shown, dt, this.p);
-    m.head.rotation.set(0, 0, 0);
+    m.head.rotation.set(m.faceTilt ?? 0, 0, 0);
     const stop = m.faceNear ?? FACE_NEAR; // 긴 이빨이 카메라를 뚫는 괴물은 더 멀리 선다
     const near = stop + (FACE_FAR - stop) * (1 - Math.min(1, l.t / LUNGE_TIME)) ** 2;
     m.group.updateMatrixWorld(true);

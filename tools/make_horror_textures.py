@@ -217,39 +217,6 @@ def school_board():
     save(out, 'horror_school_board.jpg', q=78)
 
 
-def maw_skin():
-    # 마르고 팽팽한 갈회색 피부, 주름이 자글자글
-    t = noise(101, beta=2.4) * 0.6 + noise(102, beta=1.4) * 0.4
-    a = lerp((58, 46, 40), (118, 98, 82), t)
-    cr = np.clip((ridged(103, beta=2.0, ax=3.0, ay=1.0) - 0.82) * 6, 0, 1)
-    a = a * (1 - cr[..., None] * 0.45)
-    cr2 = np.clip((ridged(104, beta=1.8, ax=1.0, ay=3.0) - 0.86) * 7, 0, 1)
-    a = a * (1 - cr2[..., None] * 0.3)
-    a = hatch(a, 105, 0.07)
-    save(a, 'horror_maw_skin.jpg', q=82)
-
-
-def maw_hair():
-    # 검은 초록 낙서 머리카락 둥지: 끊김 없이 이어지는 굽은 선 수백 줄
-    im = Image.new('RGB', (S, S), (8, 12, 9))
-
-    def fn(d, ox, oy):
-        r = np.random.default_rng(111)
-        for i in range(520):
-            x, y = r.uniform(0, S), r.uniform(0, S)
-            ang = r.uniform(0, 6.28)
-            col = [(22, 40, 28), (14, 26, 20), (46, 70, 50), (30, 52, 38)][i % 4]
-            for _ in range(r.integers(12, 34)):
-                ang += r.normal(0, 0.45)
-                nx, ny = x + np.cos(ang) * 8, y + np.sin(ang) * 8
-                d.line((x + ox, y + oy, nx + ox, ny + oy), fill=col, width=int(r.integers(1, 3)))
-                x, y = nx, ny
-
-    wrap_draw(im, fn)
-    a = np.asarray(im.filter(ImageFilter.GaussianBlur(0.4)), float)
-    save(a, 'horror_maw_hair.jpg', q=82)
-
-
 sewer_wall()
 sewer_floor()
 cabinet('horror_sewer_locker.jpg', (44, 48, 40), (96, 94, 76), (140, 150, 130), (90, 130, 170), False, (96, 62, 30), 7)
@@ -257,5 +224,3 @@ school_wall()
 school_floor()
 cabinet('horror_school_locker.jpg', (50, 78, 66), (112, 140, 122), (170, 190, 176), (80, 118, 156), True, (80, 70, 50), 17)
 school_board()
-maw_skin()
-maw_hair()
