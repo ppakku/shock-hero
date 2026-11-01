@@ -251,7 +251,7 @@ export class HorrorGame {
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise: noiseFor(moving, running, this.k) };
     this.tickStamina(running && moving, dt);
-    const seen = inPlayerView(this.p, this.yaw, this.stalker, this.map, this.k);
+    const seen = inPlayerView(this.p, this.yaw, this.stalker, this.map, this.k, this.hidden !== null);
     this.onStalkerEvents(tickStalker(this.stalker, { map: this.map, player, seen, pressure: this.run.have / this.k.fuseCount }, this.k, dt));
     if (this.state !== 'play') return;
     this.model.update(this.stalker, dt, this.p);
@@ -446,7 +446,8 @@ export class HorrorGame {
     const m = this.model;
     m.update(l.shown, dt, this.p);
     m.head.rotation.set(0, 0, 0);
-    const near = FACE_NEAR + (FACE_FAR - FACE_NEAR) * (1 - Math.min(1, l.t / LUNGE_TIME)) ** 2;
+    const stop = m.faceNear ?? FACE_NEAR; // 긴 이빨이 카메라를 뚫는 괴물은 더 멀리 선다
+    const near = stop + (FACE_FAR - stop) * (1 - Math.min(1, l.t / LUNGE_TIME)) ** 2;
     m.group.updateMatrixWorld(true);
     const face = m.head.getWorldPosition(new THREE.Vector3());
     const fx = -Math.sin(l.dir);

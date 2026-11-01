@@ -50,7 +50,7 @@ function playGame(seed, options, maxSeconds = 900, mapId = 'factory', monsterId 
     const moving = g.p.x !== before.x || g.p.y !== before.y;
     stamina = stepStamina(stamina, running && moving, k, DT);
     const player = { ...g.p, hidden: g.hidden, lightOn: true, noise: noiseFor(moving, running, k) };
-    const seen = inPlayerView(g.p, g.yaw, g.stalker, map, k);
+    const seen = inPlayerView(g.p, g.yaw, g.stalker, map, k, g.hidden !== null);
     const events = tickStalker(g.stalker, { map, player, seen, pressure: run.have / k.fuseCount }, k, DT, rand);
     if (events.includes('caught') || events.includes('found')) {
       caught(run);

@@ -32,11 +32,11 @@ export function controlLines(device) {
   return CONTROLS[device] ?? CONTROLS.pc;
 }
 
-// 시작 전 안내 이야기. 맨 앞은 이번 판의 맵, 괴물, 힌트다. 휴대폰은 화면이 작아서 이야기 앞의 두 줄을 뺀다
+// 시작 전 안내 이야기. 맨 앞은 이번 판의 맵, 괴물, 힌트다. 휴대폰은 화면이 작아서 이야기 앞의 두 줄을 빼고 맵과 힌트를 한 줄로 쓴다
 // round: { mapName, monsterName, hint }
 export function introLines(device, { mapName, monsterName, hint }) {
-  const story = fillName(device === 'phone' ? INTRO.slice(2) : INTRO, monsterName);
-  return [`${mapName}: ${monsterName}`, hint, ...story];
+  if (device === 'phone') return [`${mapName}: ${monsterName}. ${hint}`, ...fillName(INTRO.slice(2), monsterName)];
+  return [`${mapName}: ${monsterName}`, hint, ...fillName(INTRO, monsterName)];
 }
 
 // 시작한 뒤 잠깐 띄우는 알림

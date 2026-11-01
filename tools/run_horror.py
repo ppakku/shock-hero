@@ -1598,6 +1598,13 @@ def run_rounds(pw):
             time.sleep(0.8)
             pg.screenshot(path=f'{OUT}/{tag}_start.png')
             {'seino': seino_shot, 'gazer': gazer_rule, 'maw': maw_rule}[monsterId](pg, tag)
+            pg.evaluate(FACE_MONSTER, [3, 3, 'stunned'])
+            time.sleep(0.5)
+            pg.screenshot(path=f'{OUT}/{tag}_close.png')
+            pg.evaluate('(() => { const g = window.__horror; g.stalker.x = g.p.x + 0.4; g.stalker.y = g.p.y; g.getCaught(); })()')
+            pg.wait_for_function("window.__horror.state === 'caught' && window.__horror.lunge.t > 0.25", timeout=5000, polling=30)
+            pg.evaluate('window.__horror.caughtFrame = () => {}')
+            pg.screenshot(path=f'{OUT}/{tag}_caught.png')
             # 규칙 검사가 흐트러 놓은 자리를 버리고 처음부터 봇으로 끝까지 한다
             open_round(pg, mapId, monsterId)
             pg.evaluate('window.__horrorBot = { careful: true }')
