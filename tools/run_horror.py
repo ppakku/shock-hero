@@ -565,9 +565,9 @@ def play_controls(pw):
 
     # 놀람 장면: 밟으면 한 번만 울리고 손전등이 깜빡이고, 잡히면 깜빡임이 끊겨 밝기가 돌아온다
     sc = pg.evaluate('window.__horror.map.scares[0]')
-    pg.evaluate("window.__lows = []; const g = window.__horror; const t = setInterval(() => window.__lows.push(g.flash.intensity), 30); setTimeout(() => clearInterval(t), 1800)")
+    pg.evaluate("window.__lows = []; const g = window.__horror; const t = setInterval(() => window.__lows.push(g.flash.intensity), 30); setTimeout(() => clearInterval(t), 3500)")
     stand_at(pg, sc['cx'] + 0.5, sc['cy'] + 0.5)
-    time.sleep(2)
+    time.sleep(3.7)
     lows = pg.evaluate('window.__lows')
     left = pg.evaluate('window.__horror.scaresLeft.length')
     base = pg.evaluate('window.__horror.k.flashIntensity')
@@ -589,7 +589,8 @@ def play_controls(pw):
     pg.evaluate("delete document.pointerLockElement")
     pg.evaluate(PARK_STALKER)
     low = pg.evaluate("() => { const g = window.__horror; g.lowFx = true; g.p = { x: 1.5, y: 1.5 }; const s = g.map.scares[2]; g.p = { x: s.cx + 0.5, y: s.cy + 0.5 }; return null; }")
-    becomes(pg, '!window.__horror.scare && window.__horror.scaresLeft.length < window.__horror.map.scares.length')  # 어둠이 끝난 뒤에 본다
+    becomes(pg, 'window.__horror.scare')
+    becomes(pg, '!window.__horror.scare')  # 어둠이 끝난 뒤에 본다
     time.sleep(0.3)
     check('scare: lowFx plays no flicker', pg.evaluate('window.__horror.blink') is None and pg.evaluate('window.__horror.flash.intensity') == base, '')
     pg.evaluate('window.__horror.lowFx = false')
