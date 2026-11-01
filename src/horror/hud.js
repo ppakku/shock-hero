@@ -66,7 +66,8 @@ export class HorrorHud {
     this.staminaFill.style.cssText = 'width:100%;height:100%;background:#e8b84a';
     this.staminaBar.appendChild(this.staminaFill);
     this.staminaShown = 100;
-    this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;text-shadow:0 0 4px #000');
+    // 손전등이 비춘 밝은 벽에서도 읽히게 그림자를 겹친다
+    this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 6px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
     this.dot = this.add('position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(255,255,255,.45)');
     this.black = this.add('position:absolute;inset:0;background:#000;opacity:0;transition:opacity .35s');

@@ -10,7 +10,7 @@ const LIGHT = { w: 0.7, h: 0.16, d: 0.06, y: 2.4 }; // 비상등 크기와 높�
 const LIGHT_COLOR = new THREE.Color(0xff3a14);
 const MACHINE_TINT = new THREE.Color(0xb4bcc4); // 벽 그림을 어둡게 눌러 철판처럼 보이게 한다
 const DOOR = { d: 0.3, sec: 1.2 }; // 잠긴 문 두께 (미터), 천장으로 말려 올라가는 시간 (초)
-const NOTE = { w: 0.3, h: 0.42, color: 0xe8dcc0, tilt: 0.5, turn: 0.4 }; // 쪽지 크기 (미터), 색, 기울기 (라디안)
+const NOTE = { w: 0.4, h: 0.55, color: 0xe8dcc0, y: 0.03, turn: 1.1 }; // 쪽지 크기 (미터), 색, 바닥에서 높이 (미터), 자리마다 돌아가는 각도 (라디안)
 const DOOR_COLORS = [0xd83828, 0x2868e0]; // 열쇠와 같은 색. map.locks 순서
 const PIPE = { r: 0.07, off: 0.12, ys: [2.62, 2.8] }; // 벽을 따라가는 배관 두 줄
 
@@ -193,11 +193,13 @@ export function buildWorld(scene, map, k, mats = {}) {
   };
   const addFuses = (fuses) => fuses.map((c) => pickup(c, new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), 0xffc040));
   const addKeys = (keys) => keys.map((c) => pickup(c, new THREE.BoxGeometry(0.1, 0.34, 0.04), DOOR_COLORS[c.lock]));
-  // 쪽지는 낡은 종이 한 장이다. 구역에 넣어서 벽 너머에 있으면 같이 그리지 않는다. spots: horrorNotes 의 자리 (칸 가운데 좌표)
-  const addNotes = (spots) => spots.map((s) => {
+  // 쪽지는 바닥에 떨어진 종이 한 장이다. 어느 쪽에서 봐도 납작해지지 않는다.
+  // 구역에 넣어서 벽 너머에 있으면 같이 그리지 않는다. spots: horrorNotes 의 자리 (칸 가운데 좌표)
+  const addNotes = (spots) => spots.map((s, i) => {
     const c = { cx: Math.floor(s.x), cy: Math.floor(s.y) };
     const mesh = pickup(c, new THREE.BoxGeometry(NOTE.w, 0.012, NOTE.h), NOTE.color, chunkOf(c.cx, c.cy));
-    mesh.rotation.set(NOTE.tilt, NOTE.turn, 0);
+    mesh.position.y = NOTE.y;
+    mesh.rotation.set(0, NOTE.turn * i, 0);
     return mesh;
   });
 
