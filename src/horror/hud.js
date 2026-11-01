@@ -16,10 +16,10 @@ const INTRO = [
   `${MONSTER_NAME}는 쓰러뜨릴 수 없다. 사물함에 숨어!`,
 ];
 
-const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기, 숨기, 문 열기, 충전: 사용 버튼', '쪽지 닫기: 사용 버튼 또는 닫기 버튼', '쇼크 펀치: 펀치 버튼', '일시정지: 멈춤 버튼'];
+const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기, 숨기, 문 열기, 충전: 사용 버튼', '쪽지 닫기: 사용 버튼 또는 닫기 버튼', '전기충격기: 쇼크 버튼', '일시정지: 멈춤 버튼'];
 
 const CONTROLS = {
-  pc: ['조작 방법 (PC)', '이동: W A S D 또는 위아래 방향키', '둘러보기: 마우스 또는 좌우 방향키', '달리기: Shift 를 누른 채 이동 (체력이 줄어요)', '손전등: F', '줍기, 숨기, 문 열기, 충전: E', '쪽지 닫기: E 또는 Enter', '쇼크 펀치: J 또는 왼쪽 클릭', '일시정지: Esc'],
+  pc: ['조작 방법 (PC)', '이동: W A S D 또는 위아래 방향키', '둘러보기: 마우스 또는 좌우 방향키', '달리기: Shift 를 누른 채 이동 (체력이 줄어요)', '손전등: F', '줍기, 숨기, 문 열기, 충전: E', '쪽지 닫기: E 또는 Enter', '전기충격기: R 또는 왼쪽 클릭', '일시정지: Esc'],
   tablet: ['조작 방법 (태블릿)', ...TOUCH_CONTROLS],
   phone: ['조작 방법 (휴대폰, 가로로 눕혀 주세요)', ...TOUCH_CONTROLS],
 };
@@ -71,6 +71,7 @@ export class HorrorHud {
     this.prompt = this.add('position:absolute;left:0;right:0;bottom:22%;text-align:center;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 6px #000');
     this.message = this.add('position:absolute;left:0;right:0;top:18%;text-align:center;color:#ffb0a0;text-shadow:0 0 4px #000');
     this.dot = this.add('position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgba(255,255,255,.45)');
+    this.zap = this.add('position:absolute;inset:0;background:#7cc4ff;opacity:0');
     this.black = this.add('position:absolute;inset:0;background:#000;opacity:0;transition:opacity .35s');
     root.appendChild(this.box);
     // 틈 화면은 글자 밑, 터치 버튼 밑에 깐다. 숨은 채로도 사용 버튼이 보여야 나올 수 있다
@@ -179,6 +180,11 @@ export class HorrorHud {
 
   showSlit(on) {
     this.slit.style.display = on ? 'block' : 'none';
+  }
+
+  // 전기충격기를 쏘면 화면이 파랗게 번쩍인다 (초)
+  flashShock(power, time) {
+    this.zap.animate?.([{ opacity: power }, { opacity: 0 }], { duration: time * 1000, easing: 'ease-out' });
   }
 
   fade(on) {
