@@ -101,7 +101,7 @@ function themeMaterials(theme, onMissing) {
   const textures = {};
   let reported = false;
   const make = (name) => {
-    const { art, plain, repeat, tint = 0xffffff, shiny } = theme[name];
+    const { art, plain, repeat, repeatY = repeat, tint = 0xffffff, shiny } = theme[name];
     const mat = shiny ? new THREE.MeshPhongMaterial({ color: tint, specular: shiny.color, shininess: shiny.power }) : new THREE.MeshLambertMaterial({ color: tint });
     const tex = new THREE.TextureLoader().load(`art/${art}.jpg`, undefined, undefined, () => {
       if (!reported) console.error('공포 모드 재질 그림을 못 받아 밋밋한 색으로 둡니다:', name);
@@ -113,7 +113,7 @@ function themeMaterials(theme, onMissing) {
     });
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeat, repeat);
+    tex.repeat.set(repeat, repeatY);
     tex.colorSpace = THREE.SRGBColorSpace;
     mat.map = tex;
     textures[name] = tex;
@@ -183,7 +183,8 @@ export function buildWorld(scene, map, k, themeIn = factoryTheme) {
 
   const props = new THREE.Group();
   scene.add(props);
-  propSet(props, map.lockers, LOCKER.w, LOCKER.h, LOCKER.d, mats.locker);
+  const locker = theme.locker.box || LOCKER;
+  propSet(props, map.lockers, locker.w, locker.h, locker.d, mats.locker);
   const boxMat = lambert(0x3a4a6a);
   propSet(props, map.boxes, 0.9, 1.5, 0.5, boxMat);
   const panelMat = lambert(0x6a3a2a);

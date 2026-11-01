@@ -87,8 +87,9 @@ export function decorSpots(map, tile = 0) {
   (tile ? rooms.flatMap((cells) => split(cells, tile)) : rooms).forEach((cells, i) => {
     const faces = facesOf(map, cells);
     if (!faces.length) return;
-    for (const part of MACHINE_AT[i % 2]) out.machines.push(at(faces, part));
-    if (i % 3 !== 2) for (const part of LIGHT_AT) out.lights.push(at(faces, part));
+    const addOnce = (list, f) => { if (!list.includes(f)) list.push(f); }; // 벽면이 적으면 같은 면이 또 뽑힌다
+    for (const part of MACHINE_AT[i % 2]) addOnce(out.machines, at(faces, part));
+    if (i % 3 !== 2) for (const part of LIGHT_AT) addOnce(out.lights, at(faces, part));
     if (i % 2 === 0) out.pipes.push(...pipeRun(faces, at(faces, PIPE_AT)));
   });
   return out;
