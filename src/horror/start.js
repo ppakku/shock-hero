@@ -1,7 +1,6 @@
 // 공포 모드 입구. 3D 묶음은 고를 때만 내려받는다 (이 파일은 three 를 import 하지 않는다).
 import { isPhone, isTouchDevice } from '../ui/touch.js';
 import { saveStore } from '../save.js';
-import { cfg } from '../config/index.js';
 import { todayKey } from '../logic/daily.js';
 import { LAST_ROUND, RANDOM, chooseRound, forcedRound, isRound } from '../logic/horrorPick.js';
 import { tonightRound } from '../logic/horrorTonight.js';
@@ -93,7 +92,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     }
   };
   let choice = { mapId: RANDOM, monsterId: RANDOM }; // 한 판 더를 누르면 방금 고른 그대로 보여 준다
-  const today = () => tonightRound(todayKey(), cfg.horror);
+  const today = () => tonightRound(todayKey());
   const choose = () => showChooser(root, {
     choice,
     tonight: today(),

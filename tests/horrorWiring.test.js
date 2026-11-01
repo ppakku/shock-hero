@@ -59,7 +59,8 @@ vi.mock('../src/horror/hud.js', () => {
     showPause() {}
     say(text) { this.said.push(text); }
     showIntro(device, round, onStart, onQuit) { this.intro = { round, onStart, onQuit }; }
-    showEnd(text, onAgain, onDone, notes) { this.end = { text, onAgain, onDone, notes }; }
+    showEnd(text, onAgain, onDone, notes, news, compact, tonight) { this.end = { text, onAgain, onDone, notes, tonight }; }
+    setTonight(line) { this.tonight = line; }
     showNote(lines) { this.noteOpen = true; this.noteLines = lines; }
     closeNote() {
       const was = this.noteOpen;
@@ -658,6 +659,128 @@ describe('한 마리 판은 그대로다', () => {
     expect(fakes.save.horror.escapes).toBe(1);
     expect(Object.keys(fakes.save.horror.stamps)).toHaveLength(1);
     expect(fakes.save.horror.lastCleared).toBe(false);
+    g.exit();
+  });
+});
+
+describe('오늘의 밤', () => {
+  const round = { mapId: 'factory', monsterId: 'seino' };
+  const start = (rule, date = '2026-11-01') => {
+    const g = makeGame('factory', 'seino', { round, tonight: { date, rule } });
+    g.getCaught = () => {};
+    return g;
+  };
+  const win = (g) => {
+    g.run.powered = true;
+    g.win();
+  };
+  beforeEach(() => {
+    fakes.save = { gems: 0, horror: normalizeHorror({}), settings: {} };
+  });
+
+  it('손전등 조건은 꺼진 채로 시작하고, 켜면 깨지며 판은 계속된다', () => {
+    const g = start('noLight');
+    expect(g.lightOn).toBe(false);
+    expect(g.ambientLight.intensity).toBe(g.k.ambient * g.k.tonight.darkAmbient);
+    frames(g, 0.1);
+    expect(g.hud.tonight.broken).toBe(false);
+    g.readInput = () => ({ ...idle(), light: true });
+    g.update(DT);
+    g.readInput = idle;
+    g.update(DT);
+    expect(g.hud.tonight.broken).toBe(true);
+    expect(g.state).toBe('play');
+    win(g);
+    expect(g.hud.end.tonight.met).toBe(false);
+    expect(fakes.save.horror.tonightDone).toEqual([]);
+    expect(fakes.save.gems).toBe(g.k.gemsEscape + g.k.gemsClean);
+    g.exit();
+  });
+
+  it('보통 판은 손전등을 켜고 밝기도 그대로이고 조건 줄이 없다', () => {
+    const g = makeGame('factory', 'seino');
+    expect(g.lightOn).toBe(true);
+    expect(g.ambientLight.intensity).toBe(g.k.ambient);
+    frames(g, 0.1);
+    expect(g.hud.tonight).toBeUndefined();
+    win(g);
+    expect(g.hud.end.tonight).toBeFalsy();
+    expect(fakes.save.gems).toBe(g.k.gemsEscape + g.k.gemsClean);
+    g.exit();
+  });
+
+  it('달리기는 봐주는 시간을 넘으면 깨진다', () => {
+    const g = start('noRun');
+    Object.assign(g.stalker, { x: 30, y: 2, mode: 'stunned', stunT: 999 });
+    g.readInput = () => ({ ...idle(), move: { x: 0, z: 1, run: true } });
+    g.update(DT);
+    expect(g.ranFor).toBeGreaterThan(0);
+    expect(g.hud.tonight.broken).toBe(false);
+    g.ranFor = g.k.tonight.runGrace + 0.01;
+    g.update(DT);
+    expect(g.hud.tonight.broken).toBe(true);
+    g.exit();
+  });
+
+  it('쇼크를 쏘면 깨지고, 충전만 하거나 빈손으로 누르면 깨지지 않는다', () => {
+    const g = start('noShock');
+    g.hud.flashShock = () => {};
+    g.doPunch();
+    expect(g.tonightCounts().shocks).toBe(0);
+    g.run.shock = true;
+    g.doPunch();
+    expect(g.tonightCounts().shocks).toBe(1);
+    g.exit();
+  });
+
+  it('성공하면 탈출 보석에 더해 주고, 같은 날 다시 지켜도 더 주지 않는다', () => {
+    const a = start('noRun');
+    win(a);
+    const k = a.k;
+    expect(a.hud.end.tonight.met).toBe(true);
+    expect(fakes.save.gems).toBe(k.gemsEscape + k.gemsClean + k.tonight.gems);
+    expect(fakes.save.horror.tonightDone).toEqual(['2026-11-01']);
+    expect(fakes.save.horror.stamps).toEqual({ 'factory/seino': 'gold' }); // 보통 판처럼 도장을 찍는다
+    a.exit();
+    const gems = fakes.save.gems;
+    const b = start('noRun');
+    win(b);
+    expect(b.hud.end.tonight.met).toBe(true);
+    expect(fakes.save.gems).toBe(gems);
+    b.exit();
+  });
+
+  it('자정을 넘긴 판은 시작한 날로 받고, 그날 이미 받았으면 주지 않고, 다음 날 판은 따로 받는다', () => {
+    fakes.save.horror.gemDay = '2026-11-02'; // 탈출 보석은 끝난 날 기준이라 뺀다
+    vi.useFakeTimers({ now: new Date(2026, 10, 2, 0, 10), toFake: ['Date'] });
+    try {
+      const a = start('noRun', '2026-11-01');
+      win(a);
+      expect(fakes.save.horror.tonightDone).toEqual(['2026-11-01']);
+      const paid = fakes.save.gems;
+      expect(paid).toBeGreaterThanOrEqual(a.k.tonight.gems);
+      a.exit();
+      const b = start('noRun', '2026-11-01');
+      win(b);
+      expect(fakes.save.gems).toBe(paid);
+      b.exit();
+      const c = start('noRun', '2026-11-02');
+      win(c);
+      expect(fakes.save.horror.tonightDone).toEqual(['2026-11-01', '2026-11-02']);
+      expect(fakes.save.gems).toBe(paid + c.k.tonight.gems);
+      c.exit();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('쪽지 조건은 모은 만큼 줄에 보이고 모자라면 성공이 아니다', () => {
+    const g = start('notes');
+    frames(g, 0.1);
+    expect(g.hud.tonight.text).toContain(`0/${g.k.tonight.notes}`);
+    g.notes.found = g.k.tonight.notes - 1;
+    win(g);
+    expect(g.hud.end.tonight.met).toBe(false);
     g.exit();
   });
 });

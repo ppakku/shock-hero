@@ -11,16 +11,14 @@ export const NO_CATCH = 'noCatch';
 export const NOTES = 'notes';
 export const TONIGHT_RULES = [NO_LIGHT, NO_RUN, NO_SHOCK, NO_CATCH, NOTES];
 
-// 이 괴물과 할 수 있는 조건. k.tonight.skip 은 시험으로 잰 불공평한 조합이다 (tests/horrorTonight.test.js)
-export const rulesFor = (monsterId, k) => TONIGHT_RULES.filter((rule) => !k.tonight.skip[monsterId]?.includes(rule));
-
+// 어느 맵과 괴물이 나와도 다섯 조건 모두 지킬 수 있다 (tests/horrorPlay.test.js 의 봇이 잰다).
 // 마지막 밤의 맵과 두 괴물 판은 목록에 없어서 나오지 않는다
-export function tonightRound(date, k) {
+export function tonightRound(date) {
   const rand = seededRandom(`horror-tonight-${date}`);
   const pickOne = (list) => list[Math.floor(rand() * list.length) % list.length];
   const mapId = pickOne(MAP_IDS);
   const monsterId = pickOne(MONSTER_IDS);
-  return { date, mapId, monsterId, rule: pickOne(rulesFor(monsterId, k)) };
+  return { date, mapId, monsterId, rule: pickOne(TONIGHT_RULES) };
 }
 
 // 조건 설명 한 줄

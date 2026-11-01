@@ -1833,9 +1833,8 @@ SHIFT_DATE = """(days) => {
 DAY_FOR_RULE = """async (rule) => {
   const { tonightRound } = await import('/src/logic/horrorTonight.js');
   const { todayKey } = await import('/src/logic/daily.js');
-  const { balance } = await import('/src/config/balance.js');
   for (let d = 0; d < 400; d++) {
-    const t = tonightRound(todayKey(new Date(Date.now() + d * 86400000)), balance.horror);
+    const t = tonightRound(todayKey(new Date(Date.now() + d * 86400000)));
     if (t.rule === rule) return { d, ...t };
   }
 }"""

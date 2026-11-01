@@ -259,3 +259,36 @@ describe.each(MAP_IDS.flatMap((mapId) => ['gazer', 'maw'].map((monsterId) => [ma
     expect(s.meanCatches).toBeLessThanOrEqual(monsterId === 'maw' ? 6 : 4.5);
   }, 120000);
 });
+
+describe('오늘의 밤: 어느 판이든 조건을 지키고 탈출할 수 있다', () => {
+  const PAIRS = MAP_IDS.flatMap((mapId) => MONSTER_IDS.map((monsterId) => [mapId, monsterId]));
+  const OPTIONS = {
+    noLight: { careful: true, noLight: true },
+    noRun: { careful: true, noRun: true },
+    noShock: { careful: true, noShock: true },
+    notes: { careful: true, notes: k.tonight.notes },
+  };
+
+  it.each(PAIRS.flatMap((pair) => Object.keys(OPTIONS).map((rule) => [...pair, rule])))('%s 맵의 %s: %s', (mapId, monsterId, rule) => {
+    for (const seed of [1, 2, 3, 4]) {
+      const game = playGame(seed, OPTIONS[rule], 1500, mapId, monsterId);
+      expect(game.won, `씨앗 ${seed}`).toBe(true);
+      expect(tonightMet(rule, game.counts, k), `씨앗 ${seed}`).toBe(true);
+    }
+  });
+
+  // 안 잡히기는 어렵지만 살금살금 다니면 된다. 손전등을 끄고 걷고 괴물이 가까우면 먼저 숨는다
+  it.each(PAIRS)('%s 맵의 %s: 안 잡히기', (mapId, monsterId) => {
+    const games = Array.from({ length: 8 }, (_, i) => playGame(i + 1, { careful: true, sneak: true, noLight: true }, 1500, mapId, monsterId));
+    expect(games.every((r) => r.won)).toBe(true);
+    expect(games.filter((r) => tonightMet('noCatch', r.counts, k)).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(MAP_IDS)('%s 맵: 쪽지는 읽어야 하는 수보다 많고 모두 갈 수 있다', (mapId) => {
+    const { map } = ALL_MAPS[mapId];
+    const open = reachable(withOpen(map, map.locks.map((_, i) => i)), map.start);
+    const spots = map.notes.filter((c) => open.has(`${c.cx},${c.cy}`));
+    expect(spots.length).toBeGreaterThanOrEqual(k.tonight.notes);
+    expect(spots).toHaveLength(map.notes.length);
+  });
+});

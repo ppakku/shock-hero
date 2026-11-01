@@ -70,6 +70,7 @@ export class HorrorGame {
     this.onExit = onExit;
     this.onAgain = onAgain;
     this.k = cfg.horror;
+    this.ambient = this.k.ambient * (tonight?.rule === NO_LIGHT ? this.k.tonight.darkAmbient : 1);
     this.run = createRun(this.place.map, this.k);
     this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
     this.notes = createNotes(this.map.notes.map(center));
@@ -133,7 +134,7 @@ export class HorrorGame {
     this.bolt = wornLook(this.k.stamps.bolts, stamps, this.k.stamps, boltId);
     this.scene.background = new THREE.Color(theme.fog);
     this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.fogCells * CELL);
-    this.ambientLight = new THREE.AmbientLight(theme.ambient, this.k.ambient);
+    this.ambientLight = new THREE.AmbientLight(theme.ambient, this.ambient);
     this.scene.add(this.ambientLight);
 
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, this.k.viewCells * CELL + 6);
@@ -407,7 +408,7 @@ export class HorrorGame {
     this.scare.who = this.hunters[Math.floor(this.scaresSeen / 2) % this.hunters.length]; // 큰 놀람마다 번갈아 나온다
     this.cancelBlink();
     this.flash.intensity = 0;
-    this.ambientLight.intensity = this.k.ambient * this.k.scare.darkAmbient;
+    this.ambientLight.intensity = this.ambient * this.k.scare.darkAmbient;
     this.audio?.hush(true);
   }
 
@@ -433,7 +434,7 @@ export class HorrorGame {
 
   // 어둠이 끝나는 순간: 소리가 터지고, 큰 놀람이면 얼굴이 코앞에 나타난다
   scareHits(face) {
-    this.ambientLight.intensity = this.k.ambient;
+    this.ambientLight.intensity = this.ambient;
     this.flash.intensity = this.k.flashIntensity * (face ? FACE_LIGHT : 1);
     this.audio?.hush(false);
     const { who } = this.scare;
@@ -448,7 +449,7 @@ export class HorrorGame {
   cancelScare() {
     if (!this.scare) return;
     this.scare = null;
-    this.ambientLight.intensity = this.k.ambient;
+    this.ambientLight.intensity = this.ambient;
     this.flash.intensity = this.k.flashIntensity;
     this.audio?.hush(false);
   }
@@ -717,7 +718,7 @@ export class HorrorGame {
     h.model.yaw = heading;
     for (const { model } of this.hunters) model.group.visible = false; // 얼굴이 하나만 보이게 다른 괴물도 치운다
     this.flash.visible = false;
-    this.ambientLight.intensity = this.k.ambient * this.k.scare.darkAmbient;
+    this.ambientLight.intensity = this.ambient * this.k.scare.darkAmbient;
   }
 
   // 정적이 끝나는 순간 비명과 함께 얼굴이 달려든다
@@ -727,7 +728,7 @@ export class HorrorGame {
     who.model.group.visible = true; // 사물함 밖에서 벽 너머로 잡혀도 얼굴은 보여야 한다
     this.flash.visible = true;
     this.flash.intensity = this.k.flashIntensity * FACE_LIGHT;
-    this.ambientLight.intensity = this.k.ambient;
+    this.ambientLight.intensity = this.ambient;
     this.startShake(this.k.scare.caughtShake);
   }
 
@@ -777,7 +778,7 @@ export class HorrorGame {
     this.cullCreature();
     this.flash.intensity = this.k.flashIntensity;
     this.flash.visible = this.lightOn;
-    this.ambientLight.intensity = this.k.ambient;
+    this.ambientLight.intensity = this.ambient;
     this.audio?.hush(false);
     this.audio?.resume();
     this.hud.fade(false);
