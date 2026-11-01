@@ -11,7 +11,7 @@ import { isLastNight, roundMonsters } from '../logic/horrorPick.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
-import { NO_LIGHT, finishTonight, tonightEndText, tonightLine, tonightMet, tonightRuleText } from '../logic/horrorTonight.js';
+import { NO_LIGHT, finishTonight, tonightEndText, tonightIntroLine, tonightLine, tonightMet } from '../logic/horrorTonight.js';
 import { saveStore } from '../save.js';
 import { addStamp, wornLook, openedLooks, stampCount, boardSize } from '../logic/horrorStamps.js';
 import { sfx } from '../audio/sfx.js';
@@ -228,7 +228,7 @@ export class HorrorGame {
   }
 
   start() {
-    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? `오늘의 밤 조건: ${tonightRuleText(this.tonight.rule, this.k)}` : null };
+    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null };
     this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {

@@ -139,7 +139,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
   };
   const paintBoard = () => tiles.forEach(({ tile, c, look }) => {
-    tile.style.cssText = `${CELL};border:${look.border}${compact ? ';height:36px' : ''}${isCurrentCell(c, picked) ? `;${CURRENT}` : ''}`;
+    tile.style.cssText = `${CELL};border:${look.border}${compact ? ';height:30px' : ''}${isCurrentCell(c, picked) ? `;${CURRENT}` : ''}`;
   });
   // 번개와 손전등 색 고르기. 잠긴 색에는 필요한 도장 수를 적어 둔다
   const lookHint = add('div', `${SMALL};min-height:30px;max-width:100%`, nextLine(record.stamps, k));
@@ -166,7 +166,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
     const paintRow = () => options().forEach(({ look, open, on }, i) => {
       const color = cssColor(look[colorField]);
-      const size = compact ? ';width:32px;height:32px' : '';
+      const size = compact ? ';width:28px;height:28px' : '';
       const face = open ? `background:${color};color:#000;border:3px solid ${on ? '#fff' : '#3a3a42'}` : `background:#16161a;color:${color};border:2px dashed ${color}`;
       buttons[i].style.cssText = `${SWATCH}${size};${face}`;
       buttons[i].setAttribute('aria-pressed', String(on));

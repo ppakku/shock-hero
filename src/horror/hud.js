@@ -14,6 +14,8 @@ const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3
 import { fillName } from './story.js';
 import { GOLD, cssColor } from '../logic/horrorStamps.js';
 
+const SCARY_LINE = '꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.';
+
 const INTRO = [
   '조사하러 들어왔다가 문이 잠겼다.',
   '볼트와의 통신도 끊겼다.',
@@ -377,7 +379,8 @@ export class HorrorHud {
 
   showIntro(device, round, onStart, onQuit) {
     this.openLayer(
-      ['꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.', ...introLines(device, round), ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
+      [...(device === 'phone' && round.tonight ? [] : [SCARY_LINE]), ...introLines(device, round), // 휴대폰은 조건 줄이 들어갈 자리를 비운다
+        ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );

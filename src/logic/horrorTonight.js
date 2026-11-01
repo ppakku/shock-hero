@@ -29,7 +29,12 @@ export function tonightRuleText(rule, k) {
   if (rule === NO_RUN) return '달리지 않기';
   if (rule === NO_SHOCK) return '전기충격기를 쏘지 않기';
   if (rule === NO_CATCH) return '한 번도 안 잡히기';
-  return `쪽지 ${k.tonight.notes}장 읽기 (붉은 쪽지는 빼고)`;
+  return `쪽지 ${k.tonight.notes}장 읽기`;
+}
+
+// 안내 화면의 한 줄. 정문 번호를 알려 주는 붉은 쪽지는 어차피 읽으므로 세지 않는다고 알린다
+export function tonightIntroLine(rule, k) {
+  return `오늘의 밤 조건: ${tonightRuleText(rule, k)}${rule === NOTES ? ' (붉은 쪽지는 빼고)' : ''}`;
 }
 
 // 게임 중 조건이 깨졌는지. counts = { lit, ranFor, shocks, catches, notes }
@@ -48,7 +53,7 @@ export function tonightMet(rule, counts, k) {
 
 // 게임 중 화면에 놓는 작은 줄. broken: 깨졌으면 빨간색으로 놓는다
 export function tonightLine(rule, counts, k) {
-  if (tonightBroken(rule, counts, k)) return { text: `${tonightRuleText(rule, k)}: 깨졌어요`, broken: true };
+  if (tonightBroken(rule, counts, k)) return { text: `${tonightRuleText(rule, k)} (깨졌어요)`, broken: true };
   if (rule === NOTES) return { text: `쪽지 읽기 ${Math.min(counts.notes, k.tonight.notes)}/${k.tonight.notes}`, broken: false };
   return { text: tonightRuleText(rule, k), broken: false };
 }
