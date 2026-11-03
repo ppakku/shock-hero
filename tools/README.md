@@ -35,3 +35,8 @@ browser-harness 호출: `BU_NAME=<고유이름> BU_CDP_URL=http://localhost:<포
 - `make_horror_art.py`: Gemini 로 받은 벽과 바닥 그림의 별 표시를 지우고 512 JPG 로 줄이고, 사물함 문 그림은 벽 철판에서 만든다. 세이노 그림은 `make_creature_art.py`
 - `make_gazer_art.py`, `make_maw_art.py`: Gemini 로 받은 눈뜬이와 큰입이의 앞뒤 머리, 전신 그림을 게임용으로 만든다. 큰입이는 머리, 머리털, 이빨 빛, 팔다리를 곧게 편 몸 그림과 안내 화면 얼굴까지 만들고, 3D 몸에 쓸 치수를 찍는다. 둘러 입히는 공용 코드는 `wrap_art.py`
 - `make_ward_art.py`: Gemini 로 받은 호러워드 전신 그림과 초상화를 게임용 머리, 몸, 얼굴 그림으로 만들고, 3D 몸에 쓸 높이별 폭을 찍는다.
+- `replay/replay.mjs`: 같은 키 입력으로 스테이지를 다시 돌려 녹화하고, 두 녹화를 프레임마다 비교하는 도구. 밸런스 숫자를 바꾼 전후를 비교할 때 쓴다. 시계 출발 시각 고정, 스테이지 한 번 열었다 다시 시작, 다시 시작 때 난수 고정으로 같은 입력이면 같은 결과가 나온다. 화면 PNG 와 프레임마다 게임 상태(`state.json`: 위치, 속도, 체력, 몬스터 수와 체력 합, 보스 체력)를 남긴다. 시나리오 예: `replay/fight1.js`
+  - 기준 녹화(두 번 찍어 같은지 확인): `npm run replay -- record tools/replay/fight1.js /tmp/rp/base --runs 2`
+  - 숫자를 바꾼 뒤: `npm run replay -- record tools/replay/fight1.js /tmp/rp/after`
+  - 비교: `npm run replay -- compare /tmp/rp/base/run1 /tmp/rp/after` (게임 상태가 처음 달라진 프레임, 화면이 다른 장 수, 마지막 프레임 체력 등. 차이 그림은 after/diff)
+  - 설치된 Chrome 을 쓴다(`playwright-core`, 브라우저 따로 안 받음). 8초 녹화 한 번에 약 40초.
