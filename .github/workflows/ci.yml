@@ -1,0 +1,25 @@
+# PR마다 린트(eslint), 테스트(vitest), 빌드(vite build)를 돈다. main 필수 검사 이름: ci
+# 배포는 Render가 main push를 보고 따로 한다(render.yaml). 이 워크플로는 배포에 관여하지 않는다.
+name: ci
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
