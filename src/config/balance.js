@@ -8,6 +8,7 @@
 // =============================================================
 import { horrorAids } from './horrorAids.js';
 
+import { forestRound, maidenMonster, maidenVoice } from './horrorForest.js';
 import { POOL_WATER, SWIMMER, SWIMMER_VOICE } from './horrorPool.js';
 
 export const balance = {
@@ -797,6 +798,7 @@ export const balance = {
         stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0, watch: 0 },
         tone: { freqs: [165, 174.6], type: 'triangle', vol: 0.1, cutoff: 700 },
       },
+      maiden: maidenVoice, // 숲 판 설정은 config/horrorForest.js
     },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
@@ -849,6 +851,7 @@ export const balance = {
       runGrace: 0.3, // 달리지 않기 조건에서 봐주는 시간 (초)
       darkAmbient: 3, // 손전등 조건에서 윤곽 밝기 배수. 손전등 없이 한 판을 끝낼 만큼 벽과 괴물이 보여야 한다
     },
+    forest: forestRound, // 숲 판 (어른용). config/horrorForest.js
     // 도장판으로 여는 색. 맨 앞은 처음부터 쓰고, 그 뒤로 한 단계에 번개와 손전등이 하나씩 열린다
     stamps: {
       steps: [0.25, 0.5, 0.75, 1], // 단계마다 필요한 도장 수. 판 칸 수에 대한 비율이고 마지막은 판 전체다
@@ -979,6 +982,7 @@ export const balance = {
       ward: { // 나머지는 세이노 값을 그대로 쓴다
         wallSlow: 0.35, // 벽 속에서 느려지는 비율. 벽 한 칸을 쫓으며 지나는 데 1.4초쯤 걸려 튀어나오는 벽을 보고 달아날 수 있다
       },
+      maiden: maidenMonster, // 처녀귀신. config/horrorForest.js
     },
   },
 

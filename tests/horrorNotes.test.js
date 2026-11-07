@@ -22,7 +22,7 @@ describe('쪽지 이야기 글', () => {
 });
 
 describe('맵별 쪽지 이야기', () => {
-  const maps = ['factory', 'sewer', 'school', 'station', 'pool'];
+  const maps = ['factory', 'sewer', 'school', 'station', 'pool', 'forest'];
   it('맵마다 8개이고 2에서 4줄이며 한 줄이 짧다', () => {
     expect(Object.keys(NOTES)).toEqual(maps);
     for (const id of maps) {
@@ -39,7 +39,7 @@ describe('맵별 쪽지 이야기', () => {
       const all = [...NOTES[id].flat(), FINAL_LINES[id], NOTE_DANGER_LINE].join('\n');
       expect(all).not.toMatch(/[—·]/);
       expect(all).not.toMatch(/피|죽|시체|살해/);
-      expect(all).not.toMatch(/세이노|눈뜬이|큰입이/);
+      expect(all).not.toMatch(/세이노|눈뜬이|큰입이|처녀귀신/);
     }
   });
   it('받침 있는 이름도 조사가 맞는다', () => {
