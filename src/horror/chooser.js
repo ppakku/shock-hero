@@ -39,7 +39,7 @@ const TONIGHT = 'box-sizing:border-box;width:100%;border-radius:8px;font:15px sa
 const ADULT = 'box-sizing:border-box;width:100%;border-radius:8px;font:15px sans-serif;padding:7px 10px;touch-action:manipulation;background:#1a0f12;color:#f2d6dc;border:2px solid #b8435a;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 0 14px rgba(184,67,90,.35)';
 const ADULT_SMALL = 'font-size:12px;color:#c79aa4';
 const VEIL = 'position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.78)';
-const DIALOG = 'box-sizing:border-box;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 22px 18px;border-radius:10px;background:#110b0d;border:2px solid #b8435a;text-align:center';
+const DIALOG = 'box-sizing:border-box;max-width:420px;word-break:keep-all;display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 22px 18px;border-radius:10px;background:#110b0d;border:2px solid #b8435a;text-align:center';
 const DIALOG_TITLE = 'font-size:21px;color:#f2d6dc';
 const DIALOG_TEXT = 'font-size:15px;line-height:1.6;color:#ddd';
 const DIALOG_WARN = 'font-size:15px;line-height:1.6;color:#e8a0ae';
@@ -156,10 +156,11 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
   };
   const paintBoard = () => tiles.forEach(({ tile, c, look }) => {
-    tile.style.cssText = `${CELL};border:${look.border}${compact ? ';height:30px' : ''}${isCurrentCell(c, picked) ? `;${CURRENT}` : ''}`;
+    tile.style.cssText = `${CELL};border:${look.border}${compact ? ';height:28px' : ''}${isCurrentCell(c, picked) ? `;${CURRENT}` : ''}`;
   });
   // 번개와 손전등 색 고르기. 잠긴 색에는 필요한 도장 수를 적어 둔다
-  const lookHint = add('div', `${SMALL};min-height:30px;max-width:100%`, nextLine(record.stamps, k));
+  // 휴대폰은 어른용 칸까지 한 화면에 들어가게 칸과 글을 조금씩 줄인다
+  const lookHint = add('div', `${SMALL};min-height:30px;max-width:100%${compact ? ';font-size:12px;line-height:13px;min-height:26px' : ''}`, nextLine(record.stamps, k));
   const lookRow = ([key, label, listName, colorField]) => {
     const row = add('div', `${ROW};align-items:center;flex-wrap:nowrap;gap:${compact ? 4 : 8}px`);
     row.appendChild(add('div', `${SMALL};width:${compact ? 38 : 48}px;text-align:right`, label));
@@ -183,7 +184,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     });
     const paintRow = () => options().forEach(({ look, open, on }, i) => {
       const color = cssColor(look[colorField]);
-      const size = compact ? ';width:28px;height:28px' : '';
+      const size = compact ? ';width:26px;height:26px' : '';
       const face = open ? `background:${color};color:#000;border:3px solid ${on ? '#fff' : '#3a3a42'}` : `background:#16161a;color:${color};border:2px dashed ${color}`;
       buttons[i].style.cssText = `${SWATCH}${size};${face}`;
       buttons[i].setAttribute('aria-pressed', String(on));
@@ -214,7 +215,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
   tonightCard(record, tonight, cfg.horror).forEach((line) => tonightBtn.appendChild(add('div', '', line)));
   tonightBtn.addEventListener('click', close(onTonight));
   const [forestTop, forestSub] = forestCard();
-  const forestBtn = add('button', `${ADULT}${compact ? ';font-size:13px;line-height:15px;padding:3px 8px' : ''}`);
+  const forestBtn = add('button', `${ADULT}${compact ? ';font-size:13px;line-height:14px;padding:2px 8px' : ''}`);
   forestBtn.dataset.forest = '';
   forestBtn.appendChild(add('div', '', forestTop));
   if (!compact) forestBtn.appendChild(add('div', ADULT_SMALL, forestSub)); // 휴대폰은 한 줄만 넣는다
