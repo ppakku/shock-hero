@@ -156,6 +156,20 @@ describe('물괴물', () => {
     expect(waterAt(pool, Math.floor(s.x), Math.floor(s.y))).toBeGreaterThan(DRY);
   });
 
+  it('도착한 뒤 같은 자리에서 소리가 이어져도 다시 알리지 않는다', () => {
+    const s = swimmer();
+    const events = run(s, { map: pool, player: player({ x: 6.5, y: 2.5, noise: 20 }) }, 4);
+    expect(events.filter((e) => e === 'chase')).toHaveLength(1);
+  });
+
+  it('갈 수 없는 곳의 소리는 흘려듣는다', () => {
+    const shut = withWater(parseMap(['#######', '#M.#..#', '#######']), ['.......', '.WW....', '.......']);
+    const s = createStalker(shut, k, () => 0.5, 'swimmer');
+    const events = run(s, { map: shut, player: player({ x: 4.5, y: 1.5, noise: 20 }) }, 1);
+    expect(events).not.toContain('chase');
+    expect(s.mode).toBe('patrol');
+  });
+
   it('고무오리 소리로 따돌린다', () => {
     const s = swimmer();
     run(s, { map: pool, player: player({ noise: 0 }), splash: { x: 3.5, y: 3.5, range: kw.hear.duck } }, 0.1);

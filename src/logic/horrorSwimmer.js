@@ -165,16 +165,16 @@ export function tickSwimmer(s, world, m, k, dt, rand, events) {
     return;
   }
   const heard = heardAt(s, world, k);
-  if (heard) {
-    if (s.mode !== 'chase') {
+  // 갈 수 없는 곳의 소리는 흘려듣는다. 더듬는 중에 다시 들으면 알리지 않고 그쪽으로 간다
+  const path = heard && (sameCell(heard, s.target) && s.path.length ? s.path : swimPath(map, cellOf(s), heard, m.landCost));
+  if (path) {
+    if (s.mode === 'patrol') {
       events.push('chase');
-      s.mode = 'chase';
       s.warnT = m.rushWarn;
     }
-    if (!sameCell(heard, s.target) || !s.path.length) {
-      s.target = heard;
-      head(s, map, m, heard);
-    }
+    s.mode = 'chase';
+    s.target = heard;
+    s.path = path;
   }
   if (s.mode === 'chase') {
     s.calmT = 0;
