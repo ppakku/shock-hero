@@ -30,7 +30,7 @@ export const forestMap = { ...parseMap([
   '#....N#####L.F....###L#K####.N...##F##',
   '#F..F.L#####.....F..N...######L#.X..##',
   '######################################',
-]), solidLockers: true }; // 고목이 칸을 꽉 채워서 눈을 막는다
+]), solidLockers: true, hideName: '고목' }; // 고목이 칸을 꽉 채워서 눈을 막는다. 숨을 곳을 사물함 대신 고목이라 부른다
 
 export const forestTheme = {
   outdoor: true, // 천장 대신 하늘 돔, 상자 벽 대신 나무와 덤불, 벽 장식 대신 숲 장식 (world.js)
