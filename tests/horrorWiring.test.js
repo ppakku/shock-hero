@@ -109,6 +109,8 @@ vi.mock('../src/save.js', () => ({
 }));
 
 const { HorrorGame } = await import('../src/horror/HorrorGame.js');
+const { artMap } = await import('../src/horror/aids.js');
+const { AID_KINDS } = await import('../src/logic/horrorAids.js');
 
 // 도움 아이템 화면(src/horror/aids.js)이 만드는 글자 칸과 그림판. 그리기는 하지 않는다
 function fakeEl() {
@@ -1016,6 +1018,78 @@ describe('도움 아이템', () => {
     expect(g.aids.state.marks).toHaveLength(1);
     expect(g.aids.state.held.chalk).toBe(g.k.aids.chalkUses - 1);
     g.exit();
+  });
+
+  // 아이템 자리마다 [빛나는 모양, 그림] 이 있다
+  const looks = (g) => g.aids.itemMeshes.map((h) => h.children);
+
+  it.each(['factory', 'sewer', 'school', 'station', 'pool', 'forest'])('%s: 아이템과 지도판 그림을 받으면 그 맵 그림으로 바뀐다', (mapId) => {
+    fakes.okArt = true;
+    const g = play(mapId);
+    for (const kind of AID_KINDS) expect(fakes.loads).toContain(`art/aid_${mapId}_${kind}.webp`);
+    expect(fakes.loads).toContain(`art/aid_board_${mapId}.webp`);
+    for (const [prim, sprite] of looks(g)) {
+      expect(prim.visible).toBe(false);
+      expect(sprite.visible).toBe(true);
+      expect(sprite.material.map).toBeTruthy();
+    }
+    pickUp(g, 'toy');
+    g.p = center(g.map.start);
+    press(g, { typed: ['3'] });
+    expect(g.aids.toy.visible).toBe(true);
+    expect(g.aids.toy.children[1].visible).toBe(true);
+    g.exit();
+  });
+
+  it('모르는 맵은 공장 그림을 쓴다', () => {
+    expect(artMap('nowhere')).toBe('factory');
+    expect(artMap(undefined)).toBe('factory');
+    expect(artMap('pool')).toBe('pool');
+  });
+
+  it('아이템과 지도판 그림을 못 받으면 빛나는 모양과 그린 지도판 그대로 돌고, 줍고 던지고 지도도 본다', () => {
+    fakes.failArt = 'aid_';
+    const g = play('station');
+    for (const [prim, sprite] of looks(g)) {
+      expect(prim.visible).toBe(true);
+      expect(sprite.visible).toBe(false);
+    }
+    expect(g.aids.boardMeshes.every((m) => m.material.map?.isCanvasTexture)).toBe(true);
+    pickUp(g, 'toy');
+    g.p = center(g.map.start);
+    press(g, { typed: ['3'] });
+    expect(g.aids.toy.children[0].visible).toBe(true);
+    g.p = center(g.aids.state.boards[0]);
+    press(g, { use: true });
+    expect(g.aids.mapOpen).toBe(true);
+    g.exit();
+  });
+
+  // 충전 상자 재질 (파랗게 빛난다): 그림 판(alphaTest) 과 원래 상자
+  const chargeLooks = (g) => {
+    const found = [];
+    g.scene.traverse((o) => { if (o.isMesh && o.material?.emissive?.getHex() === 0x3060c0) found.push(o); });
+    return { cards: found.filter((o) => o.material.alphaTest > 0), boxes: found.filter((o) => !o.material.alphaTest) };
+  };
+
+  it('숲의 충전 상자와 전원은 그림을 받으면 숲 그림으로, 못 받으면 상자 그대로다', () => {
+    fakes.okArt = true;
+    const g = makeGame('forest', FOREST_ROUND.monsterId, { round: FOREST_ROUND });
+    expect(fakes.loads).toContain('art/horror_forest_box.webp');
+    expect(fakes.loads).toContain('art/horror_forest_panel.webp');
+    expect(fakes.loads).not.toContain('art/horror_box.jpg');
+    let { cards, boxes } = chargeLooks(g);
+    expect(cards.length).toBe(1);
+    expect(cards[0].material.visible && cards[0].material.map).toBeTruthy();
+    expect(boxes.every((o) => !o.visible)).toBe(true);
+    g.exit();
+    fakes.okArt = false;
+    fakes.failArt = 'horror_forest_';
+    const h = makeGame('forest', FOREST_ROUND.monsterId, { round: FOREST_ROUND });
+    ({ cards, boxes } = chargeLooks(h));
+    expect(cards[0].material.visible).toBe(false);
+    expect(boxes.some((o) => o.visible)).toBe(true);
+    h.exit();
   });
 
   it('숨어 있을 때는 아이템을 쓰지 않는다', () => {
