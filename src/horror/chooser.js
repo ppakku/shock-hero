@@ -1,9 +1,9 @@
 // 공포 모드에 들어가면 맨 먼저 나오는 맵과 괴물 고르기 화면
-import { LAST_ROUND, MAP_IDS, MONSTER_IDS, RANDOM, roundMonsters } from '../logic/horrorPick.js';
+import { FOREST_MONSTER_ID, LAST_ROUND, MAP_IDS, MONSTER_IDS, RANDOM, roundMonsters } from '../logic/horrorPick.js';
 import { boardCells, boardSize, cellKey, cssColor, goldCount, isCurrentCell, lookOptions, nextUnlock, stampCount, stampsLeft, GOLD } from '../logic/horrorStamps.js';
 import { tonightPaid, tonightRuleText } from '../logic/horrorTonight.js';
 import { cfg } from '../config/index.js';
-import { MAPS, MONSTERS } from './content.js';
+import { FOREST_PLACE, MAPS, MONSTERS, SPECIAL_MONSTERS } from './content.js';
 
 const RANDOM_MAP = '어디가 나올지 몰라요';
 const RANDOM_MONSTER = '무엇이 나올지 몰라요';
@@ -35,6 +35,16 @@ const LAST = 'box-sizing:border-box;width:100%;border-radius:8px;font:15px sans-
 const LAST_OPEN = 'background:#2a1c3a;color:#fff;border:2px solid #c8a8ff;cursor:pointer';
 const LAST_SHUT = 'background:#101014;color:#8a8a92;border:2px dashed #3a3a42';
 const TONIGHT = 'box-sizing:border-box;width:100%;border-radius:8px;font:15px sans-serif;padding:7px 10px;touch-action:manipulation;background:#3a2a10;color:#fff;border:2px solid #ffd24a;cursor:pointer';
+// 어른용 숲 칸과 확인 창. 다른 칸보다 어둡고 붉게, 은은하게 빛나게 한다
+const ADULT = 'box-sizing:border-box;width:100%;border-radius:8px;font:15px sans-serif;padding:7px 10px;touch-action:manipulation;background:#1a0f12;color:#f2d6dc;border:2px solid #b8435a;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 0 14px rgba(184,67,90,.35)';
+const ADULT_SMALL = 'font-size:12px;color:#c79aa4';
+const VEIL = 'position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.78)';
+const DIALOG = 'box-sizing:border-box;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 22px 18px;border-radius:10px;background:#110b0d;border:2px solid #b8435a;text-align:center';
+const DIALOG_TITLE = 'font-size:21px;color:#f2d6dc';
+const DIALOG_TEXT = 'font-size:15px;line-height:1.6;color:#ddd';
+const DIALOG_WARN = 'font-size:15px;line-height:1.6;color:#e8a0ae';
+const FOREST_TEXT = '해가 막 넘어간 숲이에요. 하늘이 완전히 어두워지기 전에 빠져나가야 해요.';
+const FOREST_WARN = '어른도 무서운 판이에요. 갑자기 놀라게 하는 장면과 소리가 많아요. 아이 혼자 하지 않게 해 주세요.';
 
 // 맵 칸과 괴물 칸의 이름과 설명. 랜덤 칸이 맨 뒤에 온다
 export function chooserOptions() {
@@ -64,10 +74,15 @@ export function tonightCard(record, tonight, k) {
   return [`오늘의 밤: ${MAPS[tonight.mapId].name}, ${MONSTERS[tonight.monsterId].name}`, `${tonightRuleText(tonight.rule, k)} (${reward})`];
 }
 
+// 어른용 숲 칸의 두 줄. 휴대폰은 첫 줄만 쓴다
+export function forestCard() {
+  return [`어른용: ${FOREST_PLACE.name}, ${SPECIAL_MONSTERS[FOREST_MONSTER_ID].name}`, '어른도 무서워요. 눌러서 들어가기'];
+}
+
 // choice: { mapId, monsterId }. record: 저장된 공포 모드 기록. onStart 에 고른 값을 준다. 화면은 스스로 닫는다
 // onLook(key, id): 번개 ('bolt') 나 손전등 ('light') 색을 고르면 부른다. onLastNight: 마지막 밤 칸을 누르면 부른다
-// tonight: 오늘의 밤 판, onTonight: 그 칸을 누르면 부른다
-export function showChooser(root, { choice, compact, record, tonight, onLook, onStart, onLastNight, onTonight, onQuit }) {
+// tonight: 오늘의 밤 판, onTonight: 그 칸을 누르면 부른다. onForest: 어른용 칸의 확인 창에서 들어가기를 누르면 부른다
+export function showChooser(root, { choice, compact, record, tonight, onLook, onStart, onLastNight, onTonight, onForest, onQuit }) {
   const picked = { ...choice };
   const worn = { bolt: record.bolt, light: record.light };
   const k = cfg.horror.stamps;
@@ -80,7 +95,9 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     el.textContent = text;
     return el;
   };
+  let shutConfirm = () => {};
   const close = (fn) => () => {
+    shutConfirm(false);
     layer.remove();
     fn();
   };
@@ -196,12 +213,55 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
   tonightBtn.dataset.tonight = '';
   tonightCard(record, tonight, cfg.horror).forEach((line) => tonightBtn.appendChild(add('div', '', line)));
   tonightBtn.addEventListener('click', close(onTonight));
+  const [forestTop, forestSub] = forestCard();
+  const forestBtn = add('button', `${ADULT}${compact ? ';font-size:13px;line-height:15px;padding:3px 8px' : ''}`);
+  forestBtn.dataset.forest = '';
+  forestBtn.appendChild(add('div', '', forestTop));
+  if (!compact) forestBtn.appendChild(add('div', ADULT_SMALL, forestSub)); // 휴대폰은 한 줄만 넣는다
+  // 누를 때마다 확인 창을 띄운다. 처음 손이 가는 곳은 돌아가기라서 Enter 를 눌러도 들어가지 않는다
+  const openConfirm = () => {
+    const veil = add('div', VEIL);
+    veil.dataset.forestConfirm = '';
+    const box = add('div', compact ? `${DIALOG};gap:6px;padding:10px 16px;max-width:520px` : DIALOG);
+    box.setAttribute('role', 'dialog');
+    const enter = add('button', compact ? `${GO};font-size:16px;padding:6px 28px` : GO, '들어가기');
+    enter.dataset.forestEnter = '';
+    const cancel = add('button', compact ? `${BACK};padding:6px 18px` : BACK, '돌아가기');
+    cancel.dataset.forestBack = '';
+    const textCss = compact ? ';font-size:13px;line-height:1.4' : '';
+    box.append(
+      add('div', compact ? `${DIALOG_TITLE};font-size:17px` : DIALOG_TITLE, FOREST_PLACE.name),
+      add('div', DIALOG_TEXT + textCss, FOREST_TEXT),
+      add('div', DIALOG_WARN + textCss, FOREST_WARN),
+      add('div', compact ? `${ROW};gap:16px` : ROW),
+    );
+    box.lastChild.append(enter, cancel);
+    veil.appendChild(box);
+    const onKey = (e) => {
+      if (e.code !== 'Escape') return;
+      e.preventDefault();
+      shutConfirm();
+    };
+    // back: 고르기 화면으로 돌아가면 어른용 칸에 다시 손이 가게 한다
+    shutConfirm = (back = true) => {
+      window.removeEventListener('keydown', onKey);
+      veil.remove();
+      shutConfirm = () => {};
+      if (back) forestBtn.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    enter.addEventListener('click', close(onForest));
+    cancel.addEventListener('click', () => shutConfirm());
+    layer.appendChild(veil);
+    cancel.focus();
+  };
+  forestBtn.addEventListener('click', openConfirm);
   buildBoard();
   paintBoard();
   const gold = goldCount(record.stamps);
   panel.append(add('div', compact ? `${COUNT};font-size:14px` : COUNT, `도장 ${stampCount(record.stamps)}/${boardSize()}${gold ? `, 금 ${gold}` : ''}`), board);
   LOOK_ROWS.forEach(lookRow);
-  panel.append(lookHint, last, tonightBtn);
+  panel.append(lookHint, last, tonightBtn, forestBtn);
   root.appendChild(layer);
   go.focus(); // Enter 로도 누를 수 있다
 }
