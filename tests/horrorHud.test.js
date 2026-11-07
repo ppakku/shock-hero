@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MAPS, MONSTERS } from '../src/horror/content.js';
-import { MAP_IDS, MONSTER_IDS } from '../src/logic/horrorPick.js';
+import { MAP_IDS, MONSTER_IDS, POOL_ROUND } from '../src/logic/horrorPick.js';
 import { HorrorHud, controlLines, introLines, startHint, escapeText } from '../src/horror/hud.js';
 
 const ROUND = { mapName: '지하 수로', monsterName: '큰입이', hint: '앞을 못 봐요. 소리를 내지 마세요' };
@@ -60,7 +60,7 @@ describe('공포 모드 조작 안내', () => {
 
   it('이름은 content.js 한곳에 있다', () => {
     expect(Object.keys(MAPS)).toEqual(MAP_IDS);
-    expect(Object.keys(MONSTERS)).toEqual(MONSTER_IDS);
+    expect(Object.keys(MONSTERS)).toEqual([...MONSTER_IDS, POOL_ROUND.monsterId]); // 물괴물은 수영장 특별판에만 나온다
     for (const m of Object.values(MONSTERS)) expect(m.name && m.hint && m.model && m.voice).toBeTruthy();
     expect(MONSTERS.seino.name).toBe('세이노');
   });

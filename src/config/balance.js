@@ -9,6 +9,7 @@
 import { horrorAids } from './horrorAids.js';
 
 import { forestRound, maidenMonster, maidenVoice } from './horrorForest.js';
+import { POOL_WATER, SWIMMER, SWIMMER_VOICE } from './horrorPool.js';
 
 export const balance = {
   // ---------- 주인공 ----------
@@ -789,6 +790,7 @@ export const balance = {
         stepEvery: { patrol: 0.95, investigate: 0.8, search: 1.1, chase: 0.3, stunned: 0 },
         tone: { freqs: [147, 220], type: 'sawtooth', vol: 0.05, cutoff: 1100 }, // 작은 스피커에도 들리게 150Hz 위 소리가 남는다
       },
+      swimmer: SWIMMER_VOICE,
       ward: { // 옷자락이 끌리는 소리와 낮게 웃는 숨소리. 두 음이 부딪혀 떨린다
         breathFreq: 240, breathQ: 1.4,
         breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1, stunned: 0.12, watch: 0.2 },
@@ -947,6 +949,7 @@ export const balance = {
     pressureLocker: 0.3, // 퓨즈를 다 찾았을 때 사물함을 뒤질 확률에 더해지는 값
     viewFov: 125, // 주인공이 괴물을 보고 있다고 치는 좌우 각도 (도). 긴 폰 화면의 가로 시야보다 조금 넓다
     slitFov: 40, // 사물함 틈으로 보고 있다고 치는 각도 (도). 고개를 돌릴 수 있는 각도보다 좁아야 눈을 뗄 수 있다
+    water: POOL_WATER, // 수영장 물 (src/config/horrorPool.js)
     monsters: {
       seino: {}, // 세이노는 위의 값을 그대로 쓴다
       gazer: {
@@ -975,6 +978,7 @@ export const balance = {
         sniffPause: 1, // 냄새를 맡고 돌아서기까지 걸리는 시간 (초)
         brushRest: 2, // 한 번 돌아선 뒤 다시 멈출 때까지 쉬는 시간 (초)
       },
+      swimmer: SWIMMER,
       ward: { // 나머지는 세이노 값을 그대로 쓴다
         wallSlow: 0.35, // 벽 속에서 느려지는 비율. 벽 한 칸을 쫓으며 지나는 데 1.4초쯤 걸려 튀어나오는 벽을 보고 달아날 수 있다
       },

@@ -25,6 +25,7 @@ import { HorrorHud, startHint, escapeText, forestEscapeHead, lastNightText, stam
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
 import { HorrorAids } from './aids.js';
+import { PoolPlay } from './poolPlay.js';
 
 export { showChooser } from './chooser.js';
 import { FINAL_LINES, NOTE_DANGER_LINE, ENDINGS, clueTexts, fillName, joinNames } from './story.js';
@@ -72,7 +73,7 @@ export class HorrorGame {
     this.onExit = onExit;
     this.onAgain = onAgain;
     this.k = cfg.horror;
-    this.ambient = this.k.ambient * (tonight?.rule === NO_LIGHT ? this.k.tonight.darkAmbient : 1);
+    this.ambient = this.k.ambient * (tonight?.rule === NO_LIGHT ? this.k.tonight.darkAmbient : 1) * (this.place.theme.bright ?? 1); // 수영장은 늘 밝다
     this.run = createRun(this.place.map, this.k);
     this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
     this.notes = createNotes(this.map.notes.map(center));
@@ -83,7 +84,7 @@ export class HorrorGame {
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
-    this.lightOn = tonight?.rule !== NO_LIGHT; // 손전등 조건은 꺼진 채로 시작한다
+    this.lightOn = tonight?.rule !== NO_LIGHT && !this.place.theme.bright; // 손전등 조건과 늘 밝은 수영장은 꺼진 채로 시작한다
     this.lit = this.lightOn; // 이번 판에 손전등을 켠 적이 있는지
     this.ranFor = 0; // 이번 판에 달린 시간 (초)
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
@@ -135,7 +136,7 @@ export class HorrorGame {
     const light = wornLook(this.k.stamps.lights, stamps, this.k.stamps, lightId);
     this.bolt = wornLook(this.k.stamps.bolts, stamps, this.k.stamps, boltId);
     this.scene.background = new THREE.Color(theme.fog);
-    this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.fogCells * CELL);
+    this.scene.fog = new THREE.Fog(theme.fog, theme.fogNear ?? 3, this.k.fogCells * CELL);
     this.ambientLight = new THREE.AmbientLight(theme.ambient, this.ambient);
     this.scene.add(this.ambientLight);
 
@@ -151,6 +152,7 @@ export class HorrorGame {
     // 놀이를 시작하면 바로 보이는 손 그림부터 받는다
     this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun, bolt: this.bolt });
     this.world = buildWorld(this.scene, this.map, this.k, theme, { lowFx: this.lowFx });
+    this.pool = this.map.water ? new PoolPlay({ root, scene: this.scene, map: this.map, k: this.k, eye: EYE }) : null; // 물이 있는 맵만
     this.stalkers = createStalkers(this.map, this.k, Math.random, roundMonsters(this.round));
     // 괴물마다 하나씩이다. 판의 모든 일은 이 목록을 돌며 처리한다
     this.hunters = this.stalkers.map((stalker, index) => {
@@ -312,6 +314,7 @@ export class HorrorGame {
     this.camera.updateMatrixWorld();
     this.updateGun(dt);
     this.world.update(this.p, this.k.viewCells, this.playTime, this.lowFx);
+    if (this.state !== 'paused') this.pool?.update(this.playTime, dt, this.stalkers.filter((s) => s.monsterId === 'swimmer'), this.p);
     if (this.state === 'intro' && !this.warmed && this.hunters.every((h) => h.model.textures.every((t) => t.image))) this.warmUp();
     if (this.state !== 'play') return;
     this.showTonight();
@@ -349,15 +352,18 @@ export class HorrorGame {
     if (this.hidden !== null) this.yaw = this.hideYaw + Math.max(-HIDE_LOOK, Math.min(HIDE_LOOK, wrapAngle(this.yaw - this.hideYaw)));
     this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - inp.lookY));
     const running = canRun(this.stamina, inp.move.run);
-    const speed = running ? this.k.runSpeed : this.k.walkSpeed;
+    const speed = (running ? this.k.runSpeed : this.k.walkSpeed) * (this.pool?.speedScale(this.p) ?? 1);
     const before = this.p;
     if (this.hidden === null && !this.aids.frozen) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     this.walking = moving;
     this.alarmT = Math.max(0, this.alarmT - dt);
-    // 지도를 보는 동안은 달릴 때만큼 소리가 난다 (지도를 넘기며 서 있는 소리)
-    const noise = this.alarmT > 0 || this.aids.mapOpen ? this.k.runNoise : noiseFor(moving, running, this.k);
+    // 지도를 보는 동안은 달릴 때만큼 소리가 난다 (지도를 넘기며 서 있는 소리).
+    // 수영장에서는 물소리만 소리다. 마른 바닥은 달려도, 지도를 넘겨도 조용하다
+    const step = this.pool ? this.pool.step(this.p, moving, running, dt, this.audio) : noiseFor(moving, running, this.k);
+    const noise = this.alarmT > 0 || (this.aids.mapOpen && !this.pool) ? this.k.runNoise : step;
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise, yaw: this.yaw }; // yaw: 처녀귀신이 등 뒤를 고른다
+    const splash = this.pool?.takeSplash() ?? null;
     this.tickStamina(running && moving, dt);
     if (running && moving) this.ranFor += dt;
     const pressure = this.run.have / this.k.fuseCount;
@@ -365,7 +371,7 @@ export class HorrorGame {
     const { level: dusk, stage } = this.dusk ?? {};
     for (const h of this.hunters) {
       const seen = playerSees(this, this.hud.noteOpen || this.aids.mapOpen, h.stalker);
-      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure, dusk, stage, sounds: this.aids.state.sounds }, this.k, dt), h);
+      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure, dusk, stage, sounds: this.aids.state.sounds, splash }, this.k, dt), h);
       if (this.state !== 'play') return;
     }
     // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
@@ -571,6 +577,7 @@ export class HorrorGame {
     this.lastEvents = events;
     const { monster } = h;
     if (events.includes('chase')) {
+      if (h.stalker.monsterId === 'swimmer') this.audio?.play('rise', h.index); // 물에서 솟구친다
       const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
       this.hud.closeKeypad();
       this.warn(h, `${this.named(monster.alarm, monster)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
@@ -595,11 +602,12 @@ export class HorrorGame {
   nearestUse() {
     // 쫓기는 동안에는 쪽지를 고르지 않는다. 열자마자 앞을 가리고 숨기가 한 번 늦어진다
     const best = nearestUse(this.run, this.map, this.p, this.hidden, this.k, anyChasing(this.stalkers) ? undefined : this.notes, (add) => this.aids.targets(add));
-    return best ?? this.aids.seenNear();
+    return best ?? this.pool?.target(this.p) ?? this.aids.seenNear(); // 수건, 고무오리는 다른 할 일이 없을 때만 고른다
   }
 
   doUse(t) {
     if (!t || this.aids.use(t)) return;
+    if (this.pool?.use(t, this.p, this.yaw, this.audio, this.hud)) return;
     if (t.kind === 'fuse' && takeFuse(this.run, t.index)) {
       this.fuseMeshes[t.index].visible = false;
       this.audio?.play('fuse');
@@ -803,6 +811,7 @@ export class HorrorGame {
     this.pitch = 0;
     this.stamina = createStamina();
     this.hud.setStamina(this.stamina);
+    this.pool?.reset();
     sendAllAway(this.stalkers, this.map, this.p); // 잡히지 않은 쪽도 함께 멀리 가서 쉰다
     this.alarm = createAlarm();
     for (const h of this.hunters) h.model.update(h.stalker, 0, this.p);
@@ -903,7 +912,7 @@ export class HorrorGame {
   }
 
   placeCamera() {
-    this.camera.position.set(this.p.x * CELL, EYE, this.p.y * CELL);
+    this.camera.position.set(this.p.x * CELL, this.pool?.eye ?? EYE, this.p.y * CELL); // 깊은 물에서는 머리만 물 위로 나온다
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     if (this.shakeT <= 0) return;
     const r = this.k.scare.shakePower * (this.shakeT / this.shakeTime);
@@ -939,6 +948,8 @@ export class HorrorGame {
     this.unbindContext();
     try {
       this.world.textures.forEach((t) => t.dispose());
+      this.pool?.textures.forEach((t) => t.dispose());
+      this.pool?.destroy();
       this.input.destroy();
       this.hud.destroy();
       this.aids?.destroy();

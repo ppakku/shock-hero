@@ -6,6 +6,11 @@ export const MONSTER_IDS = ['seino', 'gazer', 'maw', 'ward'];
 export const LAST_MAP_ID = 'station';
 export const LAST_ROUND = { mapId: LAST_MAP_ID, monsterId: MONSTER_IDS[0], monsterIds: MONSTER_IDS.slice(0, 2) }; // 소리를 쫓는 괴물과 보면 멈추는 괴물
 
+// 불 켜진 수영장: 물괴물과 늘 짝인 어른용 특별판. MAP_IDS 와 MONSTER_IDS 에 넣지 않는다. 넣으면 랜덤과 도장판에 나온다
+export const POOL_MAP_ID = 'pool';
+export const POOL_ROUND = { mapId: POOL_MAP_ID, monsterId: 'swimmer' };
+export const isPool = (r) => r?.mapId === POOL_MAP_ID;
+
 export function isRound(r) {
   return MAP_IDS.includes(r?.mapId) && MONSTER_IDS.includes(r?.monsterId);
 }
@@ -40,11 +45,12 @@ export function chooseRound(choice, last, rand = Math.random) {
   };
 }
 
-// 시험용 주소 ?map=factory&monster=gazer. 하나만 주면 나머지는 첫 조합을 쓰고, 없거나 틀리면 null. ?map=station 은 마지막 밤,
+// 시험용 주소 ?map=factory&monster=gazer. 하나만 주면 나머지는 첫 조합을 쓰고, 없거나 틀리면 null. ?map=station 은 마지막 밤, ?map=pool 은 수영장,
 // ?map=forest 나 ?monster=maiden 은 어른용 숲이다
 export function forcedRound(search) {
   const q = new URLSearchParams(search);
   if (q.get('map') === LAST_MAP_ID) return LAST_ROUND;
+  if (q.get('map') === POOL_MAP_ID) return POOL_ROUND;
   if (q.get('map') === FOREST_MAP_ID || q.get('monster') === FOREST_MONSTER_ID) return FOREST_ROUND;
   const r = { mapId: q.get('map') ?? MAP_IDS[0], monsterId: q.get('monster') ?? MONSTER_IDS[0] };
   return (q.has('map') || q.has('monster')) && isRound(r) ? r : null;

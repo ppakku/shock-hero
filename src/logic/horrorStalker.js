@@ -1,5 +1,6 @@
 // 파쇄자 행동 (화면과 상관없는 부분). 순찰, 조사, 추격, 수색, 멈춤, 매복, 응시 일곱 상태로 움직인다.
 import { cellOf, center, findPath, frontOf, lineOfSight, blocked, wallAt, inPlayerView } from './horrorGrid.js';
+import { tickSwimmer } from './horrorSwimmer.js';
 
 // 소리와 몸짓 표가 읽는 상태 이름
 export const MODES = ['patrol', 'investigate', 'chase', 'search', 'stunned', 'ambush', 'watch'];
@@ -717,6 +718,10 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
   if (s.monsterId === 'maiden') {
     k = tickMaiden(s, world, base.monsters.maiden, base, dt, rand, events);
     if (!k) return events;
+  }
+  if (s.monsterId === 'swimmer') {
+    tickSwimmer(s, world, k.monsters.swimmer, k, dt, rand, events);
+    return events;
   }
   if (throughWalls(s)) {
     const inside = wallAt(map, Math.floor(s.x), Math.floor(s.y));
