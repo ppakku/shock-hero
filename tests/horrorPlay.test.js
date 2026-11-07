@@ -8,7 +8,7 @@ import { createNotes, takeNote } from '../src/logic/horrorNotes.js';
 import { createRun, takeClue, takeFuse, takeKey, openDoor, chargeShock, useShock, insertFuses, caught, escape, nearestUse, respawnSpot } from '../src/logic/horrorRun.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
 import { ALL_MAPS } from '../src/horror/content.js';
-import { LAST_ROUND, MAP_IDS, MONSTER_IDS, roundMonsters } from '../src/logic/horrorPick.js';
+import { FOREST_MAP_ID, LAST_ROUND, MAP_IDS, MONSTER_IDS, roundMonsters } from '../src/logic/horrorPick.js';
 import { balance } from '../src/config/balance.js';
 import { TONIGHT_RULES, tonightMet } from '../src/logic/horrorTonight.js';
 
@@ -284,7 +284,12 @@ describe('오늘의 밤: 어느 판이든 조건을 지키고 탈출할 수 있�
     expect(games.filter((r) => tonightMet('noCatch', r.counts, k)).length).toBeGreaterThanOrEqual(4);
   });
 
-  it.each(MAP_IDS)('%s 맵: 쪽지는 읽어야 하는 수보다 많고 모두 갈 수 있다', (mapId) => {
+  // 숲 맵 자체가 끝까지 풀리는지 본다. 처녀귀신 규칙은 해 질 녘 단계가 필요해서 tests/horrorMaiden.test.js 와 진짜 게임 봇이 본다
+  it('숲 맵: 봇이 세이노를 피해 끝까지 나간다', () => {
+    for (const seed of [1, 2, 3, 4]) expect(playGame(seed, undefined, 1500, FOREST_MAP_ID, 'seino').won, `씨앗 ${seed}`).toBe(true);
+  });
+
+  it.each([...MAP_IDS, FOREST_MAP_ID])('%s 맵: 쪽지는 읽어야 하는 수보다 많고 모두 갈 수 있다', (mapId) => {
     const { map } = ALL_MAPS[mapId];
     const open = reachable(withOpen(map, map.locks.map((_, i) => i)), map.start);
     const spots = map.notes.filter((c) => open.has(`${c.cx},${c.cy}`));
