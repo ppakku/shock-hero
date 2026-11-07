@@ -8,6 +8,7 @@ import { factoryMap, factoryTheme } from '../src/horror/maps/factory.js';
 import { sewerMap, sewerTheme } from '../src/horror/maps/sewer.js';
 import { schoolMap, schoolTheme } from '../src/horror/maps/school.js';
 import { stationMap, stationTheme } from '../src/horror/maps/station.js';
+import { poolMap, poolTheme } from '../src/horror/maps/pool.js';
 import { piecesBox } from '../src/horror/art.js';
 import { balance } from '../src/config/balance.js';
 
@@ -17,6 +18,7 @@ const MAPS = [
   { id: 'sewer', map: sewerMap, theme: sewerTheme, rooms: [1, 3] }, // 문이 잠긴 문 둘뿐이라 방은 셋이다
   { id: 'school', map: schoolMap, theme: schoolTheme, rooms: [14, 24] },
   { id: 'station', map: stationMap, theme: stationTheme, rooms: [8, 16] },
+  { id: 'pool', map: poolMap, theme: poolTheme, rooms: [1, 3] }, // 문 없이 트인 곳으로 이어져서 방은 잠긴 문 둘로 나뉜 셋이다
 ];
 
 function seeded(seed) {
