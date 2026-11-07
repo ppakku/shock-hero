@@ -69,7 +69,7 @@ export const poolMap = withPoolProps(withWater({ chairs: [{ cx: 21, cy: 12 }, { 
 // 늘 밝다: 형광등이 하얀 타일을 비춘다. 어둠 대신 너무 밝고 조용한 것이 이상하다.
 // bright 는 손전등을 끈 밝기 (balance.horror.ambient) 에 곱한다. fog 도 하얘서 먼 곳이 하얗게 바랜다
 export const poolTheme = {
-  // 잠긴 문 그림 (doorSet) 은 아직 없다. 문은 사물함 그림에 빨강, 파랑을 입혀 쓴다 (doorArt)
+  doorSet: 'horror_door_pool', // 잠긴 문 그림. 뒤에 _red, _blue 가 붙는다
   wall: { art: 'horror_pool_wall', plain: 0xdfe6ea, repeat: 1, tint: 0xe8eef2 },
   floor: { art: 'horror_pool_floor', plain: 0xd0d8dc, repeat: 7, shiny: { color: 0xc8dce8, power: 60 } }, // 젖은 타일: 형광등이 비친다
   locker: { art: 'horror_pool_locker', plain: 0x9ab0c0, repeat: 1, tint: 0xe0e0e0, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 탈의실 사물함
