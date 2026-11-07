@@ -7,7 +7,8 @@ import { withWater, withPoolProps } from '../../logic/horrorWater.js';
 // 날개 두 곳은 잠긴 문 하나로만 들어간다: A 는 왼쪽 아래 유아풀, B 는 오른쪽 위 물에 잠긴 다이빙 풀.
 // T 는 수건 걸이, U 는 고무오리가 처음 놓인 칸이다 (지나갈 수 있다).
 // 물괴물은 큰 풀장에서 시작한다. 순찰 지점은 대부분 물 위라서 평소에는 물속을 떠돈다.
-export const poolMap = withPoolProps(withWater({ ...parseMap([
+// chairs: 큰 풀장 둘레의 빈 감시원 의자 (지나갈 수 있는 장식). 그림은 horror_pool_chair.webp
+export const poolMap = withPoolProps(withWater({ chairs: [{ cx: 21, cy: 12 }, { cx: 4, cy: 15 }, { cx: 21, cy: 16 }], ...parseMap([
   '##L#L#L#L#L#############################',
   '#...........L....U........F#.F.........#',
   'L.S.....N..T#...........C..#.....R..X..L',

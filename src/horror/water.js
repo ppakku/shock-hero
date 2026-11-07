@@ -15,6 +15,9 @@ const RINGS = 14; // 동시에 퍼지는 물결 수
 const RING_LIFE = 1.3; // 물결 하나가 퍼져 사라지는 시간 (초)
 const RING_SIZE = 1.8; // 다 퍼진 물결 반지름 (미터)
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const DUCK_SIZE = 0.42; // 고무오리 그림 크기 (미터)
+const CHAIR = { w: 1.6, h: 2.6 }; // 감시원 의자 그림 크기 (미터)
+const TOWEL = { w: 0.9, h: 1.6 }; // 수건 걸이 그림 크기 (미터)
 
 export function buildWater(scene, map) {
   const group = new THREE.Group();
@@ -103,6 +106,7 @@ export function buildWater(scene, map) {
   // 수건 걸이: 서 있는 봉에 파란 수건이 걸려 있다. 쓰면 수건만 사라진다
   const towelMat = new THREE.MeshLambertMaterial({ color: 0x5aa8d8 });
   const poleMat = new THREE.MeshLambertMaterial({ color: 0xc8ccd0 });
+  const towelSprite = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.2 });
   const towels = (map.towels ?? []).map((c) => {
     const g = new THREE.Group();
     g.position.set((c.cx + 0.5) * CELL, 0, (c.cy + 0.5) * CELL);
@@ -114,10 +118,42 @@ export function buildWater(scene, map) {
     const towel = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.8, 0.06), towelMat);
     towel.position.y = 1.05;
     towel.castShadow = true;
-    g.add(pole, bar, towel);
+    const sprite = new THREE.Sprite(towelSprite);
+    sprite.scale.set(TOWEL.w, TOWEL.h, 1);
+    sprite.position.y = TOWEL.h / 2;
+    sprite.visible = false;
+    g.add(pole, bar, towel, sprite);
     group.add(g);
-    return towel;
+    return { towel, sprite, used: false };
   });
+  // Gemini 수건 걸이 그림을 받으면 그림을 띄운다. 쓴 걸이는 봉만 남는다
+  const towelArt = loadArt(loader, 'horror_pool_towel.webp', () => {
+    towelSprite.map = towelArt;
+    towelSprite.needsUpdate = true;
+    for (const t of towels) {
+      t.towel.visible = false;
+      t.sprite.visible = !t.used;
+      t.sprite.parent.children.forEach((m) => { if (m !== t.sprite && m !== t.towel) m.visible = t.used; });
+    }
+  });
+  if (towelArt) textures.push(towelArt);
+
+  // 빈 감시원 의자: 늘 주인공 쪽을 보는 그림 한 장. 그림을 못 받으면 없다
+  const chairMat = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.2 });
+  const chairs = (map.chairs ?? []).map((c) => {
+    const sprite = new THREE.Sprite(chairMat);
+    sprite.scale.set(CHAIR.w, CHAIR.h, 1);
+    sprite.position.set((c.cx + 0.5) * CELL, CHAIR.h / 2, (c.cy + 0.5) * CELL);
+    sprite.visible = false;
+    group.add(sprite);
+    return sprite;
+  });
+  const chairArt = loadArt(loader, 'horror_pool_chair.webp', () => {
+    chairMat.map = chairArt;
+    chairMat.needsUpdate = true;
+    chairs.forEach((c) => { c.visible = true; });
+  });
+  if (chairArt) textures.push(chairArt);
 
   // 고무오리: 노란 몸과 머리, 주황 부리. 물 위에서는 살짝 떠서 흔들린다
   const duckBody = new THREE.SphereGeometry(0.14, 12, 8);
@@ -126,6 +162,7 @@ export function buildWater(scene, map) {
   const beak = new THREE.ConeGeometry(0.035, 0.08, 6);
   const yellow = new THREE.MeshLambertMaterial({ color: 0xffd23a, emissive: 0x302000 });
   const orange = new THREE.MeshLambertMaterial({ color: 0xff8a20 });
+  const duckSprite = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.2 });
   const ducks = (map.ducks ?? []).map(() => {
     const g = new THREE.Group();
     const body = new THREE.Mesh(duckBody, yellow);
@@ -135,16 +172,37 @@ export function buildWater(scene, map) {
     const b = new THREE.Mesh(beak, orange);
     b.rotation.z = -Math.PI / 2;
     b.position.set(0.21, 0.23, 0);
-    g.add(body, head, b);
+    const sprite = new THREE.Sprite(duckSprite);
+    sprite.scale.set(DUCK_SIZE, DUCK_SIZE, 1);
+    sprite.position.y = DUCK_SIZE * 0.42;
+    sprite.visible = false;
+    g.add(body, head, b, sprite);
+    g.userData.shape = [body, head, b];
+    g.userData.sprite = sprite;
     group.add(g);
     return g;
   });
+  // Gemini 고무오리 그림을 받으면 그림을 띄우고 만든 모양은 숨긴다
+  const duckArt = loadArt(loader, 'horror_pool_duck.webp', () => {
+    duckSprite.map = duckArt;
+    duckSprite.needsUpdate = true;
+    for (const d of ducks) {
+      d.userData.sprite.visible = true;
+      d.userData.shape.forEach((m) => { m.visible = false; });
+    }
+  });
+  if (duckArt) textures.push(duckArt);
 
   return {
     textures,
     ripple,
     setTowel(i, on) {
-      towels[i].visible = on;
+      const t = towels[i];
+      t.used = !on;
+      if (towelSprite.map) {
+        t.sprite.visible = on;
+        t.sprite.parent.children.forEach((m) => { if (m !== t.sprite && m !== t.towel) m.visible = !on; });
+      } else t.towel.visible = on;
     },
     // spot: { cx, cy } 이면 그 칸에 놓고, null 이면 손에 들어서 숨긴다
     setDuck(i, spot) {

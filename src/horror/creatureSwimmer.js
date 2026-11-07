@@ -17,6 +17,16 @@ const SKULL = { x: 0.6, y: 0.82, z: 0.72 }; // 머리 반지름 (미터). 세로
 // 얼굴 판: 정면 그림의 가운데 6할이 머리라서 판은 머리보다 넓다. 가장자리는 뒤로 휘어 옆에서 보면 머리를 감싼다
 const FACE = { w: 2.05, h: 2.35, y: -0.18, z: 0.74, bendX: 0.42, bendY: 0.16 };
 // 상태마다 몸 높이와 머리 드는 정도. y 는 몸통 높이 (미터, 바닥이 0), lift 는 머리를 드는 높이, open 은 입 벌림, swing 은 좌우로 휘는 폭
+// 머리 그림: 보는 각도마다 Gemini 그림 한 장. from 은 머리 정면에서 돈 각도 (라디안).
+// right 는 그림 속 머리가 오른쪽을 본다는 뜻이다. 괴물의 왼쪽에서 보면 머리가 왼쪽을 봐야 해서 뒤집는다.
+// 그림은 늘 주인공 쪽을 보는 판에 입힌다. 그림을 못 받은 각도는 가장 가까운 다른 각도 그림을 쓴다
+const VIEWS = [
+  { file: 'horror_swimmer_face.webp', from: 0 },
+  { file: 'horror_swimmer_head34.webp', from: Math.PI / 4, right: true },
+  { file: 'horror_swimmer_side.webp', from: Math.PI / 2, right: true },
+  { file: 'horror_swimmer_back.webp', from: Math.PI },
+];
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const POSE = {
   lurk: { y: -2.2, lift: 0, open: 0.1, swing: 0.25, rate: 1.2 },
   swim: { y: -0.5, lift: 2.2, open: 0.85, swing: 0.5, rate: 5 },
@@ -94,13 +104,19 @@ export class SwimmerModel extends CreatureBase {
     this.head.rotation.order = 'YXZ';
     const skull = new THREE.SphereGeometry(1, 28, 20);
     skull.scale(SKULL.x, SKULL.y, SKULL.z);
-    this.add(this.head, skull, headSkin, true);
-    // 얼굴: 정면 그림을 입힌 휘어진 판. 그림의 투명한 곳은 그리지 않는다. 그림을 못 받으면 판을 숨겨 머리만 남긴다
-    const faceMat = new THREE.MeshBasicMaterial({ color: 0xeeeaea, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide });
-    this.face = this.add(this.head, faceGeometry(), faceMat, false);
-    faceMat.map = this.picture('art/horror_swimmer_face.webp', () => { this.face.visible = false; });
-    faceMat.map.wrapS = faceMat.map.wrapT = THREE.ClampToEdgeWrapping;
-    this.materials.push(faceMat);
+    this.skull = this.add(this.head, skull, headSkin, true);
+    // 얼굴: 각도별 그림을 입힌 휘어진 판. 그림의 투명한 곳은 그리지 않는다. 그림이 하나도 없으면 머리 모양만 남는다
+    this.views = VIEWS.map((v) => {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xeeeaea, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide });
+      const mesh = this.add(this.head, faceGeometry(), mat, false);
+      mesh.visible = false;
+      const view = { ...v, mesh, lost: false };
+      mat.map = this.picture(`art/${v.file}`, () => { view.lost = true; });
+      mat.map.wrapS = mat.map.wrapT = THREE.ClampToEdgeWrapping;
+      this.materials.push(mat);
+      return view;
+    });
+    this.face = this.views[0].mesh;
 
     this.faceNear = 2.2; // 잡히는 장면에서 머리 받침점까지 거리 (미터). 얼굴 그림이 화면을 채운다
     this.faceTilt = 0;
@@ -164,7 +180,21 @@ export class SwimmerModel extends CreatureBase {
     const yaw = near ? clamp(Math.atan2(player.x - s.x, player.y - s.y) - this.yaw, -0.8, 0.8) : Math.sin(this.phase * 0.5) * 0.3;
     this.head.rotation.set(-0.05 - p.lift * 0.04, Math.atan2(Math.sin(yaw), Math.cos(yaw)) * (near ? 1 : 0.5), 0);
     const open = clamp(p.open + 0.06 * Math.sin(this.time * 3), 0.05, 1);
-    this.face.scale.set(1, 0.96 + 0.06 * open, 1); // 입을 벌릴수록 얼굴이 조금 길어진다
+    this.showView(wrap(Math.atan2(player.x - s.x, player.y - s.y) - this.yaw - this.head.rotation.y), 0.96 + 0.06 * open); // 입을 벌릴수록 얼굴이 조금 길어진다
     this.faceTilt = 0;
+  }
+
+  // rel: 머리 정면에서 주인공 쪽까지 돈 각도. 가장 가까운 각도의 그림 판만 보이고, 판은 주인공 쪽을 본다
+  showView(rel, tall) {
+    const ready = this.views.filter((v) => !v.lost && v.mesh.material.map?.image);
+    for (const v of this.views) v.mesh.visible = false;
+    this.skull.visible = !ready.length;
+    if (!ready.length) return;
+    const view = ready.reduce((a, b) => (Math.abs(Math.abs(rel) - b.from) < Math.abs(Math.abs(rel) - a.from) ? b : a));
+    const img = view.mesh.material.map.image;
+    view.aspect ??= (img.width / img.height) / (FACE.w / FACE.h); // 그림마다 가로세로 비율이 달라서 폭을 맞춘다
+    view.mesh.visible = true;
+    view.mesh.rotation.y = rel;
+    view.mesh.scale.set(view.aspect * (view.right && rel > 0 ? -1 : 1), tall, 1);
   }
 }
