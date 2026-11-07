@@ -125,7 +125,8 @@ function startSearch(s, map, k, rand) {
   s.mode = 'search';
   s.searchT = k.searchTime * (1 + k.pressureSearch * s.pressure);
   s.checking = null;
-  s.lockers = map.lockers
+  // 호러워드는 벽은 뚫어도 사물함은 열지 않는다. 숨으면 안전하다
+  s.lockers = throughWalls(s) ? [] : map.lockers
     .map((c, i) => ({ i, d: dist(center(c), s) }))
     .filter((l) => l.d <= k.searchRadius && rand() < chance)
     .sort((a, b) => a.d - b.d)
