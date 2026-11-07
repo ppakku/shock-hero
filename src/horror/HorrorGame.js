@@ -8,6 +8,7 @@ import { createStalkers, nearestStalker, anyChasing, sendAllAway, warnState, cre
 import { codeDisplay, pressCode } from '../logic/horrorCode.js';
 import { createRun, takeClue, cluesFound, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, lastNightReward, recordLastNight, nearestUse } from '../logic/horrorRun.js';
 import { isLastNight, roundMonsters } from '../logic/horrorPick.js';
+import { duskAt, stageChange, FOREST_ID } from '../logic/horrorDusk.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
@@ -203,6 +204,22 @@ export class HorrorGame {
     this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     window.__horror = this;
     window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight, reachable }; // 봇이 쓴다
+    this.tickDusk(); // 숲은 소개 화면부터 노을빛이다
+  }
+
+  // 숲: 해가 지는 만큼 하늘, 안개, 주변 빛을 바꾼다. 놀람과 잡힘 뒤에는 this.ambient 로 돌아가서 그 순간의 밝기가 된다
+  tickDusk() {
+    if (this.round.mapId !== FOREST_ID) return;
+    const d = duskAt(this.playTime, this.k.forest.dusk);
+    const line = stageChange(this.dusk?.stage, d.stage);
+    this.dusk = d;
+    this.ambient = this.k.ambient * d.ambientScale;
+    this.ambientLight.color.setHex(d.ambient);
+    if (!this.scare) this.ambientLight.intensity = this.ambient; // 놀람의 어둠은 덮어쓰지 않는다
+    this.scene.fog.color.setHex(d.fog);
+    this.scene.fog.far = this.k.fogCells * CELL * d.fogFar;
+    if (this.scene.background?.isColor) this.scene.background.setHex(d.sky.low);
+    if (line) this.hud.say(line, 4);
   }
 
   get stalker() {
@@ -336,13 +353,15 @@ export class HorrorGame {
     this.walking = moving;
     this.alarmT = Math.max(0, this.alarmT - dt);
     const noise = this.alarmT > 0 ? this.k.runNoise : noiseFor(moving, running, this.k);
-    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise };
+    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise, yaw: this.yaw }; // yaw: 처녀귀신이 등 뒤를 고른다
     this.tickStamina(running && moving, dt);
     if (running && moving) this.ranFor += dt;
     const pressure = this.run.have / this.k.fuseCount;
+    this.tickDusk();
+    const { level: dusk, stage } = this.dusk ?? {};
     for (const h of this.hunters) {
       const seen = playerSees(this, this.hud.noteOpen, h.stalker);
-      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure }, this.k, dt), h);
+      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure, dusk, stage }, this.k, dt), h);
       if (this.state !== 'play') return;
     }
     // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
