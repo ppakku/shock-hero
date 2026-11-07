@@ -8,7 +8,8 @@ export const LAST_ROUND = { mapId: LAST_MAP_ID, monsterId: MONSTER_IDS[0], monst
 
 // 불 켜진 수영장: 물괴물과 늘 짝인 어른용 특별판. MAP_IDS 와 MONSTER_IDS 에 넣지 않는다. 넣으면 랜덤과 도장판에 나온다
 export const POOL_MAP_ID = 'pool';
-export const POOL_ROUND = { mapId: POOL_MAP_ID, monsterId: 'swimmer' };
+export const POOL_MONSTER_ID = 'swimmer';
+export const POOL_ROUND = { mapId: POOL_MAP_ID, monsterId: POOL_MONSTER_ID };
 export const isPool = (r) => r?.mapId === POOL_MAP_ID;
 
 export function isRound(r) {

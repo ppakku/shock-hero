@@ -32,7 +32,7 @@ const INTRO = [
 // 숲은 이야기 대신 규칙만 말한다. 휴대폰에서도 세 줄 모두 보인다
 const FOREST_INTRO = [
   '숲 어딘가에 쪽지 세 장이 있어요. 비밀번호를 모아 철문을 여세요',
-  '속 빈 고목과 쓰러진 통나무 밑에 숨을 수 있어요',
+  '속 빈 고목에 숨을 수 있어요',
   '쇼크를 맞으면 사라지지만, 곧 다른 곳에서 나타나요',
 ];
 
@@ -407,11 +407,11 @@ export class HorrorHud {
   showIntro(device, round, onStart, onQuit) {
     const [title, ...controls] = controlLines(device);
     this.openLayer(
-      [scaryLine(round.forest), ...introLines(device, round), ...(device === 'phone' ? [title, controls] : [' ', title, ...controls])], // 휴대폰은 조작 설명을 두 칸으로 놓아야 한 화면에 들어간다
+      [scaryLine(round.adult ?? round.forest), ...introLines(device, round), ...(device === 'phone' ? [title, controls] : [' ', title, ...controls])], // 휴대폰은 조작 설명을 두 칸으로 놓아야 한 화면에 들어간다
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
-    if (round.forest) this.layer.children[0].style.cssText = FOREST_SCARY_STYLE;
+    if (round.adult ?? round.forest) this.layer.children[0].style.cssText = FOREST_SCARY_STYLE; // 어른용 판 (숲, 수영장) 은 경고를 붉게
     this.backdrop();
     if (device !== 'phone') this.addFace(); // 휴대폰은 자리가 없다
   }
