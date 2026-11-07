@@ -12,6 +12,12 @@ export function isRound(r) {
 
 export const isLastNight = (r) => r?.mapId === LAST_MAP_ID;
 
+// 어른용 판: 해 질 녘 숲과 처녀귀신은 항상 짝이다. 마지막 밤처럼 목록 밖에 두어 랜덤, 도장판, 오늘의 밤에 나오지 않는다
+export const FOREST_MAP_ID = 'forest';
+export const FOREST_MONSTER_ID = 'maiden';
+export const FOREST_ROUND = { mapId: FOREST_MAP_ID, monsterId: FOREST_MONSTER_ID };
+export const isForest = (r) => r?.mapId === FOREST_MAP_ID;
+
 // 이번 판에 나오는 괴물 id 목록. 보통 판은 하나다
 export const roundMonsters = (r) => r.monsterIds ?? [r.monsterId];
 
@@ -34,10 +40,12 @@ export function chooseRound(choice, last, rand = Math.random) {
   };
 }
 
-// 시험용 주소 ?map=factory&monster=gazer. 하나만 주면 나머지는 첫 조합을 쓰고, 없거나 틀리면 null. ?map=station 은 마지막 밤이다
+// 시험용 주소 ?map=factory&monster=gazer. 하나만 주면 나머지는 첫 조합을 쓰고, 없거나 틀리면 null. ?map=station 은 마지막 밤,
+// ?map=forest 나 ?monster=maiden 은 어른용 숲이다
 export function forcedRound(search) {
   const q = new URLSearchParams(search);
   if (q.get('map') === LAST_MAP_ID) return LAST_ROUND;
+  if (q.get('map') === FOREST_MAP_ID || q.get('monster') === FOREST_MONSTER_ID) return FOREST_ROUND;
   const r = { mapId: q.get('map') ?? MAP_IDS[0], monsterId: q.get('monster') ?? MONSTER_IDS[0] };
   return (q.has('map') || q.has('monster')) && isRound(r) ? r : null;
 }

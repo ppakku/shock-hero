@@ -3,8 +3,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { center, frontOf, reachable, lineOfSight, cellOf } from '../src/logic/horrorGrid.js';
-import { ALL_MAPS, MAPS, MONSTERS } from '../src/horror/content.js';
-import { LAST_ROUND, roundMonsters } from '../src/logic/horrorPick.js';
+import { ALL_MAPS, ALL_MONSTERS, FOREST_PLACE, MAPS, MONSTERS } from '../src/horror/content.js';
+import { FOREST_ROUND, LAST_ROUND, roundMonsters } from '../src/logic/horrorPick.js';
 import { boardCells, cellKey } from '../src/logic/horrorStamps.js';
 import { normalizeHorror } from '../src/logic/horrorRun.js';
 
@@ -70,7 +70,7 @@ vi.mock('../src/horror/hud.js', () => {
       return was;
     }
   }
-  return { HorrorHud, startHint: () => '', escapeText: () => '탈출', lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
+  return { HorrorHud, startHint: () => '', escapeText: (r, c, head) => head ?? '탈출', forestEscapeHead: (name) => `${name} 나옴`, lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
 });
 
 vi.mock('../src/horror/input.js', () => ({
@@ -873,5 +873,35 @@ describe('끝내기', () => {
     g.hud.end.onDone();
     expect(g.onExitSpy).toHaveBeenCalledTimes(1);
     expect(g.onAgainSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('어른용 숲', () => {
+  const start = () => makeGame(null, null, { round: FOREST_ROUND });
+
+  it('처녀귀신 하나로 돌고, 소개에 숲 표시와 숲 이름이 간다', () => {
+    const g = start();
+    expect(g.hunters).toHaveLength(1);
+    expect(g.monsters[0]).toBe(ALL_MONSTERS.maiden);
+    expect(fakes.audio.at(-1).options.voice).toBe('maiden');
+    expect(g.hud.intro.round.forest).toBe(true);
+    expect(g.hud.intro.round.mapName).toBe(FOREST_PLACE.name);
+    expect(g.noteTexts.flat().join(' ')).not.toContain('{');
+    g.exit();
+  });
+
+  it('탈출하면 오늘의 탈출 보석을 주고 도장은 찍지 않는다', () => {
+    fakes.save = { gems: 0, horror: normalizeHorror({}), settings: {} };
+    const g = start();
+    g.run.powered = true;
+    g.win();
+    expect(fakes.save.gems).toBeGreaterThan(0);
+    expect(fakes.save.horror.escapes).toBe(1);
+    expect(fakes.save.horror.gemDay).not.toBe(null);
+    expect(fakes.save.horror.stamps).toEqual({});
+    expect(fakes.save.horror.lastCleared).toBe(false);
+    expect(g.hud.end.text).toBe(`${FOREST_PLACE.name} 나옴`);
+    expect(g.hud.end.notes.ending).toContain(ALL_MONSTERS.maiden.name);
+    g.exit();
   });
 });

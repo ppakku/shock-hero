@@ -3,8 +3,9 @@ import { factoryMap, factoryTheme } from './maps/factory.js';
 import { sewerMap, sewerTheme } from './maps/sewer.js';
 import { schoolMap, schoolTheme } from './maps/school.js';
 import { stationMap, stationTheme } from './maps/station.js';
+import { forestMap, forestTheme } from './maps/forest.js';
 import { NOTES } from './story.js';
-import { LAST_MAP_ID } from '../logic/horrorPick.js';
+import { FOREST_MAP_ID, FOREST_MONSTER_ID, LAST_MAP_ID } from '../logic/horrorPick.js';
 
 export const MAPS = {
   factory: { name: '밤의 고철 공장', map: factoryMap, theme: factoryTheme, notes: NOTES.factory, blurb: '녹슨 기계 사이로 쇳소리가 울려요' },
@@ -15,7 +16,12 @@ export const MAPS = {
 // 마지막 밤의 맵. MAPS 는 고르기 화면과 도장판의 맵이라 따로 둔다. hint 의 {name} 은 첫째, {other} 는 둘째 괴물이다
 export const LAST_PLACE = { name: '막차를 기다리는 역', map: stationMap, theme: stationTheme, notes: NOTES[LAST_MAP_ID], blurb: '둘이 함께 기다려요', hint: '{other}를 보면 멈춰도 {name}는 계속 와요. 계속 움직이세요' };
 
-export const ALL_MAPS = { ...MAPS, [LAST_MAP_ID]: LAST_PLACE };
+const FOREST_HINT = '해가 질수록 강해져요. 어두워지기 전에 나가세요';
+
+// 어른용 판의 숲. 처녀귀신과 항상 짝이라 힌트도 맵에 둔다
+export const FOREST_PLACE = { name: '해 질 녘 숲', map: forestMap, theme: forestTheme, notes: NOTES[FOREST_MAP_ID], blurb: '해가 질수록 귀신이 강해져요', hint: FOREST_HINT };
+
+export const ALL_MAPS = { ...MAPS, [LAST_MAP_ID]: LAST_PLACE, [FOREST_MAP_ID]: FOREST_PLACE };
 
 export const MONSTERS = {
   seino: { name: '세이노', hint: '달리면 소리가 나고, 손전등 빛은 들켜요', alarm: '{name}에게 들켰다! 도망쳐!', model: 'seino', voice: 'seino' },
@@ -23,3 +29,11 @@ export const MONSTERS = {
   maw: { name: '큰입이', hint: '앞을 못 봐요. 소리를 내지 말고, 닿지 마세요', alarm: '{name}가 소리를 들었다! 자리를 옮겨!', model: 'maw', voice: 'maw' },
   ward: { name: '호러워드', hint: '벽을 뚫고 와요. 벽이 튀어나오면 도망치세요', alarm: '{name}에게 들켰다! 벽도 소용없어!', model: 'ward', voice: 'ward', throughWalls: true },
 };
+
+// 목록 밖 괴물. MONSTERS 는 고르기 화면과 도장판의 괴물이라 따로 둔다. 이름은 여기 한 줄만 고치면 된다
+export const SPECIAL_MONSTERS = {
+  [FOREST_MONSTER_ID]: { name: '처녀귀신', hint: FOREST_HINT, alarm: '{name}가 따라온다! 도망쳐!', model: 'maiden', voice: 'maiden' },
+};
+
+// 게임이 괴물을 찾는 표. 보통 괴물과 목록 밖 괴물을 함께 둔다
+export const ALL_MONSTERS = { ...MONSTERS, ...SPECIAL_MONSTERS };

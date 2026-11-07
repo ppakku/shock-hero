@@ -7,7 +7,7 @@ import { tickStalker, stunStalker } from '../logic/horrorStalker.js';
 import { createStalkers, nearestStalker, anyChasing, sendAllAway, warnState, createAlarm, raiseAlarm, nextAlarm } from '../logic/horrorHunters.js';
 import { codeDisplay, pressCode } from '../logic/horrorCode.js';
 import { createRun, takeClue, cluesFound, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, lastNightReward, recordLastNight, nearestUse } from '../logic/horrorRun.js';
-import { isLastNight, roundMonsters } from '../logic/horrorPick.js';
+import { isForest, isLastNight, roundMonsters } from '../logic/horrorPick.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
@@ -15,12 +15,12 @@ import { NO_LIGHT, finishTonight, tonightEndText, tonightIntroLine, tonightLine,
 import { saveStore } from '../save.js';
 import { addStamp, wornLook, openedLooks, stampCount, boardSize } from '../logic/horrorStamps.js';
 import { sfx } from '../audio/sfx.js';
-import { ALL_MAPS, MONSTERS } from './content.js';
+import { ALL_MAPS, ALL_MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
 import { createCreature } from './creatureModel.js';
 import { WallBulge } from './wallBulge.js';
 import { HorrorInput } from './input.js';
-import { HorrorHud, startHint, escapeText, lastNightText, stampLines } from './hud.js';
+import { HorrorHud, startHint, escapeText, forestEscapeHead, lastNightText, stampLines } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
 
@@ -61,7 +61,7 @@ export class HorrorGame {
     this.round = round;
     this.tonight = tonight;
     this.place = ALL_MAPS[round.mapId];
-    this.monsters = roundMonsters(round).map((id) => MONSTERS[id]);
+    this.monsters = roundMonsters(round).map((id) => ALL_MONSTERS[id]);
     this.allNames = joinNames(this.monsters.map((m) => m.name));
     this.touch = touch;
     this.device = device;
@@ -229,7 +229,7 @@ export class HorrorGame {
   }
 
   start() {
-    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null };
+    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null, forest: isForest(this.round) };
     this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
@@ -806,7 +806,7 @@ export class HorrorGame {
     this.hud.showEnd(text, () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) }, news, this.device === 'phone', tonight);
   }
 
-  // 보통 판: 탈출 보석과 도장을 저장하고 끝 화면 글을 돌려준다
+  // 보통 판과 숲: 탈출 보석과 도장을 저장하고 끝 화면 글을 돌려준다. 숲은 도장판 칸이 아니라 addStamp 가 도장을 주지 않는다
   settleEscape(clean) {
     const save = saveStore.load();
     const today = todayKey();
@@ -819,7 +819,8 @@ export class HorrorGame {
     if (result) save.horror.tonightDone = result.done;
     saveStore.save(save);
     const tonight = result && { text: tonightEndText(this.tonight.rule, result, this.k), met: result.met };
-    return { text: escapeText(reward, clean), tonight, news: stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) }) };
+    const head = isForest(this.round) ? forestEscapeHead(this.place.name) : undefined;
+    return { text: escapeText(reward, clean, head), tonight, news: stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) }) };
   }
 
   // 마지막 밤: 처음 깼을 때만 보석을 준다. 도장판과 오늘의 탈출 보석은 건드리지 않는다
