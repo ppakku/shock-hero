@@ -42,12 +42,20 @@ function spread(cells, n, rand, taken = []) {
   return out;
 }
 
-// 열쇠 없이 갈 수 있는 빈 바닥 칸. 시작 칸과 그 옆은 뺀다
+const BUSY = new Set(['L', 'E', 'P', 'G', 'A', 'B']); // 사물함, 충전 상자, 전원, 정문, 잠긴 문. 이 옆에 놓으면 E 를 가로챈다
+
+// 둘레 8칸에 누르는 것이 있는가
+function nearBusy(level, cx, cy) {
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (BUSY.has(level.rows[cy + dy]?.[cx + dx])) return true;
+  return false;
+}
+
+// 열쇠 없이 갈 수 있는 빈 바닥 칸. 시작 칸과 그 옆, 누르는 것의 옆은 뺀다
 function openFloor(level) {
   const area = reachable(level, level.start);
   const out = [];
   level.rows.forEach((row, cy) => [...row].forEach((ch, cx) => {
-    if (ch === '.' && area.has(`${cx},${cy}`) && gap({ cx, cy }, level.start) > 1.5) out.push({ cx, cy });
+    if (ch === '.' && area.has(`${cx},${cy}`) && gap({ cx, cy }, level.start) > 1.5 && !nearBusy(level, cx, cy)) out.push({ cx, cy });
   }));
   return out;
 }
@@ -107,10 +115,16 @@ export function addMark(aids, cell, yaw) {
   return aids.marks.at(-1);
 }
 
-// 손이 닿는 아이템과 벽 지도를 nearestUse 의 add 로 넘긴다
+// 손이 닿는 아이템과 아직 안 본 벽 지도를 nearestUse 의 add 로 넘긴다
 export function addAidTargets(aids, add) {
   aids.items.forEach((c, i) => !c.taken && add('aid', i, `${AID_NAMES[c.kind]} 줍기`, c));
-  aids.boards.forEach((b, i) => add(b.seen ? 'seenBoard' : 'board', i, b.seen ? '이 지도는 이미 봤다' : '벽 지도 보기', b));
+  aids.boards.forEach((b, i) => !b.seen && add('board', i, '벽 지도 보기', b));
+}
+
+// 다른 누를 것이 없을 때만 보이는 안내. 본 지도가 숨기나 줍기를 가로채지 않게 따로 둔다
+export function seenBoardNear(aids, p, range) {
+  const i = aids.boards.findIndex((b) => b.seen && Math.hypot(b.cx + 0.5 - p.x, b.cy + 0.5 - p.y) <= range);
+  return i < 0 ? null : { kind: 'seenBoard', index: i, label: '이 지도는 이미 봤다' };
 }
 
 // 소리를 낸다. 괴물마다 한 번씩만 듣는다 (id 로 가린다)

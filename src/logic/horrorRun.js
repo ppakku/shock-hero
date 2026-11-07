@@ -159,11 +159,11 @@ export function nearestUse(run, map, p, hidden, k, notes, more) {
   run.doors.forEach((c, i) => {
     if (!c.open) add(run.keys[i].taken ? 'lock' : 'locked', i, run.keys[i].taken ? '문 열기' : `${KEY_NAMES[i]} 열쇠가 필요해`, c);
   });
-  more?.(add);
   map.lockers.forEach((c, i) => add('locker', i, '사물함에 숨기', c));
   if (!run.shock) map.boxes.forEach((c, i) => !run.usedBoxes.includes(i) && add('box', i, '쇼크 충전', c));
   if (!run.powered) add('panel', 0, run.have >= k.fuseCount ? '퓨즈 꽂기' : `퓨즈가 ${k.fuseCount}개 필요해`, map.panel);
   else add('gate', 0, '정문 번호 넣기', map.gate);
+  more?.(add); // 마지막에 더해서 거리가 같으면 원래 것이 이긴다
   return best;
 }
 

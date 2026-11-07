@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { reachable, blocked, findPath, cellOf, center, withOpen } from '../src/logic/horrorGrid.js';
 import { createRun, takeFuse, takeKey, openDoor, insertFuses, takeClue, nearestUse } from '../src/logic/horrorRun.js';
 import { createStalker, tickStalker } from '../src/logic/horrorStalker.js';
-import { createAids, takeAid, useAid, seeBoard, addMark, addAidTargets, makeSound, stepSounds, throwSpot, compassGoal, compassYaw, AID_KINDS } from '../src/logic/horrorAids.js';
+import { createAids, takeAid, useAid, seeBoard, addMark, addAidTargets, seenBoardNear, makeSound, stepSounds, throwSpot, compassGoal, compassYaw, AID_KINDS } from '../src/logic/horrorAids.js';
 import { ALL_MAPS } from '../src/horror/content.js';
 import { balance } from '../src/config/balance.js';
 
@@ -41,6 +41,8 @@ describe('도움 아이템 놓기', () => {
           expect(area.has(`${c.cx},${c.cy}`)).toBe(true);
           expect(busy.some((b) => b.cx === c.cx && b.cy === c.cy)).toBe(false);
         }
+        // 사물함, 충전 상자, 전원, 정문, 잠긴 문 옆에는 놓지 않는다
+        for (const c of cells) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) expect('LEPGAB').not.toContain(run.level.rows[c.cy + dy][c.cx + dx]);
         // 지도는 평범한 벽에 붙는다
         for (const b of aids.boards) expect(run.level.rows[b.cy + b.dy][b.cx + b.dx]).toBe('#');
       }
@@ -74,8 +76,10 @@ describe('줍기와 쓰기', () => {
     expect(seeBoard(aids, 0)).toBe(false);
     const seen = [];
     addAidTargets(aids, (kind, i, label) => seen.push({ kind, i, label }));
-    expect(seen.find((s) => s.i === 0 && s.kind === 'seenBoard').label).toBe('이 지도는 이미 봤다');
+    expect(seen.filter((s) => s.kind === 'board').map((s) => s.i)).not.toContain(0); // 본 지도는 E 를 가로채지 않는다
     expect(seen.filter((s) => s.kind === 'board')).toHaveLength(a.boards - 1);
+    expect(seenBoardNear(aids, center(aids.boards[0]), k.useRange).label).toBe('이 지도는 이미 봤다');
+    expect(seenBoardNear(aids, center(aids.boards[1]), k.useRange)).toBeNull();
   });
 
   it('nearestUse 가 가까운 아이템을 고른다', () => {
