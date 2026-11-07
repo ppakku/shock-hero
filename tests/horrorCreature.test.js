@@ -5,6 +5,7 @@ import { CreatureModel, createCreature, lookYaw } from '../src/horror/creatureMo
 import { GazerModel } from '../src/horror/creatureGazer.js';
 import { MawModel } from '../src/horror/creatureMaw.js';
 import { WardModel } from '../src/horror/creatureWard.js';
+import { MaidenModel } from '../src/horror/creatureMaiden.js';
 
 const loader = { load: () => new THREE.Texture() };
 const make = () => {
@@ -205,9 +206,10 @@ describe('createCreature', () => {
     expect(build('gazer')).toBeInstanceOf(GazerModel);
     expect(build('maw')).toBeInstanceOf(MawModel);
     expect(build('ward')).toBeInstanceOf(WardModel);
+    expect(build('maiden')).toBeInstanceOf(MaidenModel);
   });
 
-  it.each(['gazer', 'maw', 'ward'])('%s keeps the same interface and stays cheap', (id) => {
+  it.each(['gazer', 'maw', 'ward', 'maiden'])('%s keeps the same interface and stays cheap', (id) => {
     const model = stand(build(id));
     for (const key of ['group', 'head', 'textures', 'yaw', 'glow', 'headHeight']) expect(model[key]).toBeDefined();
     expect(calls(model)).toBeLessThanOrEqual(12);
@@ -218,14 +220,14 @@ describe('createCreature', () => {
     expect(() => stand(model, 'some-new-mode', 5)).not.toThrow();
   });
 
-  it.each(['gazer', 'maw', 'ward'])('%s only asks for pictures that exist', (id) => {
+  it.each(['gazer', 'maw', 'ward', 'maiden'])('%s only asks for pictures that exist', (id) => {
     const urls = [];
     createCreature(id, new THREE.Scene(), { load: (url) => { urls.push(url); return new THREE.Texture(); } });
     expect(urls.length).toBeGreaterThan(0);
     for (const url of urls) expect(existsSync(`public/${url}`), url).toBe(true);
   });
 
-  it.each(['gazer', 'maw', 'ward'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
+  it.each(['gazer', 'maw', 'ward', 'maiden'])('%s stays visible when its pictures fail and does not block the warm-up', (id) => {
     const fails = [];
     const failing = { load: (url, ok, prog, err) => { fails.push(err); return new THREE.Texture(); } };
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -238,7 +240,7 @@ describe('createCreature', () => {
     spy.mockRestore();
   });
 
-  it.each(['gazer', 'maw', 'ward'])('%s disposes everything it made', (id) => {
+  it.each(['gazer', 'maw', 'ward', 'maiden'])('%s disposes everything it made', (id) => {
     const model = stand(build(id));
     const items = [...model.materials, ...model.owned];
     model.group.traverse((o) => { if (o.geometry) items.push(o.geometry); });
@@ -250,6 +252,34 @@ describe('createCreature', () => {
     model.dispose();
     spies.forEach((f) => expect(f).toHaveBeenCalled());
     expect(model.scene.children).not.toContain(model.group);
+  });
+
+  it('maiden floats above the ground and bobs slowly', () => {
+    const model = build('maiden');
+    const lows = [];
+    for (let i = 0; i < 90; i++) {
+      stand(model, 'patrol');
+      lows.push(new THREE.Box3().setFromObject(model.bodyMesh).min.y);
+    }
+    expect(Math.min(...lows)).toBeGreaterThan(0.03);
+    expect(Math.max(...lows) - Math.min(...lows)).toBeGreaterThan(0.04);
+  });
+
+  it('maiden bows her head, leans in and lifts her hands in a chase', () => {
+    const calm = stand(build('maiden'), 'patrol', 90);
+    const chase = stand(build('maiden'), 'chase', 90);
+    expect(chase.head.rotation.x).toBeGreaterThan(calm.head.rotation.x);
+    expect(chase.hands.rotation.x).toBeLessThan(calm.hands.rotation.x - 0.4);
+    expect(chase.faceTilt).toBeLessThan(calm.faceTilt);
+  });
+
+  it('maiden parts her hair and shows the face only up close', () => {
+    const far = stand(build('maiden'), 'chase', 60);
+    expect(far.face.visible).toBe(false);
+    const near = build('maiden');
+    for (let i = 0; i < 60; i++) near.update({ x: 50, y: 49.5, heading: Math.PI, mode: 'chase' }, 1 / 30, P);
+    expect(near.face.visible).toBe(true);
+    expect(near.faceMat.opacity).toBeGreaterThan(0.9);
   });
 
   it('ward leans in, lifts its arms and opens its mouth in a chase', () => {
