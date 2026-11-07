@@ -407,11 +407,11 @@ export class HorrorHud {
   showIntro(device, round, onStart, onQuit) {
     const [title, ...controls] = controlLines(device);
     this.openLayer(
-      [scaryLine(round.forest), ...introLines(device, round), ...(device === 'phone' ? [title, controls] : [' ', title, ...controls])], // 휴대폰은 조작 설명을 두 칸으로 놓아야 한 화면에 들어간다
+      [scaryLine(round.adult ?? round.forest), ...introLines(device, round), ...(device === 'phone' ? [title, controls] : [' ', title, ...controls])], // 휴대폰은 조작 설명을 두 칸으로 놓아야 한 화면에 들어간다
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
-    if (round.forest) this.layer.children[0].style.cssText = FOREST_SCARY_STYLE;
+    if (round.adult ?? round.forest) this.layer.children[0].style.cssText = FOREST_SCARY_STYLE; // 어른용 판 (숲, 수영장) 은 경고를 붉게
     this.backdrop();
     if (device !== 'phone') this.addFace(); // 휴대폰은 자리가 없다
   }
