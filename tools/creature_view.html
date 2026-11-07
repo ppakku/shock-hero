@@ -38,7 +38,8 @@ let model = null;
 let id = null;
 const player = { x: 0, y: 0 };
 
-window.view = async ({ who, mode = 'patrol', frozen = false, cam = [0, 1.6, 4], at = [0, 1.5, 0], light = true, heading = 0, walk = 0, fov = 70, steps = 60, face = false }) => {
+// sky: 숲 판의 해 질 녘처럼 배경, 안개, 주변 빛을 바꿔 본다. { bg, ambient, scale } (색은 0xRRGGBB). 없으면 다른 맵의 어둠이다
+window.view = async ({ who, mode = 'patrol', frozen = false, cam = [0, 1.6, 4], at = [0, 1.5, 0], light = true, heading = 0, walk = 0, fov = 70, steps = 60, face = false, sky = null }) => {
   if (who !== id) {
     model?.dispose();
     model = createCreature(who, scene);
@@ -46,6 +47,10 @@ window.view = async ({ who, mode = 'patrol', frozen = false, cam = [0, 1.6, 4], 
     window.model = model;
     await new Promise((r) => setTimeout(r, 400));
   }
+  scene.background.setHex(sky ? sky.bg : 0);
+  scene.fog.color.setHex(sky ? sky.bg : 0);
+  ambient.color.setHex(sky ? sky.ambient : 0x8890a8);
+  ambient.intensity = k.ambient * (sky ? sky.scale : 1);
   camera.fov = fov;
   camera.updateProjectionMatrix();
   camera.position.set(cam[0], cam[1], cam[2]);
@@ -64,6 +69,7 @@ window.view = async ({ who, mode = 'patrol', frozen = false, cam = [0, 1.6, 4], 
     model.group.updateMatrixWorld(true);
     const p = model.head.getWorldPosition(new THREE.Vector3());
     model.group.position.y += 1.6 - p.y - 0.2;
+    model.group.position.x -= p.x;
     model.group.position.z += -(model.faceNear ?? 0.6) - p.z;
     camera.position.set(0, 1.6, 0);
     camera.lookAt(0, 1.6, -1);
