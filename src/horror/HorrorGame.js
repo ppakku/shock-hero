@@ -16,6 +16,7 @@ import { NO_LIGHT, finishTonight, tonightEndText, tonightIntroLine, tonightLine,
 import { saveStore } from '../save.js';
 import { addStamp, wornLook, openedLooks, stampCount, boardSize } from '../logic/horrorStamps.js';
 import { sfx } from '../audio/sfx.js';
+import { canFullscreen, fullscreenLabel, onFullscreenChange, toggleFullscreen } from '../ui/fullscreen.js';
 import { ALL_MAPS, ALL_MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
 import { createCreature } from './creatureModel.js';
@@ -114,6 +115,7 @@ export class HorrorGame {
       this.hud?.destroy();
       if (this.onResize) window.removeEventListener('resize', this.onResize);
       if (this.onVisibility) document.removeEventListener('visibilitychange', this.onVisibility);
+      this.stopFullscreen?.();
       this.unbindContext();
       this.renderer.dispose(); // 만들다 실패하면 WebGL 자리를 돌려준다
       this.renderer.forceContextLoss();
@@ -194,6 +196,10 @@ export class HorrorGame {
       if (document.hidden) this.pause();
     };
     document.addEventListener('visibilitychange', this.onVisibility);
+    // 일시정지 화면의 전체 화면 버튼 글자를 바꾼다 (Esc 로 나간 때도). 쪽지를 읽는 중이면 그대로 둔다
+    this.stopFullscreen = onFullscreenChange(() => {
+      if (this.state === 'paused' && this.pauseMenu) this.openPause();
+    });
     this.onContextLost = (e) => {
       e.preventDefault(); // 이렇게 해야 복구 신호가 온다
       this.contextLost = true;
@@ -898,8 +904,15 @@ export class HorrorGame {
   openPause() {
     const read = [...this.notes.read.map((order) => this.noteTexts[order]), ...this.clueTexts.filter((_, i) => this.run.clues[i].taken)];
     const phone = this.device === 'phone';
-    const onNotes = read.length ? () => this.hud.showReadNotes(read, () => this.openPause(), phone) : null;
-    this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone);
+    const onNotes = read.length
+      ? () => {
+          this.pauseMenu = false;
+          this.hud.showReadNotes(read, () => this.openPause(), phone);
+        }
+      : null;
+    this.pauseMenu = true;
+    const full = canFullscreen() ? { text: fullscreenLabel(), onPress: () => toggleFullscreen() } : null;
+    this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone, full);
   }
 
   // 계속하기를 누른 순간에 부른다. iPad 는 밖에 나갔다 오면 소리를 멈춰 두므로 여기서 다시 깨운다
@@ -908,6 +921,7 @@ export class HorrorGame {
     sfx.unlock();
     this.hud.setNotice('');
     this.hud.hidePause();
+    this.pauseMenu = false;
     if (this.noteAtPause) this.hud.showNote(this.noteAtPause, this.device === 'phone');
     this.noteAtPause = null;
     this.aids.setPaused(false);
@@ -950,6 +964,7 @@ export class HorrorGame {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
+    this.stopFullscreen();
     this.unbindContext();
     try {
       this.world.textures.forEach((t) => t.dispose());
