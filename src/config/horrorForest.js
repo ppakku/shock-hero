@@ -39,5 +39,6 @@ export const maidenMonster = {
     slipDist: 5, // 이만큼 다가가면 바로 사라진다 (칸)
   },
   twilight: { walk: 0.8, chase: 1.7, hear: 1, blinkAfter: 6, blinkMin: 5, blinkMax: 8, blinkWarn: 1.2 }, // blinkWarn: 나타난 뒤 잡지 않는 시간 (초)
-  night: { walk: 1.1, chase: 2.15, hear: 1.4, blinkAfter: 3.5, blinkMin: 2.5, blinkMax: 4, blinkWarn: 0.9 }, // 달리기(2.3)보다 조금 느리다
+  // 달리기(2.3)보다 조금 느리다. 봇으로 재면 3.5초, 2.5~4칸은 밤 내내 10초마다 잡혀서 늘렸다 (밤에만 해도 세이노 판의 두 배쯤 잡힌다)
+  night: { walk: 1.1, chase: 2.15, hear: 1.4, blinkAfter: 6, blinkMin: 3.5, blinkMax: 5, blinkWarn: 0.9 },
 };

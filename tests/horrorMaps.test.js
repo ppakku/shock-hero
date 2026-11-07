@@ -308,6 +308,8 @@ describe('테마', () => {
       }
       for (const color of ['fog', 'ambient', 'lightColor']) expect(typeof theme[color]).toBe('number');
       if (theme.doorArt) expect(theme[theme.doorArt].art).toMatch(/^horror_/);
+      // 문 그림을 정했으면 그 그림이 있어야 한다. 없으면 판마다 콘솔 경고가 뜬다
+      if (theme.doorSet) for (const lock of ['red', 'blue']) expect(existsSync(`public/art/${theme.doorSet}_${lock}.jpg`), `${theme.doorSet}_${lock}`).toBe(true);
     }
     // 천장 색과 벽 장식은 실내 맵만 쓴다
     for (const { theme } of INDOOR) {

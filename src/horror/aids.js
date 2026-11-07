@@ -499,7 +499,7 @@ export class HorrorAids {
       const bright = Math.max(g.ambient, g.k.ambient * this.k.flareAmbient);
       g.ambientLight.intensity = g.ambient + (bright - g.ambient) * f;
     }
-    g.scene.fog.far = g.k.fogCells * CELL * (1 + (this.k.flareFog - 1) * f);
+    g.scene.fog.far = g.fogFar * (1 + (this.k.flareFog - 1) * f); // 숲은 해 질 녘 안개에서 늘리고 돌아온다
   }
 
   // 잡히면 조명탄과 지도를 끝낸다. 나침반과 분필 표시는 그대로다
@@ -507,7 +507,7 @@ export class HorrorAids {
     this.closeMap();
     if (this.flareT > 0) {
       this.flareT = 0;
-      this.g.scene.fog.far = this.g.k.fogCells * CELL;
+      this.g.scene.fog.far = this.g.fogFar;
     }
     this.chalkT = 0;
   }

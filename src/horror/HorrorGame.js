@@ -221,10 +221,15 @@ export class HorrorGame {
     this.ambientLight.color.setHex(d.ambient);
     if (!this.scare) this.ambientLight.intensity = this.ambient; // 놀람의 어둠은 덮어쓰지 않는다
     this.scene.fog.color.setHex(d.fog);
-    this.scene.fog.far = this.k.fogCells * CELL * d.fogFar;
+    this.scene.fog.far = this.fogFar;
     this.world.setSky(d); // 하늘 돔 (숲 테마). 돔 그림을 못 받으면 아래 배경색이 하늘이다
     if (this.scene.background?.isColor) this.scene.background.setHex(d.sky.low);
     if (line) this.hud.say(line, 4);
+  }
+
+  // 지금 안개 끝 거리. 숲은 해가 지는 만큼 줄어든다. 조명탄은 여기서 늘렸다가 여기로 돌아온다
+  get fogFar() {
+    return this.k.fogCells * CELL * (this.dusk?.fogFar ?? 1);
   }
 
   get stalker() {
