@@ -5,6 +5,7 @@ import { CELL } from '../logic/horrorGrid.js';
 import { EYE_GLOW, LOOK_CELLS, damp, lookYaw, wrapAngle } from './creatureBase.js';
 import { GazerModel } from './creatureGazer.js';
 import { MawModel } from './creatureMaw.js';
+import { MaidenModel } from './creatureMaiden.js';
 import { WardModel } from './creatureWard.js';
 import {
   TAU, THIGH, SHIN, ANKLE, UPPER_ARM, FOREARM, SHOULDER, SPINE_UP, NECK_UP, HEAD, EYE_UV, EYE_R, NECK_POINTS,
@@ -318,5 +319,6 @@ export function createCreature(id, scene, loader) {
   if (id === 'gazer') return new GazerModel(scene, loader);
   if (id === 'maw') return new MawModel(scene, loader);
   if (id === 'ward') return new WardModel(scene, loader);
+  if (id === 'maiden') return new MaidenModel(scene, loader);
   return new CreatureModel(scene, loader);
 }
