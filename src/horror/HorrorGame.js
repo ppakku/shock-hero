@@ -83,7 +83,7 @@ export class HorrorGame {
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
-    this.lightOn = tonight?.rule !== NO_LIGHT; // 손전등 조건은 꺼진 채로 시작한다
+    this.lightOn = tonight?.rule !== NO_LIGHT && !this.place.theme.bright; // 손전등 조건과 늘 밝은 수영장은 꺼진 채로 시작한다
     this.lit = this.lightOn; // 이번 판에 손전등을 켠 적이 있는지
     this.ranFor = 0; // 이번 판에 달린 시간 (초)
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
