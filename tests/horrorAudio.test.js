@@ -343,12 +343,84 @@ describe('HorrorAudio 괴물 목소리', () => {
   });
 
   it('놀람과 잡힘 소리는 목소리마다 다르게 낸다', () => {
-    for (const voice of ['gazer', 'maw', 'ward']) {
+    for (const voice of ['gazer', 'maw', 'ward', 'maiden']) {
       const a = new HorrorAudio({ muted: false, voice });
       const jolt = vi.spyOn(a, 'jolt');
       a.play('scare');
       a.play('caught');
       expect(jolt).toHaveBeenCalledTimes(2);
     }
+  });
+});
+
+describe('HorrorAudio 처녀귀신', () => {
+  const at = (cells) => ({ x: cells * 3, y: 1.5, z: 0 }); // 칸 하나는 3미터
+
+  it('자기 표를 쓰고 발소리 대신 옷자락 소리를 낸다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    expect(a.lead.v).toBe(a.k.voices.maiden);
+    const swish = vi.spyOn(a, 'swish');
+    for (let i = 0; i < 30; i++) a.updateStalker(cam, at(10), 'patrol', 10, 0.1);
+    expect(swish).toHaveBeenCalled();
+  });
+
+  it('멀면 흐느끼고, 중간이면 흥얼거리고, 코앞이면 속삭인다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    const { layers } = a.k.voices.maiden;
+    const sob = vi.spyOn(a.lead.sobLevel.gain, 'setTargetAtTime');
+    const hum = vi.spyOn(a.lead.humLevel.gain, 'setTargetAtTime');
+    const puff = vi.spyOn(a, 'puffNoise');
+    a.updateStalker(cam, at(layers.far + 2), 'patrol', 10, 0.1);
+    expect(sob.mock.calls.at(-1)[0]).toBeGreaterThan(hum.mock.calls.at(-1)[0]);
+    a.updateStalker(cam, at((layers.far + layers.near) / 2), 'patrol', 10, 0.1);
+    expect(hum.mock.calls.at(-1)[0]).toBeGreaterThan(sob.mock.calls.at(-1)[0]);
+    puff.mockClear();
+    a.lead.stepT = 99; // 옷자락 소리는 빼고 센다
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, at(layers.near - 1), 'patrol', 2, 0.1);
+    expect(sob.mock.calls.at(-1)[0]).toBe(0);
+    const whispers = puff.mock.calls.filter(([dest, o]) => dest === a.lead.panner && o.freq > 1800);
+    expect(whispers.length).toBeGreaterThan(2);
+  });
+
+  it('구간이 바뀔 때만 크기를 정한다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    const sob = vi.spyOn(a.lead.sobLevel.gain, 'setTargetAtTime');
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, at(12), 'patrol', 12, 0.016);
+    expect(sob).toHaveBeenCalledTimes(1);
+  });
+
+  it('잡혀 있는 동안은 속삭이지 않는다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    a.suspend();
+    const puff = vi.spyOn(a, 'puffNoise');
+    for (let i = 0; i < 20; i++) a.updateStalker(cam, at(1), 'chase', 1, 0.1);
+    expect(puff).not.toHaveBeenCalled();
+  });
+
+  it('순간이동, 사라짐, 잡힘은 각각 소리를 낸다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    const jolt = vi.spyOn(a, 'jolt');
+    for (const n of ['blink', 'vanish', 'caught']) {
+      const before = counts.osc + counts.noise;
+      a.play(n);
+      expect(counts.osc + counts.noise).toBeGreaterThan(before);
+    }
+    expect(jolt).toHaveBeenCalledWith(a.k.caughtVol, 'maiden');
+  });
+
+  it('반복음 수가 정해져 있고 프레임이 지나도 늘지 않는다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    const made = a.creatureNodes.length;
+    for (let i = 0; i < 100; i++) a.updateStalker(cam, at(i % 2 ? 12 : 5), 'patrol', 5, 0.016);
+    expect(a.creatureNodes.length).toBe(made);
+    expect(made).toBeLessThan(40);
+  });
+
+  it('destroy 는 처녀귀신 반복음도 모두 멈추고 끊는다', () => {
+    const a = new HorrorAudio({ muted: false, voice: 'maiden' });
+    const started = counts.sources.filter((n) => n.didStart);
+    a.destroy();
+    for (const n of started) expect(n.stopAt).not.toBeUndefined();
+    for (const n of a.creatureNodes) expect(n.disconnected).toBe(true);
   });
 });

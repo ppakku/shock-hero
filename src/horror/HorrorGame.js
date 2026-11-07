@@ -569,7 +569,10 @@ export class HorrorGame {
       this.warn(h, `${this.named(monster.alarm, monster)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
     if (events.includes('wall')) this.onWall(h);
-    if (events.includes('slip')) this.warn(h, this.named('{name}가 사라졌다...', monster), 3);
+    if (events.includes('slip') || events.includes('vanish')) this.warn(h, this.named('{name}가 사라졌다...', monster), 3);
+    // 처녀귀신: 순간이동은 글 없이 귓가 속삭임만, 쇼크에 사라질 때는 비명
+    if (events.includes('blink')) this.audio?.play('blink', h.index);
+    if (events.includes('vanish')) this.audio?.play('vanish', h.index);
     if (events.includes('sniff')) this.warn(h, this.named('움직이지 마! {name}가 냄새를 맡고 있다', monster), 2);
     if (events.includes('caught') || events.includes('found')) this.getCaught(h);
   }

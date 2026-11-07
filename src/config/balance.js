@@ -793,6 +793,20 @@ export const balance = {
         stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0, watch: 0 },
         tone: { freqs: [165, 174.6], type: 'triangle', vol: 0.1, cutoff: 700 },
       },
+      maiden: { // 숨 섞인 여린 소리. 멀면 흐느끼고, 가까워지면 흥얼거리고, 코앞에서는 귓가에 속삭인다. 발소리 대신 옷자락이 스친다
+        breathFreq: 2600, breathQ: 2.4,
+        breathLevel: { patrol: 0.3, investigate: 0.4, search: 0.4, chase: 0.7, stunned: 0, watch: 0.15 },
+        breathSwellSec: { patrol: 2.6, investigate: 2.2, search: 2.2, chase: 1.2, stunned: 2.6, watch: 3.2 },
+        stepEvery: { patrol: 1.3, investigate: 1.1, search: 1.1, chase: 0.6, stunned: 0, watch: 0 },
+        layers: {
+          near: 3, // 이 칸 안이면 속삭인다
+          far: 8, // 이보다 멀면 흐느낀다. 그 사이는 흥얼거린다
+          // mix: 거리 구간마다 섞는 비율
+          sob: { freq: 540, formant: 1100, q: 4, vibrato: 5.5, vibratoDepth: 14, pulse: 1.7, vol: 0.5, mix: { far: 1, mid: 0.25, near: 0 } },
+          hum: { freqs: [349.2, 392], cutoff: 900, vibrato: 0.4, vibratoDepth: 6, vol: 0.35, mix: { far: 0, mid: 1, near: 0.3 } },
+          whisper: { freq: 3400, every: 0.16, spread: 0.3, vol: 0.9 }, // 속삭임 음절 사이 시간 (초) 에 0~spread 초를 더한다
+        },
+      },
     },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
