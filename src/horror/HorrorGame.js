@@ -149,7 +149,7 @@ export class HorrorGame {
 
     // 놀이를 시작하면 바로 보이는 손 그림부터 받는다
     this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun, bolt: this.bolt });
-    this.world = buildWorld(this.scene, this.map, this.k, theme);
+    this.world = buildWorld(this.scene, this.map, this.k, theme, { lowFx: this.lowFx });
     this.stalkers = createStalkers(this.map, this.k, Math.random, roundMonsters(this.round));
     // 괴물마다 하나씩이다. 판의 모든 일은 이 목록을 돌며 처리한다
     this.hunters = this.stalkers.map((stalker, index) => {
@@ -218,6 +218,7 @@ export class HorrorGame {
     if (!this.scare) this.ambientLight.intensity = this.ambient; // 놀람의 어둠은 덮어쓰지 않는다
     this.scene.fog.color.setHex(d.fog);
     this.scene.fog.far = this.k.fogCells * CELL * d.fogFar;
+    this.world.setSky(d); // 하늘 돔 (숲 테마). 돔 그림을 못 받으면 아래 배경색이 하늘이다
     if (this.scene.background?.isColor) this.scene.background.setHex(d.sky.low);
     if (line) this.hud.say(line, 4);
   }

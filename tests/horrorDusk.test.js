@@ -46,6 +46,12 @@ describe('해 질 녘', () => {
     }
   });
 
+  it('하늘 돔 그림은 노을에 그대로, 밤에는 짙게 눌린다', () => {
+    expect(duskAt(0, k).tint).toBe(0xffffff);
+    expect(bright(duskAt(300, k).tint)).toBeLessThan(bright(0xffffff));
+    expect(bright(duskAt(600, k).tint)).toBeLessThan(bright(duskAt(300, k).tint));
+  });
+
   it('처음에는 밝고, 밤에는 다른 맵 어둠과 같다', () => {
     expect(duskAt(0, k).ambientScale).toBeGreaterThanOrEqual(3);
     expect(duskAt(600, k).ambientScale).toBe(1);

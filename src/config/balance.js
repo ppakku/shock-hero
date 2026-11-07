@@ -865,9 +865,10 @@ export const balance = {
         nightAt: 480, // 해가 완전히 지는 때 (초)
         // 단계가 시작되는 순간의 색. 그 사이는 고르게 바뀐다. sky 는 하늘 위, 가운데, 지평선 색
         // fogFar: 안개 끝 거리 배수 (fogCells 에 곱한다), ambientScale: 주변 밝기 배수 (ambient 에 곱한다)
-        glow: { top: 0x463c78, mid: 0xd26e78, low: 0xf09650, fog: 0x8c5a4b, fogFar: 1.6, ambient: 0xffd8b0, ambientScale: 4 }, // 손전등 없이도 다닐 만큼 밝다
-        twilight: { top: 0x281e50, mid: 0x6e3c6e, low: 0xa0505a, fog: 0x3c2238, fogFar: 1.2, ambient: 0xb490c0, ambientScale: 2 },
-        night: { top: 0x06080f, mid: 0x0a0c1a, low: 0x10101e, fog: 0x05060c, fogFar: 1, ambient: 0x9cb4fc, ambientScale: 1 }, // 다른 맵의 어둠과 같다
+        // tint: 하늘 돔 그림에 곱하는 색 (노을은 그림 그대로 흰색, 밤은 짙은 남색)
+        glow: { tint: 0xffffff, top: 0x463c78, mid: 0xd26e78, low: 0xf09650, fog: 0x8c5a4b, fogFar: 1.6, ambient: 0xffd8b0, ambientScale: 4 }, // 손전등 없이도 다닐 만큼 밝다
+        twilight: { tint: 0x8c78a8, top: 0x281e50, mid: 0x6e3c6e, low: 0xa0505a, fog: 0x3c2238, fogFar: 1.2, ambient: 0xb490c0, ambientScale: 2 },
+        night: { tint: 0x141a30, top: 0x06080f, mid: 0x0a0c1a, low: 0x10101e, fog: 0x05060c, fogFar: 1, ambient: 0x9cb4fc, ambientScale: 1 }, // 다른 맵의 어둠과 같다
       },
     },
     // 도장판으로 여는 색. 맨 앞은 처음부터 쓰고, 그 뒤로 한 단계에 번개와 손전등이 하나씩 열린다

@@ -21,6 +21,7 @@ export function mixColor(a, b, t) {
 function mixKey(a, b, t) {
   return {
     sky: { top: mixColor(a.top, b.top, t), mid: mixColor(a.mid, b.mid, t), low: mixColor(a.low, b.low, t) },
+    tint: mixColor(a.tint, b.tint, t),
     fog: mixColor(a.fog, b.fog, t),
     fogFar: lerp(a.fogFar, b.fogFar, t),
     ambient: mixColor(a.ambient, b.ambient, t),
