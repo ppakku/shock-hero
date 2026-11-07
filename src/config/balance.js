@@ -844,6 +844,18 @@ export const balance = {
       runGrace: 0.3, // 달리지 않기 조건에서 봐주는 시간 (초)
       darkAmbient: 3, // 손전등 조건에서 윤곽 밝기 배수. 손전등 없이 한 판을 끝낼 만큼 벽과 괴물이 보여야 한다
     },
+    // 숲 판 (어른용). 해가 지는 동안 하늘과 밝기가 바뀐다 (logic/horrorDusk.js)
+    forest: {
+      dusk: {
+        twilightAt: 180, // 노을이 끝나고 어스름이 되는 때 (판 시작 뒤 초)
+        nightAt: 480, // 해가 완전히 지는 때 (초)
+        // 단계가 시작되는 순간의 색. 그 사이는 고르게 바뀐다. sky 는 하늘 위, 가운데, 지평선 색
+        // fogFar: 안개 끝 거리 배수 (fogCells 에 곱한다), ambientScale: 주변 밝기 배수 (ambient 에 곱한다)
+        glow: { top: 0x463c78, mid: 0xd26e78, low: 0xf09650, fog: 0x8c5a4b, fogFar: 1.6, ambient: 0xffd8b0, ambientScale: 4 }, // 손전등 없이도 다닐 만큼 밝다
+        twilight: { top: 0x281e50, mid: 0x6e3c6e, low: 0xa0505a, fog: 0x3c2238, fogFar: 1.2, ambient: 0xb490c0, ambientScale: 2 },
+        night: { top: 0x06080f, mid: 0x0a0c1a, low: 0x10101e, fog: 0x05060c, fogFar: 1, ambient: 0x9cb4fc, ambientScale: 1 }, // 다른 맵의 어둠과 같다
+      },
+    },
     // 도장판으로 여는 색. 맨 앞은 처음부터 쓰고, 그 뒤로 한 단계에 번개와 손전등이 하나씩 열린다
     stamps: {
       steps: [0.25, 0.5, 0.75, 1], // 단계마다 필요한 도장 수. 판 칸 수에 대한 비율이고 마지막은 판 전체다
