@@ -2,6 +2,7 @@
 import { sfx } from '../audio/sfx.js';
 import { cfg } from '../config/index.js';
 import { heartInterval } from '../logic/horrorStalker.js';
+import { CELL } from '../logic/horrorGrid.js';
 
 const DRONE = [82.41, 82.9, 123.47]; // 살짝 어긋난 낮은 음이 천천히 울렁인다
 const PAD = [155.56, 164.81]; // 반음이 부딪혀 불안하게 들린다
@@ -138,7 +139,76 @@ export class HorrorAudio {
     c.swellLfo.start();
     this.creatureNodes.push(breath, band, c.swell, c.breathLevel, c.swellLfo, depth, c.panner, c.creatureOut);
     if (c.v.tone) this.addVoiceTone(c.v.tone, c.swell);
+    if (c.v.layers) this.addLayers(c, c.v.layers);
     return c;
+  }
+
+  // 처녀귀신: 멀면 흐느낌, 중간이면 흥얼거림, 코앞이면 속삭임. 겹쳐 둔 소리의 크기만 거리 구간이 바뀔 때 바꾼다
+  addLayers(c, { sob, hum }) {
+    const ctx = this.ctx;
+    const vibrato = (rate, depth, params) => {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = rate;
+      const amount = ctx.createGain();
+      amount.gain.value = depth;
+      lfo.connect(amount);
+      for (const p of params) amount.connect(p);
+      lfo.start();
+      this.creatureNodes.push(lfo, amount);
+    };
+    // 흐느낌: 떨리는 여린 음을 목소리처럼 걸러서, 숨이 끊기듯 툭툭 끊어 낸다
+    const cry = ctx.createOscillator();
+    cry.type = 'triangle';
+    cry.frequency.value = sob.freq;
+    const formant = ctx.createBiquadFilter();
+    formant.type = 'bandpass';
+    formant.frequency.value = sob.formant;
+    formant.Q.value = sob.q;
+    const pulse = ctx.createGain();
+    pulse.gain.value = 0.5;
+    c.sobLevel = ctx.createGain();
+    c.sobLevel.gain.value = 0;
+    cry.connect(formant).connect(pulse).connect(c.sobLevel).connect(c.swell);
+    cry.start();
+    vibrato(sob.vibrato, sob.vibratoDepth, [cry.frequency]);
+    vibrato(sob.pulse, 0.5, [pulse.gain]);
+    this.creatureNodes.push(cry, formant, pulse, c.sobLevel);
+    // 흥얼거림: 두 음이 천천히 흔들리는 낮은 콧노래
+    const muffle = ctx.createBiquadFilter();
+    muffle.type = 'lowpass';
+    muffle.frequency.value = hum.cutoff;
+    c.humLevel = ctx.createGain();
+    c.humLevel.gain.value = 0;
+    muffle.connect(c.humLevel).connect(c.swell);
+    this.creatureNodes.push(muffle, c.humLevel);
+    const voices = hum.freqs.map((freq) => {
+      const osc = ctx.createOscillator();
+      osc.frequency.value = freq;
+      osc.connect(muffle);
+      osc.start();
+      this.creatureNodes.push(osc);
+      return osc.frequency;
+    });
+    vibrato(hum.vibrato, hum.vibratoDepth, voices);
+    c.band = null;
+    c.whisperT = 0;
+  }
+
+  // 거리 구간이 바뀔 때만 크기를 정하고, 코앞이면 속삭임을 띄엄띄엄 낸다. d: 이 괴물까지 칸 단위 거리
+  tickLayers(c, d, dt) {
+    const l = c.v.layers;
+    const band = d < l.near ? 'near' : d > l.far ? 'far' : 'mid';
+    if (band !== c.band) {
+      c.band = band;
+      const t = this.ctx.currentTime;
+      c.sobLevel.gain.setTargetAtTime(l.sob.vol * l.sob.mix[band], t, 0.4);
+      c.humLevel.gain.setTargetAtTime(l.hum.vol * l.hum.mix[band], t, 0.4);
+    }
+    c.whisperT -= dt;
+    if (band !== 'near' || this.suspended || c.whisperT > 0 || !c.breathGoal) return;
+    const w = l.whisper;
+    c.whisperT = w.every + Math.random() * w.spread; // 고르지 않게 끊긴다
+    this.puffNoise(c.panner, { dur: 0.05 + Math.random() * 0.1, vol: w.vol, freq: w.freq * (0.6 + Math.random() * 0.9), q: 5 });
   }
 
   // 숨소리와 함께 커졌다 작아지는 지속음. 숨소리 크기가 0 이면 함께 끊긴다
@@ -201,6 +271,7 @@ export class HorrorAudio {
     if (c.voice === 'gazer') return this.dragStep(p);
     if (c.voice === 'maw') return this.heavyStep(p);
     if (c.voice === 'ward') return this.dragStep(p);
+    if (c.voice === 'maiden') return this.swish(p);
     this.puffNoise(p, { dur: 0.09, vol: 1.3, freq: 3200, freqTo: 1800, q: 1.5 });
     this.puffNoise(p, { dur: 0.05, vol: 1.0, freq: 5200, q: 2, delay: 0.07 });
     this.blip(p, { freq: 900, dur: 0.04, vol: 0.5, type: 'square', slide: 0.5 });
@@ -209,6 +280,17 @@ export class HorrorAudio {
   // 눈뜬이와 호러워드는 발이 없다: 옷자락이 바닥을 쓸며 끌리는 소리
   dragStep(p) {
     this.puffNoise(p, { dur: 0.32, vol: 1.1, freq: 1500, freqTo: 3400, q: 0.9 });
+  }
+
+  // 처녀귀신은 떠 있다: 소복 자락이 조용히 스치는 소리
+  swish(p) {
+    this.puffNoise(p, { dur: 0.45, vol: 0.45, freq: 700, freqTo: 2100, q: 0.7 });
+  }
+
+  // 처녀귀신이 순간이동한 자리에서 짧게 들이쉬고 속삭인다
+  blinkCue(p) {
+    this.puffNoise(p, { dur: 0.5, vol: 0.5, freq: 1500, freqTo: 3600, q: 2 });
+    for (let i = 0; i < 5; i++) this.puffNoise(p, { dur: 0.06 + Math.random() * 0.08, vol: 1.2, freq: 2000 + Math.random() * 3000, q: 6, delay: 0.3 + i * 0.09 + Math.random() * 0.05 });
   }
 
   // 큰입이: 낮게 쿵 울리는 걸음. 가끔 긴 이빨이 딱딱 부딪힌다
@@ -271,6 +353,12 @@ export class HorrorAudio {
       this.puffNoise(p, { dur: 0.7, vol: 1, freq: 2400, freqTo: 300, type: 'lowpass' });
       for (let i = 0; i < CRACKLE; i++) this.puffNoise(p, { dur: 0.05, vol: 0.6, freq: 1800 + i * 500, q: 3, delay: 0.1 + i * 0.07 });
     }
+    if (name === 'blink' && c) this.blinkCue(c.panner);
+    if (name === 'vanish') {
+      // 쇼크를 맞은 처녀귀신이 비명을 지르며 멀어진다
+      this.puffNoise(o, { dur: 0.9, vol: 0.7, freq: 4200, freqTo: 1200, q: 3 });
+      this.blip(o, { freq: 960, dur: 0.8, vol: 0.25, type: 'triangle', slide: 0.4 });
+    }
     if (name === 'scare' || name === 'caught') this.sting(name === 'scare' ? this.k.scareVol : this.k.caughtVol);
     if ((name === 'scare' || name === 'caught') && c.voice !== 'seino') return this.jolt(name === 'scare' ? this.k.scareVol : this.k.caughtVol, c.voice);
     if (name === 'scare') {
@@ -304,6 +392,15 @@ export class HorrorAudio {
   // 눈뜬이는 높이 치솟는 비명 숨, 큰입이는 낮은 포효 뒤에 이빨이 딱 닫힌다
   jolt(vol, voice) {
     const o = this.out;
+    if (voice === 'maiden') {
+      // 숨 섞인 날카로운 비명 밑에 낮게 쿵 하고 내려앉는다
+      this.puffNoise(o, { dur: 1, vol, freq: 2200, freqTo: 5600, q: 3 });
+      this.blip(o, { freq: 820, dur: 0.9, vol: vol * 0.35, type: 'triangle', slide: 1.7 });
+      this.blip(o, { freq: 1240, dur: 0.7, vol: vol * 0.2, slide: 1.5 });
+      this.blip(o, { freq: 62, dur: 0.5, vol: vol * 0.9, slide: 0.5 });
+      this.puffNoise(o, { dur: 0.3, vol: vol * 0.7, freq: 400, freqTo: 120, type: 'lowpass' });
+      return;
+    }
     if (voice === 'gazer') {
       this.puffNoise(o, { dur: 0.9, vol, freq: 1800, freqTo: 5200, q: 6 });
       this.blip(o, { freq: 640, dur: 0.8, vol: vol * 0.4, type: 'triangle', slide: 1.9 });
@@ -362,6 +459,7 @@ export class HorrorAudio {
       c.stepT = every;
       this.footstep(c);
     }
+    if (c.v.layers) this.tickLayers(c, Math.hypot(stalkerPos.x - camera.position.x, stalkerPos.z - camera.position.z) / CELL, dt);
     if (c !== this.lead) return; // 심장은 하나다
     const gap = heartInterval(dist, this.k);
     this.heartT -= dt;
