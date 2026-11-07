@@ -14,7 +14,7 @@ export function createStalker(map, k, rand, monsterId = 'seino', spot = map.stal
   return {
     monsterId, frozenT: 0, doorT: 0, rushT: 0, rushRestT: 0, ranT: 0, pauseT: 0, brushT: 0, wasHidden: false, lockedN: map.locked.size,
     x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
-    inWall: false, wallSlow: 1,
+    inWall: false, wallSlow: 1, soundId: 0, // soundId: 마지막으로 들은 아이템 소리
     pressure: 0, graceT: 0, warnT: 0, calmT: 0, watchT: 0, ambushT: 0, ambushKind: null,
     heat: new Float32Array(map.w * map.h), heatW: map.w, heatT: 0, // 주인공이 걸어 다닌 자리. 저장하지 않는다
     weights: new Float32Array(map.patrol.length), recent: new Int16Array(8).fill(-1), recentAt: 0,
@@ -670,6 +670,31 @@ function tickMaiden(s, world, m, k, dt, rand, events) {
   return maidenK(s, k, st, stage);
 }
 
+// 조명탄이나 장난감 소리 (logic/horrorAids.js). 괴물마다 새 소리를 한 번만 듣고 그 칸으로 간다.
+// 조명탄은 쫓는 괴물을 돌려세우지 않는다. 장난감 (lure) 은 쫓던 괴물도 그쪽으로 보내고, 알림 글도 띄우지 않는다
+function hearSounds(s, world, k, events) {
+  if (!world.sounds?.length || s.mode === 'stunned') return;
+  for (const snd of world.sounds) {
+    if (snd.id <= s.soundId || dist(s, center(snd)) > snd.range) continue;
+    s.soundId = snd.id;
+    const cell = { cx: snd.cx, cy: snd.cy };
+    if (s.monsterId === 'gazer') {
+      // 눈뜬이는 소리보다 눈이다. 장난감에만 잠깐 끌려간다
+      if (!snd.lure) continue;
+      goTo(s, world.map, cell);
+      s.repathT = k.aids.gazerLure;
+      s.mode = 'patrol';
+    } else if (s.monsterId === 'maw') hearAt(s, world.map, cell, k.monsters.maw, snd.lure ? [] : events);
+    else {
+      const busy = s.mode === 'chase' || s.mode === 'ambush' || s.mode === 'watch';
+      if (busy && !snd.lure) continue;
+      if (!busy && s.mode !== 'investigate') events.push('notice');
+      Object.assign(s, { mode: 'investigate', target: cell, checking: null, lostT: 0, lastSeen: null });
+      goTo(s, world.map, cell);
+    }
+  }
+}
+
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.
 // 'found' 는 여기서 잡힘이 되지 않는다. 호출하는 쪽이 이 이벤트를 받아 잡힘으로 처리한다.
 export function tickStalker(s, world, k, dt, rand = Math.random) {
@@ -680,6 +705,7 @@ export function tickStalker(s, world, k, dt, rand = Math.random) {
   s.graceT = Math.max(0, Math.min(s.graceT, k.respawnGrace) - dt); // sendAway 가 넣은 Infinity 를 여기서 맞춘다
   s.warnT = Math.max(0, s.warnT - dt);
   s.calmT += dt;
+  hearSounds(s, world, k, events);
   if (s.monsterId === 'gazer') {
     tickGazer(s, world, k.monsters.gazer, k, dt, rand, events);
     return events;

@@ -370,6 +370,14 @@ export class HorrorAudio {
       this.puffNoise(o, { dur: 1.2, vol: this.k.caughtVol, freq: 600, freqTo: 3000, q: 3 });
       this.blip(o, { freq: 150, dur: 1.1, vol: this.k.caughtVol * 0.67, slide: 0.4 });
     }
+    if (name === 'flare') {
+      // 펑 하고 터진 뒤 치이익 타는 소리
+      this.blip(o, { freq: 90, dur: 0.35, vol: 0.6, type: 'sawtooth', slide: 0.4 });
+      this.puffNoise(o, { dur: 1.6, vol: 0.35, freq: 3000, freqTo: 1500, q: 0.8 });
+    }
+    if (name === 'toy') for (let i = 0; i < 8; i++) this.blip(o, { freq: i % 2 ? 1760 : 1480, dur: 0.16, vol: 0.12, type: 'triangle', delay: i * 0.45 }); // 장난감 방울이 딸랑거린다
+    if (name === 'map') this.puffNoise(o, { dur: 0.3, vol: 0.25, freq: 2500, freqTo: 1200, q: 0.9 }); // 종이를 펼친다
+    if (name === 'chalk') this.puffNoise(o, { dur: 0.35, vol: 0.2, freq: 4200, freqTo: 3000, q: 2 }); // 분필이 바닥을 긁는다
     if (name === 'bell') for (let i = 0; i < 3; i++) this.blip(o, { freq: 660, dur: 1.6, vol: 0.22, type: 'triangle', slide: 0.98, delay: i * 1.1 });
   }
 

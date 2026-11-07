@@ -24,6 +24,7 @@ import { HorrorInput } from './input.js';
 import { HorrorHud, startHint, escapeText, forestEscapeHead, lastNightText, stampLines } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
+import { HorrorAids } from './aids.js';
 
 export { showChooser } from './chooser.js';
 import { FINAL_LINES, NOTE_DANGER_LINE, ENDINGS, clueTexts, fillName, joinNames } from './story.js';
@@ -170,6 +171,7 @@ export class HorrorGame {
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root, fillName(NOTE_DANGER_LINE, this.allNames), this.round);
     this.hud.setZapColor(this.bolt.screen);
+    this.aids = new HorrorAids(this);
     this.hud.setStatus(this.statusNow());
     this.showTonight();
     if (this.showFps) {
@@ -349,11 +351,12 @@ export class HorrorGame {
     const running = canRun(this.stamina, inp.move.run);
     const speed = running ? this.k.runSpeed : this.k.walkSpeed;
     const before = this.p;
-    if (this.hidden === null) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
+    if (this.hidden === null && !this.aids.frozen) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     this.walking = moving;
     this.alarmT = Math.max(0, this.alarmT - dt);
-    const noise = this.alarmT > 0 ? this.k.runNoise : noiseFor(moving, running, this.k);
+    // 지도를 보는 동안은 달릴 때만큼 소리가 난다 (지도를 넘기며 서 있는 소리)
+    const noise = this.alarmT > 0 || this.aids.mapOpen ? this.k.runNoise : noiseFor(moving, running, this.k);
     const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise, yaw: this.yaw }; // yaw: 처녀귀신이 등 뒤를 고른다
     this.tickStamina(running && moving, dt);
     if (running && moving) this.ranFor += dt;
@@ -361,12 +364,13 @@ export class HorrorGame {
     this.tickDusk();
     const { level: dusk, stage } = this.dusk ?? {};
     for (const h of this.hunters) {
-      const seen = playerSees(this, this.hud.noteOpen, h.stalker);
-      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure, dusk, stage }, this.k, dt), h);
+      const seen = playerSees(this, this.hud.noteOpen || this.aids.mapOpen, h.stalker);
+      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure, dusk, stage, sounds: this.aids.state.sounds }, this.k, dt), h);
       if (this.state !== 'play') return;
     }
     // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
     if (anyChasing(this.stalkers) && this.hud.closeNote()) this.hud.say(NOTE_AGAIN, 3);
+    if (anyChasing(this.stalkers) && this.aids.closeMap()) this.hud.say('쫓아온다! 지도를 닫았다', 2);
     for (const h of this.hunters) {
       h.model.update(h.stalker, dt, this.p);
       h.bulge?.update(h.stalker, dt, this.lowFx);
@@ -383,15 +387,17 @@ export class HorrorGame {
     if (this.hud.keypadOpen && target?.kind !== 'gate') this.hud.closeKeypad(); // 정문에서 멀어지면 닫는다
     if (this.hud.keypadOpen) inp.typed?.forEach((key) => this.keypadPress(key));
     if (this.state !== 'play') return; // 번호를 맞혀 탈출했다
-    if (inp.use && !this.hud.closeNote() && !this.hud.closeKeypad()) this.doUse(target); // 쪽지나 입력 칸이 열려 있으면 닫기만 한다
+    this.aids.tick(dt, this.hud.keypadOpen ? null : inp.typed);
+    if (inp.use && !this.aids.closeMap() && !this.hud.closeNote() && !this.hud.closeKeypad()) this.doUse(target); // 쪽지나 입력 칸이 열려 있으면 닫기만 한다
     if (inp.punch) this.doPunch();
   }
 
   promptFor(target) {
+    if (this.aids.mapOpen) return '';
     if (this.hud.noteOpen) return `${this.touch ? '사용' : 'E'}: 쪽지 닫기`;
     if (this.hud.keypadOpen) return '';
     if (!target) return '';
-    return target.kind === 'locked' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
+    return target.kind === 'locked' || target.kind === 'seenBoard' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
   }
 
   // 벽에 가린 세이노는 그리지 않는다. 몸이 무거워서 태블릿에서 크게 차이 난다.
@@ -588,11 +594,12 @@ export class HorrorGame {
 
   nearestUse() {
     // 쫓기는 동안에는 쪽지를 고르지 않는다. 열자마자 앞을 가리고 숨기가 한 번 늦어진다
-    return nearestUse(this.run, this.map, this.p, this.hidden, this.k, anyChasing(this.stalkers) ? undefined : this.notes);
+    const best = nearestUse(this.run, this.map, this.p, this.hidden, this.k, anyChasing(this.stalkers) ? undefined : this.notes, (add) => this.aids.targets(add));
+    return best ?? this.aids.seenNear();
   }
 
   doUse(t) {
-    if (!t) return;
+    if (!t || this.aids.use(t)) return;
     if (t.kind === 'fuse' && takeFuse(this.run, t.index)) {
       this.fuseMeshes[t.index].visible = false;
       this.audio?.play('fuse');
@@ -726,6 +733,7 @@ export class HorrorGame {
     this.figure = null;
     this.noteCut = this.hud.closeNote();
     this.hud.closeKeypad();
+    this.aids.stop();
     caught(this.run);
     this.audio?.suspend();
     this.audio?.hush(true); // 비명 전에 소리를 뚝 끊는다
@@ -825,6 +833,7 @@ export class HorrorGame {
     document.exitPointerLock?.();
     this.input.clearTouch();
     this.hud.closeNote();
+    this.aids.stop();
     this.hud.setPrompt('');
     this.hud.showEnd(text, () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) }, news, this.device === 'phone', tonight);
   }
@@ -865,6 +874,7 @@ export class HorrorGame {
     this.noteAtPause = this.hud.noteLines; // 계속하기를 누르면 다시 펼친다
     this.hud.closeNote();
     this.hud.closeKeypad();
+    this.aids.setPaused(true);
     this.input.clearTouch();
     this.audio?.suspend();
     document.exitPointerLock?.();
@@ -886,6 +896,7 @@ export class HorrorGame {
     this.hud.hidePause();
     if (this.noteAtPause) this.hud.showNote(this.noteAtPause, this.device === 'phone');
     this.noteAtPause = null;
+    this.aids.setPaused(false);
     this.audio?.resume();
     this.state = 'play';
     this.relock();
@@ -930,6 +941,7 @@ export class HorrorGame {
       this.world.textures.forEach((t) => t.dispose());
       this.input.destroy();
       this.hud.destroy();
+      this.aids?.destroy();
       this.audio?.destroy();
       for (const { model } of this.hunters) model.dispose();
       this.gun.dispose();
