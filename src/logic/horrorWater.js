@@ -22,6 +22,17 @@ export function withWater(map, rows) {
   return { ...map, water };
 }
 
+// 수건 걸이 (T) 와 고무오리 (U) 자리를 붙인다. 둘 다 바닥 칸이라 지나갈 수 있다
+export function withPoolProps(map) {
+  const towels = [];
+  const ducks = [];
+  map.rows.forEach((row, cy) => [...row].forEach((ch, cx) => {
+    if (ch === 'T') towels.push({ cx, cy });
+    if (ch === 'U') ducks.push({ cx, cy });
+  }));
+  return { ...map, towels, ducks };
+}
+
 export function waterAt(map, cx, cy) {
   if (!map.water || cx < 0 || cy < 0 || cx >= map.w || cy >= map.h) return DRY;
   return map.water[cy * map.w + cx];
