@@ -15,7 +15,7 @@ const ITEM_LOOK = { // 바닥에 놓인 모양. 어둠 속에서 찾을 수 있�
 const BOARD = { w: 1.3, h: 0.95, y: 1.55, glow: 0.75, seen: 0.35 }; // 벽 지도 크기와 높이 (미터), 밝기
 const MARK = { size: 0.9, y: 0.02, glow: 0.8 }; // 분필 화살표 크기와 바닥에서 높이 (미터)
 const COMPASS_EVERY = 0.4; // 나침반 길을 다시 찾는 간격 (초)
-const MAP_COLORS = { paper: '#c9b48a', wall: '#3a2a18', locker: '#5a4a34', fuse: '#e0a020', clue: '#c02020', mark: '#ffffff', me: '#1a8a3a', panel: '#7a3ad0', gate: '#202020' };
+const MAP_COLORS = { paper: '#c9b48a', wall: '#3a2a18', locker: '#5a4a34', fuse: '#e0a020', clue: '#c02020', mark: '#ffffff', me: '#1a8a3a', panel: '#7a3ad0', gate: '#30d0c0' };
 const LOCK_COLORS = ['#e04848', '#4a8ef0'];
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -204,7 +204,7 @@ export class HorrorAids {
     this.mapTimer = css(document.createElement('div'), 'font:bold 22px monospace;color:#ffd080');
     this.mapCanvas = css(document.createElement('canvas'), 'max-width:94%;max-height:72%;border-radius:3px;box-shadow:0 4px 20px #000;image-rendering:pixelated');
     const legend = css(document.createElement('div'), 'display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:13px');
-    const marks = [['나', MAP_COLORS.me], ['퓨즈', MAP_COLORS.fuse], [`${KEY_NAMES[0]} 열쇠, 문`, LOCK_COLORS[0]], [`${KEY_NAMES[1]} 열쇠, 문`, LOCK_COLORS[1]], ['붉은 쪽지', MAP_COLORS.clue], ['전원', MAP_COLORS.panel], ['정문', '#888'], ['분필', MAP_COLORS.mark]];
+    const marks = [['나', MAP_COLORS.me], ['퓨즈', MAP_COLORS.fuse], [`${KEY_NAMES[0]} 열쇠, 문`, LOCK_COLORS[0]], [`${KEY_NAMES[1]} 열쇠, 문`, LOCK_COLORS[1]], ['붉은 쪽지', MAP_COLORS.clue], ['전원', MAP_COLORS.panel], ['정문', MAP_COLORS.gate], ['분필', MAP_COLORS.mark]];
     legend.innerHTML = marks.map(([t, c]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px;background:${c}"></i>${t}</span>`).join('');
     const warn = css(document.createElement('div'), 'font-size:14px;color:#ffb0a0');
     warn.textContent = `지도를 보는 동안 움직일 수 없고, 괴물이 소리를 듣고 다가온다 (${touch ? '사용' : 'E'}: 닫기)`;
