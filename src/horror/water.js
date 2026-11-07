@@ -16,8 +16,8 @@ const RING_LIFE = 1.3; // 물결 하나가 퍼져 사라지는 시간 (초)
 const RING_SIZE = 1.8; // 다 퍼진 물결 반지름 (미터)
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DUCK_SIZE = 0.42; // 고무오리 그림 크기 (미터)
-const CHAIR = { w: 1.6, h: 2.6 }; // 감시원 의자 그림 크기 (미터)
-const TOWEL = { w: 0.9, h: 1.6 }; // 수건 걸이 그림 크기 (미터)
+const CHAIR = { w: 2.05, h: 2.6 }; // 감시원 의자 그림 크기 (미터)
+const TOWEL = { w: 1.2, h: 1.5 }; // 수건 걸이 그림 크기 (미터)
 
 export function buildWater(scene, map) {
   const group = new THREE.Group();

@@ -74,6 +74,7 @@ export const poolTheme = {
   floor: { art: 'horror_pool_floor', plain: 0xd0d8dc, repeat: 7, shiny: { color: 0xc8dce8, power: 60 } }, // 젖은 타일: 형광등이 비친다
   locker: { art: 'horror_pool_locker', plain: 0x9ab0c0, repeat: 1, tint: 0xe0e0e0, box: { w: 3, h: 3, d: 3 } }, // 벽에 박힌 탈의실 사물함
   doorArt: 'locker',
+  board: { art: 'horror_pool_board', plain: 0xffffff, repeat: 1 }, // 벽의 안전 표지판 (Gemini 그림)
   ceil: 0xe8ecee,
   ceilArt: { art: 'horror_ceil_pool', repeat: 7, tint: 0xffffff },
   fog: 0xdfe8ec,
@@ -84,7 +85,7 @@ export const poolTheme = {
   decor: {
     tile: 7,
     light: { w: 1.2, h: 0.18, d: 0.06, y: 2.75, art: 'horror_light_pool' }, // 긴 형광등
-    machine: { w: [1.6, 0.9], h: [1.2, 0.6], y: 1.1, depth: 0.06, tints: [0xffffff, 0xf0f4f8] }, // "뛰지 마세요" 같은 표지판
+    machine: { w: [1.2, 1.0], h: [1.2, 1.0], y: 1.2, depth: 0.05, tints: [0xffffff, 0xf4f4f4] }, // 뛰지 마세요, 다이빙 금지 같은 그림 표지판
     pipe: { r: 0.04, off: 0.08, ys: [0.95], color: 0xc8ccd0, art: 'horror_pipe_pool', repeat: 6, tint: 0xffffff }, // 벽을 따라 도는 손잡이 봉
   },
 };
