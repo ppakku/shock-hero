@@ -320,7 +320,7 @@ export function buildWorld(scene, map, k, theme, { lowFx = false } = {}) {
     lightLevel = -1;
   });
   const doors = map.locks.map((c, i) => addShutter(props, c, map, DOOR_COLORS[i], mats[doorPart]));
-  doors.forEach((d, i) => art(`${theme.doorSet}_${LOCK_NAMES[i]}.jpg`, (tex) => {
+  if (theme.doorSet) doors.forEach((d, i) => art(`${theme.doorSet}_${LOCK_NAMES[i]}.jpg`, (tex) => {
     d.ownArt = true;
     paint(d.mesh.material, tex, 1);
   }));
