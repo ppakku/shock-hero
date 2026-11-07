@@ -201,6 +201,7 @@ export class HorrorAudio {
     if (c.voice === 'gazer') return this.dragStep(p);
     if (c.voice === 'maw') return this.heavyStep(p);
     if (c.voice === 'ward') return this.dragStep(p);
+    if (c.voice === 'swimmer') return this.wetStep(p);
     this.puffNoise(p, { dur: 0.09, vol: 1.3, freq: 3200, freqTo: 1800, q: 1.5 });
     this.puffNoise(p, { dur: 0.05, vol: 1.0, freq: 5200, q: 2, delay: 0.07 });
     this.blip(p, { freq: 900, dur: 0.04, vol: 0.5, type: 'square', slide: 0.5 });
@@ -209,6 +210,12 @@ export class HorrorAudio {
   // 눈뜬이와 호러워드는 발이 없다: 옷자락이 바닥을 쓸며 끌리는 소리
   dragStep(p) {
     this.puffNoise(p, { dur: 0.32, vol: 1.1, freq: 1500, freqTo: 3400, q: 0.9 });
+  }
+
+  // 물괴물: 물을 가르는 소리. 물 밖에서는 젖은 몸이 타일에 끌린다
+  wetStep(p) {
+    this.puffNoise(p, { dur: 0.4, vol: 1.1, freq: 900, freqTo: 2400, q: 1.1 });
+    this.blip(p, { freq: 140, dur: 0.18, vol: 0.3, slide: 0.5 });
   }
 
   // 큰입이: 낮게 쿵 울리는 걸음. 가끔 긴 이빨이 딱딱 부딪힌다
@@ -290,6 +297,22 @@ export class HorrorAudio {
     if (name === 'toy') for (let i = 0; i < 8; i++) this.blip(o, { freq: i % 2 ? 1760 : 1480, dur: 0.16, vol: 0.12, type: 'triangle', delay: i * 0.45 }); // 장난감 방울이 딸랑거린다
     if (name === 'map') this.puffNoise(o, { dur: 0.3, vol: 0.25, freq: 2500, freqTo: 1200, q: 0.9 }); // 종이를 펼친다
     if (name === 'chalk') this.puffNoise(o, { dur: 0.35, vol: 0.2, freq: 4200, freqTo: 3000, q: 2 }); // 분필이 바닥을 긁는다
+    // 수영장 물소리: 주인공 쪽에서 난다. 물괴물이 듣는 소리가 플레이어에게도 들려야 규칙을 안다
+    if (name === 'slosh') this.puffNoise(o, { dur: 0.22, vol: 0.5, freq: 1400, freqTo: 600, q: 1.2 });
+    if (name === 'swim') {
+      this.puffNoise(o, { dur: 0.45, vol: 0.7, freq: 700, freqTo: 1900, q: 0.9 });
+      this.puffNoise(o, { dur: 0.2, vol: 0.4, freq: 2600, q: 2, delay: 0.2 });
+    }
+    if (name === 'drip') this.blip(o, { freq: 1900, dur: 0.06, vol: 0.18, slide: 1.6 });
+    if (name === 'plop') {
+      this.blip(o, { freq: 500, dur: 0.12, vol: 0.4, slide: 2.2 });
+      this.puffNoise(o, { dur: 0.3, vol: 0.5, freq: 1800, freqTo: 500, q: 1 });
+    }
+    if (name === 'towel') this.puffNoise(o, { dur: 0.5, vol: 0.35, freq: 900, freqTo: 1300, q: 0.5 });
+    if (name === 'rise') { // 물괴물이 물에서 솟구친다
+      this.puffNoise(o, { dur: 1.1, vol: 1, freq: 300, freqTo: 2600, q: 0.7 });
+      this.blip(o, { freq: 70, dur: 0.9, vol: 0.6, type: 'sawtooth', slide: 0.6 });
+    }
     if (name === 'bell') for (let i = 0; i < 3; i++) this.blip(o, { freq: 660, dur: 1.6, vol: 0.22, type: 'triangle', slide: 0.98, delay: i * 1.1 });
   }
 
@@ -315,6 +338,13 @@ export class HorrorAudio {
     if (voice === 'gazer') {
       this.puffNoise(o, { dur: 0.9, vol, freq: 1800, freqTo: 5200, q: 6 });
       this.blip(o, { freq: 640, dur: 0.8, vol: vol * 0.4, type: 'triangle', slide: 1.9 });
+      return;
+    }
+    if (voice === 'swimmer') {
+      // 물을 뿜으며 벌어지는 입: 거품 끓는 소리 뒤에 바늘 이빨이 딱 닫힌다
+      this.puffNoise(o, { dur: 1, vol, freq: 250, freqTo: 1800, q: 0.8 });
+      for (let i = 0; i < 5; i++) this.blip(o, { freq: 90 + i * 12, dur: 0.12, vol: vol * 0.5, type: 'sawtooth', slide: 0.7, delay: i * 0.09 });
+      this.blip(o, { freq: 2400, dur: 0.04, vol: vol * 0.6, type: 'square', delay: 0.8 });
       return;
     }
     if (voice === 'ward') {
