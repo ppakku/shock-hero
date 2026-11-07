@@ -666,7 +666,8 @@ function tickMaiden(s, world, m, k, dt, rand, events) {
     tickPatrol(s, map, maidenK(s, k, st, stage), dt, rand);
     return null;
   }
-  s.unseenT = world.seen || player.hidden !== null ? 0 : (s.unseenT ?? 0) + dt;
+  // 잡힌 뒤 쉬는 동안 (graceT) 은 세지 않는다. 세면 쉬는 시간이 끝나자마자 등 뒤에 나타나 또 잡는다
+  s.unseenT = world.seen || player.hidden !== null || s.graceT > 0 ? 0 : (s.unseenT ?? 0) + dt;
   if (s.graceT <= 0 && s.unseenT >= st.blinkAfter && dist(s, player) > st.blinkMax) blink(s, map, player, st, k, rand, events);
   return maidenK(s, k, st, stage);
 }

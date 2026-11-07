@@ -2166,6 +2166,8 @@ def run_forest(pw):
         errs = []
         watch(pg, errs)
         enter_forest(pg, seed, shots=(i == 0 and not os.environ.get('FOREST_NOSHOT')))
+        if os.environ.get('FOREST_TUNE'):  # 설정을 바꿔 보며 견줄 때. 예: {"night": {"blinkAfter": 6}}
+            pg.evaluate("(t) => { const m = window.__horror.k.monsters.maiden; for (const [st, v] of Object.entries(t)) Object.assign(m[st], v); }", json.loads(os.environ['FOREST_TUNE']))
         pg.evaluate('window.__horrorBot = { careful: true }')
         pg.evaluate(bot)
         t0 = time.time()

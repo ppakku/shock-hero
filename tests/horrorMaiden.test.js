@@ -190,6 +190,13 @@ describe('처녀귀신: 어스름과 밤', () => {
     expect(s.warnT).toBeGreaterThan(0.5);
   });
 
+  it('잡힌 뒤 쉬는 동안은 세지 않아서, 쉬는 시간이 끝나도 바로 나타나지 않는다', () => {
+    const s = maiden(forest, { x: 1.5, y: 10.5, graceT: k.respawnGrace });
+    const world = { map: forest, player: player({ x: 18.5, y: 2.5, yaw: 0 }), seen: false, stage: 'night' };
+    expect(run(s, world, k.respawnGrace + m.night.blinkAfter - 0.5)).not.toContain('blink');
+    expect(run(s, world, 1)).toContain('blink');
+  });
+
   it('숨어 있으면 순간이동하지 않는다', () => {
     const s = maiden(forest, { x: 1.5, y: 10.5 });
     const world = { map: forest, player: player({ hidden: 0, yaw: 0 }), seen: false, stage: 'night' };
