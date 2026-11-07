@@ -417,9 +417,11 @@ export class HorrorHud {
   }
 
   // onNotes: 읽은 쪽지가 있을 때만 준다
-  showPause(onResume, onQuit, onNotes, compact = false) {
+  // full: 전체 화면 버튼 { text, onPress }. 전체 화면을 못 하는 기기(아이폰)에서는 null
+  showPause(onResume, onQuit, onNotes, compact = false, full = null) {
     const buttons = [{ text: '계속하기', onPress: onResume }];
     if (onNotes) buttons.push({ text: '읽은 쪽지', onPress: onNotes });
+    if (full) buttons.push(full);
     buttons.push({ text: '타이틀로', onPress: onQuit });
     this.openLayer(['일시정지'], buttons, compact);
   }
