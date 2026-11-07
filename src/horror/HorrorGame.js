@@ -7,7 +7,7 @@ import { tickStalker, stunStalker } from '../logic/horrorStalker.js';
 import { createStalkers, nearestStalker, anyChasing, sendAllAway, warnState, createAlarm, raiseAlarm, nextAlarm } from '../logic/horrorHunters.js';
 import { codeDisplay, pressCode } from '../logic/horrorCode.js';
 import { createRun, takeClue, cluesFound, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, lastNightReward, recordLastNight, nearestUse } from '../logic/horrorRun.js';
-import { isForest, isLastNight, roundMonsters } from '../logic/horrorPick.js';
+import { isForest, isLastNight, isPool, roundMonsters } from '../logic/horrorPick.js';
 import { duskAt, stageChange, FOREST_ID } from '../logic/horrorDusk.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
@@ -251,7 +251,7 @@ export class HorrorGame {
   }
 
   start() {
-    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null, forest: isForest(this.round) };
+    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null, forest: isForest(this.round), adult: isForest(this.round) || isPool(this.round) };
     this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {

@@ -6,7 +6,7 @@ import { stationMap, stationTheme } from './maps/station.js';
 import { forestMap, forestTheme } from './maps/forest.js';
 import { poolMap, poolTheme } from './maps/pool.js';
 import { NOTES } from './story.js';
-import { FOREST_MAP_ID, FOREST_MONSTER_ID, LAST_MAP_ID, POOL_MAP_ID } from '../logic/horrorPick.js';
+import { FOREST_MAP_ID, FOREST_MONSTER_ID, LAST_MAP_ID, POOL_MAP_ID, POOL_MONSTER_ID } from '../logic/horrorPick.js';
 
 export const MAPS = {
   factory: { name: '밤의 고철 공장', map: factoryMap, theme: factoryTheme, notes: NOTES.factory, blurb: '녹슨 기계 사이로 쇳소리가 울려요' },
@@ -32,12 +32,11 @@ export const MONSTERS = {
   gazer: { name: '눈뜬이', hint: '눈을 떼지 마세요', alarm: '{name}가 빨라졌다! 돌아서서 봐!', model: 'gazer', voice: 'gazer' },
   maw: { name: '큰입이', hint: '앞을 못 봐요. 소리를 내지 말고, 닿지 마세요', alarm: '{name}가 소리를 들었다! 자리를 옮겨!', model: 'maw', voice: 'maw' },
   ward: { name: '호러워드', hint: '벽을 뚫고 와요. 벽이 튀어나오면 도망치세요', alarm: '{name}에게 들켰다! 벽도 소용없어!', model: 'ward', voice: 'ward', throughWalls: true },
-  // 물괴물은 수영장 특별판에만 나온다 (MONSTER_IDS 밖)
-  swimmer: { name: '물괴물', hint: '눈이 없어요. 물소리만 들어요. 물에 들어가면 조심하세요', alarm: '{name}가 물소리를 들었다! 물에서 멀어져!', model: 'swimmer', voice: 'swimmer' },
 };
 
 // 목록 밖 괴물. MONSTERS 는 고르기 화면과 도장판의 괴물이라 따로 둔다. 이름은 여기 한 줄만 고치면 된다
 export const SPECIAL_MONSTERS = {
+  [POOL_MONSTER_ID]: { name: '물괴물', hint: '눈이 없어요. 물소리만 들어요. 물에 들어가면 조심하세요', alarm: '{name}가 물소리를 들었다! 물에서 멀어져!', model: 'swimmer', voice: 'swimmer' },
   [FOREST_MONSTER_ID]: { name: '처녀귀신', hint: FOREST_HINT, alarm: '{name}가 따라온다! 도망쳐!', model: 'maiden', voice: 'maiden' },
 };
 

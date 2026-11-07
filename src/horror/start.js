@@ -2,7 +2,7 @@
 import { isPhone, isTouchDevice } from '../ui/touch.js';
 import { saveStore } from '../save.js';
 import { todayKey } from '../logic/daily.js';
-import { FOREST_ROUND, LAST_ROUND, RANDOM, chooseRound, forcedRound, isForest, isRound } from '../logic/horrorPick.js';
+import { FOREST_ROUND, LAST_ROUND, POOL_ROUND, RANDOM, chooseRound, forcedRound, isForest, isPool, isRound } from '../logic/horrorPick.js';
 import { tonightRound } from '../logic/horrorTonight.js';
 
 // 안내 화면에 어느 기기의 조작법을 보여 줄지 고른다
@@ -74,7 +74,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
         lowFx: save.settings.lowFx,
         muted: save.settings.muted,
         onExit: leave,
-        onAgain: () => (isForest(round) ? play(FOREST_ROUND) : choose()), // 숲은 이미 확인했으니 고르기와 확인 창 없이 바로 다시 들어간다
+        onAgain: () => (isForest(round) || isPool(round) ? play(round) : choose()), // 어른용 판은 이미 확인했으니 고르기와 확인 창 없이 바로 다시 들어간다
       });
       horror.start();
     } catch (e) {
@@ -109,6 +109,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     },
     onLastNight: () => play(LAST_ROUND),
     onForest: () => play(FOREST_ROUND),
+    onPool: () => play(POOL_ROUND),
     // 날짜는 누른 순간에 다시 본다. 고르기 화면을 띄운 채 자정을 넘겨도 어제 판이 시작되지 않는다
     onTonight: () => {
       const tonight = today();

@@ -4,7 +4,7 @@ import { addStamp, boardSize, cellKey, normalizeStamps } from '../src/logic/horr
 import { createRun, normalizeHorror } from '../src/logic/horrorRun.js';
 import { tonightRound } from '../src/logic/horrorTonight.js';
 import { ALL_MAPS, ALL_MONSTERS, FOREST_PLACE, MAPS, MONSTERS, SPECIAL_MONSTERS } from '../src/horror/content.js';
-import { forestCard, showChooser } from '../src/horror/chooser.js';
+import { forestCard, poolCard, showChooser } from '../src/horror/chooser.js';
 import { HorrorHud, escapeText, forestEscapeHead, introLines } from '../src/horror/hud.js';
 import { ENDINGS, FINAL_LINES, NOTES, clueTexts, fillName } from '../src/horror/story.js';
 import { startHorror } from '../src/horror/start.js';
@@ -179,7 +179,7 @@ function fakeDom() {
 describe('고르기 화면의 어른용 칸', () => {
   const open = (compact = false) => {
     const dom = fakeDom();
-    const calls = { forest: 0, start: 0 };
+    const calls = { forest: 0, pool: 0, start: 0 };
     showChooser(dom.root, {
       choice: { mapId: RANDOM, monsterId: RANDOM },
       compact,
@@ -190,6 +190,7 @@ describe('고르기 화면의 어른용 칸', () => {
       onLastNight() {},
       onTonight() {},
       onForest: () => calls.forest++,
+      onPool: () => calls.pool++,
       onQuit() {},
     });
     return { dom, calls };
@@ -243,6 +244,59 @@ describe('고르기 화면의 어른용 칸', () => {
     expect(calls.start).toBe(0);
     expect(dom.data('chooser')).toBe(null);
     expect(dom.keys).toHaveLength(0);
+  });
+});
+
+describe('어른용 수영장 칸', () => {
+  const open = (compact = false) => {
+    const dom = fakeDom();
+    const calls = { forest: 0, pool: 0 };
+    showChooser(dom.root, {
+      choice: { mapId: RANDOM, monsterId: RANDOM },
+      compact,
+      record: normalizeHorror({}),
+      tonight: tonightRound('2026-11-07'),
+      onLook() {},
+      onStart() {},
+      onLastNight() {},
+      onTonight() {},
+      onForest: () => calls.forest++,
+      onPool: () => calls.pool++,
+      onQuit() {},
+    });
+    return { dom, calls };
+  };
+
+  it('숲 칸 바로 아래에 같은 붉은 모양으로 놓인다', () => {
+    const { dom } = open();
+    const btn = dom.data('pool');
+    expect(btn.text()).toBe(poolCard().join(''));
+    expect(poolCard()[0]).toBe('어른용: 불 켜진 수영장, 물괴물');
+    expect(btn.style.cssText).toBe(dom.data('forest').style.cssText);
+    const panel = btn.parent;
+    expect(panel.kids.indexOf(btn)).toBe(panel.kids.indexOf(dom.data('forest')) + 1);
+    expect(open(true).dom.data('pool').kids).toHaveLength(1);
+  });
+
+  it('누르면 수영장 확인 창이 뜨고, 돌아가기에 손이 가 있다', () => {
+    const { dom, calls } = open();
+    dom.data('pool').click();
+    const confirm = dom.data('poolConfirm');
+    expect(confirm.text()).toContain('물에 닿으면 소리가 나고');
+    expect(confirm.text()).toContain('아이 혼자 하지 않게');
+    expect(dom.focused).toBe(dom.data('poolBack'));
+    dom.key('Escape');
+    expect(dom.data('poolConfirm')).toBe(null);
+    expect(calls.pool).toBe(0);
+  });
+
+  it('들어가기를 누르면 화면을 닫고 수영장으로 간다. 숲으로는 가지 않는다', () => {
+    const { dom, calls } = open(true);
+    dom.data('pool').click();
+    dom.data('poolEnter').click();
+    expect(calls.pool).toBe(1);
+    expect(calls.forest).toBe(0);
+    expect(dom.data('chooser')).toBe(null);
   });
 });
 
