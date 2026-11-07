@@ -984,6 +984,18 @@ export const balance = {
       ward: { // 나머지는 세이노 값을 그대로 쓴다
         wallSlow: 0.35, // 벽 속에서 느려지는 비율. 벽 한 칸을 쫓으며 지나는 데 1.4초쯤 걸려 튀어나오는 벽을 보고 달아날 수 있다
       },
+      // 처녀귀신 (숲 판). 해가 지는 단계마다 값이 다르고 나머지는 세이노 값을 쓴다
+      // walk: 순찰, 조사 속도, chase: 추격 속도 (0 은 쫓지 않음), hear: 듣는 거리와 빛을 알아채는 거리 배수
+      // blinkAfter: 주인공 눈에 안 보인 채 이만큼 지나면 순간이동한다 (초), blinkMin, blinkMax: 주인공에게서 나타나는 거리 (칸)
+      maiden: {
+        glow: {
+          walk: 0.5, chase: 0, hear: 0.4,
+          showTime: 1.6, // 눈에 띈 뒤 서서 바라보다가 사라지기까지 (초)
+          slipDist: 5, // 이만큼 다가가면 바로 사라진다 (칸)
+        },
+        twilight: { walk: 0.8, chase: 1.7, hear: 1, blinkAfter: 6, blinkMin: 5, blinkMax: 8, blinkWarn: 1.2 }, // blinkWarn: 나타난 뒤 잡지 않는 시간 (초)
+        night: { walk: 1.1, chase: 2.15, hear: 1.4, blinkAfter: 3.5, blinkMin: 2.5, blinkMax: 4, blinkWarn: 0.9 }, // 달리기(2.3)보다 조금 느리다
+      },
     },
   },
 
