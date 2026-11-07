@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync } from 'node:fs';
 import { reachable, blocked, findPath, cellOf, center, withOpen } from '../src/logic/horrorGrid.js';
 import { createRun, takeFuse, takeKey, openDoor, insertFuses, takeClue, nearestUse } from '../src/logic/horrorRun.js';
 import { createStalker, tickStalker } from '../src/logic/horrorStalker.js';
 import { createAids, takeAid, useAid, seeBoard, addMark, addAidTargets, seenBoardNear, makeSound, stepSounds, throwSpot, compassGoal, compassYaw, AID_KINDS } from '../src/logic/horrorAids.js';
 import { ALL_MAPS } from '../src/horror/content.js';
 import { balance } from '../src/config/balance.js';
+import { AID_ART } from '../src/horror/aidArtSizes.js';
 
 const k = balance.horror;
 const a = k.aids;
@@ -213,5 +215,33 @@ describe('괴물이 아이템 소리를 듣는다', () => {
     makeSound(aids, cellOf(s), 99, 1, true);
     tickStalker(s, { map, player: quiet(center(map.start)), seen: false, pressure: 0, sounds: aids.sounds }, k, 0, seeded(3));
     expect(s.repathT).toBeCloseTo(a.gazerLure);
+  });
+});
+
+describe('도움 아이템 그림 (tools/make_aid_art.py)', () => {
+  const has = (file) => existsSync(new URL(`../public/art/${file}`, import.meta.url));
+  for (const id of Object.keys(ALL_MAPS)) {
+    it(`${id}: 아이템 넷과 지도판 그림이 있고, 지도를 그릴 안쪽 네모가 그림 안에 있다`, () => {
+      for (const kind of AID_KINDS) {
+        expect(has(`aid_${id}_${kind}.webp`)).toBe(true);
+        expect(AID_ART.items[id][kind]).toBeGreaterThan(0.2);
+        expect(AID_ART.items[id][kind]).toBeLessThan(5);
+      }
+      expect(has(`aid_board_${id}.webp`)).toBe(true);
+      const { aspect, inner } = AID_ART.boards[id];
+      expect(aspect).toBeGreaterThan(1);
+      const [x0, y0, x1, y1] = inner;
+      for (const v of inner) expect(v >= 0 && v <= 1).toBe(true);
+      expect(x1 - x0).toBeGreaterThan(0.3);
+      expect(y1 - y0).toBeGreaterThan(0.3);
+    });
+  }
+
+  it('숲의 충전 상자와 전원 그림이 있고, 숲 테마가 그 그림을 쓴다', () => {
+    const cards = ALL_MAPS.forest.theme.propCards;
+    for (const part of ['box', 'panel']) {
+      expect(has(`${cards[part].art}.webp`)).toBe(true);
+      expect(AID_ART.forest[part]).toBeGreaterThan(0.2);
+    }
   });
 });

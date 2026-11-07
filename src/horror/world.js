@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { CELL, chunksInSight, frontOf } from '../logic/horrorGrid.js';
 import { decorSpots, emergencyGlow } from '../logic/horrorDecor.js';
 import { artLoader, loadArt, faceBox, bandBox, piecesBox } from './art.js';
-import { addTrees, addBushes, addHollowTrees, addGateCard, addOutdoorDecor, addSky } from './forest3d.js';
+import { addTrees, addBushes, addHollowTrees, addGateCard, addOutdoorDecor, addSky, addPropCards } from './forest3d.js';
+import { AID_ART } from './aidArtSizes.js';
 
 const CHUNK = 7; // 구역 한 변의 칸 수
 const WALL_H = 3;
@@ -278,10 +279,10 @@ export function buildWorld(scene, map, k, theme, { lowFx = false } = {}) {
   }
   const boxMat = lambert(0x3a4a6a);
   const frontFor = (c) => (outdoor ? frontOf(map, c) : null); // 숲은 칸 둘레가 덤불이라 길 쪽으로 내놓는다
-  propSet(props, map.boxes, 0.9, 1.5, 0.5, boxMat, map.boxes.map(frontFor));
+  const boxSet = propSet(props, map.boxes, 0.9, 1.5, 0.5, boxMat, map.boxes.map(frontFor));
   const panelMat = lambert(0x6a3a2a);
   const gateMat = lambert(0x7a6a30);
-  prop(props, map.panel, 1.2, 1.7, 0.6, panelMat, frontFor(map.panel));
+  const panelBox = prop(props, map.panel, 1.2, 1.7, 0.6, panelMat, frontFor(map.panel));
   if (theme.gate) addGateCard(props, map, theme.gate, gateMat);
   else prop(props, map.gate, CELL, WALL_H, CELL, gateMat);
 
@@ -293,6 +294,7 @@ export function buildWorld(scene, map, k, theme, { lowFx = false } = {}) {
   glow(boxMat, 0x3060c0, 0.5);
   glow(panelMat, 0xc03020, 0.6);
   glow(gateMat, 0x402808, 0.5);
+  let panelCardMat = null;
   // 그림을 받으면 색을 빼고, 빛도 그림 모양대로 나게 한다
   const paint = (m, tex, lift = k.art.lift) => {
     m.map = tex;
@@ -301,8 +303,23 @@ export function buildWorld(scene, map, k, theme, { lowFx = false } = {}) {
     m.color.setHex(0x8a8a8a); // 가까이서 손전등에 하얗게 날아가지 않게 누른다
     m.needsUpdate = true;
   };
-  art('horror_box.jpg', (tex) => paint(boxMat, tex));
-  art('horror_panel.jpg', (tex) => paint(panelMat, tex));
+  // 숲은 충전 상자와 전원도 숲 그림(나무 그루터기 위 신당, 기둥에 달린 차단기) 한 장으로 세운다. 그림을 받기 전에는 상자 그대로다
+  const cards = theme.propCards;
+  if (cards) {
+    const cardMat = (color, power) => {
+      const m = new THREE.MeshLambertMaterial({ color: 0x8a8a8a }); // 그림을 받아야 보이므로 빛도 처음부터 그림 배수로
+      m.emissive.setHex(color);
+      m.emissiveIntensity = power * k.art.lift;
+      return m;
+    };
+    const boxCardMat = cardMat(0x3060c0, 0.5);
+    panelCardMat = cardMat(0xc03020, 0.6);
+    addPropCards(props, map, map.boxes, cards.box, AID_ART.forest.box, boxCardMat, art, () => { boxSet.visible = false; });
+    addPropCards(props, map, [map.panel], cards.panel, AID_ART.forest.panel, panelCardMat, art, () => { panelBox.visible = false; });
+  } else {
+    art('horror_box.jpg', (tex) => paint(boxMat, tex));
+    art('horror_panel.jpg', (tex) => paint(panelMat, tex));
+  }
   art(theme.gate ? `${theme.gate.art}.webp` : 'horror_gate.jpg', (tex) => paint(gateMat, tex));
 
   // 바깥 맵은 벽 등, 관, 기계 대신 숲 장식이다. 등이 없으니 비상등 재질은 아무 데도 쓰지 않는 빈 재질이다
@@ -417,6 +434,7 @@ export function buildWorld(scene, map, k, theme, { lowFx = false } = {}) {
     // 전원이 켜지면 전원은 초록으로, 정문은 밝게 바뀐다
     setPowered() {
       glow(panelMat, 0x20c040, 0.8);
+      if (panelCardMat) glow(panelCardMat, 0x20c040, 0.8);
       glow(gateMat, 0xffc040, 0.7);
     },
     // 숲: 해 질 녘 색을 하늘 돔에 입힌다 (HorrorGame.tickDusk). 돔이 없으면 아무것도 하지 않는다

@@ -152,6 +152,29 @@ export function addHollowTrees(group, map, card, file, art) {
   return finish(mesh, group);
 }
 
+// 충전 상자와 전원처럼 칸 하나에 선 물건을 길 쪽을 보는 그림 한 장으로 세운다. card: { art, h }, aspect: 그림 가로/세로.
+// mat 은 world 의 빛나는 재질 (전원이 켜지면 색이 바뀐다). 그림을 받으면 onShow() 로 원래 상자를 숨긴다
+export function addPropCards(group, map, cells, card, aspect, mat, art, onShow) {
+  mat.alphaTest = CUT;
+  mat.side = THREE.DoubleSide;
+  mat.visible = false;
+  const mesh = new THREE.InstancedMesh(standingPlane(), mat, cells.length);
+  cells.forEach((c, i) => {
+    const f = frontOf(map, c);
+    const dx = f.cx - c.cx;
+    const dy = f.cy - c.cy;
+    setAt(mesh, i, (c.cx + 0.5 + dx * 0.3) * CELL, 0, (c.cy + 0.5 + dy * 0.3) * CELL, Math.atan2(dx, dy), card.h * aspect, card.h, 1);
+  });
+  art(`${card.art}.webp`, (tex) => {
+    mat.map = tex;
+    mat.emissiveMap = tex;
+    mat.visible = true;
+    mat.needsUpdate = true;
+    onShow();
+  });
+  return finish(mesh, group);
+}
+
 // 숲 끝의 쇠문. 길 쪽을 보는 그림 한 장. mat 은 world 의 정문 재질 (전원이 켜지면 빛난다)
 export function addGateCard(group, map, gate, mat) {
   const f = frontOf(map, map.gate);

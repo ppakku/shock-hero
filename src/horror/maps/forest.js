@@ -48,6 +48,7 @@ export const forestTheme = {
     bush: { art: 'horror_forest_bush', w: 3.8, h: [2.3, 3], inset: [0.15, 0.95], slide: 0.9 }, // 길을 마주한 면마다 두 겹 (효과 줄이기면 앞 겹만)
   },
   gate: { art: 'horror_forest_gate', w: 5.4, h: 3.8 },
+  propCards: { box: { art: 'horror_forest_box', h: 1.6 }, panel: { art: 'horror_forest_panel', h: 2 } }, // 충전 상자는 그루터기 위 작은 신당, 전원은 나무 기둥에 달린 차단기 (높이, 미터)
   decor: {
     outdoor: true,
     totem: { art: 'horror_forest_totem', w: 1.15, h: 3.2, ahead: 4 }, // 장승 한 쌍. 시작에서 ahead 칸 나아간 길 양옆

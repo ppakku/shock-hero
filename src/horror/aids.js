@@ -3,6 +3,8 @@
 import * as THREE from 'three';
 import { CELL, cellOf, blocked } from '../logic/horrorGrid.js';
 import { KEY_NAMES } from '../logic/horrorRun.js';
+import { artLoader, loadArt } from './art.js';
+import { AID_ART } from './aidArtSizes.js';
 import { createAids, takeAid, useAid, seeBoard, addMark, addAidTargets, seenBoardNear, makeSound, stepSounds, throwSpot, compassGoal, compassYaw, AID_KINDS, AID_NAMES } from '../logic/horrorAids.js';
 
 const SLOT_LABEL = { flare: '조명탄', compass: '나침반', toy: '장난감', chalk: '분필' };
@@ -13,6 +15,10 @@ const ITEM_LOOK = { // 바닥에 놓인 모양. 어둠 속에서 찾을 수 있�
   chalk: { geo: () => new THREE.BoxGeometry(0.06, 0.06, 0.28), color: 0xf4f1e6, turn: 0 },
 };
 const BOARD = { w: 1.3, h: 0.95, y: 1.55, glow: 0.75, seen: 0.35 }; // 벽 지도 크기와 높이 (미터), 밝기
+// 맵마다 Gemini 그림 (tools/make_aid_art.py). 그림을 받기 전이나 못 받으면 위의 빛나는 모양과 그린 지도판 그대로다
+// item: 바닥 아이템 그림의 긴 쪽 (미터), toy: 던진 장난감 그림의 긴 쪽. board: 그림 지도판의 너비 (미터). stand 면 기둥이 땅에 닿게 세운다
+const ART = { item: 0.42, toy: 0.32, glow: 1.5, board: { w: 1.7, y: 1.55 }, stand: { forest: { w: 2.4 } } };
+export const artMap = (mapId) => (AID_ART.items[mapId] ? mapId : 'factory');
 const MARK = { size: 0.9, y: 0.02, glow: 0.8 }; // 분필 화살표 크기와 바닥에서 높이 (미터)
 const COMPASS_EVERY = 0.4; // 나침반 길을 다시 찾는 간격 (초)
 const MAP_COLORS = { paper: '#c9b48a', wall: '#3a2a18', locker: '#5a4a34', fuse: '#e0a020', clue: '#c02020', mark: '#ffffff', me: '#1a8a3a', panel: '#7a3ad0', gate: '#30d0c0' };
@@ -20,9 +26,12 @@ const LOCK_COLORS = ['#e04848', '#4a8ef0'];
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // 위에서 내려다본 지도. full 이면 내 자리, 물건, 분필 표시까지 그린다 (벽에 붙은 그림은 길만 그린다)
-export function drawMap(ctx, map, cell, full = null) {
-  ctx.fillStyle = MAP_COLORS.paper;
-  ctx.fillRect(0, 0, map.w * cell, map.h * cell);
+// paper 가 null 이면 바탕을 칠하지 않고 길 사이 벽만 그린다 (그림 지도판 위에 그릴 때)
+export function drawMap(ctx, map, cell, full = null, paper = MAP_COLORS.paper) {
+  if (paper) {
+    ctx.fillStyle = paper;
+    ctx.fillRect(0, 0, map.w * cell, map.h * cell);
+  }
   map.rows.forEach((row, cy) => [...row].forEach((ch, cx) => {
     if (ch === '#' || ch === 'E') ctx.fillStyle = MAP_COLORS.wall;
     else if (ch === 'L') ctx.fillStyle = MAP_COLORS.locker;
@@ -93,6 +102,31 @@ function boardTexture(map, name) {
   }, w, h);
 }
 
+// 그림 지도판: 테두리 그림의 빈 안쪽 inner [왼, 위, 오른, 아래] (0~1) 에 제목과 길을 그린다
+function boardArtTexture(img, inner, map, name) {
+  const w = img.width;
+  const h = img.height;
+  return canvasTexture((ctx) => {
+    ctx.drawImage(img, 0, 0, w, h);
+    const x0 = inner[0] * w;
+    const y0 = inner[1] * h;
+    const iw = (inner[2] - inner[0]) * w;
+    const ih = (inner[3] - inner[1]) * h;
+    const title = Math.round(ih * 0.16);
+    ctx.fillStyle = '#2a1e12';
+    ctx.font = `bold ${Math.round(title * 0.8)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${name} 안내도`, x0 + iw / 2, y0 + title / 2, iw);
+    const cell = Math.min(iw / map.w, (ih - title) / map.h);
+    ctx.save();
+    ctx.translate(x0 + (iw - map.w * cell) / 2, y0 + title + (ih - title - map.h * cell) / 2);
+    ctx.globalAlpha = 0.85;
+    drawMap(ctx, map, cell, null, null);
+    ctx.restore();
+  }, w, h);
+}
+
 // 바닥에 그리는 분필 화살표. 그림 위쪽이 앞이다
 function markTexture() {
   return canvasTexture((ctx) => {
@@ -132,6 +166,9 @@ export class HorrorAids {
     this.textures = [];
     this.group = new THREE.Group();
     g.scene.add(this.group);
+    this.art = artMap(g.round?.mapId);
+    this.loader = artLoader();
+    this.itemMats = {}; // 종류마다 그림 한 장. 받으면 바닥 아이템과 던진 장난감이 같이 쓴다
     this.buildItems();
     this.buildBoards(g.place.name);
     this.markTex = markTexture();
@@ -139,21 +176,60 @@ export class HorrorAids {
     this.markMat = new THREE.MeshBasicMaterial({ map: this.markTex, transparent: true, depthWrite: false });
     this.markMat.color.setScalar(MARK.glow);
     this.markGeo = new THREE.PlaneGeometry(MARK.size, MARK.size);
-    this.toy = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: ITEM_LOOK.toy.color }));
+    // 던진 장난감. 그림을 받으면 바닥에 선 그림으로 바뀐다
+    this.toy = new THREE.Group();
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: ITEM_LOOK.toy.color }));
+    const toySprite = this.itemSprite('toy', ball, ART.toy, true);
+    toySprite.position.y = -0.11; // throwToy 가 공 가운데 높이에 놓으므로 그림 밑은 바닥으로 내린다
+    this.toy.add(ball, toySprite);
     this.toy.visible = false;
     this.group.add(this.toy);
     this.buildHud(g.root, g.touch);
     this.showSlots();
   }
 
+  // 종류마다 그림 재질 하나. 불빛과 상관없이 밝게 그려 어둠 속에서도 찾을 수 있다
+  itemMat(kind) {
+    if (!this.itemMats[kind]) {
+      const mat = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.3 });
+      mat.color.setScalar(ART.glow);
+      const shown = [];
+      this.itemMats[kind] = { mat, shown };
+      const tex = loadArt(this.loader, `aid_${this.art}_${kind}.webp`, () => {
+        mat.map = tex;
+        mat.needsUpdate = true;
+        shown.forEach(([sprite, prim]) => {
+          sprite.visible = true;
+          prim.visible = false;
+        });
+      });
+      if (tex) this.textures.push(tex);
+    }
+    return this.itemMats[kind];
+  }
+
+  // 어디서 봐도 정면인 아이템 그림. 그림을 받기 전에는 숨기고, 받으면 prim (빛나는 모양) 을 숨긴다. floor 면 밑이 바닥에 닿는다
+  itemSprite(kind, prim, size, floor = false) {
+    const { mat, shown } = this.itemMat(kind);
+    const aspect = AID_ART.items[this.art][kind];
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(size * Math.min(1, aspect), size * Math.min(1, 1 / aspect), 1);
+    if (floor) sprite.center.set(0.5, 0);
+    sprite.visible = false;
+    shown.push([sprite, prim]);
+    return sprite;
+  }
+
   buildItems() {
     this.itemMeshes = this.state.items.map((c) => {
       const look = ITEM_LOOK[c.kind];
+      const holder = new THREE.Group();
       const mesh = new THREE.Mesh(look.geo(), new THREE.MeshBasicMaterial({ color: look.color }));
-      mesh.position.set((c.cx + 0.5) * CELL, 0.6, (c.cy + 0.5) * CELL);
       mesh.rotation.z = look.turn;
-      this.group.add(mesh);
-      return mesh;
+      holder.add(mesh, this.itemSprite(c.kind, mesh, ART.item));
+      holder.position.set((c.cx + 0.5) * CELL, 0.6, (c.cy + 0.5) * CELL);
+      this.group.add(holder);
+      return holder;
     });
   }
 
@@ -170,6 +246,25 @@ export class HorrorAids {
       this.group.add(mesh);
       return mesh;
     });
+    // 그림 지도판을 받으면 테두리 그림 안에 같은 지도를 그려 바꿔 끼운다. 숲은 기둥이 땅에 닿게 세운다
+    const look = AID_ART.boards[this.art];
+    const frame = loadArt(this.loader, `aid_board_${this.art}.webp`, () => {
+      if (!frame.image) return;
+      const art = boardArtTexture(frame.image, look.inner, this.g.map, name);
+      this.textures.push(art);
+      const stand = ART.stand[this.art];
+      const w = stand ? stand.w : ART.board.w;
+      const h = w / look.aspect;
+      for (const mesh of this.boardMeshes) {
+        mesh.material.map = art;
+        mesh.material.alphaTest = 0.5;
+        mesh.material.needsUpdate = true;
+        mesh.geometry.dispose();
+        mesh.geometry = new THREE.PlaneGeometry(w, h);
+        mesh.position.y = stand ? h / 2 : ART.board.y;
+      }
+    });
+    if (frame) this.textures.push(frame);
   }
 
   buildHud(root, touch) {
@@ -182,7 +277,12 @@ export class HorrorAids {
     this.slots = AID_KINDS.map((kind, i) => {
       const el = document.createElement(touch ? 'button' : 'div');
       css(el, `position:relative;width:${size}px;height:${size}px;border-radius:50%;border:2px solid #777;background:rgba(40,40,40,.6);color:#eee;font:${size > 50 ? 12 : 11}px sans-serif;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;touch-action:none;pointer-events:${touch ? 'auto' : 'none'}`);
-      el.innerHTML = `<span>${SLOT_LABEL[kind]}</span>${touch ? '' : `<span style="font-size:10px;color:#aaa">${i + 1}</span>`}<span style="position:absolute;right:-4px;bottom:-4px;min-width:12px;padding:0 4px;border-radius:9px;background:#3a1414;border:1px solid #a33;font-size:11px"></span>`;
+      el.title = SLOT_LABEL[kind];
+      el.setAttribute?.('aria-label', SLOT_LABEL[kind]);
+      // 이번 맵의 아이템 그림. 못 받으면 그림을 숨기고 글자만 남는다. 터치 화면은 개수 표시와 겹치지 않게 이름을 위에 쓴다
+      const icon = `<img src="art/aid_${this.art}_${kind}.webp" alt="" draggable="false" onerror="this.style.display='none'" style="position:absolute;left:6px;top:${touch ? 9 : 3}px;width:calc(100% - 12px);height:calc(100% - 12px);object-fit:contain;filter:drop-shadow(0 0 3px #000)">`;
+      const digit = touch ? '' : `<span style="position:absolute;left:3px;top:0;font-size:10px;color:#aaa;text-shadow:0 0 3px #000">${i + 1}</span>`;
+      el.innerHTML = `${icon}<span style="position:absolute;left:0;right:0;${touch ? 'top:1px' : 'bottom:1px'};font-size:${size > 50 ? 10 : 9}px;text-shadow:0 0 3px #000,0 0 3px #000">${SLOT_LABEL[kind]}</span>${digit}<span style="position:absolute;right:-4px;bottom:-4px;min-width:12px;padding:0 4px;border-radius:9px;background:#3a1414;border:1px solid #a33;font-size:11px"></span>`;
       if (touch) {
         el.addEventListener('pointerdown', (e) => {
           e.preventDefault(); // 같은 자리로 마우스 클릭이 새어 나가지 않게 한다
