@@ -3,8 +3,8 @@
 #   python3 tools/run_horror.py 출력폴더 --touch   (태블릿 손가락 입력을 진짜 터치 이벤트로 확인)
 #   python3 tools/run_horror.py 출력폴더 --shots   (벽 앞 손전등 켠/끈 화면만 찍기)
 #   python3 tools/run_horror.py 출력폴더 --creature (괴물 장면과 fps 만 빠르게 확인)
-#   python3 tools/run_horror.py 출력폴더 --rounds  (아홉 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
-#   python3 tools/run_horror.py 출력폴더 --last    (도장판을 채워 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
+#   python3 tools/run_horror.py 출력폴더 --rounds  (모든 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
+#   python3 tools/run_horror.py 출력폴더 --last    (도장을 모아 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --tonight (오늘의 밤 카드로 시작해 다섯 조건을 봇으로 지키고 깨서 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 오디오 노드까지 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
@@ -1452,6 +1452,7 @@ ROUND_NOW = """() => {
 
 
 AUDIO_VOICE_SPREAD = 8  # 지난 판의 멈춘 노드 수는 괴물 목소리마다 이만큼 다르다
+ROUND_MAPS = ('factory', 'sewer', 'school', 'park', 'mart')  # 랜덤으로 나오는 맵 (봇 점검이 도는 맵)
 
 
 # Chrome 이 실제로 살려 둔 오디오 노드를 센다. JS 쪽 집계는 끝난 소리와 GC 를 못 본다
@@ -1488,10 +1489,8 @@ def play_replay(pw):
     pg.click('[data-chooser] button:has-text("들어가기")', timeout=20000)  # 랜덤 그대로 들어간다
     pg.wait_for_function('window.__horror', timeout=20000)
     time.sleep(0.5)
-    seen = []
-    first = None
-    counts = []
-    for i in range(12):
+    seen, first, counts = [], None, []
+    for i in range(16):
         counts.append(settled_audio_nodes(cdp, nodes))
         now = pg.evaluate(ROUND_NOW)
         print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
@@ -1519,7 +1518,7 @@ def play_replay(pw):
         time.sleep(0.4)
     print('audio nodes', counts)
     check('replay: audio nodes do not grow', max(counts[2:]) - min(counts[1:]) <= AUDIO_VOICE_SPREAD, counts)
-    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 3 and len({r['monsterId'] for r in seen}) == 4, seen)
+    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == len(ROUND_MAPS) and len({r['monsterId'] for r in seen}) == 4, seen)
     pg.click('#horror button:has-text("타이틀로")')
     pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
     check('replay: root removed at title', pg.evaluate("!document.getElementById('horror')"))
@@ -1682,7 +1681,7 @@ def run_rounds(pw):
     errs = []
     watch(pg, errs)
     calls = []
-    for mapId in ('factory', 'sewer', 'school'):
+    for mapId in [m for m in ROUND_MAPS if m in sys.argv] or ROUND_MAPS:  # 맵 이름을 주면 그 맵만 돈다
         for monsterId in ('seino', 'gazer', 'maw', 'ward'):
             tag = f'{mapId}_{monsterId}'
             open_round(pg, mapId, monsterId)
@@ -2063,7 +2062,7 @@ def tonight_midnight(pw, b):
 def tonight_dark(pw, b):
     ctx = b.new_context(viewport={'width': 1280, 'height': 720})
     pg = ctx.new_page()
-    for mapId in ('factory', 'sewer', 'school'):
+    for mapId in ROUND_MAPS:
         for monster in ('gazer', 'seino'):
             open_round(pg, mapId, monster)
             pg.evaluate(IDLE_INPUT)

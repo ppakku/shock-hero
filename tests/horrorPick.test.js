@@ -34,7 +34,7 @@ describe('고르기 화면의 선택', () => {
 });
 
 describe('판 고르기', () => {
-  it('처음이면 아홉 조합이 다 나온다', () => {
+  it('처음이면 모든 조합이 다 나온다', () => {
     const rand = seeded(7);
     const seen = new Set();
     for (let i = 0; i < 500; i += 1) {
@@ -42,7 +42,7 @@ describe('판 고르기', () => {
       expect(isRound(r)).toBe(true);
       seen.add(`${r.mapId}/${r.monsterId}`);
     }
-    expect(seen.size).toBe(12);
+    expect(seen.size).toBe(MAP_IDS.length * MONSTER_IDS.length);
   });
 
   it('지난 판과 맵도 괴물도 다르다', () => {
@@ -66,7 +66,7 @@ describe('판 고르기', () => {
       maps.add(last.mapId);
       monsters.add(last.monsterId);
     }
-    expect(maps.size).toBe(3);
+    expect(maps.size).toBe(MAP_IDS.length);
     expect(monsters.size).toBe(4);
   });
 

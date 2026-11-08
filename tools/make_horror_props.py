@@ -27,10 +27,14 @@ TILES = {
     'ceil_sewer': (512, 0x111614, 0.58),
     'ceil_school': (512, 0x24262c, 0.58),
     'ceil_station': (512, 0x1c1e26, 0.58),
+    'ceil_park': (512, 0x1c1820, 1),
+    'ceil_mart': (512, 0x20242a, 1),
     'pipe_factory': (256, 0x2e3236, 1),
     'pipe_sewer': (256, 0x3a4438, 1),
     'pipe_school': (256, 0x4a4a46, 1),
     'pipe_station': (256, 0x4a4a46, 1),
+    'pipe_park': (256, 0x6a3a34, 1),
+    'pipe_mart': (256, 0x5a5e62, 1),
 }
 
 

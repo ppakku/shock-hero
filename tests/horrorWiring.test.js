@@ -179,7 +179,7 @@ afterEach(() => {
 });
 
 describe('판 재료', () => {
-  it.each(['factory', 'sewer', 'school'])('%s: 안개, 배경, 환경광, 그림이 맵 테마를 따른다', (mapId) => {
+  it.each(['factory', 'sewer', 'school', 'park', 'mart'])('%s: 안개, 배경, 환경광, 그림이 맵 테마를 따른다', (mapId) => {
     const { theme } = MAPS[mapId];
     const g = makeGame(mapId, 'seino');
     expect(g.scene.fog.color.getHex()).toBe(new THREE.Color(theme.fog).getHex());
@@ -225,7 +225,7 @@ describe('판 재료', () => {
   };
   const hex = (color) => new THREE.Color(color).getHex();
 
-  it.each(['school', 'station', 'factory', 'sewer'])('%s: 소품 그림을 하나도 못 받아도 예전 색 그대로 돈다', (mapId) => {
+  it.each(['school', 'station', 'factory', 'sewer', 'park', 'mart'])('%s: 소품 그림을 하나도 못 받아도 예전 색 그대로 돈다', (mapId) => {
     const { theme } = ALL_MAPS[mapId];
     fakes.failArt = 'horror_'; // 이 맵의 그림을 전부 막는다
     const g = makeGame(mapId, 'seino');
@@ -233,6 +233,7 @@ describe('판 재료', () => {
     expect(plain).toContain(hex(theme.ceil));
     expect(plain).toContain(hex(theme.decor.pipe.color));
     if (theme.decor.low) expect(plain).toContain(hex(theme.decor.low.color));
+    for (const kind of theme.decor.extra ?? []) expect(plain).toContain(hex(kind.plain));
     expect(g.clueMeshes.every((m) => !m.material.map && m.material.color.getHex() === 0xe02828)).toBe(true);
     g.world.update(g.p, 14, 0, true);
     expect(g.world.lightMat.map).toBeNull();

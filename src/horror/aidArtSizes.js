@@ -21,6 +21,18 @@ export const AID_ART = {
       "toy": 0.703,
       "chalk": 0.582
     },
+    "park": {
+      "flare": 0.328,
+      "compass": 0.77,
+      "toy": 0.609,
+      "chalk": 0.395
+    },
+    "mart": {
+      "flare": 0.52,
+      "compass": 0.75,
+      "toy": 0.316,
+      "chalk": 0.48
+    },
     "station": {
       "flare": 0.73,
       "compass": 0.828,
@@ -66,6 +78,24 @@ export const AID_ART = {
         0.1215,
         0.8825,
         0.8447
+      ]
+    },
+    "park": {
+      "aspect": 1.554,
+      "inner": [
+        0.1283,
+        0.2214,
+        0.8746,
+        0.8105
+      ]
+    },
+    "mart": {
+      "aspect": 1.538,
+      "inner": [
+        0.1254,
+        0.1952,
+        0.859,
+        0.8499
       ]
     },
     "station": {

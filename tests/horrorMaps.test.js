@@ -8,6 +8,8 @@ import { factoryMap, factoryTheme } from '../src/horror/maps/factory.js';
 import { sewerMap, sewerTheme } from '../src/horror/maps/sewer.js';
 import { schoolMap, schoolTheme } from '../src/horror/maps/school.js';
 import { stationMap, stationTheme } from '../src/horror/maps/station.js';
+import { parkMap, parkTheme } from '../src/horror/maps/park.js';
+import { martMap, martTheme } from '../src/horror/maps/mart.js';
 import { forestMap, forestTheme } from '../src/horror/maps/forest.js';
 import { poolMap, poolTheme } from '../src/horror/maps/pool.js';
 import { piecesBox } from '../src/horror/art.js';
@@ -19,6 +21,8 @@ const MAPS = [
   { id: 'sewer', map: sewerMap, theme: sewerTheme, rooms: [1, 3] }, // 문이 잠긴 문 둘뿐이라 방은 셋이다
   { id: 'school', map: schoolMap, theme: schoolTheme, rooms: [14, 24] },
   { id: 'station', map: stationMap, theme: stationTheme, rooms: [8, 16] },
+  { id: 'park', map: parkMap, theme: parkTheme, rooms: [1, 14] }, // 복도가 이어져 큰 방 몇 개로 친다
+  { id: 'mart', map: martMap, theme: martTheme, rooms: [3, 3] }, // 매장 하나와 잠긴 창고 둘
   { id: 'forest', map: forestMap, theme: forestTheme, rooms: [3, 3] }, // 어른용 숲. 문이 잠긴 울타리 문 둘뿐이라 방은 셋이다
   { id: 'pool', map: poolMap, theme: poolTheme, rooms: [1, 3] }, // 문 없이 트인 곳으로 이어져서 방은 잠긴 문 둘로 나뉜 셋이다
 ];
@@ -337,9 +341,11 @@ describe('테마', () => {
   });
 
   it('소품 그림 파일이 다 있고, 맵마다 등과 천장, 배관이 제 그림이다', () => {
-    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, theme.decor.low?.art].filter(Boolean);
+    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, ...(theme.decor.extra ?? []).map((kind) => kind.art)]; // 낮은 물건은 아래에서 따로 본다 (투명 그림은 webp)
     for (const { theme } of INDOOR) {
       for (const art of arts(theme)) expect(existsSync(`public/art/${art}.jpg`), art).toBe(true);
+      const { low } = theme.decor;
+      if (low) expect(existsSync(`public/art/${low.art}.${low.cut ? 'webp' : 'jpg'}`), low.art).toBe(true);
     }
     expect(existsSync('public/art/horror_clue.jpg')).toBe(true);
     for (const pick of [(t) => t.ceilArt.art, (t) => t.decor.light.art, (t) => t.decor.pipe.art]) {
@@ -358,7 +364,7 @@ describe('테마', () => {
   });
 });
 
-describe('세 맵이 다르게 느껴진다', () => {
+describe('맵이 서로 다르게 느껴진다', () => {
   const longestRun = (map) => {
     let best = 0;
     for (const row of map.rows) {
@@ -376,6 +382,16 @@ describe('세 맵이 다르게 느껴진다', () => {
   it('학교는 곧은 복도가 길고 교실 문이 많다', () => {
     expect(longestRun(schoolMap)).toBeGreaterThanOrEqual(30);
     expect(doors(schoolMap)).toBeGreaterThanOrEqual(20);
+  });
+
+  it('마트는 맵 끝까지 곧게 보이고 교차 통로가 있다', () => {
+    expect(longestRun(martMap)).toBeGreaterThanOrEqual(36);
+    expect(doors(martMap)).toBe(0);
+    for (const cx of [1, 2, 26, 27]) expect(martMap.rows.slice(1, 24).every((row) => row[cx] === '.' || 'FRNKXC'.includes(row[cx])), cx).toBe(true);
+  });
+
+  it('놀이공원은 어느 맵보다 곧은 길이 짧다', () => {
+    for (const map of [factoryMap, sewerMap, schoolMap, stationMap, martMap]) expect(longestRun(parkMap)).toBeLessThan(longestRun(map));
   });
 });
 

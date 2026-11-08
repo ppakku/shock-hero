@@ -22,7 +22,7 @@ describe('쪽지 이야기 글', () => {
 });
 
 describe('맵별 쪽지 이야기', () => {
-  const maps = ['factory', 'sewer', 'school', 'station', 'pool', 'forest'];
+  const maps = ['factory', 'sewer', 'school', 'park', 'mart', 'station', 'pool', 'forest'];
   it('맵마다 8개이고 2에서 4줄이며 한 줄이 짧다', () => {
     expect(Object.keys(NOTES)).toEqual(maps);
     for (const id of maps) {
