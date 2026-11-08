@@ -1452,6 +1452,7 @@ ROUND_NOW = """() => {
 
 
 AUDIO_VOICE_SPREAD = 8  # 지난 판의 멈춘 노드 수는 괴물 목소리마다 이만큼 다르다
+ROUND_MAPS = ('factory', 'sewer', 'school', 'park', 'mart')  # 랜덤으로 나오는 맵 (봇 점검이 도는 맵)
 
 
 # Chrome 이 실제로 살려 둔 오디오 노드를 센다. JS 쪽 집계는 끝난 소리와 GC 를 못 본다
@@ -1488,9 +1489,7 @@ def play_replay(pw):
     pg.click('[data-chooser] button:has-text("들어가기")', timeout=20000)  # 랜덤 그대로 들어간다
     pg.wait_for_function('window.__horror', timeout=20000)
     time.sleep(0.5)
-    seen = []
-    first = None
-    counts = []
+    seen, first, counts = [], None, []
     for i in range(16):
         counts.append(settled_audio_nodes(cdp, nodes))
         now = pg.evaluate(ROUND_NOW)
@@ -1519,7 +1518,7 @@ def play_replay(pw):
         time.sleep(0.4)
     print('audio nodes', counts)
     check('replay: audio nodes do not grow', max(counts[2:]) - min(counts[1:]) <= AUDIO_VOICE_SPREAD, counts)
-    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 5 and len({r['monsterId'] for r in seen}) == 4, seen)
+    check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == len(ROUND_MAPS) and len({r['monsterId'] for r in seen}) == 4, seen)
     pg.click('#horror button:has-text("타이틀로")')
     pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
     check('replay: root removed at title', pg.evaluate("!document.getElementById('horror')"))
@@ -1682,8 +1681,7 @@ def run_rounds(pw):
     errs = []
     watch(pg, errs)
     calls = []
-    picked = [m for m in ('factory', 'sewer', 'school', 'park', 'mart') if m in sys.argv]  # 맵 이름을 주면 그 맵만 돈다
-    for mapId in picked or ('factory', 'sewer', 'school', 'park', 'mart'):
+    for mapId in [m for m in ROUND_MAPS if m in sys.argv] or ROUND_MAPS:  # 맵 이름을 주면 그 맵만 돈다
         for monsterId in ('seino', 'gazer', 'maw', 'ward'):
             tag = f'{mapId}_{monsterId}'
             open_round(pg, mapId, monsterId)
@@ -2064,7 +2062,7 @@ def tonight_midnight(pw, b):
 def tonight_dark(pw, b):
     ctx = b.new_context(viewport={'width': 1280, 'height': 720})
     pg = ctx.new_page()
-    for mapId in ('factory', 'sewer', 'school', 'park', 'mart'):
+    for mapId in ROUND_MAPS:
         for monster in ('gazer', 'seino'):
             open_round(pg, mapId, monster)
             pg.evaluate(IDLE_INPUT)

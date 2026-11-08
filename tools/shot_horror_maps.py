@@ -92,6 +92,7 @@ def start(pg):
 FAST_PLAY = """(limit) => {
   const g = window.__horror;
   g.renderer.setAnimationLoop(null);
+  g.input.locked = () => true; // 봇은 마우스를 잠그지 않는다. 잡혔다 살아날 때 '마우스가 풀렸으니 멈춤'에 걸리지 않게 한다
   const calls = [];
   let t = 0;
   for (; t < limit && g.state !== 'end'; t += 1 / 30) {
@@ -126,7 +127,8 @@ def play(pw):
                 print(tag, res)
                 calls[tag] = res.get('mean', 0)
                 check(f'{tag}: bot escapes', res.get('state') == 'end', res)
-                check(f'{tag}: draw calls stay near the others', res.get('max', 999) <= 70, res)
+                # 도움 아이템(벽 지도, 바닥 아이템)이 들어온 뒤로 공장 세이노 판도 가장 많을 때 71 이 나온다 (2026-11-08)
+                check(f'{tag}: draw calls stay near the others', res.get('max', 999) <= 80, res)
                 pg.screenshot(path=f'{OUT}/{tag}_end.png')
                 text = pg.inner_text('#horror')
                 check(f'{tag}: end screen has the map ending', len(text) > 20, text[:80])

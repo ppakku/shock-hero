@@ -41,7 +41,7 @@ export const martTheme = {
   doorArt: 'locker',
   board: { art: 'horror_mart_board', plain: 0xffffff, repeat: 1 }, // 할인 안내판
   ceil: 0x20242a,
-  ceilArt: { art: 'horror_ceil_mart', repeat: 7, tint: 0x808a9a },
+  ceilArt: { art: 'horror_ceil_mart', repeat: 7, tint: 0x313945 },
   fog: 0x02060c,
   ambient: 0x6a88b0,
   lightColor: 0x90d0ff, // 냉동고의 찬 빛

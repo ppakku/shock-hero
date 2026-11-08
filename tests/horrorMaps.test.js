@@ -341,7 +341,7 @@ describe('테마', () => {
   });
 
   it('소품 그림 파일이 다 있고, 맵마다 등과 천장, 배관이 제 그림이다', () => {
-    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, theme.decor.low?.art].filter(Boolean);
+    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, ...(theme.decor.extra ?? []).map((kind) => kind.art)]; // 낮은 물건은 아래에서 따로 본다 (투명 그림은 webp)
     for (const { theme } of INDOOR) {
       for (const art of arts(theme)) expect(existsSync(`public/art/${art}.jpg`), art).toBe(true);
       const { low } = theme.decor;
