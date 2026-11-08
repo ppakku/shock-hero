@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { sfx } from '../audio/sfx.js';
 import { makeText, FONT } from '../ui/text.js';
+import { canFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from '../ui/fullscreen.js';
 import { saveStore } from '../save.js';
 import { resetProgress } from '../logic/save.js';
 import { stages, totalTreasures } from '../stage/index.js';
@@ -339,36 +340,31 @@ export class TitleScene extends Phaser.Scene {
       this.openRoom();
     }
 
-    if (this.touch) this.buildFullscreen();
+    this.buildFullscreen();
     this.refresh();
   }
 
-  // 휴대폰, 태블릿: 왼쪽 위 전체 화면 버튼 (주소창 없이 꽉 차게).
+  // 왼쪽 위 전체 화면 버튼 (컴퓨터, 휴대폰, 태블릿). 켜져 있으면 끄는 버튼이 된다.
   // 아이폰 사파리는 전체 화면을 못 해서, 대신 홈 화면에 추가하는 방법을 알려 준다.
   buildFullscreen() {
     const standalone = window.navigator.standalone || window.matchMedia?.('(display-mode: fullscreen), (display-mode: standalone)').matches;
     if (standalone) return; // 홈 화면 앱으로 열었으면 이미 꽉 찬 화면
-    const canFull = this.scale.fullscreen.available;
+    const canFull = canFullscreen();
     if (!canFull && !isPhone()) return; // 아이패드는 사파리 화면도 충분히 크다
-    const btn = makeText(this, 14, 16, '⛶ 전체 화면', 16, '#ffffff', {
+    const btn = makeText(this, 14, 16, '', 16, '#ffffff', {
       backgroundColor: '#000000aa',
       padding: { x: 10, y: 7 },
     })
       .setDepth(30)
       .setInteractive({ useHandCursor: true });
-    const paint = () => btn.setVisible(!this.scale.isFullscreen);
-    this.scale.on('enterfullscreen', paint);
-    this.scale.on('leavefullscreen', paint);
-    this.events.once('shutdown', () => {
-      this.scale.off('enterfullscreen', paint);
-      this.scale.off('leavefullscreen', paint);
-    });
+    const paint = () => btn.setText(isFullscreen() ? '⛶ 끄기' : '⛶ 전체 화면'); // 켜져 있을 때 글자가 길면 제목에 닿는다
+    const stop = onFullscreenChange(paint);
+    this.events.once('shutdown', stop);
     paint();
     // 전체 화면은 손을 뗄 때 불러야 브라우저가 허락한다
     btn.on('pointerup', () => {
       if (!canFull) return this.showHomeScreenTip();
-      this.scale.startFullscreen();
-      window.screen?.orientation?.lock?.('landscape').catch(() => {}); // 안드로이드: 가로로 고정
+      toggleFullscreen();
     });
   }
 

@@ -10,12 +10,16 @@ const TONIGHT = 'position:absolute;left:192px;top:31px;white-space:nowrap;font-s
 const TONIGHT_OK = '#ffd24a';
 const TONIGHT_BROKEN = '#ff7a60';
 const TAG_LOOK = { chase: { text: '쫓아온다!', color: '#ff7a60' }, still: { text: '멈췄다', color: '#9ad0ff' }, near: { text: '가까이 있다', color: '#ffd080' }, far: { text: '멀리 있다', color: '#9a9a9a' } };
+const COLUMNS = 'display:grid;grid-template-columns:1fr 1fr;gap:0 10px;width:100%;font-size:12px;line-height:1.25;text-align:left'; // 휴대폰 안내의 조작 설명 두 줄 묶음
 const BTN = 'padding:12px 28px;margin-top:6px;font:20px sans-serif;background:#3a1414;color:#fff;border:1px solid #a33;border-radius:8px;touch-action:manipulation';
 
 import { fillName } from './story.js';
 import { GOLD, cssColor } from '../logic/horrorStamps.js';
 
 const SCARY_LINE = '꽤 무서워요. 어두운 방에서 혼자 하면 더 무섭습니다.';
+// 어른용 숲은 같은 자리에 더 센 경고를 굵고 붉게 놓는다
+const FOREST_SCARY_LINE = '어른도 무서워요. 불을 켜고, 혼자 하지 마세요.';
+const FOREST_SCARY_STYLE = 'font-weight:bold;color:#ff9aa8';
 
 const INTRO = [
   '조사하러 들어왔다가 문이 잠겼다.',
@@ -23,6 +27,13 @@ const INTRO = [
   '퓨즈 3개를 찾아 전원에 꽂고 정문으로 나가자. 잠긴 문은 같은 색 열쇠로 연다.',
   '정문은 4자리 번호로 잠겼다. 번호는 붉은 쪽지에 나뉘어 있다.',
   '{name}는 쓰러뜨릴 수 없다. 사물함에 숨어!',
+];
+
+// 숲은 이야기 대신 규칙만 말한다. 휴대폰에서도 세 줄 모두 보인다
+const FOREST_INTRO = [
+  '숲 어딘가에 쪽지 세 장이 있어요. 비밀번호를 모아 철문을 여세요',
+  '속 빈 고목에 숨을 수 있어요',
+  '쇼크를 맞으면 사라지지만, 곧 다른 곳에서 나타나요',
 ];
 
 const TOUCH_CONTROLS = ['이동: 화면 왼쪽을 누른 채 끌기', '둘러보기: 화면 오른쪽을 누른 채 끌기', '달리기: 왼쪽을 끝까지 끌기 (체력이 줄어요)', '손전등: 손전등 버튼', '줍기, 숨기, 문 열기, 충전: 사용 버튼', '쪽지 닫기: 사용 버튼 또는 닫기 버튼', '전기충격기: 쇼크 버튼', '일시정지: 멈춤 버튼'];
@@ -45,12 +56,16 @@ export function controlLines(device) {
 }
 
 // 시작 전 안내 이야기. 맨 앞은 이번 판의 맵, 괴물, 힌트다. 휴대폰은 화면이 작아서 이야기 앞의 두 줄을 빼고 맵과 힌트를 한 줄로 쓴다
-// round: { mapName, monsterName, hint, tonight }. tonight 는 오늘의 밤 조건 줄이고, 없으면 빠진다
-export function introLines(device, { mapName, monsterName, hint, tonight }) {
+// round: { mapName, monsterName, hint, tonight, forest }. tonight 는 오늘의 밤 조건 줄이고, 없으면 빠진다. forest 면 숲의 규칙 줄을 쓴다
+export function introLines(device, { mapName, monsterName, hint, tonight, forest }) {
   const rule = tonight ? [tonight] : [];
-  if (device === 'phone') return [`${mapName}: ${monsterName}. ${hint}`, ...rule, ...fillName(INTRO.slice(2), monsterName)];
-  return [`${mapName}: ${monsterName}`, hint, ...rule, ...fillName(INTRO, monsterName)];
+  const story = forest ? FOREST_INTRO : fillName(device === 'phone' ? INTRO.slice(2) : INTRO, monsterName);
+  if (device === 'phone') return [`${mapName}: ${monsterName}. ${hint}`, ...rule, ...story];
+  return [`${mapName}: ${monsterName}`, hint, ...rule, ...story];
 }
+
+// 안내 화면 맨 위의 경고 줄. 숲만 어른용 경고다
+export const scaryLine = (forest) => (forest ? FOREST_SCARY_LINE : SCARY_LINE);
 
 // 시작한 뒤 잠깐 띄우는 알림
 export function startHint(device) {
@@ -58,12 +73,16 @@ export function startHint(device) {
 }
 
 // 끝 화면 글자. 이번에 실제로 받은 보석만 말한다 (reward: logic/horrorRun.js 의 escapeReward)
-export function escapeText({ gems, daily, bonus }, clean) {
-  if (!gems) return `탈출 성공! 오늘은 이미 보석을 받았어요${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
-  if (!daily) return `탈출 성공! 처음으로 한 번도 안 잡혔어요! 보석 ${bonus}개. 탈출 보석은 오늘 이미 받았어요`;
-  if (bonus) return `탈출 성공! 보석 ${gems}개 (처음으로 한 번도 안 잡혔어요!)`;
-  return `탈출 성공! 보석 ${gems}개${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
+// head: 맨 앞 말. 숲은 '해 질 녘 숲을 빠져나왔어요!' 를 준다
+export function escapeText({ gems, daily, bonus }, clean, head = '탈출 성공!') {
+  if (!gems) return `${head} 오늘은 이미 보석을 받았어요${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
+  if (!daily) return `${head} 처음으로 한 번도 안 잡혔어요! 보석 ${bonus}개. 탈출 보석은 오늘 이미 받았어요`;
+  if (bonus) return `${head} 보석 ${gems}개 (처음으로 한 번도 안 잡혔어요!)`;
+  return `${head} 보석 ${gems}개${clean ? ' (한 번도 안 잡혔어요!)' : ''}`;
 }
+
+// 숲 끝 화면의 맨 앞 말. 맵 이름의 받침에 맞게 조사를 고친다
+export const forestEscapeHead = (mapName) => fillName('{name}를 빠져나왔어요!', mapName);
 
 // 마지막 밤 끝 화면 글자. reward: logic/horrorRun.js 의 lastNightReward
 export function lastNightText({ gems }, clean) {
@@ -298,7 +317,14 @@ export class HorrorHud {
     this.layer.addEventListener('pointerdown', (e) => e.stopPropagation());
     for (const line of lines) {
       const p = document.createElement('div');
-      p.textContent = line;
+      if (Array.isArray(line)) { // 배열은 두 칸으로 나눠 놓는다
+        p.style.cssText = COLUMNS;
+        for (const text of line) {
+          const cell = document.createElement('div');
+          cell.textContent = text;
+          p.appendChild(cell);
+        }
+      } else p.textContent = line;
       this.layer.appendChild(p);
     }
     const row = document.createElement('div');
@@ -379,20 +405,23 @@ export class HorrorHud {
   }
 
   showIntro(device, round, onStart, onQuit) {
+    const [title, ...controls] = controlLines(device);
     this.openLayer(
-      [...(device === 'phone' && round.tonight ? [] : [SCARY_LINE]), ...introLines(device, round), // 휴대폰은 조건 줄이 들어갈 자리를 비운다
-        ...(device === 'phone' ? [] : [' ']), ...controlLines(device)],
+      [scaryLine(round.adult ?? round.forest), ...introLines(device, round), ...(device === 'phone' ? [title, controls] : [' ', title, ...controls])], // 휴대폰은 조작 설명을 두 칸으로 놓아야 한 화면에 들어간다
       [{ text: '시작', onPress: onStart }, { text: '타이틀로', onPress: onQuit }],
       device === 'phone',
     );
+    if (round.adult ?? round.forest) this.layer.children[0].style.cssText = FOREST_SCARY_STYLE; // 어른용 판 (숲, 수영장) 은 경고를 붉게
     this.backdrop();
     if (device !== 'phone') this.addFace(); // 휴대폰은 자리가 없다
   }
 
   // onNotes: 읽은 쪽지가 있을 때만 준다
-  showPause(onResume, onQuit, onNotes, compact = false) {
+  // full: 전체 화면 버튼 { text, onPress }. 전체 화면을 못 하는 기기(아이폰)에서는 null
+  showPause(onResume, onQuit, onNotes, compact = false, full = null) {
     const buttons = [{ text: '계속하기', onPress: onResume }];
     if (onNotes) buttons.push({ text: '읽은 쪽지', onPress: onNotes });
+    if (full) buttons.push(full);
     buttons.push({ text: '타이틀로', onPress: onQuit });
     this.openLayer(['일시정지'], buttons, compact);
   }

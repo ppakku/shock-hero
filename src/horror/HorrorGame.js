@@ -7,7 +7,8 @@ import { tickStalker, stunStalker } from '../logic/horrorStalker.js';
 import { createStalkers, nearestStalker, anyChasing, sendAllAway, warnState, createAlarm, raiseAlarm, nextAlarm } from '../logic/horrorHunters.js';
 import { codeDisplay, pressCode } from '../logic/horrorCode.js';
 import { createRun, takeClue, cluesFound, takeFuse, takeKey, openDoor, keysHeld, KEY_NAMES, respawnSpot, chargeShock, useShock, insertFuses, caught, escape, escapeReward, recordEscape, lastNightReward, recordLastNight, nearestUse } from '../logic/horrorRun.js';
-import { isLastNight, roundMonsters } from '../logic/horrorPick.js';
+import { isForest, isLastNight, isPool, roundMonsters } from '../logic/horrorPick.js';
+import { duskAt, stageChange, FOREST_ID } from '../logic/horrorDusk.js';
 import { createNotes, takeNote } from '../logic/horrorNotes.js';
 import { createScare, stepScare, dreadLevel, figureSpot } from '../logic/horrorScare.js';
 import { todayKey } from '../logic/daily.js';
@@ -15,14 +16,17 @@ import { NO_LIGHT, finishTonight, tonightEndText, tonightIntroLine, tonightLine,
 import { saveStore } from '../save.js';
 import { addStamp, wornLook, openedLooks, stampCount, boardSize } from '../logic/horrorStamps.js';
 import { sfx } from '../audio/sfx.js';
-import { ALL_MAPS, MONSTERS } from './content.js';
+import { canFullscreen, fullscreenLabel, onFullscreenChange, toggleFullscreen } from '../ui/fullscreen.js';
+import { ALL_MAPS, ALL_MONSTERS } from './content.js';
 import { buildWorld } from './world.js';
 import { createCreature } from './creatureModel.js';
 import { WallBulge } from './wallBulge.js';
 import { HorrorInput } from './input.js';
-import { HorrorHud, startHint, escapeText, lastNightText, stampLines } from './hud.js';
+import { HorrorHud, startHint, escapeText, forestEscapeHead, lastNightText, stampLines } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
+import { HorrorAids } from './aids.js';
+import { PoolPlay } from './poolPlay.js';
 
 export { showChooser } from './chooser.js';
 import { FINAL_LINES, NOTE_DANGER_LINE, ENDINGS, clueTexts, fillName, joinNames } from './story.js';
@@ -61,7 +65,7 @@ export class HorrorGame {
     this.round = round;
     this.tonight = tonight;
     this.place = ALL_MAPS[round.mapId];
-    this.monsters = roundMonsters(round).map((id) => MONSTERS[id]);
+    this.monsters = roundMonsters(round).map((id) => ALL_MONSTERS[id]);
     this.allNames = joinNames(this.monsters.map((m) => m.name));
     this.touch = touch;
     this.device = device;
@@ -70,7 +74,7 @@ export class HorrorGame {
     this.onExit = onExit;
     this.onAgain = onAgain;
     this.k = cfg.horror;
-    this.ambient = this.k.ambient * (tonight?.rule === NO_LIGHT ? this.k.tonight.darkAmbient : 1);
+    this.ambient = this.k.ambient * (tonight?.rule === NO_LIGHT ? this.k.tonight.darkAmbient : 1) * (this.place.theme.bright ?? 1); // 수영장은 늘 밝다
     this.run = createRun(this.place.map, this.k);
     this.map = this.run.level; // 잠긴 문이 판마다 따로 열리는 맵 사본
     this.notes = createNotes(this.map.notes.map(center));
@@ -81,7 +85,7 @@ export class HorrorGame {
     this.p = center(this.map.start);
     this.yaw = 0;
     this.pitch = 0;
-    this.lightOn = tonight?.rule !== NO_LIGHT; // 손전등 조건은 꺼진 채로 시작한다
+    this.lightOn = tonight?.rule !== NO_LIGHT && !this.place.theme.bright; // 손전등 조건과 늘 밝은 수영장은 꺼진 채로 시작한다
     this.lit = this.lightOn; // 이번 판에 손전등을 켠 적이 있는지
     this.ranFor = 0; // 이번 판에 달린 시간 (초)
     this.state = 'intro'; // 'intro' | 'play' | 'paused' | 'caught' | 'end'
@@ -111,6 +115,7 @@ export class HorrorGame {
       this.hud?.destroy();
       if (this.onResize) window.removeEventListener('resize', this.onResize);
       if (this.onVisibility) document.removeEventListener('visibilitychange', this.onVisibility);
+      this.stopFullscreen?.();
       this.unbindContext();
       this.renderer.dispose(); // 만들다 실패하면 WebGL 자리를 돌려준다
       this.renderer.forceContextLoss();
@@ -133,7 +138,7 @@ export class HorrorGame {
     const light = wornLook(this.k.stamps.lights, stamps, this.k.stamps, lightId);
     this.bolt = wornLook(this.k.stamps.bolts, stamps, this.k.stamps, boltId);
     this.scene.background = new THREE.Color(theme.fog);
-    this.scene.fog = new THREE.Fog(theme.fog, 3, this.k.fogCells * CELL);
+    this.scene.fog = new THREE.Fog(theme.fog, theme.fogNear ?? 3, this.k.fogCells * CELL);
     this.ambientLight = new THREE.AmbientLight(theme.ambient, this.ambient);
     this.scene.add(this.ambientLight);
 
@@ -148,7 +153,8 @@ export class HorrorGame {
 
     // 놀이를 시작하면 바로 보이는 손 그림부터 받는다
     this.gun = new StunGun({ aspect: window.innerWidth / window.innerHeight, touch, lowFx: this.lowFx, k: this.k.stunGun, bolt: this.bolt });
-    this.world = buildWorld(this.scene, this.map, this.k, theme);
+    this.world = buildWorld(this.scene, this.map, this.k, theme, { lowFx: this.lowFx });
+    this.pool = this.map.water ? new PoolPlay({ root, scene: this.scene, map: this.map, k: this.k, eye: EYE }) : null; // 물이 있는 맵만
     this.stalkers = createStalkers(this.map, this.k, Math.random, roundMonsters(this.round));
     // 괴물마다 하나씩이다. 판의 모든 일은 이 목록을 돌며 처리한다
     this.hunters = this.stalkers.map((stalker, index) => {
@@ -169,6 +175,7 @@ export class HorrorGame {
     this.input = new HorrorInput(root, { touch, small: this.device === 'phone', k: this.k });
     this.hud = new HorrorHud(root, fillName(NOTE_DANGER_LINE, this.allNames), this.round);
     this.hud.setZapColor(this.bolt.screen);
+    this.aids = new HorrorAids(this);
     this.hud.setStatus(this.statusNow());
     this.showTonight();
     if (this.showFps) {
@@ -189,6 +196,10 @@ export class HorrorGame {
       if (document.hidden) this.pause();
     };
     document.addEventListener('visibilitychange', this.onVisibility);
+    // 일시정지 화면의 전체 화면 버튼 글자를 바꾼다 (Esc 로 나간 때도). 쪽지를 읽는 중이면 그대로 둔다
+    this.stopFullscreen = onFullscreenChange(() => {
+      if (this.state === 'paused' && this.pauseMenu) this.openPause();
+    });
     this.onContextLost = (e) => {
       e.preventDefault(); // 이렇게 해야 복구 신호가 온다
       this.contextLost = true;
@@ -203,6 +214,28 @@ export class HorrorGame {
     this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     window.__horror = this;
     window.__horrorLogic = { findPath, cellOf, frontOf, center, lineOfSight, reachable }; // 봇이 쓴다
+    this.tickDusk(); // 숲은 소개 화면부터 노을빛이다
+  }
+
+  // 숲: 해가 지는 만큼 하늘, 안개, 주변 빛을 바꾼다. 놀람과 잡힘 뒤에는 this.ambient 로 돌아가서 그 순간의 밝기가 된다
+  tickDusk() {
+    if (this.round.mapId !== FOREST_ID) return;
+    const d = duskAt(this.playTime, this.k.forest.dusk);
+    const line = stageChange(this.dusk?.stage, d.stage);
+    this.dusk = d;
+    this.ambient = this.k.ambient * d.ambientScale;
+    this.ambientLight.color.setHex(d.ambient);
+    if (!this.scare) this.ambientLight.intensity = this.ambient; // 놀람의 어둠은 덮어쓰지 않는다
+    this.scene.fog.color.setHex(d.fog);
+    this.scene.fog.far = this.fogFar;
+    this.world.setSky(d); // 하늘 돔 (숲 테마). 돔 그림을 못 받으면 아래 배경색이 하늘이다
+    if (this.scene.background?.isColor) this.scene.background.setHex(d.sky.low);
+    if (line) this.hud.say(line, 4);
+  }
+
+  // 지금 안개 끝 거리. 숲은 해가 지는 만큼 줄어든다. 조명탄은 여기서 늘렸다가 여기로 돌아온다
+  get fogFar() {
+    return this.k.fogCells * CELL * (this.dusk?.fogFar ?? 1);
   }
 
   get stalker() {
@@ -229,7 +262,7 @@ export class HorrorGame {
   }
 
   start() {
-    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null };
+    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null, forest: isForest(this.round), adult: isForest(this.round) || isPool(this.round) };
     this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
@@ -292,6 +325,7 @@ export class HorrorGame {
     this.camera.updateMatrixWorld();
     this.updateGun(dt);
     this.world.update(this.p, this.k.viewCells, this.playTime, this.lowFx);
+    if (this.state !== 'paused') this.pool?.update(this.playTime, dt, this.stalkers.filter((s) => s.monsterId === 'swimmer'), this.p);
     if (this.state === 'intro' && !this.warmed && this.hunters.every((h) => h.model.textures.every((t) => t.image))) this.warmUp();
     if (this.state !== 'play') return;
     this.showTonight();
@@ -329,24 +363,31 @@ export class HorrorGame {
     if (this.hidden !== null) this.yaw = this.hideYaw + Math.max(-HIDE_LOOK, Math.min(HIDE_LOOK, wrapAngle(this.yaw - this.hideYaw)));
     this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - inp.lookY));
     const running = canRun(this.stamina, inp.move.run);
-    const speed = running ? this.k.runSpeed : this.k.walkSpeed;
+    const speed = (running ? this.k.runSpeed : this.k.walkSpeed) * (this.pool?.speedScale(this.p) ?? 1);
     const before = this.p;
-    if (this.hidden === null) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
+    if (this.hidden === null && !this.aids.frozen) this.p = stepPlayer(this.p, inp.move, this.yaw, speed, dt, this.map, RADIUS);
     const moving = this.p.x !== before.x || this.p.y !== before.y;
     this.walking = moving;
     this.alarmT = Math.max(0, this.alarmT - dt);
-    const noise = this.alarmT > 0 ? this.k.runNoise : noiseFor(moving, running, this.k);
-    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise };
+    // 지도를 보는 동안은 달릴 때만큼 소리가 난다 (지도를 넘기며 서 있는 소리).
+    // 수영장에서는 물소리만 소리다. 마른 바닥은 달려도, 지도를 넘겨도 조용하다
+    const step = this.pool ? this.pool.step(this.p, moving, running, dt, this.audio) : noiseFor(moving, running, this.k);
+    const noise = this.alarmT > 0 || (this.aids.mapOpen && !this.pool) ? this.k.runNoise : step;
+    const player = { ...this.p, hidden: this.hidden, lightOn: this.lightOn, noise, yaw: this.yaw }; // yaw: 처녀귀신이 등 뒤를 고른다
+    const splash = this.pool?.takeSplash() ?? null;
     this.tickStamina(running && moving, dt);
     if (running && moving) this.ranFor += dt;
     const pressure = this.run.have / this.k.fuseCount;
+    this.tickDusk();
+    const { level: dusk, stage } = this.dusk ?? {};
     for (const h of this.hunters) {
-      const seen = playerSees(this, this.hud.noteOpen, h.stalker);
-      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure }, this.k, dt), h);
+      const seen = playerSees(this, this.hud.noteOpen || this.aids.mapOpen, h.stalker);
+      this.onStalkerEvents(tickStalker(h.stalker, { map: this.map, player, seen, pressure, dusk, stage, sounds: this.aids.state.sounds, splash }, this.k, dt), h);
       if (this.state !== 'play') return;
     }
     // 쪽지가 앞을 가린 채로 쫓기지 않게 한다. 눈뜬이는 빨라져도 알림 없이 올 수 있어서 이벤트와 따로 본다
     if (anyChasing(this.stalkers) && this.hud.closeNote()) this.hud.say(NOTE_AGAIN, 3);
+    if (anyChasing(this.stalkers) && this.aids.closeMap()) this.hud.say('쫓아온다! 지도를 닫았다', 2);
     for (const h of this.hunters) {
       h.model.update(h.stalker, dt, this.p);
       h.bulge?.update(h.stalker, dt, this.lowFx);
@@ -363,15 +404,17 @@ export class HorrorGame {
     if (this.hud.keypadOpen && target?.kind !== 'gate') this.hud.closeKeypad(); // 정문에서 멀어지면 닫는다
     if (this.hud.keypadOpen) inp.typed?.forEach((key) => this.keypadPress(key));
     if (this.state !== 'play') return; // 번호를 맞혀 탈출했다
-    if (inp.use && !this.hud.closeNote() && !this.hud.closeKeypad()) this.doUse(target); // 쪽지나 입력 칸이 열려 있으면 닫기만 한다
+    this.aids.tick(dt, this.hud.keypadOpen ? null : inp.typed);
+    if (inp.use && !this.aids.closeMap() && !this.hud.closeNote() && !this.hud.closeKeypad()) this.doUse(target); // 쪽지나 입력 칸이 열려 있으면 닫기만 한다
     if (inp.punch) this.doPunch();
   }
 
   promptFor(target) {
+    if (this.aids.mapOpen) return '';
     if (this.hud.noteOpen) return `${this.touch ? '사용' : 'E'}: 쪽지 닫기`;
     if (this.hud.keypadOpen) return '';
     if (!target) return '';
-    return target.kind === 'locked' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
+    return target.kind === 'locked' || target.kind === 'seenBoard' ? target.label : `${this.touch ? '사용' : 'E'}: ${target.label}`;
   }
 
   // 벽에 가린 세이노는 그리지 않는다. 몸이 무거워서 태블릿에서 크게 차이 난다.
@@ -545,12 +588,16 @@ export class HorrorGame {
     this.lastEvents = events;
     const { monster } = h;
     if (events.includes('chase')) {
+      if (h.stalker.monsterId === 'swimmer') this.audio?.play('rise', h.index); // 물에서 솟구친다
       const cut = this.hud.closeNote(); // 쪽지가 앞을 가린 채로 쫓기지 않게 한다
       this.hud.closeKeypad();
       this.warn(h, `${this.named(monster.alarm, monster)}${cut ? ` ${NOTE_AGAIN}` : ''}`, cut ? 4 : 2);
     }
     if (events.includes('wall')) this.onWall(h);
-    if (events.includes('slip')) this.warn(h, this.named('{name}가 사라졌다...', monster), 3);
+    if (events.includes('slip') || events.includes('vanish')) this.warn(h, this.named('{name}가 사라졌다...', monster), 3);
+    // 처녀귀신: 순간이동은 글 없이 귓가 속삭임만, 쇼크에 사라질 때는 비명
+    if (events.includes('blink')) this.audio?.play('blink', h.index);
+    if (events.includes('vanish')) this.audio?.play('vanish', h.index);
     if (events.includes('sniff')) this.warn(h, this.named('움직이지 마! {name}가 냄새를 맡고 있다', monster), 2);
     if (events.includes('caught') || events.includes('found')) this.getCaught(h);
   }
@@ -565,11 +612,13 @@ export class HorrorGame {
 
   nearestUse() {
     // 쫓기는 동안에는 쪽지를 고르지 않는다. 열자마자 앞을 가리고 숨기가 한 번 늦어진다
-    return nearestUse(this.run, this.map, this.p, this.hidden, this.k, anyChasing(this.stalkers) ? undefined : this.notes);
+    const best = nearestUse(this.run, this.map, this.p, this.hidden, this.k, anyChasing(this.stalkers) ? undefined : this.notes, (add) => this.aids.targets(add));
+    return best ?? this.pool?.target(this.p) ?? this.aids.seenNear(); // 수건, 고무오리는 다른 할 일이 없을 때만 고른다
   }
 
   doUse(t) {
-    if (!t) return;
+    if (!t || this.aids.use(t)) return;
+    if (this.pool?.use(t, this.p, this.yaw, this.audio, this.hud)) return;
     if (t.kind === 'fuse' && takeFuse(this.run, t.index)) {
       this.fuseMeshes[t.index].visible = false;
       this.audio?.play('fuse');
@@ -703,6 +752,7 @@ export class HorrorGame {
     this.figure = null;
     this.noteCut = this.hud.closeNote();
     this.hud.closeKeypad();
+    this.aids.stop();
     caught(this.run);
     this.audio?.suspend();
     this.audio?.hush(true); // 비명 전에 소리를 뚝 끊는다
@@ -772,6 +822,7 @@ export class HorrorGame {
     this.pitch = 0;
     this.stamina = createStamina();
     this.hud.setStamina(this.stamina);
+    this.pool?.reset();
     sendAllAway(this.stalkers, this.map, this.p); // 잡히지 않은 쪽도 함께 멀리 가서 쉰다
     this.alarm = createAlarm();
     for (const h of this.hunters) h.model.update(h.stalker, 0, this.p);
@@ -802,11 +853,12 @@ export class HorrorGame {
     document.exitPointerLock?.();
     this.input.clearTouch();
     this.hud.closeNote();
+    this.aids.stop();
     this.hud.setPrompt('');
     this.hud.showEnd(text, () => this.exit(this.onAgain), () => this.exit(), { found: this.notes.found, total: this.notes.total, final: this.named(FINAL_LINES[this.round.mapId]), ending: this.named(ENDINGS[this.round.mapId]) }, news, this.device === 'phone', tonight);
   }
 
-  // 보통 판: 탈출 보석과 도장을 저장하고 끝 화면 글을 돌려준다
+  // 보통 판과 숲: 탈출 보석과 도장을 저장하고 끝 화면 글을 돌려준다. 숲은 도장판 칸이 아니라 addStamp 가 도장을 주지 않는다
   settleEscape(clean) {
     const save = saveStore.load();
     const today = todayKey();
@@ -819,7 +871,8 @@ export class HorrorGame {
     if (result) save.horror.tonightDone = result.done;
     saveStore.save(save);
     const tonight = result && { text: tonightEndText(this.tonight.rule, result, this.k), met: result.met };
-    return { text: escapeText(reward, clean), tonight, news: stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) }) };
+    const head = isForest(this.round) ? forestEscapeHead(this.place.name) : undefined;
+    return { text: escapeText(reward, clean, head), tonight, news: stampLines(earned, { count: stampCount(stamps), total: boardSize(), opened: openedLooks(was, stamps, this.k.stamps) }) };
   }
 
   // 마지막 밤: 처음 깼을 때만 보석을 준다. 도장판과 오늘의 탈출 보석은 건드리지 않는다
@@ -841,6 +894,7 @@ export class HorrorGame {
     this.noteAtPause = this.hud.noteLines; // 계속하기를 누르면 다시 펼친다
     this.hud.closeNote();
     this.hud.closeKeypad();
+    this.aids.setPaused(true);
     this.input.clearTouch();
     this.audio?.suspend();
     document.exitPointerLock?.();
@@ -850,8 +904,15 @@ export class HorrorGame {
   openPause() {
     const read = [...this.notes.read.map((order) => this.noteTexts[order]), ...this.clueTexts.filter((_, i) => this.run.clues[i].taken)];
     const phone = this.device === 'phone';
-    const onNotes = read.length ? () => this.hud.showReadNotes(read, () => this.openPause(), phone) : null;
-    this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone);
+    const onNotes = read.length
+      ? () => {
+          this.pauseMenu = false;
+          this.hud.showReadNotes(read, () => this.openPause(), phone);
+        }
+      : null;
+    this.pauseMenu = true;
+    const full = canFullscreen() ? { text: fullscreenLabel(), onPress: () => toggleFullscreen() } : null;
+    this.hud.showPause(() => this.resumePlay(), () => this.exit(), onNotes, phone, full);
   }
 
   // 계속하기를 누른 순간에 부른다. iPad 는 밖에 나갔다 오면 소리를 멈춰 두므로 여기서 다시 깨운다
@@ -860,15 +921,17 @@ export class HorrorGame {
     sfx.unlock();
     this.hud.setNotice('');
     this.hud.hidePause();
+    this.pauseMenu = false;
     if (this.noteAtPause) this.hud.showNote(this.noteAtPause, this.device === 'phone');
     this.noteAtPause = null;
+    this.aids.setPaused(false);
     this.audio?.resume();
     this.state = 'play';
     this.relock();
   }
 
   placeCamera() {
-    this.camera.position.set(this.p.x * CELL, EYE, this.p.y * CELL);
+    this.camera.position.set(this.p.x * CELL, this.pool?.eye ?? EYE, this.p.y * CELL); // 깊은 물에서는 머리만 물 위로 나온다
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     if (this.shakeT <= 0) return;
     const r = this.k.scare.shakePower * (this.shakeT / this.shakeTime);
@@ -901,11 +964,15 @@ export class HorrorGame {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
+    this.stopFullscreen();
     this.unbindContext();
     try {
       this.world.textures.forEach((t) => t.dispose());
+      this.pool?.textures.forEach((t) => t.dispose());
+      this.pool?.destroy();
       this.input.destroy();
       this.hud.destroy();
+      this.aids?.destroy();
       this.audio?.destroy();
       for (const { model } of this.hunters) model.dispose();
       this.gun.dispose();

@@ -3,8 +3,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { center, frontOf, reachable, lineOfSight, cellOf } from '../src/logic/horrorGrid.js';
-import { ALL_MAPS, MAPS, MONSTERS } from '../src/horror/content.js';
-import { LAST_ROUND, roundMonsters } from '../src/logic/horrorPick.js';
+import { ALL_MAPS, ALL_MONSTERS, FOREST_PLACE, MAPS, MONSTERS } from '../src/horror/content.js';
+import { FOREST_ROUND, LAST_ROUND, roundMonsters } from '../src/logic/horrorPick.js';
 import { boardCells, cellKey } from '../src/logic/horrorStamps.js';
 import { normalizeHorror } from '../src/logic/horrorRun.js';
 
@@ -70,7 +70,7 @@ vi.mock('../src/horror/hud.js', () => {
       return was;
     }
   }
-  return { HorrorHud, startHint: () => '', escapeText: () => '탈출', lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
+  return { HorrorHud, startHint: () => '', escapeText: (r, c, head) => head ?? '탈출', forestEscapeHead: (name) => `${name} 나옴`, lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
 });
 
 vi.mock('../src/horror/input.js', () => ({
@@ -109,6 +109,16 @@ vi.mock('../src/save.js', () => ({
 }));
 
 const { HorrorGame } = await import('../src/horror/HorrorGame.js');
+const { artMap } = await import('../src/horror/aids.js');
+const { AID_KINDS } = await import('../src/logic/horrorAids.js');
+
+// 도움 아이템 화면(src/horror/aids.js)이 만드는 글자 칸과 그림판. 그리기는 하지 않는다
+function fakeEl() {
+  const el = { style: {}, children: [], appendChild(c) { el.children.push(c); return c; }, append(...c) { el.children.push(...c); }, addEventListener() {}, remove() {}, getContext: () => null, textContent: '' };
+  el.firstChild = { style: {} };
+  el.lastChild = { style: {}, textContent: '' };
+  return el;
+}
 
 const DT = 1 / 30;
 const idle = () => ({ move: { x: 0, z: 0, run: false }, lookX: 0, lookY: 0, light: false, use: false, punch: false, pause: false });
@@ -159,7 +169,7 @@ beforeEach(() => {
   fakes.audio.length = 0;
   fakes.save = null;
   vi.stubGlobal('window', { innerWidth: 1280, innerHeight: 720, devicePixelRatio: 1, location: { search: '' }, addEventListener() {}, removeEventListener() {} });
-  vi.stubGlobal('document', { addEventListener() {}, removeEventListener() {}, exitPointerLock() {}, hidden: false });
+  vi.stubGlobal('document', { addEventListener() {}, removeEventListener() {}, exitPointerLock() {}, hidden: false, createElement: fakeEl });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -876,3 +886,227 @@ describe('끝내기', () => {
     expect(g.onAgainSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('어른용 숲', () => {
+  const start = () => makeGame(null, null, { round: FOREST_ROUND });
+
+  it('처녀귀신 하나로 돌고, 소개에 숲 표시와 숲 이름이 간다', () => {
+    const g = start();
+    expect(g.hunters).toHaveLength(1);
+    expect(g.monsters[0]).toBe(ALL_MONSTERS.maiden);
+    expect(fakes.audio.at(-1).options.voice).toBe('maiden');
+    expect(g.hud.intro.round.forest).toBe(true);
+    expect(g.hud.intro.round.mapName).toBe(FOREST_PLACE.name);
+    expect(g.noteTexts.flat().join(' ')).not.toContain('{');
+    g.exit();
+  });
+
+  it('탈출하면 오늘의 탈출 보석을 주고 도장은 찍지 않는다', () => {
+    fakes.save = { gems: 0, horror: normalizeHorror({}), settings: {} };
+    const g = start();
+    g.run.powered = true;
+    g.win();
+    expect(fakes.save.gems).toBeGreaterThan(0);
+    expect(fakes.save.horror.escapes).toBe(1);
+    expect(fakes.save.horror.gemDay).not.toBe(null);
+    expect(fakes.save.horror.stamps).toEqual({});
+    expect(fakes.save.horror.lastCleared).toBe(false);
+    expect(g.hud.end.text).toBe(`${FOREST_PLACE.name} 나옴`);
+    expect(g.hud.end.notes.ending).toContain(ALL_MONSTERS.maiden.name);
+    g.exit();
+  });
+});
+
+describe('도움 아이템', () => {
+  const play = (mapId = 'school', monsterId = 'seino') => {
+    const g = makeGame(mapId, monsterId);
+    Object.assign(g.stalker, { graceT: 99 });
+    return g;
+  };
+  const press = (g, key) => {
+    g.readInput = () => ({ ...idle(), ...key });
+    g.update(DT);
+    g.readInput = idle;
+  };
+  const pickUp = (g, kind) => {
+    const i = g.aids.state.items.findIndex((c) => c.kind === kind);
+    g.p = center(g.aids.state.items[i]);
+    press(g, { use: true });
+    return i;
+  };
+
+  it('바닥의 아이템을 E 로 주우면 칸 수가 늘고 바닥에서 사라진다', () => {
+    const g = play();
+    const i = pickUp(g, 'flare');
+    expect(g.aids.state.held.flare).toBe(1);
+    expect(g.aids.itemMeshes[i].visible).toBe(false);
+    expect(g.hud.said.at(-1)).toContain('1번');
+    g.exit();
+  });
+
+  it('조명탄은 잠깐 환하게 했다가 원래 어둠으로 돌아오고, 소리를 남긴다', () => {
+    const g = play();
+    pickUp(g, 'flare');
+    const dark = g.ambientLight.intensity;
+    press(g, { typed: ['1'] });
+    expect(g.aids.state.held.flare).toBe(0);
+    expect(g.ambientLight.intensity).toBeGreaterThan(dark * 3);
+    expect(g.scene.fog.far).toBeGreaterThan(g.k.fogCells * 3);
+    expect(g.audio.played).toContain('flare');
+    frames(g, g.k.aids.flareTime + 0.2);
+    expect(g.ambientLight.intensity).toBeCloseTo(dark);
+    press(g, { typed: ['1'] });
+    expect(g.hud.said.at(-1)).toBe('조명탄이 없다');
+    g.exit();
+  });
+
+  it('벽 지도를 보는 동안 못 움직이고 시끄럽고, 10초 뒤 닫히며 다시는 못 본다', () => {
+    const g = play();
+    const b = g.aids.state.boards[0];
+    g.p = center(b);
+    press(g, { use: true });
+    expect(g.aids.mapOpen).toBe(true);
+    const at = g.p;
+    g.readInput = () => ({ ...idle(), move: { x: 0, z: 1, run: false } });
+    frames(g, 1);
+    expect(g.p).toEqual(at);
+    g.readInput = idle;
+    expect(g.lastEvents).toBeDefined();
+    frames(g, g.k.aids.boardTime);
+    expect(g.aids.mapOpen).toBe(false);
+    press(g, { use: true });
+    expect(g.aids.mapOpen).toBe(false);
+    expect(g.nearestUse().label).toBe('이 지도는 이미 봤다');
+    g.exit();
+  });
+
+  it('지도를 보는 동안 세이노가 가까우면 소리를 듣고 오며, 쫓기면 지도가 닫힌다', () => {
+    const g = play();
+    g.p = center(g.aids.state.boards[0]);
+    press(g, { use: true });
+    const near = findNear(g, 6);
+    Object.assign(g.stalker, { ...center(near), graceT: 0, mode: 'patrol', path: [] });
+    g.update(DT);
+    expect(['investigate', 'chase']).toContain(g.stalker.mode);
+    g.stalker.mode = 'chase';
+    g.update(DT);
+    expect(g.aids.mapOpen).toBe(false);
+    g.exit();
+  });
+
+  it('지도를 보는 동안 눈뜬이는 안 본 것으로 친다', () => {
+    const g = play('school', 'gazer');
+    g.p = center(g.aids.state.boards[0]);
+    press(g, { use: true });
+    faceOff(g, 4);
+    g.aids.mapT = 5;
+    g.update(DT);
+    expect(g.stalker.mode).not.toBe('watch');
+    g.exit();
+  });
+
+  it('나침반은 화살표를 띄우고, 장난감은 앞에 떨어지고, 분필은 바닥에 표시를 남긴다', () => {
+    const g = play();
+    for (const kind of ['compass', 'toy', 'chalk']) pickUp(g, kind);
+    g.p = center(g.map.start);
+    press(g, { typed: ['2'] });
+    expect(g.aids.arrow.style.display).toBe('flex');
+    expect(g.aids.compass.name).toBeTruthy();
+    press(g, { typed: ['3'] });
+    expect(g.aids.toy.visible).toBe(true);
+    expect(g.aids.state.sounds.some((s) => s.lure)).toBe(true);
+    press(g, { typed: ['4'] });
+    expect(g.aids.state.marks).toHaveLength(1);
+    expect(g.aids.state.held.chalk).toBe(g.k.aids.chalkUses - 1);
+    g.exit();
+  });
+
+  // 아이템 자리마다 [빛나는 모양, 그림] 이 있다
+  const looks = (g) => g.aids.itemMeshes.map((h) => h.children);
+
+  it.each(['factory', 'sewer', 'school', 'station', 'pool', 'forest'])('%s: 아이템과 지도판 그림을 받으면 그 맵 그림으로 바뀐다', (mapId) => {
+    fakes.okArt = true;
+    const g = play(mapId);
+    for (const kind of AID_KINDS) expect(fakes.loads).toContain(`art/aid_${mapId}_${kind}.webp`);
+    expect(fakes.loads).toContain(`art/aid_board_${mapId}.webp`);
+    for (const [prim, sprite] of looks(g)) {
+      expect(prim.visible).toBe(false);
+      expect(sprite.visible).toBe(true);
+      expect(sprite.material.map).toBeTruthy();
+    }
+    pickUp(g, 'toy');
+    g.p = center(g.map.start);
+    press(g, { typed: ['3'] });
+    expect(g.aids.toy.visible).toBe(true);
+    expect(g.aids.toy.children[1].visible).toBe(true);
+    g.exit();
+  });
+
+  it('모르는 맵은 공장 그림을 쓴다', () => {
+    expect(artMap('nowhere')).toBe('factory');
+    expect(artMap(undefined)).toBe('factory');
+    expect(artMap('pool')).toBe('pool');
+  });
+
+  it('아이템과 지도판 그림을 못 받으면 빛나는 모양과 그린 지도판 그대로 돌고, 줍고 던지고 지도도 본다', () => {
+    fakes.failArt = 'aid_';
+    const g = play('station');
+    for (const [prim, sprite] of looks(g)) {
+      expect(prim.visible).toBe(true);
+      expect(sprite.visible).toBe(false);
+    }
+    expect(g.aids.boardMeshes.every((m) => m.material.map?.isCanvasTexture)).toBe(true);
+    pickUp(g, 'toy');
+    g.p = center(g.map.start);
+    press(g, { typed: ['3'] });
+    expect(g.aids.toy.children[0].visible).toBe(true);
+    g.p = center(g.aids.state.boards[0]);
+    press(g, { use: true });
+    expect(g.aids.mapOpen).toBe(true);
+    g.exit();
+  });
+
+  // 충전 상자 재질 (파랗게 빛난다): 그림 판(alphaTest) 과 원래 상자
+  const chargeLooks = (g) => {
+    const found = [];
+    g.scene.traverse((o) => { if (o.isMesh && o.material?.emissive?.getHex() === 0x3060c0) found.push(o); });
+    return { cards: found.filter((o) => o.material.alphaTest > 0), boxes: found.filter((o) => !o.material.alphaTest) };
+  };
+
+  it('숲의 충전 상자와 전원은 그림을 받으면 숲 그림으로, 못 받으면 상자 그대로다', () => {
+    fakes.okArt = true;
+    const g = makeGame('forest', FOREST_ROUND.monsterId, { round: FOREST_ROUND });
+    expect(fakes.loads).toContain('art/horror_forest_box.webp');
+    expect(fakes.loads).toContain('art/horror_forest_panel.webp');
+    expect(fakes.loads).not.toContain('art/horror_box.jpg');
+    let { cards, boxes } = chargeLooks(g);
+    expect(cards.length).toBe(1);
+    expect(cards[0].material.visible && cards[0].material.map).toBeTruthy();
+    expect(boxes.every((o) => !o.visible)).toBe(true);
+    g.exit();
+    fakes.okArt = false;
+    fakes.failArt = 'horror_forest_';
+    const h = makeGame('forest', FOREST_ROUND.monsterId, { round: FOREST_ROUND });
+    ({ cards, boxes } = chargeLooks(h));
+    expect(cards[0].material.visible).toBe(false);
+    expect(boxes.some((o) => o.visible)).toBe(true);
+    h.exit();
+  });
+
+  it('숨어 있을 때는 아이템을 쓰지 않는다', () => {
+    const g = play();
+    pickUp(g, 'flare');
+    g.toggleLocker(0);
+    press(g, { typed: ['1'] });
+    expect(g.aids.state.held.flare).toBe(1);
+    g.exit();
+  });
+});
+
+// 주인공에게서 길로 가까운 빈 칸 (dist 칸쯤)
+function findNear(g, dist) {
+  const from = cellOf(g.p);
+  const area = [...reachable(g.map, from)].map((t) => t.split(',').map(Number));
+  const [cx, cy] = area.find(([x, y]) => Math.abs(Math.hypot(x - from.cx, y - from.cy) - dist) < 1);
+  return { cx, cy };
+}

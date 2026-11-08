@@ -1,0 +1,18 @@
+# 데이터라이즈 개발자 기준 검사. 원본: datarize-inhouse/dev-minsung-bot standards/ci/
+# 각 레포의 .github/workflows/dev-standards.yml 로 복사하고, main 브랜치 필수 검사에 `dev-standards`를 건다.
+name: dev-standards
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  dev-standards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch origin ${{ github.base_ref }} --depth=200
+      - run: python3 tools/dev-standards/dev_standards_check.py --base origin/${{ github.base_ref }}

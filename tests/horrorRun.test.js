@@ -4,6 +4,7 @@ import { createRun, takeFuse, takeKey, openDoor, keysHeld, respawnSpot, chargeSh
 import { reachable, parseMap, blocked, lineOfSight, withOpen, findPath } from '../src/logic/horrorGrid.js';
 import { createSaveStore } from '../src/logic/save.js';
 import { factoryMap } from '../src/horror/maps/factory.js';
+import { forestMap } from '../src/horror/maps/forest.js';
 import { balance } from '../src/config/balance.js';
 
 const DAY1 = '2026-11-01';
@@ -364,6 +365,13 @@ describe('손이 닿는 것 고르기', () => {
 
   it('숨어 있으면 나오기만 할 수 있다', () => {
     expect(nearestUse(fresh(), factoryMap, { x: 3.5, y: 22.5 }, 2, k)).toEqual({ kind: 'locker', index: 2, label: '사물함에서 나오기' });
+  });
+
+  it('숲에서는 숨을 곳을 사물함이 아니라 고목이라 부른다', () => {
+    const run = createRun(forestMap, k, () => 0.3);
+    const c = forestMap.lockers[0];
+    expect(nearestUse(run, forestMap, { x: c.cx + 0.5, y: c.cy + 0.5 }, null, k).label).toBe('고목에 숨기');
+    expect(nearestUse(run, forestMap, { x: c.cx + 0.5, y: c.cy + 0.5 }, 0, k).label).toBe('고목에서 나오기');
   });
 
   it('주운 퓨즈는 고르지 않는다', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { MAPS } from '../src/horror/content.js';
-import { MAP_IDS } from '../src/logic/horrorPick.js';
+import { ALL_MAPS as MAPS } from '../src/horror/content.js';
+import { FOREST_MAP_ID, MAP_IDS } from '../src/logic/horrorPick.js';
 import { center, frontOf, chunksInSight, inPlayerView, canSeeBody, playerSees, reachable, withOpen, blocked } from '../src/logic/horrorGrid.js';
 import { nearestUse, createRun } from '../src/logic/horrorRun.js';
 import { balance } from '../src/config/balance.js';
@@ -16,7 +16,7 @@ const sightOf = (map, cell) => {
 };
 const beside = (map, c) => [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([x, y]) => ({ cx: c.cx + x, cy: c.cy + y })).filter((n) => !blocked(map, n.cx, n.cy));
 
-describe.each(MAP_IDS)('%s 맵의 시선', (id) => {
+describe.each([...MAP_IDS, FOREST_MAP_ID])('%s 맵의 시선', (id) => {
   const map = allOpen(MAPS[id].map);
   const area = reachable(map, map.start);
 

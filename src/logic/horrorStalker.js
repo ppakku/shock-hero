@@ -1,5 +1,6 @@
 // 파쇄자 행동 (화면과 상관없는 부분). 순찰, 조사, 추격, 수색, 멈춤, 매복, 응시 일곱 상태로 움직인다.
-import { cellOf, center, findPath, frontOf, lineOfSight, blocked, wallAt } from './horrorGrid.js';
+import { cellOf, center, findPath, frontOf, lineOfSight, blocked, wallAt, inPlayerView } from './horrorGrid.js';
+import { tickSwimmer } from './horrorSwimmer.js';
 
 // 소리와 몸짓 표가 읽는 상태 이름
 export const MODES = ['patrol', 'investigate', 'chase', 'search', 'stunned', 'ambush', 'watch'];
@@ -14,7 +15,7 @@ export function createStalker(map, k, rand, monsterId = 'seino', spot = map.stal
   return {
     monsterId, frozenT: 0, doorT: 0, rushT: 0, rushRestT: 0, ranT: 0, pauseT: 0, brushT: 0, wasHidden: false, lockedN: map.locked.size,
     x: c.x, y: c.y, heading: 0, mode: 'patrol', path: [], patrolIndex: 0, lostT: 0, searchT: 0, stunT: 0, repathT: 0, lockers: [], checking: null, lastSeen: null, target: null,
-    inWall: false, wallSlow: 1,
+    inWall: false, wallSlow: 1, soundId: 0, // soundId: 마지막으로 들은 아이템 소리
     pressure: 0, graceT: 0, warnT: 0, calmT: 0, watchT: 0, ambushT: 0, ambushKind: null,
     heat: new Float32Array(map.w * map.h), heatW: map.w, heatT: 0, // 주인공이 걸어 다닌 자리. 저장하지 않는다
     weights: new Float32Array(map.patrol.length), recent: new Int16Array(8).fill(-1), recentAt: 0,
@@ -70,8 +71,9 @@ export function seesPlayer(s, player, map, k) {
   return lineOfSight(map, s, player);
 }
 
+// hearScale: 처녀귀신처럼 단계마다 듣는 거리가 다른 괴물. 없으면 1
 function hears(s, player, k) {
-  return player.noise > 0 && dist(s, player) <= player.noise * (1 + k.pressureHear * s.pressure);
+  return player.noise > 0 && dist(s, player) <= player.noise * (k.hearScale ?? 1) * (1 + k.pressureHear * s.pressure);
 }
 
 function notices(s, player, map, k) {
@@ -125,7 +127,8 @@ function startSearch(s, map, k, rand) {
   s.mode = 'search';
   s.searchT = k.searchTime * (1 + k.pressureSearch * s.pressure);
   s.checking = null;
-  s.lockers = map.lockers
+  // 호러워드는 벽은 뚫어도 사물함은 열지 않는다. 숨으면 안전하다
+  s.lockers = throughWalls(s) ? [] : map.lockers
     .map((c, i) => ({ i, d: dist(center(c), s) }))
     .filter((l) => l.d <= k.searchRadius && rand() < chance)
     .sort((a, b) => a.d - b.d)
@@ -540,21 +543,185 @@ function tickMaw(s, world, m, k, dt, rand, events) {
   if (s.warnT <= 0 && !hiding && dist(s, player) < m.touchDist) events.push('caught');
 }
 
+// 처녀귀신이 단계마다 쓰는 값. 세이노 값에 걷기, 쫓기, 듣기만 바꿔 끼운다. 프레임마다 새로 만들지 않는다
+function maidenK(s, k, st, stage) {
+  if (s.kFor !== k) {
+    s.kFor = k;
+    s.kStage = {};
+  }
+  s.kStage[stage] ??= { ...k, stalkerWalk: st.walk, stalkerChase: st.chase, hearScale: st.hear, noticeLight: k.noticeLight * st.hear };
+  return s.kStage[stage];
+}
+
+// 주인공에게서 걸어서 몇 칸인지. 벽 너머로 가까운 칸을 고르지 않으려고 쓴다. 닿지 않으면 -1
+function stepsFrom(map, from, most) {
+  const size = map.w * map.h;
+  const steps = new Int16Array(size).fill(-1);
+  const queue = new Int32Array(size);
+  const start = from.cy * map.w + from.cx;
+  steps[start] = 0;
+  queue[0] = start;
+  for (let head = 0, tail = 1; head < tail; head++) {
+    const at = queue[head];
+    if (steps[at] >= most) continue;
+    for (const [dx, dy] of STEPS) {
+      const x = at % map.w + dx;
+      const y = Math.floor(at / map.w) + dy;
+      if (blocked(map, x, y) || steps[y * map.w + x] !== -1) continue;
+      steps[y * map.w + x] = steps[at] + 1;
+      queue[tail++] = y * map.w + x;
+    }
+  }
+  return steps;
+}
+
+const nextToTree = (map, cx, cy) => STEPS.some(([dx, dy]) => wallAt(map, cx + dx, cy + dy));
+
+// 주인공 눈에 안 보이는 칸인가. 고개 방향을 알면 시야 밖, 모르면 가린 것이 있는 칸
+function outOfSight(map, player, c, k) {
+  if (player.yaw === undefined) return !lineOfSight(map, player, c);
+  return !inPlayerView(player, player.yaw, c, map, k);
+}
+
+// 순간이동할 칸. 주인공에게서 blinkMin~blinkMax 칸, 보이지 않는 곳만 고른다. 등 뒤와 나무 옆을 더 좋아한다. 없으면 null
+export function blinkSpot(map, player, st, k, rand) {
+  const from = cellOf(player);
+  const r = Math.ceil(st.blinkMax);
+  const steps = stepsFrom(map, from, Math.ceil(st.blinkMax * 2));
+  const near = Math.max(st.blinkMin, k.catchDist + 1);
+  let best = null;
+  let bestScore = -Infinity;
+  for (let cy = from.cy - r; cy <= from.cy + r; cy++) {
+    for (let cx = from.cx - r; cx <= from.cx + r; cx++) {
+      if (blocked(map, cx, cy) || steps[cy * map.w + cx] < 0) continue;
+      const c = center({ cx, cy });
+      const d = dist(c, player);
+      if (d < near || d > st.blinkMax || !outOfSight(map, player, c, k)) continue;
+      let score = rand() + (nextToTree(map, cx, cy) ? 1.5 : 0);
+      if (player.yaw !== undefined) score += -(-Math.sin(player.yaw) * (c.x - player.x) - Math.cos(player.yaw) * (c.y - player.y)) / d; // 등 뒤일수록 크다
+      if (score > bestScore) {
+        bestScore = score;
+        best = { cx, cy };
+      }
+    }
+  }
+  return best;
+}
+
+// 처녀귀신이 사라졌다가 주인공 가까운 곳에 나타난다. 주인공 쪽을 보고 선다
+function blink(s, map, player, st, k, rand, events) {
+  const spot = blinkSpot(map, player, st, k, rand);
+  if (!spot) {
+    s.unseenT = st.blinkAfter / 2; // 마땅한 칸이 없으면 조금 뒤에 다시 본다
+    return;
+  }
+  const c = center(spot);
+  Object.assign(s, { x: c.x, y: c.y, path: [], checking: null, lockers: [], unseenT: 0 });
+  s.heading = Math.atan2(player.x - s.x, player.y - s.y);
+  s.warnT = Math.max(s.warnT, st.blinkWarn); // 나타나자마자 잡지는 않는다
+  s.target = cellOf(player);
+  s.lastSeen = s.target;
+  if (s.mode !== 'chase') s.mode = 'investigate';
+  goTo(s, map, s.target);
+  events.push('blink');
+}
+
+// 처녀귀신: 해가 지는 단계 (world.stage) 에 따라 달라진다.
+// 노을에는 쫓지 않고 멀리 모습만 보이다가 사라지고, 어스름부터 세이노처럼 소리와 빛을 알아채고 쫓는다.
+// 안 보이는 곳에 오래 있으면 주인공 가까운 나무 옆으로 순간이동한다. 쇼크를 맞으면 그 자리에서 사라진다.
+// 세이노 흐름을 이어서 돌릴 값을 돌려준다. null 이면 이번 프레임은 여기서 끝이다
+function tickMaiden(s, world, m, k, dt, rand, events) {
+  const { map, player } = world;
+  const stage = m[world.stage] ? world.stage : 'twilight';
+  const st = m[stage];
+  if (s.stage !== stage && s.mode === 'watch') s.mode = 'patrol'; // 노을에 바라보던 자세를 풀고 시작한다
+  s.stage = stage;
+  if (s.mode === 'stunned') {
+    events.push('vanish');
+    sendAway(s, map, player, rand);
+    s.graceT = k.stunTime; // 쇼크로 멈춰 있을 시간만큼 다른 곳에서 쉰다
+    s.unseenT = 0;
+    return null;
+  }
+  if (stage === 'glow') {
+    s.unseenT = 0;
+    if (world.seen && s.graceT <= 0) {
+      // 멀리서 잠깐 서서 바라보다가, 오래 보거나 다가가면 사라진다
+      s.mode = 'watch';
+      s.path = [];
+      s.heading = Math.atan2(player.x - s.x, player.y - s.y);
+      s.frozenT += dt;
+      if (s.frozenT >= st.showTime || dist(s, player) <= st.slipDist) {
+        events.push('slip');
+        sendAway(s, map, player, rand);
+        s.frozenT = 0;
+      }
+      return null;
+    }
+    if (s.mode !== 'patrol') {
+      s.mode = 'patrol';
+      s.path = [];
+    }
+    s.frozenT = 0;
+    tickPatrol(s, map, maidenK(s, k, st, stage), dt, rand);
+    return null;
+  }
+  // 잡힌 뒤 쉬는 동안 (graceT) 은 세지 않는다. 세면 쉬는 시간이 끝나자마자 등 뒤에 나타나 또 잡는다
+  s.unseenT = world.seen || player.hidden !== null || s.graceT > 0 ? 0 : (s.unseenT ?? 0) + dt;
+  if (s.graceT <= 0 && s.unseenT >= st.blinkAfter && dist(s, player) > st.blinkMax) blink(s, map, player, st, k, rand, events);
+  return maidenK(s, k, st, stage);
+}
+
+// 조명탄이나 장난감 소리 (logic/horrorAids.js). 괴물마다 새 소리를 한 번만 듣고 그 칸으로 간다.
+// 조명탄은 쫓는 괴물을 돌려세우지 않는다. 장난감 (lure) 은 쫓던 괴물도 그쪽으로 보내고, 알림 글도 띄우지 않는다
+function hearSounds(s, world, k, events) {
+  if (!world.sounds?.length || s.mode === 'stunned') return;
+  for (const snd of world.sounds) {
+    if (snd.id <= s.soundId || dist(s, center(snd)) > snd.range) continue;
+    s.soundId = snd.id;
+    const cell = { cx: snd.cx, cy: snd.cy };
+    if (s.monsterId === 'gazer') {
+      // 눈뜬이는 소리보다 눈이다. 장난감에만 잠깐 끌려간다
+      if (!snd.lure) continue;
+      goTo(s, world.map, cell);
+      s.repathT = k.aids.gazerLure;
+      s.mode = 'patrol';
+    } else if (s.monsterId === 'maw') hearAt(s, world.map, cell, k.monsters.maw, snd.lure ? [] : events);
+    else {
+      const busy = s.mode === 'chase' || s.mode === 'ambush' || s.mode === 'watch';
+      if (busy && !snd.lure) continue;
+      if (!busy && s.mode !== 'investigate') events.push('notice');
+      Object.assign(s, { mode: 'investigate', target: cell, checking: null, lostT: 0, lastSeen: null });
+      goTo(s, world.map, cell);
+    }
+  }
+}
+
 // 파쇄자를 한 번 움직인다. 일어난 일을 events 로 돌려준다.
 // 'found' 는 여기서 잡힘이 되지 않는다. 호출하는 쪽이 이 이벤트를 받아 잡힘으로 처리한다.
 export function tickStalker(s, world, k, dt, rand = Math.random) {
   const { map, player } = world;
+  const base = k;
   const events = [];
   s.pressure = Math.min(1, world.pressure || 0);
   s.graceT = Math.max(0, Math.min(s.graceT, k.respawnGrace) - dt); // sendAway 가 넣은 Infinity 를 여기서 맞춘다
   s.warnT = Math.max(0, s.warnT - dt);
   s.calmT += dt;
+  hearSounds(s, world, k, events);
   if (s.monsterId === 'gazer') {
     tickGazer(s, world, k.monsters.gazer, k, dt, rand, events);
     return events;
   }
   if (s.monsterId === 'maw') {
     tickMaw(s, world, k.monsters.maw, k, dt, rand, events);
+    return events;
+  }
+  if (s.monsterId === 'maiden') {
+    k = tickMaiden(s, world, base.monsters.maiden, base, dt, rand, events);
+    if (!k) return events;
+  }
+  if (s.monsterId === 'swimmer') {
+    tickSwimmer(s, world, k.monsters.swimmer, k, dt, rand, events);
     return events;
   }
   if (throughWalls(s)) {

@@ -6,6 +6,10 @@
 //  규칙: 숫자만 바꾸세요. 쉼표(,)와 중괄호({ })는 지우지 마세요.
 //  시간은 모두 "초" 단위입니다. 1.5 는 1초 반이에요.
 // =============================================================
+import { horrorAids } from './horrorAids.js';
+
+import { forestRound, maidenMonster, maidenVoice } from './horrorForest.js';
+import { POOL_WATER, SWIMMER, SWIMMER_VOICE } from './horrorPool.js';
 
 export const balance = {
   // ---------- 주인공 ----------
@@ -786,6 +790,7 @@ export const balance = {
         stepEvery: { patrol: 0.95, investigate: 0.8, search: 1.1, chase: 0.3, stunned: 0 },
         tone: { freqs: [147, 220], type: 'sawtooth', vol: 0.05, cutoff: 1100 }, // 작은 스피커에도 들리게 150Hz 위 소리가 남는다
       },
+      swimmer: SWIMMER_VOICE,
       ward: { // 옷자락이 끌리는 소리와 낮게 웃는 숨소리. 두 음이 부딪혀 떨린다
         breathFreq: 240, breathQ: 1.4,
         breathLevel: { patrol: 0.5, investigate: 0.6, search: 0.6, chase: 1, stunned: 0.12, watch: 0.2 },
@@ -793,6 +798,7 @@ export const balance = {
         stepEvery: { patrol: 0.75, investigate: 0.75, search: 0.75, chase: 0.42, stunned: 0, watch: 0 },
         tone: { freqs: [165, 174.6], type: 'triangle', vol: 0.1, cutoff: 700 },
       },
+      maiden: maidenVoice, // 숲 판 설정은 config/horrorForest.js
     },
     seeDark: 3, // 손전등을 껐을 때 파쇄자가 보는 거리
     seeLight: 8, // 손전등을 켰을 때 파쇄자가 보는 거리
@@ -829,6 +835,7 @@ export const balance = {
     },
     art: { fuse: 0.6, key: 0.62, glow: 1.5, lift: 2 }, // 바닥 위에 뜬 물건 그림 크기 (미터)와 밝기 배수, 그림을 입힌 상자, 전원, 정문의 빛 배수 (그림이 어두워 빛도 약해진다)
     useRange: 1.2, // 줍기, 숨기 등이 닿는 거리
+    aids: horrorAids, // 길 찾기를 돕는 아이템 (config/horrorAids.js)
     fuseCount: 3, // 찾아야 하는 퓨즈 수
     wingFuses: 1, // 잠긴 날개마다 꼭 들어가는 퓨즈 수. 그래서 문을 열어야만 끝낼 수 있다
     gemsEscape: 5, // 탈출 보석. 날마다 첫 탈출에만 준다
@@ -844,6 +851,7 @@ export const balance = {
       runGrace: 0.3, // 달리지 않기 조건에서 봐주는 시간 (초)
       darkAmbient: 3, // 손전등 조건에서 윤곽 밝기 배수. 손전등 없이 한 판을 끝낼 만큼 벽과 괴물이 보여야 한다
     },
+    forest: forestRound, // 숲 판 (어른용). config/horrorForest.js
     // 도장판으로 여는 색. 맨 앞은 처음부터 쓰고, 그 뒤로 한 단계에 번개와 손전등이 하나씩 열린다
     stamps: {
       steps: [3, 6, 9, 12], // 색을 여는 단계마다 필요한 도장 수. 판이 커져도 그대로라서 한 번 연 것이 다시 잠기지 않는다
@@ -942,6 +950,7 @@ export const balance = {
     pressureLocker: 0.3, // 퓨즈를 다 찾았을 때 사물함을 뒤질 확률에 더해지는 값
     viewFov: 125, // 주인공이 괴물을 보고 있다고 치는 좌우 각도 (도). 긴 폰 화면의 가로 시야보다 조금 넓다
     slitFov: 40, // 사물함 틈으로 보고 있다고 치는 각도 (도). 고개를 돌릴 수 있는 각도보다 좁아야 눈을 뗄 수 있다
+    water: POOL_WATER, // 수영장 물 (src/config/horrorPool.js)
     monsters: {
       seino: {}, // 세이노는 위의 값을 그대로 쓴다
       gazer: {
@@ -970,9 +979,11 @@ export const balance = {
         sniffPause: 1, // 냄새를 맡고 돌아서기까지 걸리는 시간 (초)
         brushRest: 2, // 한 번 돌아선 뒤 다시 멈출 때까지 쉬는 시간 (초)
       },
+      swimmer: SWIMMER,
       ward: { // 나머지는 세이노 값을 그대로 쓴다
         wallSlow: 0.35, // 벽 속에서 느려지는 비율. 벽 한 칸을 쫓으며 지나는 데 1.4초쯤 걸려 튀어나오는 벽을 보고 달아날 수 있다
       },
+      maiden: maidenMonster, // 처녀귀신. config/horrorForest.js
     },
   },
 

@@ -6,7 +6,7 @@
 #   python3 tools/run_horror.py 출력폴더 --rounds  (모든 조합을 진짜 게임에서 봇으로 끝까지 하고, 괴물 규칙과 그리기 수를 보고, 사진을 찍기)
 #   python3 tools/run_horror.py 출력폴더 --last    (도장을 모아 마지막 밤을 고르기 화면에서 열고 봇으로 끝까지. PC 와 휴대폰 크기)
 #   python3 tools/run_horror.py 출력폴더 --tonight (오늘의 밤 카드로 시작해 다섯 조건을 봇으로 지키고 깨서 끝까지. PC 와 휴대폰 크기)
-#   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 남는 것이 없는지 보기)
+#   python3 tools/run_horror.py 출력폴더 --replay  (한 판 더를 여러 번 눌러 판이 바뀌고 오디오 노드까지 남는 것이 없는지 보기)
 #   python3 tools/run_horror.py 출력폴더 --sound   (세이노가 가깝고 멀 때, 순찰과 추격의 소리 크기만 재기)
 #   python3 tools/run_horror.py 출력폴더 --robust  (화면 꺼짐, 보석, 소리 실패, 나가기 실패, 세이노 숨기기, 비상등. --play 에도 들어 있다)
 #   python3 tools/run_horror.py 출력폴더 --phone   (휴대폰 가로 화면: 안내, 쪽지, 손가락이 쪽지를 지나 걷기)
@@ -1208,8 +1208,8 @@ def run_phone(pw):
         intro = pg.evaluate("(() => { const l = window.__horror.hud.layer, r = l.getBoundingClientRect(); const bs = [...l.querySelectorAll('button')].map((x) => x.getBoundingClientRect().bottom); return { scroll: l.scrollHeight, height: r.height, bottom: Math.max(...bs), text: l.textContent }; })()")
         print('phone intro', {k: v for k, v in intro.items() if k != 'text'})
         check(f'phone {w}: intro mentions keys', '열쇠' in intro['text'])
-        if intro['scroll'] > intro['height'] + 1:
-            print(f'phone {w}: intro needs a scroll', intro['scroll'], intro['height'])
+        check(f'phone {w}: intro fits without a scroll', intro['scroll'] <= intro['height'] + 1, intro['scroll'])
+        check(f'phone {w}: intro keeps the scare warning', '꽤 무서워요' in intro['text'])
         pg.evaluate("window.__horror.hud.layer.scrollTop = 1e4")
         tap(t, button_xy(pg, '시작'))
         check(f'phone {w}: start', pg.evaluate('window.__horror.state') == 'play')
@@ -1451,11 +1451,34 @@ ROUND_NOW = """() => {
 }"""
 
 
+AUDIO_VOICE_SPREAD = 8  # 지난 판의 멈춘 노드 수는 괴물 목소리마다 이만큼 다르다
+
+
+# Chrome 이 실제로 살려 둔 오디오 노드를 센다. JS 쪽 집계는 끝난 소리와 GC 를 못 본다
+def watch_audio_nodes(cdp):
+    live = set()
+    cdp.on('WebAudio.audioNodeCreated', lambda e: live.add(e['node']['nodeId']))
+    cdp.on('WebAudio.audioNodeWillBeDestroyed', lambda e: live.discard(e['nodeId']))
+    cdp.send('WebAudio.enable')
+    return live
+
+
+# 짧은 소리가 끝나고 GC 가 돈 뒤의 수. 지난 판을 변수로 붙들고 있으면 그만큼 늘어나 보인다
+def settled_audio_nodes(cdp, live):
+    time.sleep(1.5)
+    for _ in range(3):
+        cdp.send('HeapProfiler.collectGarbage')
+        time.sleep(0.3)
+    return len(live)
+
+
 def play_replay(pw):
     b = pw.chromium.launch(executable_path=CHROME, headless=True, args=ARGS)
     pg = b.new_page(viewport={'width': 640, 'height': 360})
     errs = []
     watch(pg, errs)
+    cdp = pg.context.new_cdp_session(pg)
+    nodes = watch_audio_nodes(cdp)
     pg.goto(FREE_URL)
     pg.evaluate("localStorage.removeItem('shock-hero-save-v1')")
     pg.goto(FREE_URL)
@@ -1467,7 +1490,9 @@ def play_replay(pw):
     time.sleep(0.5)
     seen = []
     first = None
+    counts = []
     for i in range(16):
+        counts.append(settled_audio_nodes(cdp, nodes))
         now = pg.evaluate(ROUND_NOW)
         print('round', i, now['round'], 'kids', now['kids'], 'listeners', now['listeners'])
         seen.append(now['round'])
@@ -1490,8 +1515,10 @@ def play_replay(pw):
         pg.click('#horror button:has-text("한 판 더")')
         pg.click('[data-chooser] button:has-text("들어가기")', timeout=10000)
         pg.wait_for_function('window.__horror && window.__horror !== window.__oldHorror', timeout=10000)
-        check(f'replay {i}: old game is gone', pg.evaluate('window.__oldHorror.dead === true'))
+        check(f'replay {i}: old game is gone', pg.evaluate('(() => { const dead = window.__oldHorror.dead === true; window.__oldHorror = null; return dead; })()'))
         time.sleep(0.4)
+    print('audio nodes', counts)
+    check('replay: audio nodes do not grow', max(counts[2:]) - min(counts[1:]) <= AUDIO_VOICE_SPREAD, counts)
     check('replay: every map and monster came up', len({r['mapId'] for r in seen}) == 5 and len({r['monsterId'] for r in seen}) == 4, seen)
     pg.click('#horror button:has-text("타이틀로")')
     pg.wait_for_function('!window.__horror && window.__shockGame.scene.isActive("Title")', timeout=10000)
@@ -1864,6 +1891,7 @@ def tonight_start(pg, tag, shot):
     intro = pg.inner_text('#horror')
     fit = pg.evaluate(FITS, '#horror > div[style*="z-index: 5"]')
     check(f'{tag}: intro names the condition, buttons on screen', '오늘의 밤 조건' in intro and not fit['out'], fit)
+    check(f'{tag}: intro fits and keeps the scare warning', fit['scroll'] <= fit['height'] + 1 and '꽤 무서워요' in intro, fit)
     pg.locator('#horror button:has-text("시작")').click()
     pg.wait_for_function("window.__horror.state === 'play'", timeout=5000)
     pg.evaluate(FAKE_LOCK)

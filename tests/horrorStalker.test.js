@@ -106,6 +106,16 @@ describe('상태 변화', () => {
     expect(run(s, world, k.loseTime + 3, () => 0.9)).not.toContain('found');
   });
 
+  it('호러워드는 사물함을 뒤지지 않는다', () => {
+    const s = facing({ monsterId: 'ward', x: 2.5, y: 3.5, mode: 'chase', lastSeen: { cx: 2, cy: 3 } });
+    const world = { map: hall, player: player({ x: 1.5, y: 3.5, hidden: 0 }) };
+    const events = run(s, world, k.loseTime + k.searchTime + 1, () => 0.1);
+    expect(events).toContain('lost');
+    expect(events).not.toContain('locker');
+    expect(events).not.toContain('found');
+    expect(events).not.toContain('caught');
+  });
+
   it('길이 없는 사물함은 뒤지지 않는다', () => {
     const sealed = parseMap([
       '#########',

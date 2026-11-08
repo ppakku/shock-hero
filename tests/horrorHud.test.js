@@ -202,6 +202,14 @@ describe('안내 화면 그림', () => {
     expect(face.gone).toBe(true);
   });
 
+  it('휴대폰도 조건이 있든 없든 무서움 안내를 빼지 않는다', () => {
+    for (const tonight of [null, '오늘의 밤 조건: 안 잡히기']) {
+      const hud = hudFor({ mapId: 'sewer', monsterId: 'maw' });
+      hud.showIntro('phone', { ...ROUND, tonight }, () => {}, () => {});
+      expect(hud.layer.kids[0].textContent).toContain('꽤 무서워요');
+    }
+  });
+
   it('휴대폰은 얼굴을 놓지 않는다', () => {
     const hud = hudFor({ mapId: 'sewer', monsterId: 'maw' });
     hud.showIntro('phone', ROUND, () => {}, () => {});

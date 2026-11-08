@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { blocked, center, chunksInSight, findPath, frontOf, lineOfSight, reachable, withOpen, CELL } from '../src/logic/horrorGrid.js';
 import { createRun, takeKey, openDoor, respawnSpot } from '../src/logic/horrorRun.js';
-import { decorSpots } from '../src/logic/horrorDecor.js';
+import { decorSpots, outdoorSpots } from '../src/logic/horrorDecor.js';
 import { createStalker, sendAway } from '../src/logic/horrorStalker.js';
 import { factoryMap, factoryTheme } from '../src/horror/maps/factory.js';
 import { sewerMap, sewerTheme } from '../src/horror/maps/sewer.js';
@@ -10,6 +10,9 @@ import { schoolMap, schoolTheme } from '../src/horror/maps/school.js';
 import { stationMap, stationTheme } from '../src/horror/maps/station.js';
 import { parkMap, parkTheme } from '../src/horror/maps/park.js';
 import { martMap, martTheme } from '../src/horror/maps/mart.js';
+import { forestMap, forestTheme } from '../src/horror/maps/forest.js';
+import { poolMap, poolTheme } from '../src/horror/maps/pool.js';
+import { piecesBox } from '../src/horror/art.js';
 import { balance } from '../src/config/balance.js';
 
 const k = balance.horror;
@@ -20,7 +23,11 @@ const MAPS = [
   { id: 'station', map: stationMap, theme: stationTheme, rooms: [8, 16] },
   { id: 'park', map: parkMap, theme: parkTheme, rooms: [1, 14] }, // 복도가 이어져 큰 방 몇 개로 친다
   { id: 'mart', map: martMap, theme: martTheme, rooms: [3, 3] }, // 매장 하나와 잠긴 창고 둘
+  { id: 'forest', map: forestMap, theme: forestTheme, rooms: [3, 3] }, // 어른용 숲. 문이 잠긴 울타리 문 둘뿐이라 방은 셋이다
+  { id: 'pool', map: poolMap, theme: poolTheme, rooms: [1, 3] }, // 문 없이 트인 곳으로 이어져서 방은 잠긴 문 둘로 나뉜 셋이다
 ];
+// 천장과 벽 등, 관, 기계가 있는 실내 맵. 숲 (outdoor) 은 천장 대신 하늘, 벽 장식 대신 숲 장식이라 그 규칙만 뺀다
+const INDOOR = MAPS.filter(({ theme }) => !theme.outdoor);
 
 function seeded(seed) {
   let x = seed * 2654435761 + 1;
@@ -247,7 +254,8 @@ describe.each(MAPS)('$id 맵', ({ map, theme, rooms: [fewest, most] }) => {
     });
   });
 
-  describe('꾸밀 자리', () => {
+  // 실내 맵만: 벽 등, 기계, 관 자리. 숲은 아래 '숲 장식 자리' 가 대신 본다
+  describe.skipIf(!!theme.outdoor)('꾸밀 자리', () => {
     const spots = decorSpots(map, theme.decor.tile);
     const all = [...spots.machines, ...spots.lights, ...spots.pipes];
     const areas = (list) => new Set(list.map((f) => `${Math.floor(f.cx / 7)},${Math.floor(f.cy / 6)}`)).size;
@@ -302,24 +310,46 @@ describe('테마', () => {
         expect(typeof theme[part].plain).toBe('number');
         expect(theme[part].repeat).toBeGreaterThan(0);
       }
-      for (const color of ['ceil', 'fog', 'ambient', 'lightColor']) expect(typeof theme[color]).toBe('number');
+      for (const color of ['fog', 'ambient', 'lightColor']) expect(typeof theme[color]).toBe('number');
+      if (theme.doorArt) expect(theme[theme.doorArt].art).toMatch(/^horror_/);
+      // 문 그림을 정했으면 그 그림이 있어야 한다. 없으면 판마다 콘솔 경고가 뜬다
+      if (theme.doorSet) for (const lock of ['red', 'blue']) expect(existsSync(`public/art/${theme.doorSet}_${lock}.jpg`), `${theme.doorSet}_${lock}`).toBe(true);
+    }
+    // 천장 색과 벽 장식은 실내 맵만 쓴다
+    for (const { theme } of INDOOR) {
+      expect(typeof theme.ceil).toBe('number');
       expect(theme.decor.light.y).toBeLessThan(3);
       expect(theme.decor.machine.tints.length).toBeGreaterThan(0);
       expect(theme.decor.pipe.ys.length).toBeGreaterThan(0);
-      if (theme.doorArt) expect(theme[theme.doorArt].art).toMatch(/^horror_/);
+    }
+  });
+
+  it('책상과 긴 의자는 다리 사이가 비어 있고 한 모양으로 합쳐진다', () => {
+    for (const { low } of [schoolTheme.decor, stationTheme.decor]) {
+      const onFloor = low.parts.filter((p) => p.y[0] === 0);
+      expect(onFloor.length).toBeGreaterThanOrEqual(3);
+      for (const leg of onFloor) expect(leg.x[1] - leg.x[0]).toBeLessThan(0.05);
+      expect(piecesBox(low.parts).getAttribute('position').count).toBe(low.parts.length * 24);
+    }
+  });
+
+  it('밝은 벽 그림은 tint 로 눌러서 가까운 손전등에 하얗게 날아가지 않는다', () => {
+    for (const theme of [schoolTheme, stationTheme]) {
+      const { tint } = theme.wall;
+      expect(Math.max((tint >> 16) & 255, (tint >> 8) & 255, tint & 255)).toBeLessThanOrEqual(0x68);
     }
   });
 
   it('소품 그림 파일이 다 있고, 맵마다 등과 천장, 배관이 제 그림이다', () => {
-    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, ...(theme.decor.extra ?? []).map((kind) => kind.art)];
-    for (const { theme } of MAPS) {
+    const arts = (theme) => [theme.ceilArt.art, theme.decor.light.art, theme.decor.pipe.art, theme.decor.low?.art].filter(Boolean);
+    for (const { theme } of INDOOR) {
       for (const art of arts(theme)) expect(existsSync(`public/art/${art}.jpg`), art).toBe(true);
       const { low } = theme.decor;
       if (low) expect(existsSync(`public/art/${low.art}.${low.cut ? 'webp' : 'jpg'}`), low.art).toBe(true);
     }
     expect(existsSync('public/art/horror_clue.jpg')).toBe(true);
     for (const pick of [(t) => t.ceilArt.art, (t) => t.decor.light.art, (t) => t.decor.pipe.art]) {
-      expect(new Set(MAPS.map(({ theme }) => pick(theme))).size).toBe(MAPS.length);
+      expect(new Set(INDOOR.map(({ theme }) => pick(theme))).size).toBe(INDOOR.length);
     }
   });
 
@@ -362,5 +392,52 @@ describe('맵이 서로 다르게 느껴진다', () => {
 
   it('놀이공원은 어느 맵보다 곧은 길이 짧다', () => {
     for (const map of [factoryMap, sewerMap, schoolMap, stationMap, martMap]) expect(longestRun(parkMap)).toBeLessThan(longestRun(map));
+  });
+});
+
+describe('숲 (바깥 맵)', () => {
+  const t = forestTheme;
+  const spots = outdoorSpots(forestMap, t.decor);
+  const open = reachable(withOpen(forestMap, forestMap.locks.map((_, i) => i)), forestMap.start);
+  const onPath = (s) => open.has(`${Math.floor(s.x)},${Math.floor(s.y)}`);
+
+  it('바깥 테마는 천장 대신 하늘이고, 쓰는 그림 파일이 다 있다', () => {
+    expect(t.outdoor).toBe(true);
+    expect(t.ceilArt).toBeUndefined();
+    expect(t.decor.light).toBeUndefined();
+    expect(t.sky.radius).toBeLessThan(k.viewCells * CELL + 6); // 하늘 돔이 사진기 먼 끝 안쪽에 있어야 보인다
+    const jpg = [t.wall.art, t.floor.art, t.sky.art, `${t.doorSet}_red`, `${t.doorSet}_blue`, 'horror_intro_forest'];
+    const webp = [t.locker.art, t.gate.art, t.trees.crown.art, t.trees.bush.art, t.decor.totem.art, t.decor.cairn.art, t.decor.hair.art];
+    for (const art of jpg) expect(existsSync(`public/art/${art}.jpg`), art).toBe(true);
+    for (const art of webp) expect(existsSync(`public/art/${art}.webp`), art).toBe(true);
+  });
+
+  it('나무는 제 칸 안에 서고, 덤불은 눈높이를 가린다', () => {
+    const { trunk, bush } = t.trees;
+    expect(trunk.jitter * CELL / 3 + trunk.r[1]).toBeLessThan(CELL / 2);
+    expect(bush.h[0]).toBeGreaterThan(1.6 + 0.5); // 눈높이 (HorrorGame EYE) 보다 넉넉히 높다
+    expect(Math.max(...bush.inset)).toBeLessThan(CELL / 2);
+  });
+
+  it('장승 한 쌍은 시작 가까운 길목 양옆에 선다', () => {
+    expect(spots.totems).toHaveLength(2);
+    for (const s of spots.totems) {
+      expect(onPath(s)).toBe(true);
+      expect(Math.hypot(s.x - forestMap.start.cx, s.y - forestMap.start.cy)).toBeLessThan(10);
+    }
+    const [a, b] = spots.totems;
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(0.6); // 둘 사이로 지나갈 수 있다
+  });
+
+  it('돌무더기는 서로 떨어진 빈터에, 머리카락은 여러 오솔길에 건다', () => {
+    expect(spots.cairns.length).toBe(t.decor.cairn.count);
+    expect(spots.hair.length).toBeGreaterThanOrEqual(6);
+    for (const s of [...spots.cairns, ...spots.hair]) expect(onPath(s)).toBe(true);
+    for (const a of spots.cairns) for (const b of spots.cairns) if (a !== b) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(8);
+    expect(t.decor.hair.y).toBeGreaterThan(1.6); // 머리카락 끝은 눈높이보다 위다
+  });
+
+  it('맵을 바꾸지 않고 항상 같은 자리다', () => {
+    expect(outdoorSpots(forestMap, t.decor)).toEqual(spots);
   });
 });
