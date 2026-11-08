@@ -23,6 +23,8 @@ const MARK = { size: 0.9, y: 0.02, glow: 0.8 }; // 분필 화살표 크기와 �
 const COMPASS_EVERY = 0.4; // 나침반 길을 다시 찾는 간격 (초)
 const MAP_COLORS = { paper: '#c9b48a', wall: '#3a2a18', locker: '#5a4a34', fuse: '#e0a020', clue: '#c02020', mark: '#ffffff', me: '#1a8a3a', panel: '#7a3ad0', gate: '#30d0c0' };
 const LOCK_COLORS = ['#e04848', '#4a8ef0'];
+const MINI_CELL = 8; // 작은 지도 한 칸의 그림 크기 (px). 화면에서는 폭에 맞춰 늘거나 준다
+const MINI_EVERY = 0.1; // 작은 지도를 다시 그리는 간격 (초)
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // 위에서 내려다본 지도. full 이면 내 자리, 물건, 분필 표시까지 그린다 (벽에 붙은 그림은 길만 그린다)
@@ -155,7 +157,8 @@ export class HorrorAids {
     this.g = g;
     this.k = g.k.aids;
     const { run, map } = g;
-    this.state = createAids(map, this.k, rand, [...run.fuses, ...run.keys, ...run.clues, ...map.notes]);
+    this.easy = Boolean(g.easy);
+    this.state = createAids(map, this.k, rand, [...run.fuses, ...run.keys, ...run.clues, ...map.notes], this.easy);
     this.mapT = 0; // 지도가 열려 있는 남은 시간
     this.flareT = 0;
     this.compassT = 0;
@@ -299,6 +302,15 @@ export class HorrorAids {
     this.arrowSvg = this.arrow.firstChild;
     this.arrowText = this.arrow.lastChild;
     box.appendChild(this.arrow);
+    // 쉬움: 왼쪽 위에 늘 떠 있는 작은 지도. 체력 막대 밑에 둔다 (휴대폰은 화면이 낮아 조금 작게)
+    if (this.easy) {
+      const wide = this.g.device === 'phone' ? '24vw' : 'min(24vw,300px)';
+      this.mini = css(document.createElement('canvas'), `position:absolute;left:calc(16px + env(safe-area-inset-left,0px));top:calc(56px + env(safe-area-inset-top,0px));width:${wide};height:auto;opacity:.88;border:2px solid rgba(255,255,255,.35);border-radius:4px;box-shadow:0 2px 10px #000;image-rendering:pixelated`);
+      this.mini.dataset.miniMap = '';
+      this.miniT = 0;
+      box.appendChild(this.mini);
+      this.paintMini();
+    }
     // 지도 화면
     this.mapLayer = css(document.createElement('div'), 'position:absolute;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px;box-sizing:border-box;background:rgba(0,0,0,.84)');
     this.mapTimer = css(document.createElement('div'), 'font:bold 22px monospace;color:#ffd080');
@@ -315,7 +327,7 @@ export class HorrorAids {
   showSlots() {
     for (const s of this.slots) {
       const n = this.state.held[s.kind];
-      s.count.textContent = n;
+      s.count.textContent = n === Infinity ? '∞' : n;
       s.el.style.opacity = n > 0 ? '1' : '0.35';
     }
   }
@@ -369,6 +381,15 @@ export class HorrorAids {
     if (ctx) drawMap(ctx, map, cell, { run, aids: this.state, p, yaw });
     this.mapTimer.textContent = Math.ceil(this.mapT);
     this.mapTimer.style.color = this.mapT <= 3 ? '#e04848' : '#ffd080';
+  }
+
+  // 작은 지도는 MINI_EVERY 초마다 다시 그린다. 내 세모가 따라 움직인다
+  paintMini() {
+    const { map, run, p, yaw } = this.g;
+    this.mini.width = map.w * MINI_CELL;
+    this.mini.height = map.h * MINI_CELL;
+    const ctx = this.mini.getContext('2d');
+    if (ctx) drawMap(ctx, map, MINI_CELL, { run, aids: this.state, p, yaw });
   }
 
   // 열려 있었으면 닫고 true
@@ -453,7 +474,7 @@ export class HorrorAids {
     mesh.rotation.set(-Math.PI / 2, mark.yaw, 0);
     this.chalkT = this.k.chalkPause;
     g.audio?.play('chalk');
-    g.hud.say(`분필 표시를 남겼다 (${this.state.held.chalk}번 남음)`, 2);
+    g.hud.say(this.easy ? '분필 표시를 남겼다' : `분필 표시를 남겼다 (${this.state.held.chalk}번 남음)`, 2);
   }
 
   // 판이 도는 동안 한 번. 지도가 열려 있거나 분필을 그리는 동안은 움직이지 못한다
@@ -472,6 +493,10 @@ export class HorrorAids {
     }
     this.tickFlare(dt);
     this.tickCompass(dt);
+    if (this.mini && (this.miniT -= dt) <= 0) {
+      this.miniT = MINI_EVERY;
+      this.paintMini();
+    }
   }
 
   get frozen() {

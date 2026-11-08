@@ -205,12 +205,17 @@ export function lastNightReward(record, k) {
 
 export const recordLastNight = (record) => ({ ...record, lastCleared: true });
 
+// 난이도. 쉬움은 지도가 늘 보이고 아이템이 줄지 않는다 (logic/horrorAids.js). 어려움은 처음 만든 그대로다
+export const EASY = 'easy';
+export const HARD = 'hard';
+
 // gemDay: 탈출 보석을 마지막으로 받은 날. 없으면 아직 받은 적이 없다
 // last: 지난 판의 { mapId, monsterId }. 다음 판을 다르게 고르는 데 쓴다
 // stamps: 도장판 { '맵/괴물': 'plain' | 'gold' }. bolt, light: 고른 번개와 손전등 색 id (logic/horrorStamps.js)
 // lastCleared: 마지막 밤을 깬 적이 있는지. tonightDone: 오늘의 밤 보석을 받은 날 (logic/horrorTonight.js)
+// level: 고른 난이도. 처음에는 쉬움이다
 export function emptyHorror() {
-  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null, lastCleared: false, tonightDone: [] };
+  return { escapes: 0, cleanEscapes: 0, gemDay: null, last: null, stamps: {}, bolt: null, light: null, lastCleared: false, tonightDone: [], level: EASY };
 }
 
 export function normalizeHorror(data) {
@@ -224,6 +229,7 @@ export function normalizeHorror(data) {
   if (typeof data?.light === 'string') d.light = data.light;
   d.lastCleared = data?.lastCleared === true;
   d.tonightDone = normalizeTonightDone(data?.tonightDone);
+  if (data?.level === HARD) d.level = HARD;
   return d;
 }
 

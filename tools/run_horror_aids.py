@@ -25,6 +25,7 @@ def open_round(pg, map_id, monster='seino'):
     time.sleep(3)
     pg.evaluate("window.__shockGame.scene.getScene('Title').openHorror()")
     pg.wait_for_selector(f'#horror button[data-pick="{map_id}"]', timeout=20000)
+    pg.click('#horror button[data-pick="hard"]')  # 바닥 아이템과 벽 지도는 어려움에만 있다
     pg.click(f'#horror button[data-pick="{map_id}"]')
     pg.click(f'#horror button[data-pick="{monster}"]')
     pg.click('#horror button:has-text("들어가기")')

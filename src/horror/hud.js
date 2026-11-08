@@ -57,11 +57,17 @@ export function controlLines(device) {
 
 // 시작 전 안내 이야기. 맨 앞은 이번 판의 맵, 괴물, 힌트다. 휴대폰은 화면이 작아서 이야기 앞의 두 줄을 빼고 맵과 힌트를 한 줄로 쓴다
 // round: { mapName, monsterName, hint, tonight, forest }. tonight 는 오늘의 밤 조건 줄이고, 없으면 빠진다. forest 면 숲의 규칙 줄을 쓴다
-export function introLines(device, { mapName, monsterName, hint, tonight, forest }) {
-  const rule = tonight ? [tonight] : [];
+export function introLines(device, { mapName, monsterName, hint, tonight, level, forest }) {
+  const rule = [level, tonight].filter(Boolean);
   const story = forest ? FOREST_INTRO : fillName(device === 'phone' ? INTRO.slice(2) : INTRO, monsterName);
   if (device === 'phone') return [`${mapName}: ${monsterName}. ${hint}`, ...rule, ...story];
   return [`${mapName}: ${monsterName}`, hint, ...rule, ...story];
+}
+
+// 안내 화면에 넣는 난이도 줄
+export function levelLine(easy, touch) {
+  if (!easy) return '어려움: 아이템은 주워야 쓰고, 지도는 벽에서 잠깐만 볼 수 있어요';
+  return `쉬움: 왼쪽 위에 지도가 늘 보이고, 아이템을 마음껏 써요 (${touch ? '오른쪽 위 칸' : '숫자 1~4'})`;
 }
 
 // 안내 화면 맨 위의 경고 줄. 숲만 어른용 경고다

@@ -3,6 +3,7 @@ import { FOREST_MONSTER_ID, POOL_MONSTER_ID, LAST_ROUND, MAP_IDS, MONSTER_IDS, R
 import { boardCells, boardSize, cellKey, cssColor, goldCount, isCurrentCell, lookOptions, nextUnlock, stampCount, stampsLeft, GOLD } from '../logic/horrorStamps.js';
 import { tonightPaid, tonightRuleText } from '../logic/horrorTonight.js';
 import { cfg } from '../config/index.js';
+import { EASY, HARD } from '../logic/horrorRun.js';
 import { FOREST_PLACE, POOL_PLACE, MAPS, MONSTERS, SPECIAL_MONSTERS } from './content.js';
 
 const RANDOM_MAP = '어디가 나올지 몰라요';
@@ -48,6 +49,12 @@ const FOREST_WARN = '어른도 무서운 판이에요. 갑자기 놀라게 하�
 const POOL_TEXT = '불이 다 켜진 수영장이에요. 물에 닿으면 소리가 나고, 그 소리를 듣고 무언가 물속에서 와요.';
 const POOL_WARN = FOREST_WARN;
 
+// 난이도 칸. 어느 판 (오늘의 밤, 마지막 밤, 어른용 칸 포함) 이든 여기서 고른 대로 들어간다
+export const LEVEL_OPTIONS = [
+  { id: EASY, name: '쉬움', hint: '지도가 늘 보이고, 아이템을 마음껏 써요' },
+  { id: HARD, name: '어려움', hint: '아이템은 주워 쓰고, 지도는 벽에서 잠깐만 봐요' },
+];
+
 // 맵 칸과 괴물 칸의 이름과 설명. 랜덤 칸이 맨 뒤에 온다
 export function chooserOptions() {
   return {
@@ -89,8 +96,9 @@ export function poolCard() {
 // choice: { mapId, monsterId }. record: 저장된 공포 모드 기록. onStart 에 고른 값을 준다. 화면은 스스로 닫는다
 // onLook(key, id): 번개 ('bolt') 나 손전등 ('light') 색을 고르면 부른다. onLastNight: 마지막 밤 칸을 누르면 부른다
 // tonight: 오늘의 밤 판, onTonight: 그 칸을 누르면 부른다. onForest, onPool: 어른용 칸의 확인 창에서 들어가기를 누르면 부른다
-export function showChooser(root, { choice, compact, record, tonight, onLook, onStart, onLastNight, onTonight, onForest, onPool, onQuit }) {
-  const picked = { ...choice };
+// onLevel(id): 난이도를 바꾸면 바로 부른다 (저장은 부르는 쪽이 한다)
+export function showChooser(root, { choice, compact, record, tonight, onLook, onLevel = () => {}, onStart, onLastNight, onTonight, onForest, onPool, onQuit }) {
+  const picked = { ...choice, level: record.level ?? EASY };
   const worn = { bolt: record.bolt, light: record.light };
   const k = cfg.horror.stamps;
   const layer = document.createElement('div');
@@ -120,6 +128,7 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
       btn.dataset.pick = o.id;
       btn.addEventListener('click', () => {
         picked[key] = o.id;
+        if (key === 'level') onLevel(o.id);
         paint();
         paintBoard();
       });
@@ -203,12 +212,13 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
   if (!compact) layer.appendChild(add('div', TITLE, '어디로 들어갈까요?'));
   layer.appendChild(body);
   body.append(side, panel);
+  section('난이도', 'level', LEVEL_OPTIONS);
   section('맵', 'mapId', options.mapId);
   section('누가 기다릴까요', 'monsterId', options.monsterId);
   const actions = add('div', compact ? `${ROW};margin-top:2px` : ROW);
   const go = add('button', compact ? `${GO};font-size:16px;padding:6px 28px` : GO, '들어가기');
   const back = add('button', compact ? `${BACK};padding:6px 18px` : BACK, '타이틀로');
-  go.addEventListener('click', close(() => onStart({ ...picked })));
+  go.addEventListener('click', close(() => onStart({ mapId: picked.mapId, monsterId: picked.monsterId })));
   back.addEventListener('click', close(onQuit));
   actions.append(go, back);
   side.appendChild(actions);

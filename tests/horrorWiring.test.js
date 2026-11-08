@@ -70,7 +70,7 @@ vi.mock('../src/horror/hud.js', () => {
       return was;
     }
   }
-  return { HorrorHud, startHint: () => '', escapeText: (r, c, head) => head ?? '탈출', forestEscapeHead: (name) => `${name} 나옴`, lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
+  return { HorrorHud, startHint: () => '', levelLine: (easy) => (easy ? '쉬움' : '어려움'), escapeText: (r, c, head) => head ?? '탈출', forestEscapeHead: (name) => `${name} 나옴`, lastNightText: ({ gems }) => `끝 ${gems}`, stampLines: (earned) => (earned ? ['도장'] : []) };
 });
 
 vi.mock('../src/horror/input.js', () => ({

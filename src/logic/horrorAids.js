@@ -68,7 +68,9 @@ function wallSide(level, c) {
 
 // 판마다 벽 지도와 줍는 아이템을 놓는다. level: 이번 판 맵 사본 (잠긴 문이 닫힌 상태)
 // taken: 퓨즈, 열쇠, 단서처럼 이미 물건이 놓인 칸
-export function createAids(level, k, rand = Math.random, taken = []) {
+// easy: 쉬움이면 네 가지를 처음부터 끝없이 들고 있고, 지도는 늘 보이니 벽 지도와 바닥 아이템을 놓지 않는다
+export function createAids(level, k, rand = Math.random, taken = [], easy = false) {
+  if (easy) return { boards: [], items: [], held: Object.fromEntries(AID_KINDS.map((kind) => [kind, Infinity])), marks: [], sounds: [], nextSound: 1 };
   const used = new Set(taken.map(keyOf));
   const floor = openFloor(level).filter((c) => !used.has(keyOf(c)));
   const boardCells = floor.filter((c) => wallSide(level, c));

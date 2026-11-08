@@ -4,6 +4,7 @@ import { saveStore } from '../save.js';
 import { todayKey } from '../logic/daily.js';
 import { FOREST_ROUND, LAST_ROUND, POOL_ROUND, RANDOM, chooseRound, forcedRound, isForest, isPool, isRound } from '../logic/horrorPick.js';
 import { tonightRound } from '../logic/horrorTonight.js';
+import { HARD } from '../logic/horrorRun.js';
 
 // 안내 화면에 어느 기기의 조작법을 보여 줄지 고른다
 export function deviceKind(phone = isPhone(), touch = isTouchDevice()) {
@@ -69,6 +70,7 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
       horror = new HorrorGame(root, {
         round,
         tonight,
+        easy: save.horror.level !== HARD,
         touch: isTouchDevice(),
         device: deviceKind(),
         lowFx: save.settings.lowFx,
@@ -98,6 +100,11 @@ export async function startHorror(game, { onExit }, loadModule = () => import('.
     tonight: today(),
     compact: deviceKind() === 'phone',
     record: saveStore.load().horror,
+    onLevel: (level) => {
+      const save = saveStore.load();
+      save.horror.level = level;
+      saveStore.save(save);
+    },
     onLook: (key, id) => {
       const save = saveStore.load();
       save.horror[key] = id;

@@ -22,7 +22,7 @@ import { buildWorld } from './world.js';
 import { createCreature } from './creatureModel.js';
 import { WallBulge } from './wallBulge.js';
 import { HorrorInput } from './input.js';
-import { HorrorHud, startHint, escapeText, forestEscapeHead, lastNightText, stampLines } from './hud.js';
+import { HorrorHud, levelLine, startHint, escapeText, forestEscapeHead, lastNightText, stampLines } from './hud.js';
 import { HorrorAudio } from './audio.js';
 import { StunGun } from './stunGun.js';
 import { HorrorAids } from './aids.js';
@@ -60,10 +60,12 @@ const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 export class HorrorGame {
   // round: { mapId, monsterId } 에 괴물이 여럿이면 monsterIds. onAgain: 끝 화면의 한 판 더. 정리를 마친 뒤에 부른다
   // tonight: 오늘의 밤 판이면 logic/horrorTonight.js 의 { date, rule }. 날짜는 시작한 날로 끝까지 간다
-  constructor(root, { round, tonight = null, touch, device, lowFx, muted, onExit, onAgain }) {
+  // easy: 쉬움 난이도. 지도가 늘 보이고 아이템이 줄지 않는다 (aids.js)
+  constructor(root, { round, tonight = null, easy = false, touch, device, lowFx, muted, onExit, onAgain }) {
     this.root = root;
     this.round = round;
     this.tonight = tonight;
+    this.easy = easy;
     this.place = ALL_MAPS[round.mapId];
     this.monsters = roundMonsters(round).map((id) => ALL_MONSTERS[id]);
     this.allNames = joinNames(this.monsters.map((m) => m.name));
@@ -262,7 +264,7 @@ export class HorrorGame {
   }
 
   start() {
-    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null, forest: isForest(this.round), adult: isForest(this.round) || isPool(this.round) };
+    const round = { mapName: this.place.name, monsterName: this.allNames, hint: this.named(this.place.hint ?? this.monsters[0].hint), tonight: this.tonight ? tonightIntroLine(this.tonight.rule, this.k) : null, level: levelLine(this.easy, this.touch), forest: isForest(this.round), adult: isForest(this.round) || isPool(this.round) };
     this.hud.showIntro(this.device, round, () => this.beginPlay(), () => this.exit());
     this.last = performance.now();
     this.renderer.setAnimationLoop((now) => {
