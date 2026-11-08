@@ -40,7 +40,7 @@ export const parkTheme = {
   doorArt: 'locker',
   board: { art: 'horror_park_board', plain: 0xffffff, repeat: 1 }, // 빛바랜 간판
   ceil: 0x1c1820,
-  ceilArt: { art: 'horror_ceil_park', repeat: 7, tint: 0x807888 },
+  ceilArt: { art: 'horror_ceil_park', repeat: 7, tint: 0x272c43 },
   fog: 0x060308,
   ambient: 0x8a6c98,
   lightColor: 0xffa848, // 희미한 색 전구

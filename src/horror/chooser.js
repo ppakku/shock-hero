@@ -222,11 +222,12 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
   tonightBtn.addEventListener('click', close(onTonight));
   // 어른용 칸. 누를 때마다 확인 창을 띄운다. 처음 손이 가는 곳은 돌아가기라서 Enter 를 눌러도 들어가지 않는다.
   // key 는 data 이름 (forest 면 data-forest, data-forest-confirm, data-forest-enter, data-forest-back)
-  const adultButton = ({ key, card, title, text, warn, onEnter }) => {
+  // short: 휴대폰에서 쓰는 짧은 한 줄. 두 칸이 나란히 놓여 긴 글은 어색하게 끊긴다
+  const adultButton = ({ key, card, short, title, text, warn, onEnter }) => {
     const [top, sub] = card;
     const btn = add('button', `${ADULT}${compact ? ';font-size:13px;line-height:14px;padding:2px 8px' : ''}`);
     btn.dataset[key] = '';
-    btn.appendChild(add('div', '', top));
+    btn.appendChild(add('div', '', compact ? short : top));
     if (!compact) btn.appendChild(add('div', ADULT_SMALL, sub)); // 휴대폰은 한 줄만 넣는다
     const openConfirm = () => {
       const veil = add('div', VEIL);
@@ -267,14 +268,21 @@ export function showChooser(root, { choice, compact, record, tonight, onLook, on
     btn.addEventListener('click', openConfirm);
     return btn;
   };
-  const forestBtn = adultButton({ key: 'forest', card: forestCard(), title: FOREST_PLACE.name, text: FOREST_TEXT, warn: FOREST_WARN, onEnter: onForest });
-  const poolBtn = adultButton({ key: 'pool', card: poolCard(), title: POOL_PLACE.name, text: POOL_TEXT, warn: POOL_WARN, onEnter: onPool });
+  const forestBtn = adultButton({ key: 'forest', card: forestCard(), short: '어른용: 숲', title: FOREST_PLACE.name, text: FOREST_TEXT, warn: FOREST_WARN, onEnter: onForest });
+  const poolBtn = adultButton({ key: 'pool', card: poolCard(), short: '어른용: 수영장', title: POOL_PLACE.name, text: POOL_TEXT, warn: POOL_WARN, onEnter: onPool });
   buildBoard();
   paintBoard();
   const gold = goldCount(record.stamps);
   panel.append(add('div', compact ? `${COUNT};font-size:14px` : COUNT, `도장 ${stampCount(record.stamps)}/${boardSize()}${gold ? `, 금 ${gold}` : ''}`), board);
   LOOK_ROWS.forEach(lookRow);
-  panel.append(lookHint, last, tonightBtn, forestBtn, poolBtn);
+  // 어른용 칸 둘은 한 줄에 나란히 둔다. 맵이 다섯이라 도장판이 길어져서, 위아래로 쌓으면 화면 아래로 넘친다
+  const adults = add('div', `display:flex;gap:${compact ? 4 : 6}px;width:100%`);
+  for (const btn of [forestBtn, poolBtn]) {
+    btn.style.flex = '1 1 0';
+    btn.style.minWidth = '0';
+    adults.appendChild(btn);
+  }
+  panel.append(lookHint, last, tonightBtn, adults);
   root.appendChild(layer);
   go.focus(); // Enter 로도 누를 수 있다
 }
